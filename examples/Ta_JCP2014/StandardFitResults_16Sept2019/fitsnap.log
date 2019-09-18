@@ -1,0 +1,48 @@
+Version 22Mar18
+
+Waiting for input on stdin... Got it!
+Reading in training set data.
+Parsing JSON data.
+
+Group 'Displaced_A15' -- (9 files found)
+
+Group 'Displaced_BCC' -- (9 files found)
+
+Group 'Displaced_FCC' -- (9 files found)
+
+Group 'Elastic_BCC' -- (100 files found)
+
+Group 'Elastic_FCC' -- (100 files found)
+
+Group 'GSF_110' -- (22 files found)
+
+Group 'GSF_112' -- (22 files found)
+
+Group 'Liquid' -- (3 files found)
+
+Group 'Surface' -- (7 files found)
+
+Group 'Volume_A15' -- (30 files found)
+
+Group 'Volume_BCC' -- (21 files found)
+
+Group 'Volume_FCC' -- (31 files found)
+Reading group weights from ./grouplist.in
+Number of Rows, Columns in A:  15213 31
+Launching LAMMPS.
+Waiting..
+Done.
+Parsing all LAMMPS results.
+Constructing system of equations.
+No Column Reduction Needed for NumConst<NumTypes
+Performing the fit using  SVD
+Shape of A, b:  (15213, 31) (15213,)
+Attempting to run LSTSQ script
+Waiting..
+Done.
+Computing mean errors.
+Writing SNAP coefficients.
+Generating LAMMPS run script.
+Writing system (in human-readable form) to abtotal.dat.
+Serializing A and b to DumpSnap/Absystem.dat
+Done.

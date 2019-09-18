@@ -1,0 +1,41 @@
+# Initialize simulation
+
+units           metal
+boundary        p p p
+lattice         bcc 3.51304
+region          myreg block 0 3 0 3 0 3
+create_box      1 myreg
+create_atoms    1 box
+
+mass    1 180.94788 
+set group all type 1
+
+include pot_def_Ta.mod
+
+compute 	1 all pe/atom
+compute		pe all reduce sum c_1
+compute		avepe all reduce ave c_1
+thermo_style    custom step etotal c_pe c_avepe press spcpu
+  
+thermo		10
+thermo_modify norm no
+timestep 0.5e-3
+neighbor 1.0 bin
+neigh_modify once no every 1 delay 0 check yes
+change_box all x scale 1.042768 y scale 1.042768 z scale 1.042768  remap
+run 0
+#write_dump all custom UnMin_Perf.dump id type x y z c_1
+variable vpe equal c_pe
+variable vavepe equal c_avepe
+print "UNMIN PE PEATOM ${vpe} ${vavepe}"
+
+# Minimize
+fix 1 all box/relax iso 0.0 vmax 1.0e-2
+minimize 1.0e-15 1.0e-15 100 100
+min_modify line quadratic
+unfix 1
+#write_dump all custom Min_Perf.dump id type x y z c_1
+variable v2pe equal c_pe
+variable v2avepe equal c_avepe
+print "RELAXED PE PEATOM ${v2pe} ${v2avepe}"
+

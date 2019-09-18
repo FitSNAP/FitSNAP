@@ -1,0 +1,47 @@
+#!/bin/bash
+input=$1
+e_weight=$2
+f_weight=$3
+v_weight=$4
+iter=$5
+#fit SNAP
+module purge
+module load dakota-6.5
+#module swap mkl/17.0
+
+rm -rf ./Data/
+rm -rf ./DumpSnap/
+#Starts a fresh caclulation of Bi-spectrum components
+
+if [ ! -d "JSON/$input" ]; then
+  mkdir JSON/$input
+  #Makes a new training group if the group isn't detected
+else
+  rm -f ./JSON/$input/*
+  cp ../training/temporary/$input/* ./JSON/$input/
+  cp ../training/active/$input/* ./JSON/$input/
+  #training/temporary should only have one file at a time
+fi
+
+nconfig_old=`grep -w "$input" grouplist.in | awk '{print($2)}'`
+nconfig_now=`ls -ltrh JSON/$input/*.json | wc | tail -n1 | awk '{print($1)}'`
+#if [ $iter -eq 1 ]; then
+#sed s/GROUPNAME/$input/ temp_grouplist.in | sed s/NUMBER/0/ | sed s/EWEIGHT/$e_weight/ | sed s/FWEIGHT/$f_weight/ | sed s/VWEIGHT/$v_weight/  > grouplist.in
+#fi
+sed s/GROUPNAME/$input/ temp_grouplist.in | sed s/NUMBER/$nconfig_now/ | sed s/EWEIGHT/$e_weight/ | sed s/FWEIGHT/$f_weight/ | sed s/VWEIGHT/$v_weight/  > grouplist.in
+
+../../fitsnap.py < OTF_snap.in > snap_${iter}_${input}.log
+
+rm ../lammps/pot_*.mod
+rm ../lammps/*.snapparam
+rm ../lammps/*.snapcoeff
+cp pot_*.mod ../lammps/
+cp *.snapparam ../lammps/
+cp *.snapcoeff ../lammps/
+
+grep energy SNAPenergy_error.dat | cut -c39-52 > results.tmp
+grep force SNAPforce_error.dat | cut -c39-52 >> results.tmp
+
+cp results.tmp last_results.tmp
+cp SNAPenergy_error.dat ${iter}_SNAPenergy_error.dat
+cp SNAPforce_error.dat ${iter}_SNAPforce_error.dat

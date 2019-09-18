@@ -1,0 +1,36 @@
+#Comments for this SNAP potential
+numTypes = 1
+twojmax =     6
+rcutfac =  4.67637
+rfac0 = 0.99363
+rmin0 = 0.0
+wj1 = 1.0
+zblcutinner = 4.0
+zblcutouter = 4.8
+qcoul = 1.e-8
+rcoul = 10.0
+radelem1 = 0.5
+type1 = Ta
+zblz1 = 73
+
+bzeroflag = 0		  # Forces Bspec to 0 when atoms are non-interacting, strongly suggest = 1
+solver = SVD		  # SVD, LASSO, RIDGE, or ELASTIC for l0, l1, l2 or l1+l2 norm
+
+lammpsPath = ./lmp_exe
+#lammpsPath = /Users/mitwood/Documents/LAMMPS/GitMaster/src/lmp_mpi
+jsonPath = ./JSON
+dataPath = ./Data
+dumpPath = ./DumpSnap
+
+groupFile = ./grouplist.in
+mpiLauncherLAMMPS = mpiexec
+mpiLauncherLSTSQ = mpiexec -np 1
+verifyConfigs = 1	      # Whether to compare the atomic positions in LAMMPS output.
+maxConcurrency = 4	      # Cap the number of MPI processses used to run LAMMPS.
+numConstants = 1	      # Number of constant terms in linear regression.
+writeDataKey = 1        # Whether to write a key mapping JSON data files to LAMMPS.
+runLammps = 1           # Whether to run fresh LAMMPS calculation or use old output.
+writeSystem = 1         # Whether to write abtotal.dat (A, b, w)
+writeTrainingErrors = 0         # Whether to write detailed training errors (training, reference, model, error)
+computeTestingErrors = 0        # Whether to validate consistency of SNAP potential (testing, reference, model, error)
+potentialFileName = TaJCP2014   # Base name of SNAP potential files generated

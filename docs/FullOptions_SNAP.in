@@ -1,0 +1,63 @@
+############ Hyperparameters for this fit ############
+# Changing these necessitates re-calculating the bispectrum from LAMMPS #
+numTypes = 1
+twojmax = 6       # Expansion limit for the bispectrum (i.e. 2J=6: 31 descriptors, 2J=8: 56)
+rcutfac = 4.67637 # Radial cutoff distance in Angstroms
+rfac0 = 0.99363   # Fraction of rcutfac that the smoothing to zero begins
+rmin0 = 0.0
+wj1 = 1.0         # Per-element weight in the density expansion
+wj2 = 1.0
+wj3 = 1.0
+wj4 = 1.0
+radelem1 = 0.5    # Radial cutoff factor for each element, there is a hidden
+radelem2 = 0.5    # factor of two in the density expansion, so a value of 0.5
+radelem3 = 0.5    # here means this element has a radial cutoff equal to rcutfac
+radelem4 = 0.5
+
+############ ZBL reference potential used in this fit ############
+zblcutinner = 4.0  # Inner cutoff distance to begin smoothing the ZBL repulsion to zero
+zblcutouter = 4.8  # Outer ZBL cutoff, function is zero at this distance
+zblz1 = 73         # Z-number used in the ZBL reference potential. A value of 0
+zblz2 = 74         # means there is no reference potential used during fitting.
+zblz3 = 4
+zblz4 = 2
+
+atomstyle = charge  # LAMMPS atom style needed for SNAP+Reference Potential
+type1 = Ta          # Chemical symbols to be assigned to atom types in LAMMPS
+type2 = W
+type3 = Be
+type4 = He
+
+############ Modifications to the Energy function ############
+bzeroflag = 0		   # Forces Bspec to 0 when atoms are non-interacting, strongly suggest = 1
+quadratic = 0		   # Use the quadratic bispectrum terms (lots of data)
+numConstants = 1	                # Number of constant terms in linear regression.
+
+############ Fitting and runtime options ############
+solver = SVD		                # SVD, LASSO, RIDGE, or ELASTIC for l0, l1, l2 or l1+l2 norm
+normweight = -12	              # Log weight of penalty terms during fitting
+normratio = 0.5		              # Value on (0,1] for the relative wieghts of l1,l2 norm during ELASTIC fit
+lammpsPath = /user/specific/path/to/executable/lmp_something
+jsonPath = examples/Ta/JSON             # Path to training data folder
+dataPath = Data                         # Path to training data as LAMMPS data files
+dumpPath = DumpSnap                     # Path to training data as bispectrum components in LAMMPS Dump files
+groupFile = examples/Ta/grouplist.in    # Lists the sets of training data names, number of configurations, and the regression weights
+mpiLauncherLAMMPS = mpiexec       # Changes based on your software package environment
+maxConcurrency = 32	              # Cap the number of MPI processes used to run LAMMPS.
+writeDataKey = 1                  # Whether to write a key mapping JSON data files to LAMMPS.
+runLammps = 1                     # Whether to run fresh LAMMPS calculation or use old output.
+writeSystem = 0                   # Whether to write abtotal.dat (A, b, w)
+
+
+############### Experimental, non-essential features ####################
+freezeold = 0		         # Carry over a previous fit up to this numTypes, will cut A matrix
+coeffold = NA.snapcoeff  # Carryover weights
+paramold = NA.snapparam  # Carryover params
+qcoul = 1.e-8            # Atomic charge on the element species (needs expert user)
+rcoul = 10.0             # Radial cutoff for electrostatic calculation (needs expert user)
+PCAsize = 0		     # Number of principal components to reduce A*w into
+verifyConfigs = 0	                # Whether to compare the atomic positions in LAMMPS output.
+mpiLauncherLSTSQ = mpiexec -np 1  # Off loads the linear regression solve, useful in parallel fitting
+Eshift1 = 0.00000000000   # Energy shift per atom for the first element type
+writeTrainingErrors = 0   # Compare detailed errors between the training data and fitted potential
+computeTestingErrors = 0  # Compare detailed errors between fitted potential and LAMMPS implementation of the same potential

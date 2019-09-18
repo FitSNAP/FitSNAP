@@ -1,0 +1,9 @@
+#Misc analysis tools
+
+DistOfEnergy_JSON.sh - Simple script that pulls out the energies from JSON training data. Useful when characterizing what is in the training sets, and looking for outlier configurations.
+
+
+InOutRandom.sh - Another bash script that will split each of your training data group into a pair of groups with prefixes in_* and out_* . The in_* groups will be assigned non-zero regression weights (linear solver uses these training points), while the out_* groups will be given a wieght of zero (linear solver does not use these points). The benefit of still reading in the out_* training data is that once you have your solution vector that is the SNAP coefficients, the regression errors are calculated the same way was the in_* training groups. Therefore, you have a clean cut way to do cross-validation by adjusting the fraction of training data in either the in_* or out_* groups.  Run with "./InOutRandom.sh 0.5" where 0.5 is the fraction included in the fit. Needs adjusting in the outer loop to account for your specific training data group names.
+
+
+ShiftEnergy.sh - A bash script (see a pattern here?) to adjust the energy per atom in your training data. This also can be done using the Eshift1..Eshift4 input variables in FitSNAP, but this will be applied aross all of your training of that particular element type. This script is nice if you are trying to merge training sets from DFT that use different pseudopotentials, and thus have a different reference energy per atom. 

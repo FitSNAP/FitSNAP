@@ -1,0 +1,42 @@
+#Comments for this SNAP potential
+numTypes = 1
+twojmax =     2
+rcutfac =  4.67637
+rfac0 = 0.99363
+rmin0 = 0.0
+wj1 = 1.0
+wj2 = 1.0
+zblcutinner = 4.0
+zblcutouter = 4.8
+qcoul = 1.e-8
+rcoul = 10.0
+radelem1 = 0.5
+radelem2 = 0.5
+type1 = Ta
+type2 = aT
+zblz1 = 73
+zblz2 = 73 
+
+freezeold = 0		# True/False to carry over a previous fit, will cut A matrix in half
+coeffold = Ta.snapcoeff  # Carryover weights
+paramold = Ta.snapparam  # Carryover params
+
+bzeroflag = 1           # Forces Bspec to 0 when atoms are non-interacting, strongly suggest = 1
+quadratic = 1           # Read in the quadratic bispectrum terms (lots of data)
+solver = SVD            # SVD, LASSO or RIDGE for l0, l1 or l2 norm 
+normweight = -12        # Log weight of penalty terms during fitting
+normratio = 0.5         # Value on (0,1] for the relative wieghts of l1,l2 norm during ELASTIC fit
+
+lammpsPath = /ascldap/users/mitwood/Documents/LAMMPS_Builds/trunk/src/lmp_kokkos_mpi_only
+jsonPath = ./../../JSON/
+dataPath = ../../Data/
+dumpPath = ./dump
+groupFile = grouplist.in
+# mpiLauncher = mpiexec 
+mpiLauncherLAMMPS = mpiexec
+verifyConfigs = 0	# Whether to compare the atomic positions in LAMMPS output.
+maxConcurrency = 36	# Cap the number of MPI processses used to run LAMMPS.
+numConstants = 0	# Number of constant terms in linear regression.
+writeDataKey = 1        # Whether to write a key mapping JSON data files to LAMMPS.
+runLammps = 0           # Whether to run fresh LAMMPS calculation or use old output.
+writeSystem = 0         # Whether to write abtotal.dat (A, b, w)

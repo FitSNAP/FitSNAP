@@ -1,0 +1,14 @@
+Displaced_A15   0.00235835
+Displaced_BCC   0.00188368
+Displaced_FCC   0.00061670
+Elastic_BCC   0.00641149
+Elastic_FCC   0.00361795
+GSF_110   0.00652418
+GSF_112   0.00868358
+Liquid   0.00566804
+Surface   0.01352318
+Volume_A15   0.24579116
+Volume_BCC   0.32859812
+Volume_FCC   0.81207692
+
+energy error (mean of absolute values)   0.11278675

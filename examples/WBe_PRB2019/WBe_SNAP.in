@@ -1,0 +1,46 @@
+#Comments for this SNAP potential
+numTypes = 2
+twojmax =     8
+rcutfac = 4.812302818
+rfac0 = 0.99363
+rmin0 = 0.0
+wj1 = 1.0
+wj2 = 0.9590493408
+zblcutinner = 4.0
+zblcutouter = 4.8
+qcoul = 1.e-8
+rcoul = 10.0
+radelem1 = 0.5
+radelem2 = 0.417932464
+type1 = W
+type2 = Be
+zblz1 = 74
+zblz2 = 4
+
+freezeold = 0           # True/False to carry over a previous fit, will cut A matrix in half
+coeffold = WBe.snapcoeff  # Carryover weights
+paramold = WBe.snapparam  # Carryover params
+
+bzeroflag = 1           # Forces Bspec to 0 when atoms are non-interacting, strongly suggest = 1
+quadratic = 0           # Read in the quadratic bispectrum terms (lots of data)
+solver = SVD    # SVD, LASSO or RIDGE for l0, l1 or l2 norm
+normweight = -12        # Log weight of penalty terms during fitting
+normratio = 0.5         # Value on (0,1] for the relative wieghts of l1,l2 norm during ELASTIC fit
+PCAsize = 0             # Number of PCA components to reduce A*w into
+
+lammpsPath = ./lmp.exe
+#lammpsPath = /Users/mitwood/Documents/LAMMPS/GitMaster/src/lmp_mpi
+jsonPath = ./JSON
+dataPath = ./Data
+dumpPath = ./DumpSnap
+
+groupFile = grouplist.in
+mpiLauncherLAMMPS = mpiexec
+mpiLauncherLSTSQ = mpiexec -np 1
+verifyConfigs = 0       # Whether to compare the atomic positions in LAMMPS output.
+maxConcurrency = 16     # Cap the number of MPI processses used to run LAMMPS.
+numConstants = 0        # Number of constant terms in linear regression.
+writeDataKey = 1        # Whether to write a key mapping JSON data files to LAMMPS.
+runLammps = 1           # Whether to run fresh LAMMPS calculation or use old output.
+writeSystem = 0         # Whether to write abtotal.dat (A, b, w)
+

@@ -1,0 +1,54 @@
+#Written by Mitchell Wood(mitwood@sandia.gov) of Sandia Labs, 7/18/17.
+#
+
+Quick intro to running a Dakota Optimization of a SNAP potential (Ta):
+
+In order to speed up the process of finding the 'right' group weights for a given potential, DAKOTA (dakota.sandia.gov)
+will be used to search the (very large) space of these free parameters.
+The challenge for the user is to properly constrain the search so that you can get a reasonable answer in a reasonable time.
+In short, this comes down to limiting the number of free variables and also providing good objective functions so that DAKOTA can properly
+assess which guesses were good or not.
+
+There are also some changes to the structure of FitSNAP.py so that this optimization isn't too heavy on the amount of compute time and storage space needed.
+
+In this directory:
+
+1)  DumpSnap/  # Precomputed bispectrum components from LAMMPS for this training data. 
+
+2)  Data/  # Converted JSON files for the training set
+
+3)  templatedir/  # Contains all of the files needed to run fitSNAP and other objectives for each iteration.
+
+4)  dakota_opt.in  # Settings file for all things related to DAKOTA. 
+
+5)  exec_fitsnap.sh # Script that will drive FitSNAP and subsequent LAMMPS runs, primary job is to return values of the objective functions.
+
+Also included is an example script that will launch one iteration of the DAKOTA run per node 'par_exec_fitsnap.sh', but this
+will not be the focus of this readme.
+
+1) DumpSnap/: If you are only using DAKOTA to shift the group weights, then you do not need to re-run LAMMPS for each iteration of the fit. Therefore you can precompute the output from computes sna/atom, snad/atom, snav/atom  and store it in DumpSnap/. It is stored in this top level of the directory tree, rather than in templatedir/, in order to prevent unnecessary copies of it for each iteration. If you want to change cutoff distance during the fit, for example, you will need to run LAMMPS each iteration as the bispectrum components will be altered.
+
+2) Data/: Although the training data is normally stored as JSON files, the first step of FitSNAP is to convert it to LAMMPS readable data files. This step can be cut out of each iteration if Data/ exists, which is automatically checked by templatedir/snap/training.py and templatedir/in.snap . There is a line in each of these files that directs fitSNAP.py to a location that is currently '../../Data/'
+
+3) templatedir/: This folder contains all of the files needed to compute the objective functions. DAKOTA will be looking for template files such as Ta_Trial.tempate and grouplist.template in order to fill in the current set of free variables. This directory contains symbolic links to the FitSNAP Python source (fitsnap.py and snap/*.py), but you should not have to modify these.
+
+4) dakota_opt.in: Some key settings to play with:
+	'output' silent/normal/verbose
+	'soga' Single objective genetic algorithm, also try 'moga' for Multi-...
+	'population_size' Number of iterations between hybridization/mutation steps
+	'continuous_design' Number of free variables, list of strings to follow that will be replaced with numerical value between 'lower_bounds' and 'upper_bounds'. Make sure this number matches, and the right bounds are set to each variable. These are the same strings that appear in templatedir/*.template
+	'evaluation_concurrency' for now = 1, parallel jobs will have this equal to number of nodes.	
+	
+5) exec_fitsnap.sh: A nasty looking bash script that fills in the current values of the free variables then launches FitSNAP and LAMMPS. The *.template files are filled in using the 'dprepro' command. After that each objective function is added as a new row in tmp.out, which this temporary file is then remaned as results.out after all objective functions are calculated. The 'exe' variable will need to be modified for your system, and for consistancy, should be the same as what is in Ta_Trial.template.
+
+To run dakota:
+
+dakota -i dakota_opt.in
+or
+dakota -i dakota_opt.in -read_restart dakota.rst
+
+Tip for debugging:
+
+If dakota -i dakota_opt.in does not seem to work, comment all the 'rm' commands in the exec_fitsnap.sh file, and rerun dakota. All the ouput files (log.lammps, log.perf, fitsnap.screen.out, ...) in work/run.1 should provide you with enough information to work through the debugging.
+
+#

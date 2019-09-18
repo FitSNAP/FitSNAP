@@ -1,0 +1,13 @@
+# name size eweight fweight vweight
+Displaced_A15           9       {10.0**disaEW} {10.0**disaFW} 1.0e-12
+Displaced_BCC           9       {10.0**disbEW} {10.0**disbFW} 1.0e-12
+Displaced_FCC           9       {10.0**disfEW} {10.0**disfFW} 1.0e-12
+Elastic_BCC             100     {10.0**elbEW} 1.0e-12 1.0e-12
+Elastic_FCC             100     {10.0**elfEW} 1.0e-12 1.0e-12
+GSF_110                 22      {10.0**gsfaEW} {10.0**gsfaFW} 1.0e-12
+GSF_112                 22      {10.0**gsfbEW} {10.0**gsfbFW} 1.0e-12
+Liquid                  3       {10.0**liqEW} {10.0**liqFW} 1.0e-12
+Surface                 7       {10.0**surfEW} {10.0**surfFW} 1.0e-12
+Volume_A15              30      {10.0**volaEW} 1.0e-12 1.0e-12 
+Volume_BCC              21      {10.0**volbEW} 1.0e-12 1.0e-12 
+Volume_FCC              31      {10.0**volfEW} 1.0e-12 1.0e-12 

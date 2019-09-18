@@ -1,0 +1,45 @@
+This example generates a Ta SNAP potential (Ta_JCP2014) using the training set in the
+JSON folder.
+
+To run it:
+
+1. Build a LAMMPS executable with the SNAP package installed
+2. Edit the following settings in TaJCP2014_SNAP.in
+to match your local platform:
+
+   lammpsPath     # The location of the LAMMPS executable
+   mpiLauncher    # The MPI run command
+   maxConcurrency # Cap the number of MPI processes used to run LAMMPS.
+
+3. Run fitsnap.py:
+
+../../src/fitsnap.py < TaJCP2014_SNAP.in > fitsnap.log
+
+The following files will be created:
+
+    Data/
+    DumpSnap/
+    grouplist.out
+    Ta.snapcoeff
+    Ta.snapparam
+    pot_TaJCP2014.mod
+    SNAPenergy_MeanError.dat
+    SNAPforce_MeanError.dat
+    SNAPvirial_MeanError.dat
+
+These should be similar to the versions provided in directory StandardFitResults_xxMonthYear.
+
+To run the potential in LAMMPS, copy these files:
+
+   Ta.snapcoeff
+   Ta.snapparam
+   pot_Ta.mod
+
+to the working directory and put:
+
+   include pot_TaJCP2014.mod
+
+in the LAMMPS input script.
+
+See /docs/Literature/1-s2.0-S0021999114008353-main.pdf for more details about this potential and training data included.
+Additional information about the SNAP form can be found in /docs/Literature/1.5017641.pdf and /docs/Literature/SAND2014_17862.pdf

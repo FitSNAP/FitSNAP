@@ -1,0 +1,46 @@
+This example generates a W/Be SNAP potential (WBe_Wood_PRB2019) using the training set in the
+tar file (WBe_FullTrainingJSON_SimpleMultiElem.tar). To run it:
+
+1. Build a LAMMPS executable with the SNAP package installed
+2. Edit the following settings in WBe_SNAP.in
+to match your local platform:
+
+   lammpsPath     # The location of the LAMMPS executable
+   mpiLauncher    # The MPI run command
+   maxConcurrency # Cap the number of MPI processses used to run LAMMPS.
+
+3. Untar the tar file to create the JSON directory:
+
+   tar -xf WBe_FullTrainingJSON_SimpleMultiElem.tar
+
+4. Run fitsnap.py:
+
+../../src/fitsnap.py < WBe_SNAP.in > fitsnap.log
+
+The following files will be created:
+
+    Data/
+    DumpSnap/
+    grouplist.out
+    WBe.snapcoeff
+    WBe.snapparam
+    pot_WBe.mod
+    SNAPenergy_MeanError.dat
+    SNAPforce_MeanError.dat
+    SNAPvirial_MeanError.dat
+
+These should be similar to the versions provided in directory StandardFitResults_xxMonthYear.
+
+To run the potential in LAMMPS, copy these files:
+
+   WBe.snapcoeff
+   WBe.snapparam
+   pot_WBe.mod
+
+to the working directory and put:
+
+   include pot_WBe.mod
+
+in the LAMMPS input script.
+
+See /docs/Literature/PhysRevB.99.184305.pdf for more information about this training data and results derived from this potential.

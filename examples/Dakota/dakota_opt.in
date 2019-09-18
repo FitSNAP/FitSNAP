@@ -1,0 +1,99 @@
+
+environment
+  tabular_graphics_data
+  tabular_graphics_file 'opt.dat'
+
+method,
+        max_iterations = 270
+        max_function_evaluations = 20000
+	scaling
+        output silent
+	soga
+        seed 12345235
+        population_size = 300
+        initialization_type flat_file 'initial.dat'
+        
+variables,
+	continuous_design = 19
+          desc  'disaEW'
+		'disaFW'
+		'disbEW'
+		'disbFW'
+		'disfEW'
+		'disfFW'
+		'elbEW'
+		'elfEW'
+		'gsfaEW'
+		'gsfaFW'
+		'gsfbEW'
+		'gsfbFW'
+		'liqEW'
+		'liqFW'
+		'surfEW'
+                'surfFW'
+                'volaEW'
+                'volbEW'
+                'volfEW'
+
+	  lower_bounds	0.0    
+			0.0    
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+                        0.0
+
+          upper_bounds 	4.0     
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+                        4.0
+			4.0     
+interface,
+ 	fork asynchronous evaluation_concurrency = 1
+         local_evaluation_scheduling static
+	  allow_existing_results
+          analysis_driver = 'exec_fitsnap.sh'
+          work_directory named 'work/run'
+          directory_tag directory_save
+	  copy_files 'templatedir/*'
+          file_tag
+          file_save
+	  parameters_file = 'params.in'
+	  results_file = 'results.out'
+          aprepro
+          failure_capture recover 1000.0 1000.0 1000.0 1000.0 
+	  #deactivate strict_cache_equality cache_tolerance 1e-8
+responses,
+        desc 'E_error' 'F_error' 'Ta_elast' 'Ta_Ecoh' 
+	objective_function_scale_types 'value'
+        objective_function_scales 1.0 1.0 1.0 1.0 
+	objective_functions = 4
+	no_gradients
+	no_hessians
+

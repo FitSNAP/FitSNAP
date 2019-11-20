@@ -1,3 +1,4 @@
+# ---------------------------BEGIN-HEADER------------------------------------
 # Copyright (2016) Sandia Corporation. 
 # Under the terms of Contract DE-AC04-94AL85000 
 # with Sandia Corporation, the U.S. Government 
@@ -21,6 +22,8 @@
 # Gary Saavedra
 # Peter Schultz
 # Laura Swiler
+
+# ----------------------------END-HEADER-------------------------------------
 
 # This module provides a wrapper to prevent log and dump from writing to stdout.
 

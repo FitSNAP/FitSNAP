@@ -1,0 +1,84 @@
+Bispectrum options:
+       bzeroflag : 0
+    compute_dbvb : 1
+         n_coeff : 30
+        numtypes : 1
+   quadraticflag : 0
+         radelem : [0.5]
+         rcutfac : 4.67637
+           rfac0 : 0.99363
+           rmin0 : 0.0
+         twojmax : 6
+            type : ['Ta']
+    type_mapping : {'Ta': 1}
+              wj : [1.0]
+Group table:
+             name   size       eweight       fweight       vweight
+0   Displaced_A15    9.0  1.000000e+02  1.000000e+00  1.000000e-08
+1   Displaced_BCC    9.0  1.000000e+02  1.000000e+00  1.000000e-08
+2   Displaced_FCC    9.0  1.000000e+02  1.000000e+00  1.000000e-08
+3     Elastic_BCC  100.0  1.000000e-08  1.000000e-08  1.000000e-04
+4     Elastic_FCC  100.0  1.000000e-09  1.000000e-09  1.000000e-09
+5         GSF_110   22.0  1.000000e+02  1.000000e+00  1.000000e-08
+6         GSF_112   22.0  1.000000e+02  1.000000e+00  1.000000e-08
+7          Liquid    3.0  4.670000e+02  1.000000e+00  1.000000e-08
+8         Surface    7.0  1.000000e+02  1.000000e+00  1.000000e-08
+9      Volume_A15   30.0  1.000000e+00  1.000000e-09  1.000000e-09
+10     Volume_BCC   21.0  1.000000e+00  1.000000e-09  1.000000e-09
+11     Volume_FCC   31.0  1.000000e+00  1.000000e-09  1.000000e-09
+Scraping Configurations...
+Displaced_A15 : Gathering and fitting whole training set
+Displaced_BCC : Gathering and fitting whole training set
+Displaced_FCC : Gathering and fitting whole training set
+Elastic_BCC : Gathering and fitting whole training set
+Elastic_FCC : Gathering and fitting whole training set
+GSF_110 : Gathering and fitting whole training set
+GSF_112 : Gathering and fitting whole training set
+Liquid : Gathering and fitting whole training set
+Surface : Gathering and fitting whole training set
+Volume_A15 : Gathering and fitting whole training set
+Volume_BCC : Gathering and fitting whole training set
+Volume_FCC : Gathering and fitting whole training set
+Done! (0:00:00.429330)
+Computing bispectrum data...
+Done! (0:00:00.884132)
+Assembling linear system...Done! (0:00:00.023631)
+Performing fit...Done! (0:00:00.016430)
+Measuring errors...Done! (0:00:00.093153)
+Summary of fit MAE errors (Unweighted):
+Subsystem           Combined    Energy        Forces         Stress
+Group                                                              
+*ALL             9783.895074  0.112787  7.575758e-02   68338.565113
+Displaced_A15     589.717841  0.002358  9.806014e-02   19555.836733
+Displaced_BCC     530.420556  0.001884  1.433970e-01   14936.306956
+Displaced_FCC    1403.838381  0.000617  5.740702e-02   35328.554725
+Elastic_BCC        77.460293  0.006411  7.272293e-05     167.829494
+Elastic_FCC     15209.703762  0.003618  9.641815e-05   48164.061117
+GSF_110           123.264520  0.006524  2.650360e-02    1622.663717
+GSF_112           128.021496  0.008684  5.698063e-02    2068.824703
+Liquid            839.216430  0.005668  3.537950e-01   42922.216639
+Surface           128.174822  0.013523  4.760103e-02    2309.393915
+Volume_A15      25729.768372  0.245791  3.952673e-15  132937.095625
+Volume_BCC     125293.466247  0.328598  3.923059e-15  271469.122103
+Volume_FCC      96063.345326  0.812077  2.658123e-15  304200.458187
+Summary of fit R^2 values (Unweighted):
+Subsystem      Combined    Energy    Forces    Stress
+Group                                                
+*ALL           0.948100  0.994191  0.985504  0.939617
+Displaced_A15  0.998761 -1.216334  0.949587  0.997559
+Displaced_BCC  0.999345  0.995875  0.985178  0.998709
+Displaced_FCC  0.995477  0.971662  0.980612  0.991131
+Elastic_BCC    1.000000  0.991261  0.813192  1.000000
+Elastic_FCC    0.990601  0.993321  0.845196  0.984172
+GSF_110        0.999968  0.779532  0.998899  0.999938
+GSF_112        0.999936  0.873161  0.997370  0.999876
+Liquid         0.993101  0.996014  0.947793  0.986282
+Surface        0.999886  0.988168  0.996718  0.999778
+Volume_A15     0.962044  0.997813  0.791797  0.952620
+Volume_BCC     0.976752  0.998538 -0.323615  0.974246
+Volume_FCC     0.817067  0.984437  0.482022  0.792372
+Writing file "Ta_metrics.csv"...Done! (0:00:00.004356)
+Writing file "Ta_pot.snapparam"...Done! (0:00:00.000062)
+Writing file "Ta_pot.snapcoeff"...Done! (0:00:00.000188)
+LAMMPS (30 Oct 2019)
+Total wall time: 0:00:00

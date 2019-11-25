@@ -1,0 +1,38 @@
+#Comments for this SNAP potential
+
+[BISPECTRUM]
+numTypes = 1
+twojmax =  6
+rcutfac =  4.67637
+rfac0 = 0.99363
+rmin0 = 0.0
+wj1 = 1.0
+radelem1 = 0.5
+type1 = Ta
+BOLTZT = 1000
+
+[MODEL]
+bzeroflag = 0
+quadraticflag = 0
+solver = SVD
+normweight = -12
+normratio = 0.5
+compute_dbvb = 1
+compute_testerrs = 0
+
+[PATH]
+jsonPath = ./JSON
+groupFile = ./grouplist-Ta.in
+
+
+[OUTFILE]
+configs = Ta_configs.pkl.gz
+metrics = Ta_metrics.csv
+potential = Ta_pot
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.8
+pair_coeff1 = * * zero
+pair_coeff2 = * * zbl 73 73

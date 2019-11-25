@@ -1,0 +1,59 @@
+# This file provides a one-line description of all the keywords that can be assigned in the 
+# FitSNAP3 input file. Each keyword can only be used within the category to which it belongs. 
+# The categories are as follows:
+#  [BISPECTRUM]   SNAP potential options
+#  [MODEL]        SNAP fitting options
+#  [PATH]         locations of training data and meta-data
+#  [OUTFILE]      output options
+#  [REFERENCE]    SNAP reference potential
+# 
+# The syntax for keyword assignment is
+# <keyword> = <value>
+# In this file, we follow each keyword with a comment:
+# <keyword> = <value> # (<DATATYPE>) <Description>
+# The allowable datatypes are:
+#   INT    integer constant
+#   REAL   floating point constant
+#   STR    test string
+#   BOOL   boolean constant ("True" values: y, yes, t, true, on and 1, "False" values: n, no, f, false, off and 0.)
+
+[BISPECTRUM]
+numTypes = 2       # (INT)  Number of element types for this fit
+twojmax = 6        # (INT)  Band limit for bispectrum components (2,4,6,8... allowed)
+rcutfac =  4.67637 # (REAL) Radial cutoff facgtor for atomic neighborhood
+rfac0 = 0.99363    # (REAL) Parameter in distance to angle conversion
+rmin0 = 0.0        # (REAL) Parameter in distance to angle conversion
+wj1 = 1.0          # (REAL) Element weight for first element
+wj2 = 1.0          # (REAL)   wj keywords with integer suffixes 1 to numTypes
+radelem1 = 0.5     # (REAL) Radius of element 1, i-i' cutoff is rcutfac*(R_i + R_i')
+radelem2 = 0.5     # (REAL)   radelem keywords with integer suffixes 1 to numTypes
+type1 = Ta         # (STR)  Chemical symbol for this element, has to match JSON training files
+type2 = W          # (STR)    type keywords with integer suffixes 1 to numTypes
+BOLTZT = 1000      # (REAL) Advanced Feature. Use a Boltzmann weighting to training at this temperature
+
+[MODEL]
+bzeroflag = 0	     # (BOOL) Subtract vacuum bispectrum, so isolated atoms have energy=0
+quadraticflag = 0    # (BOOL) Include quadratic terms in SNAP energy model
+solver = SVD	     # (STR)  Linear solver algorithm used (SVD, LASSO, RIDGE, ELASTIC allowed)
+normweight = -12     # (REAL) If solver!=SVD, this is the log of the penalty term coefficient
+normratio = 0.5	     # (REAL) If solver==ELASTIC this is ratio of the linear and quadratic penalty terms
+compute_dbvb = 1     # (BOOL) If true, fit is done on energy, forces and virials. False, only energy.
+compute_testerrs = 0 # (BOOL) If less than the full training set is used in fitting, a true value will calculate the errors on the remaining, unused training. In the output, group names are appended with CV_Train and CV_Test to designate the fitted and testing training errors.
+
+[PATH]
+jsonPath = JSON          # (STR) Path to the training data JSON directory
+groupFile = grouplist.in # (STR) Path to the training data metadata file
+
+[OUTFILE]
+metrics = newsnap_metrics.csv    # (STR) Overall errors and broken down by group, weighting, and variable type.
+configs = Ta_configs.pkl.gz      # (STR) Currently disabled due to large I/O cost
+potential = Ta_pot               # (STR) Base name of SNAP potential files, i.e. Ta_pot.snapparam and Ta_pot.snapcoeff
+
+[REFERENCE]
+units = metal               # (STR) Units used in the LAMMPS calculations. See LAMMPS documentation.
+atom_style = atomic         # (STR) Atom style used in the LAMMPS calculations. See LAMMPS documentation.
+pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.8 # (STR) Reference potential used in LAMMPS calculations and subtracted from training data prior to fitting. 'zero 10.0' is a non-interacting potential with a cutoff of 10.0, this is needed to build neighbor lists for Bspec calculation.
+pair_coeff1 = * * zero      # (STR) Associated detials for the designated pair_style. See LAMMPS documentation.
+pair_coeff2 = 1 1 zbl 73 73 # (STR) ZBL is a purely repulsive potential used to safeguard against bad dynamics at small atom separations. 
+pair_coeff3 = 1 2 zbl 73 74 # (STR)  pair_coeff keywords with consecutive integer suffixes
+pair_coeff4 = 2 2 zbl 74 74 # (STR)

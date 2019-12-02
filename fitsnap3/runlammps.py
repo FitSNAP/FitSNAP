@@ -35,21 +35,26 @@ import numpy as np
 from . import geometry
 
 
-def extract_compute_np(lmp,name,compute_type,result_type,array_shape):
+def extract_compute_np(lmp,name,compute_style,result_type,array_shape):
     """
     Convert a lammps compute to a numpy array.
-    Assumes the compute returns a floating point numbers.
+    Assumes the compute stores floating point numbers.
     Note that the result is a view into the original memory.
-    If the result type is 0 (scalar) then conversion to numpy is skipped and a python float is returned.
+    If the result type is 0 (scalar) then conversion to numpy is 
+    skipped and a python float is returned.
+
+    From LAMMPS/src/library.cpp:
+    style = 0 for global data, 1 for per-atom data, 2 for local data
+    type = 0 for scalar, 1 for vector, 2 for array
+
     """
-    ptr = lmp.extract_compute(name, compute_type, result_type)  # 1,2: Style (1) is per-atom compute, returns array type (2).
+    ptr = lmp.extract_compute(name, compute_style, result_type) 
     if result_type == 0: return ptr # No casting needed, lammps.py already works
     if result_type == 2: ptr = ptr.contents
     total_size = np.prod(array_shape)
     buffer_ptr = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_double * total_size))
     array_np = np.frombuffer(buffer_ptr.contents, dtype=float)
     array_np.shape = array_shape
-
     return array_np
 
 def extract_commands(string):
@@ -104,11 +109,6 @@ def set_variables(lmp, **lmp_variable_args):
 
 
 def set_computes(lmp, bispec_options):
-    # # Bispectrum coefficient computes
-    base_b = "compute b all sna/atom ${rcutfac} ${rfac0} ${twojmax}"
-    base_db = "compute db all snad/atom ${rcutfac} ${rfac0} ${twojmax}"
-    base_vb = "compute vb all snav/atom ${rcutfac} ${rfac0} ${twojmax}"
-
     numtypes = bispec_options["numtypes"]
     radelem = " ".join([f"${{radelem{i}}}" for i in range(1, numtypes + 1)])
     wj = " ".join([f"${{wj{i}}}" for i in range(1, numtypes + 1)])
@@ -127,20 +127,11 @@ def set_computes(lmp, bispec_options):
     kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
     kwargs = " ".join(kw_substrings)
 
-    for op, base in zip(("b", "db", "vb"), (base_b, base_db, base_vb)):
-        # print("Setting up compute",op)
-        command = f"{base} {radelem} {wj} {kwargs}"
-        # print(command)
-        lmp.command(command)
+    # everything is handled by LAMMPS compute snap
 
-
-    lmp.command("compute e all pe/atom")
-    lmp.command("compute p all pressure NULL virial")
-    lmp.command("compute e_sum all reduce sum c_e")
-
-    for cname in ["b","db","vb"]:
-        lmp.command(f"compute {cname}_sum all reduce sum c_{cname}[*]")
-
+    base_snap = "compute snap all snap ${rcutfac} ${rfac0} ${twojmax}"
+    command = f"{base_snap} {radelem} {wj} {kwargs}"
+    lmp.command(command)
 
 def extract_computes(lmp, num_atoms, n_coeff,num_types, compute_dbvb, TrainFile):
 
@@ -153,68 +144,49 @@ def extract_computes(lmp, num_atoms, n_coeff,num_types, compute_dbvb, TrainFile)
     lmp_types = lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).flatten()
     lmp_volume = lmp.get_thermo("vol")
 
-    # Extract Bsum
-    lmp_bsum = extract_compute_np(lmp,"b_sum",0,1,(n_coeff))
-
-    # Extract B
-    lmp_sume = lmp.extract_compute("e_sum", 0, 0)
-    if (np.isinf(lmp_sume)).any() or (np.isnan(lmp_sume)).any():
-        print("Inf or NaN Energy returned from LAMMPS :",TrainFile)
-
-    lmp_barr = extract_compute_np(lmp, "b", 1, 2, (num_atoms, n_coeff))
-
-    type_onehot = np.eye(num_types)[lmp_types-1] # lammps types are 1-indexed.
-    # has shape n_atoms, n_types, num_coeffs.
-    # Constructing so it has the similar form to db and vb arrays. This adds some memory usage,
-    # but not nearly as much as vb or db (which are factor of 6 and n_atoms*3 larger, respectively)
-
-    b_atom = type_onehot[:,:,np.newaxis] * lmp_barr[:,np.newaxis,:]
-    b_sum = b_atom.sum(axis=0)
-
-    try:
-        assert np.allclose(lmp_bsum,lmp_barr.sum(axis=0),rtol=1e-12,atol=1e-12),\
-            "b_sum doesn't match sum of b"
-    except AssertionError:
-        print(lmp_bsum)
-        print(lmp_barr.sum(axis=0))
-
     res = {
         "AtomTypes": lmp_types,
         "Positions": lmp_pos,
         "Volume": lmp_volume,
-        "b_atom": b_atom,
-        "b_sum":b_sum,
-        "ref_Energy": float(lmp_sume),
-    }
+        }
+
+    # Extract SNAP data, including reference potential data
+
+    nrows_energy = 1
+    ndim_force = 3
+    nrows_force = ndim_force*num_atoms
+    ndim_virial = 6
+    nrows_virial = ndim_virial
+    nrows_snap = nrows_energy+nrows_force+nrows_virial
+    ncols_bispectrum = num_types*n_coeff
+    ncols_reference = 1
+    ncols_snap = ncols_bispectrum + ncols_reference
+
+    lmp_snap = extract_compute_np(lmp,"snap",0,2,(nrows_snap,ncols_snap))
+
+    irow = 0
+    res["b_sum"] = lmp_snap[irow,:ncols_bispectrum]
+    res["b_sum"].shape = (num_types,n_coeff)
+    icolref = ncols_bispectrum
+    lmp_sume = lmp_snap[irow,icolref]
+    if (np.isinf(lmp_sume)).any() or (np.isnan(lmp_sume)).any():
+        print("Inf or NaN Energy returned from LAMMPS :",TrainFile)
+    res["ref_Energy"] = lmp_sume
+    irow += nrows_energy
+
     if compute_dbvb:
+        res["db_atom"] = lmp_snap[irow:irow+nrows_force,:ncols_bispectrum]
+        res["db_atom"].shape = (num_atoms,ndim_force,num_types,n_coeff)
+        res["ref_Forces"] = lmp_snap[irow:irow+nrows_force,icolref]
+        res["ref_Forces"].shape = (num_atoms,ndim_force)
+        irow += nrows_force
 
-        lmp_dbarr = extract_compute_np(lmp,"db",1,2,(num_atoms,num_types,3,n_coeff))
-        lmp_dbsum = extract_compute_np(lmp,"db_sum",0,1,(num_types,3,n_coeff))
-        assert np.allclose(lmp_dbsum,lmp_dbarr.sum(axis=0),rtol=1e-12,atol=1e-12),\
-            "db_sum doesn't match sum of db"
-        lmp_force = lmp.numpy.extract_atom_darray(name="f", nelem=num_atoms, dim=3)
-        res["db_atom"] = np.transpose(lmp_dbarr,(0,2,1,3))
-        res["ref_Forces"] = lmp_force
-
-        lmp_vbarr = extract_compute_np(lmp,"vb",1,2,(num_atoms,num_types,6,n_coeff))
-        lmp_vbsum = extract_compute_np(lmp,"vb_sum",0,1,(num_types,6,n_coeff))
-        assert np.allclose(lmp_vbsum,lmp_vbarr.sum(axis=0),rtol=1e-12,atol=1e-12),\
-            "vb_sum doesn't match sum of vb"
-        lmp_parr = extract_compute_np(lmp,"p",0,1,(6,))
-
-        # switch from LAMMPS pressure tensor to SNAP Voigt notation
-
-        stress_xy = lmp_parr[3]
-        stress_yz = lmp_parr[5]
-        lmp_parr[3] = stress_yz
-        lmp_parr[5] = stress_xy
-
-        res["vb_sum"] = np.transpose(lmp_vbsum,(1,0,2))
-        res["ref_Stress"] = lmp_parr
+        res["vb_sum"] = lmp_snap[irow:irow+nrows_virial,:ncols_bispectrum]
+        res["vb_sum"].shape = (ndim_virial,num_types,n_coeff)
+        res["ref_Stress"] = lmp_snap[irow:irow+nrows_virial,icolref]
 
     # Copy arrays because lammps will reuse memory.
     return {k: copy.copy(v) for k, v in res.items()}
-
 
 def create_atoms(lmp, numtypes, type_dict, types, positions):
     for i, (a_t, (a_x, a_y, a_z)) in enumerate(zip(types, positions)):

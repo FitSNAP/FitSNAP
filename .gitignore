@@ -1,0 +1,12 @@
+# ignoring .pyc files
+*.pyc
+
+# ignoring FitSnap3 outputs
+*.lammps
+*.pkl.gz
+*.csv
+*.snapcoeff
+*.snapparam
+
+# ignoring intermediate files
+*.swp

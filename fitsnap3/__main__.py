@@ -1,28 +1,28 @@
 # <!----------------BEGIN-HEADER------------------------------------>
-# ## FitSNAP3 
+# ## FitSNAP3
 # A Python Package For Training SNAP Interatomic Potentials for use in the LAMMPS molecular dynamics package
-# 
+#
 # _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
 # ##
-# 
-# #### Original author: 
+#
+# #### Original author:
 #     Aidan P. Thompson, athomps (at) sandia (dot) gov (Sandia National Labs)
-#     http://www.cs.sandia.gov/~athomps 
-# 
+#     http://www.cs.sandia.gov/~athomps
+#
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
-# 
-# #### Additional authors (alphabetical): 
+#
+# #### Additional authors (alphabetical):
 #     Elizabeth Decolvenaere (D. E. Shaw Research)
 #     Stan Moore (Sandia National Labs)
 #     Steve Plimpton (Sandia National Labs)
 #     Gary Saavedra (Sandia National Labs)
 #     Peter Schultz (Sandia National Labs)
 #     Laura Swiler (Sandia National Labs)
-#     
+#
 # <!-----------------END-HEADER------------------------------------->
 import sys
 import os
@@ -70,6 +70,8 @@ def parse_cmdline():
                         help="""Replace or add input keyword group GROUP, key NAME,
                         with value VALUE. Type carefully; a misspelled key name or value
                         may be silently ignored.""")
+    parser.add_argument("--mpi", action="store_true", dest="mpi",
+                        help="Use MPI for parallelizing lammps (control number of workers with --jobs argument)")
 
     args = parser.parse_args()
 
@@ -169,10 +171,13 @@ def main():
                         **cp["OUTFILE"]
     )
 
+    # Check that lammps can open, and whether it has exception handling enabled.
+    deploy.check_lammps(args.lammps_noexceptions)
+
     bispec_options = bispecopt.read_bispec_options(cp["BISPECTRUM"],cp["MODEL"],cp["REFERENCE"])
     vprint("Bispectrum options:") #Sorted.
     for k,v in sorted(bispec_options.items(), key=lambda kv:kv[0]):
-        if k == "bnames": continue
+        if k == "bnames": continue # Informing the user about the individual bispectrum names is not helpful.
         vprint(f"{k:>16} : {v}")
 
     # Set fallback values if not found in input file
@@ -202,11 +207,11 @@ def main():
         json_directory = os.path.join(base_path, json_directory)
         configs,style_info = scrape.read_configs(json_directory, group_table,bispec_options)
 
-    deploy.check_lammps(args.lammps_noexceptions)
     with printdoing("Computing bispectrum data",end='\n'):
         configs = deploy.compute_bispec_datasets(configs,
                                                         bispec_options,
                                                         n_procs=args.jobs,
+                                                        mpi=args.mpi,
                                                         log=args.lammpslog)
         configs = serialize.pack(configs)
 

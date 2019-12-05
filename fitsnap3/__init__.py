@@ -73,6 +73,12 @@ try:
 except Exception as e:
     print("Trouble importing natsort package, exiting...")
     raise e
+#try:
+#    import lammps
+#    print("LAMMPS version: ",lammps.version())
+#except Exception as e:
+#    print("Trouble importing LAMMPS library, exiting...")
+#    raise e
 print("-----------")
 
 from . import bispecopt, deploy, geometry, linearfit, runlammps, scrape, serialize

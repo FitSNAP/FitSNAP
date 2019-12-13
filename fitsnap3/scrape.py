@@ -159,8 +159,8 @@ def read_configs(json_folder,group_table,bispec_options):
                     f"Warning: Configuration {all_index} ({group_name}/{fname_end}) gives energy as an integer",file=sys.stderr)
                 data["Energy"] = float(data["Energy"])
 
-            units_conv = geometry.unit_conv(styles,bispec_options)
-            data["Energy"] *= units_conv[0]
+            units_conv = geometry.units_conv(styles,bispec_options)
+            data["Energy"] *= units_conv["Energy"]
             data.update(geometry.rotate_coords(data,units_conv))
             data.update(geometry.translate_coords(data,units_conv))
             if (bispec_options["compute_testerrs"] and (i > nfiles_train)): wprefac=0.0

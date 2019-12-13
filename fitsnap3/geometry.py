@@ -27,10 +27,15 @@
 
 import numpy as np
 
-def unit_conv(styles,bispec_options):
-    units_conv = [1.0]*4
+def units_conv(styles,bispec_options):
+    units_conv = {}
+    units_conv["Energy"] = 1.0
+    units_conv["Force"] = 1.0
+    units_conv["Stress"] = 1.0
+    units_conv["Distance"] = 1.0
+    
     if (bispec_options["units"]=="metal" and (list(styles["Stress"])[0]=="kbar" or list(styles["Stress"])[0]=="kB")):
-        units_conv[2] *= 1000
+        units_conv["Stress"] = 1000.0
 #   Append other exceptions to unit conversion here
 #        if bispec_options["verbosity"]:
 #            print("Energy, Force, Stress, Distance")
@@ -74,9 +79,9 @@ def rotate_coords(data,units_conv):
     # Stress transforms on both the first and second axis.
     return {
         "Lattice": out_cell,
-        "Positions": data["Positions"]*units_conv[3] @ rot.T,
-        "Forces": data["Forces"]*units_conv[1] @ rot.T,
-        "Stress": rot @ (data["Stress"]*units_conv[2]) @ rot.T,
+        "Positions": data["Positions"]*units_conv["Distance"] @ rot.T,
+        "Forces": data["Forces"]*units_conv["Force"] @ rot.T,
+        "Stress": rot @ (data["Stress"]*units_conv["Stress"]) @ rot.T,
         "Rotation": rot,
     }
 

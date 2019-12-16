@@ -39,6 +39,7 @@ normweight = -12     # (REAL) If solver!=SVD, this is the log of the penalty ter
 normratio = 0.5	     # (REAL) If solver==ELASTIC this is ratio of the linear and quadratic penalty terms
 compute_dbvb = 1     # (BOOL) If true, fit is done on energy, forces and virials. False, only energy.
 compute_testerrs = 0 # (BOOL) If less than the full training set is used in fitting, a true value will calculate the errors on the remaining, unused training. In the output, group names are appended with CV_Train and CV_Test to designate the fitted and testing training errors.
+smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.  If no grouplist is specified, smartweights will automatically be used.
 
 [PATH]
 jsonPath = JSON          # (STR) Path to the training data JSON directory

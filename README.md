@@ -42,4 +42,4 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 
 #### Version Control:
 * `stable` branch is the latest validated stable version of the code. It is recommended for new users. 
-* `master` branch reflects all of the latest code changes. It is intended for active developers. 
+* `master` branch reflects all of the latest code changes. It is intended for active developers and requires an up-to-date version of LAMMPS as well. 

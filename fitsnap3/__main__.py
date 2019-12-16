@@ -231,6 +231,11 @@ def main():
             with printdoing("Measuring errors"):
                 error_metrics = linearfit.group_errors(fit_coeffs,configs,bispec_options,subsystems=subsystems)
                 configs.update(linearfit.get_residuals(fit_coeffs,configs,subsystems=subsystems))
+            print("Units for reported errors:")
+            if bispec_options["units"]=="real":
+                print("Energy(kcal/mol), Force(kcal/mol-Angstrom), Pressure(atm)")
+            if bispec_options["units"]=="metal":
+                print("Energy(eV/atom), Force(eV/Angstrom), Pressure(bar)")
 
             if args.verbose:
                 print_error_summary(error_metrics)

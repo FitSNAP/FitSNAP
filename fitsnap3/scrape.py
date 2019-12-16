@@ -1,28 +1,28 @@
 # <!----------------BEGIN-HEADER------------------------------------>
-# ## FitSNAP3 
+# ## FitSNAP3
 # A Python Package For Training SNAP Interatomic Potentials for use in the LAMMPS molecular dynamics package
-# 
+#
 # _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
 # ##
-# 
-# #### Original author: 
+#
+# #### Original author:
 #     Aidan P. Thompson, athomps (at) sandia (dot) gov (Sandia National Labs)
-#     http://www.cs.sandia.gov/~athomps 
-# 
+#     http://www.cs.sandia.gov/~athomps
+#
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
-# 
-# #### Additional authors (alphabetical): 
+#
+# #### Additional authors (alphabetical):
 #     Elizabeth Decolvenaere (D. E. Shaw Research)
 #     Stan Moore (Sandia National Labs)
 #     Steve Plimpton (Sandia National Labs)
 #     Gary Saavedra (Sandia National Labs)
 #     Peter Schultz (Sandia National Labs)
 #     Laura Swiler (Sandia National Labs)
-#     
+#
 # <!-----------------END-HEADER------------------------------------->
 
 import os
@@ -40,7 +40,7 @@ import tqdm
 
 from . import geometry
 
-kb=0.00008617333262145
+
 group_types = (
     ('name',str),
     ('size',float),
@@ -72,7 +72,10 @@ def read_configs(json_folder,group_table,bispec_options):
     BOLTZT = bispec_options["BOLTZT"]
     styles = collections.defaultdict(lambda: set())
     all_index = 0
-
+    if bispec_options["units"]=="real":
+        kb=0.00198198665029335
+    if bispec_options["units"]=="metal":
+        kb=0.00008617333262145
     if bispec_options["atom_style"]=="spin":
         style_vars.append("Spins")
         array_vars.append("Spins")
@@ -148,8 +151,7 @@ def read_configs(json_folder,group_table,bispec_options):
             natoms=np.shape(data["Positions"])[0]
             data["QMLattice"] = data["Lattice"]
             del data["Lattice"] # We will populate this with the lammps-normalized lattice.
-            if "Label" in data:
-                del data["Label"]   # This comment line is not that useful to keep around.
+            if "Label" in data: del data["Label"]   # This comment line is not that useful to keep around.
 
             # possibly due to JSON, some configurations have integer energy values.
             if not isinstance(data["Energy"],float):
@@ -157,12 +159,12 @@ def read_configs(json_folder,group_table,bispec_options):
                     f"Warning: Configuration {all_index} ({group_name}/{fname_end}) gives energy as an integer",file=sys.stderr)
                 data["Energy"] = float(data["Energy"])
 
-            data.update(geometry.rotate_coords(data))
-            data.update(geometry.translate_coords(data))
-            if (bispec_options["compute_testerrs"] and (i > nfiles_train)):
-                wprefac=0.0
-            else:
-                wprefac=1.0
+            units_conv = geometry.units_conv(styles,bispec_options)
+            data["Energy"] *= units_conv["Energy"]
+            data.update(geometry.rotate_coords(data,units_conv))
+            data.update(geometry.translate_coords(data,units_conv))
+            if (bispec_options["compute_testerrs"] and (i > nfiles_train)): wprefac=0.0
+            else: wprefac=1.0
 
             if getattr(group_info, 'eweight')>=0.0:
                     for wtype in ['eweight', 'fweight', 'vweight']:
@@ -175,7 +177,6 @@ def read_configs(json_folder,group_table,bispec_options):
             all_data.append(data)
 
             all_index += 1
-
 
     for style_name, style_set in styles.items():
         assert len(style_set) == 1, "Multiple styles ({}) for {}".format(len(style_set), style_name)

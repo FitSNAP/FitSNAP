@@ -183,6 +183,7 @@ def main():
     # Set fallback values if not found in input file
     bispec_options["BOLTZT"] = cp.get("BISPECTRUM","BOLTZT",fallback='10000')
     bispec_options["compute_testerrs"] = strtobool(cp.get("MODEL","compute_testerrs",fallback=0))
+    bispec_options["smartweights"] = strtobool(cp.get("PATH","smartweights",fallback='0'))
     bispec_options["units"] = cp.get("REFERENCE","units",fallback='metal').lower()
     bispec_options["atom_style"] = cp.get("REFERENCE","atom_style",fallback='atomic').lower()
 
@@ -194,13 +195,19 @@ def main():
 
     bispec_options["pair_func"] = lmp_pairdecl
     bispec_options["verbosity"] = args.verbose
-    #print(bispec_options)
     #Get group info
     group_file = cp.get("PATH","groupFile",fallback='grouplist.in')
     group_file = os.path.join(base_path, group_file)
-    group_table = scrape.read_groups(group_file)
-    vprint("Group table:")
-    vprint(group_table)
+    if ( bispec_options["smartweights"] ) or ( ( not bispec_options["smartweights"] ) and  ( not os.path.exists(group_file) ) ):
+        if not os.path.exists(group_file):
+            print("WARNING: No grouplist file specified.")
+        json_directory = cp["PATH"]["jsonPath"]
+        group_table = scrape.create_smartweights_grouplist(base_path,json_directory)
+
+    else:
+         group_table = scrape.read_groups(group_file)
+         vprint("Group table:")
+         vprint(group_table)
 
     with printdoing("Scraping Configurations",end='\n'):
         json_directory = cp["PATH"]["jsonPath"]

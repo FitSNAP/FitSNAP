@@ -43,6 +43,7 @@ compute_testerrs = 0 # (BOOL) If less than the full training set is used in fitt
 [PATH]
 jsonPath = JSON          # (STR) Path to the training data JSON directory
 groupFile = grouplist.in # (STR) Path to the training data metadata file
+smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.  If no grouplist is specified, smartweights will automatically be used.
 
 [OUTFILE]
 metrics = newsnap_metrics.csv    # (STR) Overall errors and broken down by group, weighting, and variable type.

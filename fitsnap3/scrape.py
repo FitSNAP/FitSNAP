@@ -52,6 +52,56 @@ group_types = (
 style_vars = ['AtomType', 'Stress', 'Lattice', 'Energy', "Positions", "Forces"]
 array_vars = ['AtomTypes', 'Stress', 'Lattice', "Positions", "Forces"]
 
+def create_smartweights_grouplist(base_path,json_directory):
+    json_directory = os.path.join(base_path, json_directory)
+    group_list = os.listdir(json_directory)
+    num_groups = len(group_list)
+    zero_array = np.zeros(shape=(num_groups,5))
+    group_table = pd.DataFrame(zero_array,columns=['name','size','eweight','fweight','vweight'])
+    group_table['name'] = group_table['name'].astype(str)
+    row_count = 0
+    for group in group_list:
+        group_directory = os.path.join(json_directory,group)
+        files = os.listdir(group_directory)
+        num_files = len(files)
+        num_atoms_group = 0
+        for json_file in files:
+            json_path = os.path.join(group_directory, json_file)
+            with open(json_path) as file:
+                comment = file.readline()
+                try:
+                    data = json.loads(file.read(),parse_constant=True)
+                except Exception as e:
+                     print("Trouble Parsing Training Data: ",fname)
+                     raise e   
+                current_num_atoms = float(data['Dataset']['Data'][0]['NumAtoms'])
+                num_atoms_group += current_num_atoms   
+        group_name = group
+        group_size = num_files
+        group_eweight = float(1/num_files)
+        group_fweight = float(1/(num_atoms_group*3))
+        group_vweight = float(1/(num_files*6))
+        group_table.at[row_count, 'name'] = group_name
+        group_table.at[row_count, 'size'] = group_size
+        group_table.at[row_count, 'eweight'] = group_eweight
+        group_table.at[row_count, 'fweight'] = group_fweight
+        group_table.at[row_count, 'vweight'] = group_vweight
+
+        row_count += 1      
+    
+    new_grouplist_path = os.path.join(base_path,'grouplist_smartweights.in')
+    new_grouplist_file = open(new_grouplist_path,'w')
+    new_grouplist_file.write("#   Grouplist generated using smartweights" + '\n' + '#')
+    new_grouplist_file.write(group_table.to_string(index=False))
+
+    new_grouplist_file.close()
+
+    print("Generating new group weights using smartweights....")
+    print(group_table)
+    
+
+    return group_table
+
 def read_groups(group_file):
     group_names = [name for name,type in group_types]
     group_table = pd.read_csv(group_file,

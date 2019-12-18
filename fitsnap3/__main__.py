@@ -183,7 +183,7 @@ def main():
     # Set fallback values if not found in input file
     bispec_options["BOLTZT"] = cp.get("BISPECTRUM","BOLTZT",fallback='10000')
     bispec_options["compute_testerrs"] = strtobool(cp.get("MODEL","compute_testerrs",fallback=0))
-    bispec_options["smartweights"] = strtobool(cp.get("MODEL","smartweights",fallback='0'))
+    bispec_options["smartweights"] = strtobool(cp.get("PATH","smartweights",fallback='0'))
     bispec_options["units"] = cp.get("REFERENCE","units",fallback='metal').lower()
     bispec_options["atom_style"] = cp.get("REFERENCE","atom_style",fallback='atomic').lower()
 

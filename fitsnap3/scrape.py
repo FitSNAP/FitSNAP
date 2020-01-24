@@ -129,7 +129,7 @@ def read_configs(json_folder,group_table,bispec_options):
     if bispec_options["atom_style"]=="spin":
         style_vars.append("Spins")
         array_vars.append("Spins")
-    if bispec_options["atom_style"]=="charge":
+    if bispec_options["atom_style"]=="charge" and "Charges" not in bispec_options:
         style_vars.append("Charges")
         array_vars.append("Charges")
 
@@ -185,7 +185,6 @@ def read_configs(json_folder,group_table,bispec_options):
             data['File'] = fname
             data['GroupIndex'] = i
             data['Index'] = all_index
-
 
             for sty in style_vars:
                 styles[sty].add(data.pop(sty + "Style",))

@@ -186,6 +186,15 @@ def main():
     bispec_options["smartweights"] = strtobool(cp.get("PATH","smartweights",fallback='0'))
     bispec_options["units"] = cp.get("REFERENCE","units",fallback='metal').lower()
     bispec_options["atom_style"] = cp.get("REFERENCE","atom_style",fallback='atomic').lower()
+    bispec_options["Charges"] = cp.get("REFERENCE","charges",fallback='NA')
+    if bispec_options["Charges"] == "NA":
+        bispec_options.pop("Charges")
+    else:
+        bispec_options["kspace_style"] = cp.get("REFERENCE", "kspace_style", fallback='NA')
+        if bispec_options["kspace_style"] == "NA":
+            bispec_options.pop("kspace_style")
+    bispec_options["wselfallflag"] = cp.get("MODEL","wselfallflag",fallback='0')
+    bispec_options["bnormflag"] = cp.get("MODEL", "bnormflag", fallback='0')
 
     lmp_pairdecl = []
     lmp_pairdecl.append("pair_style "+excp.get("REFERENCE","pair_style",fallback='zero 10.0'))

@@ -244,6 +244,14 @@ def compute_lammps(lmp, data, bispec_options):
         lmp.command(line.lower())
     if "kspace_style" in bispec_options:
         lmp.command("kspace_style {}".format(bispec_options["kspace_style"]))
+
+    if bispec_options["alloyflag"] != 0:
+        alloyflag = "{}".format(bispec_options["numtypes"])
+        for element in bispec_options["type_mapping"]:
+            element_type = bispec_options["type_mapping"][element]
+            alloyflag += " {}".format(element_type-1)
+        bispec_options["alloyflag"] = "{}".format(alloyflag)
+
     set_computes(lmp, bispec_options)
 
     lmp.command("mass * 1.0e-20")

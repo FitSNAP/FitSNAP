@@ -195,16 +195,11 @@ def main():
             bispec_options.pop("kspace_style")
     bispec_options["wselfallflag"] = cp.get("MODEL","wselfallflag",fallback='0')
     bispec_options["bnormflag"] = cp.get("MODEL", "bnormflag", fallback='0')
-    temp = cp.get("BISPECTRUM", "eshift", fallback='NA')
 
-    if temp != "NA":
+    if "ESHIFT" in cp:
         bispec_options["eshift"] = {}
-        temp = temp.replace(" ", "")
-        temp = temp.split(",")
-        for piece in temp:
-            element, eshift = piece.split(":")
-            bispec_options["eshift"][element] = float(eshift)
-
+        for element in cp["ESHIFT"]:
+            bispec_options["eshift"][element.capitalize()] = float(cp["ESHIFT"][element])
 
     lmp_pairdecl = []
     lmp_pairdecl.append("pair_style "+excp.get("REFERENCE","pair_style",fallback='zero 10.0'))

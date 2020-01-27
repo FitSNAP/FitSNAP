@@ -33,12 +33,12 @@ type2 = W          # (STR)    type keywords with integer suffixes 1 to numTypes
 BOLTZT = 1000      # (REAL) Advanced Feature. Use a Boltzmann weighting to training at this temperature
 
 [ESHIFT]
-In = -1.6596758870 # (REAL) DFT energy shift for first element type
-P = 4.381595495015 # (REAL) DFT energy shift for second element type
-X = 3.242342234233 # (REAL) DFT energy shift for third element type
+In = -1.6596758870 # (REAL) DFT energy shift per atom of first element type
+P = 4.381595495015 # (REAL) DFT energy shift per atom of second element type
+X = 3.242342234233 # (REAL) DFT energy shift per atom of third element type
 .   .              #   .     .
 .   .              #   .     .
-i = 2.342342342344 # (REAL) DFT energy shift for ith element type
+i = 2.342342342344 # (REAL) DFT energy shift per atom of ith element type
 
 [MODEL]
 alloyflag = 0        # (BOOL) Use multi-element bispectrum components

@@ -2,6 +2,7 @@
 # FitSNAP3 input file. Each keyword can only be used within the category to which it belongs. 
 # The categories are as follows:
 #  [BISPECTRUM]   SNAP potential options
+#  [ESHIFT]       SNAP element-wise energy shifts
 #  [MODEL]        SNAP fitting options
 #  [PATH]         locations of training data and meta-data
 #  [OUTFILE]      output options
@@ -31,7 +32,18 @@ type1 = Ta         # (STR)  Chemical symbol for this element, has to match JSON 
 type2 = W          # (STR)    type keywords with integer suffixes 1 to numTypes
 BOLTZT = 1000      # (REAL) Advanced Feature. Use a Boltzmann weighting to training at this temperature
 
+[ESHIFT]
+In = -1.6596758870 # (REAL) DFT energy shift for first element type
+P = 4.381595495015 # (REAL) DFT energy shift for second element type
+X = 3.242342234233 # (REAL) DFT energy shift for third element type
+.   .              #   .     .
+.   .              #   .     .
+i = 2.342342342344 # (REAL) DFT energy shift for ith element type
+
 [MODEL]
+alloyflag = 0        # (BOOL) Use multi-element bispectrum components
+wselfallflag = 0     # (BOOL) Add wself to all element labelings
+bnormflag = 0        # (BOOL) Normalize bispectrum components for convenience
 bzeroflag = 0	     # (BOOL) Subtract vacuum bispectrum, so isolated atoms have energy=0
 quadraticflag = 0    # (BOOL) Include quadratic terms in SNAP energy model
 solver = SVD	     # (STR)  Linear solver algorithm used (SVD, LASSO, RIDGE, ELASTIC allowed)
@@ -53,8 +65,10 @@ potential = Ta_pot               # (STR) Base name of SNAP potential files, i.e.
 [REFERENCE]
 units = metal               # (STR) Units used in the LAMMPS calculations. See LAMMPS documentation.
 atom_style = atomic         # (STR) Atom style used in the LAMMPS calculations. See LAMMPS documentation.
+charges = 1e-8 -1e-8        # (STR) Charges for each element
 pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.8 # (STR) Reference potential used in LAMMPS calculations and subtracted from training data prior to fitting. 'zero 10.0' is a non-interacting potential with a cutoff of 10.0, this is needed to build neighbor lists for Bspec calculation.
 pair_coeff1 = * * zero      # (STR) Associated detials for the designated pair_style. See LAMMPS documentation.
 pair_coeff2 = 1 1 zbl 73 73 # (STR) ZBL is a purely repulsive potential used to safeguard against bad dynamics at small atom separations. 
 pair_coeff3 = 1 2 zbl 73 74 # (STR)  pair_coeff keywords with consecutive integer suffixes
 pair_coeff4 = 2 2 zbl 74 74 # (STR)
+kspace_style = ewald 1.0e-5 # (STR)  kspace_style, see LAMMPS

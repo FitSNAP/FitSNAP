@@ -123,7 +123,6 @@ def set_computes(lmp, bispec_options):
             "switchflag": "switchflag",
             "alloyflag": "alloyflag",
             "wselfallflag": "wselfallflag",
-            "bnormflag": "bnormflag",
         }.items()
         if v in bispec_options
     }
@@ -207,14 +206,10 @@ def create_spins(lmp, bispec_options, spins):
     assert i + 1 == n_atoms, f"Atom counts don't match when assigning spins: {i+1}, {n_atoms}"
 
 def create_charge(lmp, bispec_options, charges):
-    if "Charges" in bispec_options:
-        for i, q in enumerate(bispec_options["Charges"].split()):
-            lmp.command(f"set atom {i+1} charge {float(q):20.20g} ")
-    else:
-        for i, q in enumerate(charges):
-            lmp.command(f"set atom {i + 1} charge {q:20.20g} ")
-        n_atoms = int(lmp.get_natoms())
-        assert i + 1 == n_atoms, f"Atom counts don't match when assigning charge: {i+1}, {n_atoms}"
+    for i, q in enumerate(charges):
+        lmp.command(f"set atom {i + 1} charge {q:20.20g} ")
+    n_atoms = int(lmp.get_natoms())
+    assert i + 1 == n_atoms, f"Atom counts don't match when assigning charge: {i+1}, {n_atoms}"
 
 def compute_lammps(lmp, data, bispec_options):
     lmp.command("clear")
@@ -234,16 +229,12 @@ def compute_lammps(lmp, data, bispec_options):
     if (bispec_options["atom_style"]=="spin"):
         create_spins(lmp, bispec_options, data["Spins"])
     if (bispec_options["atom_style"]=="charge"):
-        if "Charges" not in data:
-            data["Charges"] = 0
         create_charge(lmp, bispec_options, data["Charges"])
 
     set_variables(lmp, **lammps_variables(bispec_options))
 
     for line in bispec_options["pair_func"]:
         lmp.command(line.lower())
-    if "kspace_style" in bispec_options:
-        lmp.command("kspace_style {}".format(bispec_options["kspace_style"]))
 
     if bispec_options["alloyflag"] != 0:
         alloyflag = "{}".format(bispec_options["numtypes"])

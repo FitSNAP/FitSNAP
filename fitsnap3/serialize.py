@@ -90,7 +90,7 @@ def pack(configs):
 
 ##### Functions for serializing potential
 
-def to_param_string(rcutfac,twojmax,rfac0,rmin0,bzeroflag,quadraticflag,bnormflag,wselfallflag,alloyflag,**unused_options):
+def to_param_string(rcutfac,twojmax,rfac0,rmin0,bzeroflag,quadraticflag,wselfallflag,alloyflag,**unused_options):
     if alloyflag != 0:
         alloyflag_int = 1
     else:
@@ -105,7 +105,6 @@ def to_param_string(rcutfac,twojmax,rfac0,rmin0,bzeroflag,quadraticflag,bnormfla
     rmin0 {rmin0}
     bzeroflag {bzeroflag}
     quadraticflag {quadraticflag}
-    bnormflag {bnormflag}
     wselfallflag {wselfallflag}
     alloyflag {alloyflag_int}
     """

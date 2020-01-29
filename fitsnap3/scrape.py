@@ -129,7 +129,7 @@ def read_configs(json_folder,group_table,bispec_options):
     if bispec_options["atom_style"]=="spin":
         style_vars.append("Spins")
         array_vars.append("Spins")
-    if bispec_options["atom_style"]=="charge" and "Charges" not in bispec_options:
+    if bispec_options["atom_style"]=="charge":
         style_vars.append("Charges")
         array_vars.append("Charges")
 

@@ -186,6 +186,12 @@ def main():
     bispec_options["smartweights"] = strtobool(cp.get("PATH","smartweights",fallback='0'))
     bispec_options["units"] = cp.get("REFERENCE","units",fallback='metal').lower()
     bispec_options["atom_style"] = cp.get("REFERENCE","atom_style",fallback='atomic').lower()
+    bispec_options["wselfallflag"] = cp.get("MODEL","wselfallflag",fallback='0')
+
+    if "ESHIFT" in cp:
+        bispec_options["eshift"] = {}
+        for element in cp["ESHIFT"]:
+            bispec_options["eshift"][element.capitalize()] = float(cp["ESHIFT"][element])
 
     lmp_pairdecl = []
     lmp_pairdecl.append("pair_style "+excp.get("REFERENCE","pair_style",fallback='zero 10.0'))

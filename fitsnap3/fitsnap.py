@@ -29,20 +29,28 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from fitsnap import FitSnap
-from input_output import parse_cmdline
+from input_output import parse_config
 from parallel_tools import pt
+import scrape
 
 
-@pt.single_timeit
-def main():
-    cmdline_args = parse_cmdline()
-    snap = FitSnap(cmdline_args)
-    snap.scrape_configs()
-    snap.run_lammps()
-    snap.perform_fit()
+class FitSnap:
+    def __init__(self, cmdline_args):
+        self.cmdline_args = cmdline_args
+        self.config = parse_config(self.cmdline_args)
+        self.scraper = None
 
+    def scrape_configs(self):
+        self.scraper = scrape.JsonScraper()
 
-if __name__ == "__main__":
-    main()
+    def run_lammps(self):
+        return None
+
+    @pt.sub_rank_zero
+    def perform_fit(self):
+        return None
+        # for key in self.config:
+        #     pt.single_print(key)
+        #     for sub_key in self.config[key]:
+        #         pt.single_print(sub_key, self.config[key][sub_key])
 

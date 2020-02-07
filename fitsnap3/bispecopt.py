@@ -26,6 +26,7 @@
 # <!-----------------END-HEADER------------------------------------->
 
 import itertools
+import numpy as np
 import configparser
 
 from distutils.util import strtobool
@@ -58,7 +59,7 @@ ref_keys={
     "units": str,
     "atom_type": str,}
 
-def _generateblist(twojmax,quadraticflag):
+def _generateblist(twojmax,quadraticflag,alloyflag,numtypes):
     blist = []
     i = 0
     for j1 in range(twojmax+1):
@@ -67,6 +68,9 @@ def _generateblist(twojmax,quadraticflag):
                 if j >= j1:
                     i += 1
                     blist.append([i,j1,j2,j])
+    if alloyflag:
+        blist *= numtypes**3
+        blist = np.array(blist).tolist()
     if quadraticflag:
         # Note, combinations_with_replacement precisely generates the upper-diagonal entries we want
         blist += [[i,a,b] for i,(a,b) in enumerate(itertools.combinations_with_replacement(blist, r=2),start=len(blist))]
@@ -82,7 +86,8 @@ def read_bispec_options(bispec_config, model_config, ref_config):
         })
     bispec_options.update({k:tp(model_config[k]) for k, tp in fitkeys.items()})
 
-    bispec_options["bnames"] = _generateblist(bispec_options["twojmax"],bispec_options["quadraticflag"])
+    bispec_options["alloyflag"] = model_config.get("alloyflag",fallback=0)
+    bispec_options["bnames"] = _generateblist(bispec_options["twojmax"],bispec_options["quadraticflag"],bispec_options["alloyflag"],bispec_options["numtypes"])
     bispec_options["n_coeff"] = len(bispec_options["bnames"])
     bispec_options["type_mapping"] = {k: i + 1 for i, k in enumerate(bispec_options["type"])}
 

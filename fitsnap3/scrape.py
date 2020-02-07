@@ -182,7 +182,6 @@ def read_configs(json_folder,group_table,bispec_options):
             data['GroupIndex'] = i
             data['Index'] = all_index
 
-
             for sty in style_vars:
                 styles[sty].add(data.pop(sty + "Style",))
 
@@ -207,6 +206,11 @@ def read_configs(json_folder,group_table,bispec_options):
 
             units_conv = geometry.units_conv(styles,bispec_options)
             data["Energy"] *= units_conv["Energy"]
+
+            if "eshift" in bispec_options:
+                for atom in data["AtomTypes"]:
+                    data["Energy"] += bispec_options["eshift"][atom]
+
             data.update(geometry.rotate_coords(data,units_conv))
             data.update(geometry.translate_coords(data,units_conv))
 

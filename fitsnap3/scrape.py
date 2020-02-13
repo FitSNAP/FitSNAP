@@ -158,7 +158,8 @@ def read_configs(json_folder,group_table,bispec_options):
         print(nfiles_train,nfiles_test)
         for i, fname_end in tqdm.tqdm(enumerate(folder_files),
                                       desc="Configs",position=1,leave=False,total=(nfiles_train+nfiles_test),disable=(not bispec_options["verbosity"]), ascii=True):
-
+            if (i>(nfiles_train + nfiles_test)):
+                    break
             fname = os.path.join(folder, fname_end)
 
             with open(fname) as file:

@@ -31,9 +31,10 @@
 
 try:
     import mpi4py as mpi4py
-    from parallel_tools import pt
+    from fitsnap3.parallel_tools import pt
 
-    pt.single_print("numpy version: ", mpi4py.__version__)
+except ModuleNotFoundError:
+    from fitsnap3.parallel_tools import pt
 
 except Exception as e:
     print("Trouble importing mpi4py package, exiting...")
@@ -47,6 +48,22 @@ pt.single_print(" / __/  / // /_ ___/ // /|  // ___ | / ____/ ")
 pt.single_print("/_/    /_/ \__//____//_/ |_//_/  |_|/_/      ")
 pt.single_print("")
 pt.single_print("-----------")
+
+try:
+    pt.single_print("Reading input...")
+    pt.all_barrier()
+    from fitsnap3.io.input import config
+    pt.single_print("Finished reading input")
+except Exception as e:
+    pt.single_print("Trouble reading input, exiting...")
+    raise e
+
+try:
+    pt.single_print("mpi4py version: ", mpi4py.__version__)
+
+except NameError:
+    print("No mpi4py detected, using fitsnap stubs...")
+
 try:
     import numpy as np
     pt.single_print("numpy version: ", np.__version__)
@@ -62,31 +79,10 @@ except Exception as e:
     raise e
 
 try:
-    import sklearn as skl
-    pt.single_print("scikit-learn version: ", skl.__version__)
-except Exception as e:
-    pt.single_print("Trouble importing scikit-learn package, exiting...")
-    raise e
-
-try:
-    import scipy as sp
-    pt.single_print("scipy version: ", sp.__version__)
-except Exception as e:
-    pt.single_print("Trouble importing scipy package, exiting...")
-    raise e
-
-try:
     import tqdm
     pt.single_print("tqdm version: ", tqdm.__version__)
 except Exception as e:
     pt.single_print("Trouble importing tqdm package, exiting...")
-    raise e
-
-try:
-    import natsort
-    pt.single_print("natsort version: ", natsort.__version__)
-except Exception as e:
-    pt.single_print("Trouble importing natsort package, exiting...")
     raise e
 
 # try:

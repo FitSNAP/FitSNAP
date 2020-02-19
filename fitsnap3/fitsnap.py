@@ -29,28 +29,37 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from input_output import parse_config
-from parallel_tools import pt
-import scrape
+from fitsnap3.parallel_tools import pt
+from fitsnap3.scrapers.scraper_factory import scraper
+from fitsnap3.calculators.calculator_factory import calculator
+from fitsnap3.solvers.solver_factory import solver
+from fitsnap3.io.input import config
+
+# TODO : Fancy memory feature
 
 
 class FitSnap:
-    def __init__(self, cmdline_args):
-        self.cmdline_args = cmdline_args
-        self.config = parse_config(self.cmdline_args)
-        self.scraper = None
+    def __init__(self):
+        self.scraper = scraper(config.sections["SCRAPER"].scraper)
+        self.data = []
+        self.calculator = calculator("LAMMPSSNAP")
+        self.solver = solver("SVD")
 
+    @pt.single_timeit
     def scrape_configs(self):
-        self.scraper = scrape.JsonScraper()
+        self.scraper.scrape_groups()
+        self.scraper.divvy_up_configs()
+        self.data = self.scraper.scrape_configs()
+        del self.scraper
 
-    def run_lammps(self):
-        return None
+    @pt.single_timeit
+    def process_configs(self):
+        self.calculator.create_a()
+        for i, configuration in enumerate(self.data):
+            self.calculator.process_configs(configuration, i)
 
     @pt.sub_rank_zero
+    @pt.single_timeit
     def perform_fit(self):
+        self.solver.perform_fit()
         return None
-        # for key in self.config:
-        #     pt.single_print(key)
-        #     for sub_key in self.config[key]:
-        #         pt.single_print(sub_key, self.config[key][sub_key])
-

@@ -30,8 +30,16 @@
 # <!-----------------END-HEADER------------------------------------->
 
 from time import time
-from mpi4py import MPI
 import numpy as np
+from lammps import lammps
+from random import random
+try:
+    stubs = 0
+    from mpi4py import MPI
+except ModuleNotFoundError:
+    stubs = 1
+
+# TODO: Add in ability to print lammps commands for future debugging purposes
 
 
 def _rank_zero(method):
@@ -69,24 +77,72 @@ def dummy_function(*args, **kw):
     return None
 
 
+def stub_check(method):
+    def stub_function(*args, **kw):
+        if stubs == 0:
+            return method(*args, **kw)
+        else:
+            return dummy_function(*args, **kw)
+    return stub_function
+
+
+def print_lammps(method):
+    def new_method(*args, **kw):
+        print(*args)
+        return method(*args, **kw)
+    return new_method
+
+
 class ParallelTools:
 
     def __init__(self):
-        self._comm = MPI.COMM_WORLD
-        self._rank = self._comm.Get_rank()
-        self._size = self._comm.Get_size()
-        self._comm_split()
+        if stubs == 0:
+            self._comm = MPI.COMM_WORLD
+            self._rank = self._comm.Get_rank()
+            self._size = self._comm.Get_size()
+        if stubs == 1:
+            self._rank = 0
+            self._size = 1
+            self._comm = None
+            self._sub_rank = 0
+            self._sub_size = 1
+            self._sub_comm = None
+            self._sub_head_proc = 0
+            self._node_index = 0
+            self._number_of_nodes = 1
 
+        self._comm_split()
+        self._lmp = None
+        self._seed = 0.0
+        self._set_seed()
+        self.shared_arrays = {}
+        self._print_lammps = 0
+
+    @stub_check
     def _comm_split(self):
-        self._sub_comm = self._comm.Split_type(0)
+        self._sub_comm = self._comm.Split_type(MPI.COMM_TYPE_SHARED)
         self._sub_rank = self._sub_comm.Get_rank()
         self._sub_size = self._sub_comm.Get_size()
+        self._sub_head_proc = 0
+        if self._sub_rank == 0:
+            self._sub_head_proc = self._rank
+        self._sub_head_proc = self._sub_comm.bcast(self._sub_head_proc)
+        self._sub_head_procs = list(dict.fromkeys(self._comm.allgather(self._sub_head_proc)))
+        self._node_index = self._sub_head_procs.index(self._sub_head_proc)
+        self._number_of_nodes = len(self._sub_head_procs)
+        self._micro_comm = self._comm.Split(self._rank)
+
+    def _set_seed(self):
+        if self._rank == 0.0:
+            self._seed = random()
+        if stubs == 0:
+            self._seed = self._comm.bcast(self._seed)
+
+    def get_seed(self):
+        return self._seed
 
     def get_rank(self):
         return self._rank
-
-    def get_sub_rank(self):
-        return self._sub_rank
 
     @_rank_zero
     def single_print(self, *args, **kw):
@@ -126,6 +182,14 @@ class ParallelTools:
             return result
         return timed
 
+    def rank_zero(self, method):
+        if self._rank == 0:
+            def check_if_rank_zero(*args, **kw):
+                return method(*args, **kw)
+            return check_if_rank_zero
+        else:
+            return dummy_function
+
     def sub_rank_zero(self, method):
         if self._sub_rank == 0:
             def check_if_rank_zero(*args, **kw):
@@ -134,21 +198,144 @@ class ParallelTools:
         else:
             return dummy_function
 
-    def create_shared_array(self, size):
-        item_size = MPI.DOUBLE.Get_size()
-        if self._sub_rank == 0:
-            nbytes = size * item_size
+    def create_shared_array(self, name, size1, size2=1, dtype='d'):
+
+        if isinstance(name, str):
+            if stubs == 0:
+                self.shared_arrays[name] = SharedArray(size1, size2=size2,
+                                                       dtype=dtype,
+                                                       comm=self._sub_comm,
+                                                       rank=self._sub_rank)
+            else:
+                self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)
+        else:
+            raise TypeError("name must be a string")
+
+    @stub_check
+    def all_barrier(self):
+        self._comm.Barrier()
+
+    @stub_check
+    def sub_barrier(self):
+        self._sub_comm.Barrier()
+
+    def split_by_node(self, obj):
+        if isinstance(obj, list):
+            return obj[self._node_index::self._number_of_nodes]
+        else:
+            raise TypeError("Parallel tools cannot split {} by node.")
+
+    def split_within_node(self, obj):
+        if isinstance(obj, list):
+            return obj[self._sub_rank::self._sub_size]
+        else:
+            raise TypeError("Parallel tools cannot split {} within node.")
+
+    # Add exception handling here
+    @_rank_zero
+    def error(self, err):
+        if self._lmp is not None:
+            # Kill lammps jobs
+            self._lmp.close()
+            self._lmp = None
+        raise err
+
+    def initialize_lammps(self):
+        if stubs == 0:
+            self._lmp = lammps(comm=self._micro_comm, cmdargs=["-screen", "none", "-log", "none"])
+        else:
+            self._lmp = lammps(cmdargs=["-screen", "none"])
+
+        if self._print_lammps == 1:
+            self._lmp.command = print_lammps(self._lmp.command)
+        return self._lmp
+
+    def close_lammps(self):
+        self._lmp.close()
+        self._lmp = None
+        return self._lmp
+
+    def slice_array(self, name, num_types=None):
+        if name in self.shared_arrays:
+            if name != 'a':
+                s = slice(self._sub_rank, None, self._sub_size)
+                self.shared_arrays[name].sliced_array = self.shared_arrays[name].array[s][:]
+            else:
+                nof = len(pt.shared_arrays["number_of_atoms"].array)
+                s = slice(self._sub_rank, nof, self._sub_size)
+                self.shared_arrays[name].energies_index = self.shared_arrays[name].array[s][:]
+                e_temp = []
+                for i in range(nof):
+                    e_temp.append(i)
+                f_temp = [e_temp[-1]+1]
+                s_temp = []
+                for i in range(nof):
+                    noa = pt.shared_arrays["number_of_atoms"].array[i]
+                    f_temp.append(3 * noa + f_temp[-1])
+                for i in range(nof):
+                    s_temp.append(6 * i + f_temp[-1])
+                self.shared_arrays[name].energies_index = e_temp[s]
+                self.shared_arrays[name].forces_index = f_temp[s]
+                self.shared_arrays[name].stress_index = s_temp[s]
+        else:
+            raise IndexError("{} not found in shared objects".format(name))
+
+
+class SharedArray:
+
+    def __init__(self, size1, size2=1, dtype='d', comm=None, rank=0):
+
+        # total array for all procs
+        self.array = None
+        # sub array for this proc
+        self.sliced_array = None
+
+        self.energies_index = None
+        self.forces_index = None
+        self.strain_index = None
+
+        if dtype == 'd':
+            item_size = MPI.DOUBLE.Get_size()
+        elif dtype == 'i':
+            item_size = MPI.INT.Get_size()
+        else:
+            raise TypeError("dtype {} has not been implemented yet".format(dtype))
+        if rank == 0:
+            nbytes = size1 * size2 * item_size
         else:
             nbytes = 0
 
-        win = MPI.Win.Allocate_shared(nbytes, item_size, comm=self._sub_comm)
+        win = MPI.Win.Allocate_shared(nbytes, item_size, comm=comm)
 
         buff, item_size = win.Shared_query(0)
-        assert item_size == MPI.DOUBLE.Get_size()
-        array = np.ndarray(buffer=buff, dtype='d', shape=(size,))
 
-        return array
+        if dtype == 'd':
+            assert item_size == MPI.DOUBLE.Get_size()
+        elif dtype == 'i':
+            assert item_size == MPI.INT32_T.Get_size()
+        if size2 == 1:
+            self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(size1, ))
+        else:
+            self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(size1, size2))
 
 
-if __name__ == "parallel_tools":
+class StubsArray:
+
+    def __init__(self, size1, size2=1, dtype='d'):
+        # total array for all procs
+        self.array = None
+        # sub array for this proc
+        self.sliced_array = None
+
+        self.energies_index = None
+        self.forces_index = None
+        self.strain_index = None
+
+        if size2 == 1:
+            self.array = np.ndarray(shape=(size1, ), dtype=dtype)
+        else:
+            self.array = np.ndarray(shape=(size1, size2), dtype=dtype)
+
+
+if __name__ == "fitsnap3.parallel_tools":
     pt = ParallelTools()

@@ -29,18 +29,22 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from fitsnap import FitSnap
-from input_output import parse_cmdline
-from parallel_tools import pt
+from fitsnap3.fitsnap import FitSnap
+from fitsnap3.parallel_tools import pt
+# TODO : Funnel errors through output class
+# TODO : Make unit conversion object
 
 
 @pt.single_timeit
 def main():
-    cmdline_args = parse_cmdline()
-    snap = FitSnap(cmdline_args)
-    snap.scrape_configs()
-    snap.run_lammps()
-    snap.perform_fit()
+    try:
+        snap = FitSnap()
+        snap.scrape_configs()
+        snap.process_configs()
+        pt.all_barrier()
+        snap.perform_fit()
+    except Exception as e:
+        pt.error(e)
 
 
 if __name__ == "__main__":

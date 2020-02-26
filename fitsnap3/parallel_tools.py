@@ -219,14 +219,22 @@ class ParallelTools:
     def split_by_node(self, obj):
         if isinstance(obj, list):
             return obj[self._node_index::self._number_of_nodes]
+        elif isinstance(obj, dict):
+            for key in obj:
+                obj[key] = obj[key][self._node_index::self._number_of_nodes]
+            return obj
         else:
-            raise TypeError("Parallel tools cannot split {} by node.")
+            raise TypeError("Parallel tools cannot split {} by node.".format(obj))
 
     def split_within_node(self, obj):
         if isinstance(obj, list):
             return obj[self._sub_rank::self._sub_size]
+        elif isinstance(obj, dict):
+            for key in obj:
+                obj[key] = obj[key][self._node_index::self._number_of_nodes]
+            return obj
         else:
-            raise TypeError("Parallel tools cannot split {} within node.")
+            raise TypeError("Parallel tools cannot split {} within node.".format(obj))
 
     def initialize_lammps(self, lammpslog=0, printlammps=0):
         cmds = ["-screen", "none"]
@@ -255,24 +263,27 @@ class ParallelTools:
                 s = slice(self._sub_rank, None, self._sub_size)
                 self.shared_arrays[name].sliced_array = self.shared_arrays[name].array[s][:]
             else:
-                nof = len(pt.shared_arrays["number_of_atoms"].array)
-                s = slice(self._sub_rank, nof, self._sub_size)
-                self.shared_arrays[name].energies_index = self.shared_arrays[name].array[s][:]
-                e_temp = []
-                for i in range(nof):
-                    e_temp.append(i)
-                f_temp = [e_temp[-1]+1]
-                s_temp = []
-                for i in range(nof):
-                    noa = pt.shared_arrays["number_of_atoms"].array[i]
-                    f_temp.append(3 * noa + f_temp[-1])
-                for i in range(nof):
-                    s_temp.append(6 * i + f_temp[-1])
-                self.shared_arrays[name].energies_index = e_temp[s]
-                self.shared_arrays[name].forces_index = f_temp[s]
-                self.shared_arrays[name].stress_index = s_temp[s]
+                self.slice_a()
         else:
             raise IndexError("{} not found in shared objects".format(name))
+
+    def slice_a(self, name='a'):
+        nof = len(pt.shared_arrays["number_of_atoms"].array)
+        s = slice(self._sub_rank, nof, self._sub_size)
+        self.shared_arrays[name].energies_index = self.shared_arrays[name].array[s][:]
+        e_temp = []
+        for i in range(nof):
+            e_temp.append(i)
+        f_temp = [e_temp[-1] + 1]
+        s_temp = []
+        for i in range(nof):
+            noa = pt.shared_arrays["number_of_atoms"].array[i]
+            f_temp.append(3 * noa + f_temp[-1])
+        for i in range(nof):
+            s_temp.append(6 * i + f_temp[-1])
+        self.shared_arrays[name].energies_index = e_temp[s]
+        self.shared_arrays[name].forces_index = f_temp[s]
+        self.shared_arrays[name].stress_index = s_temp[s]
 
 
 class SharedArray:

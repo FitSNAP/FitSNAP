@@ -32,7 +32,7 @@
 from fitsnap3.io.input import config
 from pandas import read_csv
 from tqdm import tqdm
-from os import path, listdir
+from os import path, listdir, stat
 import numpy as np
 from random import shuffle
 from fitsnap3.parallel_tools import pt
@@ -45,7 +45,7 @@ class Scraper:
         self.name = name
         self.group_types = {}
         self.group_table = []
-        self.files = []
+        self.files = {}
         self.convert = {"Energy": 1.0, "Force": 1.0, "Stress": 1.0, "Distance": 1.0}
         self.data = {}
 
@@ -79,16 +79,28 @@ class Scraper:
             folder = path.join(config.sections["PATH"].datapath, group_name)
             folder_files = listdir(folder)
             for file_name in folder_files:
-                self.files.append(folder + '/' + file_name)
+                if folder not in self.files:
+                    self.files[folder] = []
+                self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
 
     # TODO : Fix divvy up to distribute groups evenly and based on memory
     def divvy_up_configs(self):
-        # shuffle(self.files, pt.get_seed)
-        self.files = natsorted(self.files)
+        # self.files = natsorted(self.files)
+        for folder in self.files:
+            shuffle(self.files[folder], pt.get_seed)
+
+        temp_list = []
+        for folder in self.files:
+            for file in self.files[folder]:
+                temp_list.append(file[0])
+
         self.files = pt.split_by_node(self.files)
 
         # number_of_files_per_node
-        number_of_files_per_node = len(self.files)
+        total_len = 0
+        for folder in self.files:
+            total_len += len(self.files[folder])
+        number_of_files_per_node = total_len
         pt.create_shared_array('number_of_atoms', number_of_files_per_node, dtype='i')
         pt.slice_array('number_of_atoms')
         self.files = pt.split_within_node(self.files)

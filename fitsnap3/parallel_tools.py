@@ -39,8 +39,6 @@ try:
 except ModuleNotFoundError:
     stubs = 1
 
-# TODO: Add in ability to print lammps commands for future debugging purposes
-
 
 def _rank_zero(method):
     def check_if_rank_zero(*args, **kw):
@@ -116,7 +114,6 @@ class ParallelTools:
         self._seed = 0.0
         self._set_seed()
         self.shared_arrays = {}
-        self._print_lammps = 0
 
     @stub_check
     def _comm_split(self):
@@ -231,28 +228,25 @@ class ParallelTools:
         else:
             raise TypeError("Parallel tools cannot split {} within node.")
 
-    # Add exception handling here
-    @_rank_zero
-    def error(self, err):
-        if self._lmp is not None:
-            # Kill lammps jobs
-            self._lmp.close()
-            self._lmp = None
-        raise err
-
-    def initialize_lammps(self):
+    def initialize_lammps(self, lammpslog=0, printlammps=0):
+        cmds = ["-screen", "none"]
+        if not lammpslog:
+            cmds.append("-log")
+            cmds.append("none")
         if stubs == 0:
-            self._lmp = lammps(comm=self._micro_comm, cmdargs=["-screen", "none", "-log", "none"])
+            self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
         else:
-            self._lmp = lammps(cmdargs=["-screen", "none"])
+            self._lmp = lammps(cmdargs=cmds)
 
-        if self._print_lammps == 1:
+        if printlammps == 1:
             self._lmp.command = print_lammps(self._lmp.command)
         return self._lmp
 
     def close_lammps(self):
-        self._lmp.close()
-        self._lmp = None
+        if self._lmp is not None:
+            # Kill lammps jobs
+            self._lmp.close()
+            self._lmp = None
         return self._lmp
 
     def slice_array(self, name, num_types=None):

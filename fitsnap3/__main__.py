@@ -31,7 +31,7 @@
 
 from fitsnap3.fitsnap import FitSnap
 from fitsnap3.parallel_tools import pt
-# TODO : Funnel errors through output class
+from fitsnap3.io.output import output
 # TODO : Make unit conversion object
 
 
@@ -43,8 +43,9 @@ def main():
         snap.process_configs()
         pt.all_barrier()
         snap.perform_fit()
+        snap.write_output()
     except Exception as e:
-        pt.error(e)
+        output.error(e)
 
 
 if __name__ == "__main__":

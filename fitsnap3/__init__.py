@@ -54,6 +54,7 @@ try:
     pt.all_barrier()
     from fitsnap3.io.input import config
     pt.single_print("Finished reading input")
+    from fitsnap3.io.output import output
 except Exception as e:
     pt.single_print("Trouble reading input, exiting...")
     raise e

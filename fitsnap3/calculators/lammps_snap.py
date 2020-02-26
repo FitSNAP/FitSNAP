@@ -28,7 +28,7 @@ class LammpsSnap(Calculator):
         self._lmp = pt.close_lammps()
 
     def _initialize_lammps(self):
-        self._lmp = pt.initialize_lammps()
+        self._lmp = pt.initialize_lammps(config.args.lammpslog, config.args.printlammps)
 
     def _prepare_lammps(self):
         self._lmp.command("clear")

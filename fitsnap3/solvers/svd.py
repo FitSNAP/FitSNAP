@@ -13,4 +13,4 @@ class SVD(Solver):
         w = pt.shared_arrays['w'].array
         aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array, w * pt.shared_arrays['b'].array
         x, residues, rank, s = lstsq(aw, bw)
-        print(x)
+        return x

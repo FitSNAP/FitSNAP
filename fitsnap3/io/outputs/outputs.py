@@ -36,7 +36,7 @@ class Output:
         # self.screen("%s" % err)
         raise_err(err)
 
-    def output(self):
+    def output(self, dummy):
         pass
 
 

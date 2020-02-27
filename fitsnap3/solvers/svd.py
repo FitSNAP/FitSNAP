@@ -12,5 +12,5 @@ class SVD(Solver):
     def perform_fit(self):
         w = pt.shared_arrays['w'].array
         aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array, w * pt.shared_arrays['b'].array
-        x, residues, rank, s = lstsq(aw, bw)
-        return x
+        self.fit, residues, rank, s = lstsq(aw, bw)
+        return self.fit

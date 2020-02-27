@@ -9,8 +9,14 @@ class Original(Output):
     def __init__(self, name):
         super().__init__(name)
 
-    @pt.sub_rank_zero
     def output(self, coeffs):
+        new_coeffs = pt.combine_coeffs(coeffs)
+        if new_coeffs is not None:
+            coeffs = new_coeffs
+        self.write(coeffs)
+
+    @pt.rank_zero
+    def write(self, coeffs):
         with optional_write(config.sections["OUTFILE"].potential_name and
                             config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
             file.write(_to_coeff_string(coeffs))

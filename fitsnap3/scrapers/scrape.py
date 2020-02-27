@@ -94,13 +94,11 @@ class Scraper:
             for file in self.files[folder]:
                 temp_list.append(file[0])
 
+        self.files = temp_list
+
         self.files = pt.split_by_node(self.files)
 
-        # number_of_files_per_node
-        total_len = 0
-        for folder in self.files:
-            total_len += len(self.files[folder])
-        number_of_files_per_node = total_len
+        number_of_files_per_node = len(self.files)
         pt.create_shared_array('number_of_atoms', number_of_files_per_node, dtype='i')
         pt.slice_array('number_of_atoms')
         self.files = pt.split_within_node(self.files)

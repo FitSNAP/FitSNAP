@@ -34,6 +34,7 @@ import numpy as np
 from lammps import lammps
 from random import random
 try:
+    # stubs = 0 MPI is active
     stubs = 0
     from mpi4py import MPI
 except ModuleNotFoundError:
@@ -125,6 +126,8 @@ class ParallelTools:
             self._sub_head_proc = self._rank
         self._sub_head_proc = self._sub_comm.bcast(self._sub_head_proc)
         self._sub_head_procs = list(dict.fromkeys(self._comm.allgather(self._sub_head_proc)))
+        self._head_group = self._comm.group.Incl(self._sub_head_procs)
+        self._head_group_comm = self._comm.Create_group(self._head_group)
         self._node_index = self._sub_head_procs.index(self._sub_head_proc)
         self._number_of_nodes = len(self._sub_head_procs)
         self._micro_comm = self._comm.Split(self._rank)
@@ -284,6 +287,13 @@ class ParallelTools:
         self.shared_arrays[name].energies_index = e_temp[s]
         self.shared_arrays[name].forces_index = f_temp[s]
         self.shared_arrays[name].stress_index = s_temp[s]
+
+    @stub_check
+    def combine_coeffs(self, coeff):
+        new_coeff = None
+        if self._sub_rank == 0:
+            new_coeff = self._head_group_comm.allreduce(coeff)/self._number_of_nodes
+        return self._sub_comm.bcast(new_coeff)
 
 
 class SharedArray:

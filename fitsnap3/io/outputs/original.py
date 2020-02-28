@@ -2,6 +2,7 @@ from fitsnap3.io.outputs.outputs import Output, optional_write
 from fitsnap3.parallel_tools import pt
 from datetime import datetime
 from fitsnap3.io.input import config
+import numpy as np
 
 
 class Original(Output):
@@ -50,6 +51,7 @@ def _to_coeff_string(coeffs):
     Convert a set of coefficients along with bispec options into a .snapparam file
     """
     # Includes the offset term, which was not in blist
+    coeffs = coeffs.reshape((config.sections["BISPECTRUM"].numtypes, -1))
     coeff_names = [[0]]+config.sections["BISPECTRUM"].blist
     type_names = config.sections["BISPECTRUM"].types
     out = f"# fitsnap fit generated on {datetime.now()}\n\n"
@@ -57,7 +59,7 @@ def _to_coeff_string(coeffs):
     for elname, rjval, wjval, column in zip(type_names,
                                             config.sections["BISPECTRUM"].radelem,
                                             config.sections["BISPECTRUM"].wj,
-                                            coeffs.reshape((1, -1))):
+                                            coeffs):
         out += "{} {} {}\n".format(elname, rjval, wjval)
         out += "\n".join(f" {bval:<30.18} #  B{bname} " for bval, bname in zip(column, coeff_names))
         out += "\n"

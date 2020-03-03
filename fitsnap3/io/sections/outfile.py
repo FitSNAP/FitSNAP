@@ -8,6 +8,7 @@ class Outfile(Section):
         super().__init__(name, config, args)
         self._check_relative()
         self._outfile()
+        self.output_style = self._config.get("OUTFILE", "output_style", fallback="ORIGINAL")
         self.delete()
 
     def _outfile(self):

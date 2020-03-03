@@ -34,12 +34,11 @@ import numpy as np
 from lammps import lammps
 from random import random
 try:
+    # stubs = 0 MPI is active
     stubs = 0
     from mpi4py import MPI
 except ModuleNotFoundError:
     stubs = 1
-
-# TODO: Add in ability to print lammps commands for future debugging purposes
 
 
 def _rank_zero(method):
@@ -116,7 +115,6 @@ class ParallelTools:
         self._seed = 0.0
         self._set_seed()
         self.shared_arrays = {}
-        self._print_lammps = 0
 
     @stub_check
     def _comm_split(self):
@@ -128,6 +126,8 @@ class ParallelTools:
             self._sub_head_proc = self._rank
         self._sub_head_proc = self._sub_comm.bcast(self._sub_head_proc)
         self._sub_head_procs = list(dict.fromkeys(self._comm.allgather(self._sub_head_proc)))
+        self._head_group = self._comm.group.Incl(self._sub_head_procs)
+        self._head_group_comm = self._comm.Create_group(self._head_group)
         self._node_index = self._sub_head_procs.index(self._sub_head_proc)
         self._number_of_nodes = len(self._sub_head_procs)
         self._micro_comm = self._comm.Split(self._rank)
@@ -222,37 +222,42 @@ class ParallelTools:
     def split_by_node(self, obj):
         if isinstance(obj, list):
             return obj[self._node_index::self._number_of_nodes]
+        elif isinstance(obj, dict):
+            for key in obj:
+                obj[key] = obj[key][self._node_index::self._number_of_nodes]
+            return obj
         else:
-            raise TypeError("Parallel tools cannot split {} by node.")
+            raise TypeError("Parallel tools cannot split {} by node.".format(obj))
 
     def split_within_node(self, obj):
         if isinstance(obj, list):
             return obj[self._sub_rank::self._sub_size]
+        elif isinstance(obj, dict):
+            for key in obj:
+                obj[key] = obj[key][self._node_index::self._number_of_nodes]
+            return obj
         else:
-            raise TypeError("Parallel tools cannot split {} within node.")
+            raise TypeError("Parallel tools cannot split {} within node.".format(obj))
 
-    # Add exception handling here
-    @_rank_zero
-    def error(self, err):
-        if self._lmp is not None:
-            # Kill lammps jobs
-            self._lmp.close()
-            self._lmp = None
-        raise err
-
-    def initialize_lammps(self):
+    def initialize_lammps(self, lammpslog=0, printlammps=0):
+        cmds = ["-screen", "none"]
+        if not lammpslog:
+            cmds.append("-log")
+            cmds.append("none")
         if stubs == 0:
-            self._lmp = lammps(comm=self._micro_comm, cmdargs=["-screen", "none", "-log", "none"])
+            self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
         else:
-            self._lmp = lammps(cmdargs=["-screen", "none"])
+            self._lmp = lammps(cmdargs=cmds)
 
-        if self._print_lammps == 1:
+        if printlammps == 1:
             self._lmp.command = print_lammps(self._lmp.command)
         return self._lmp
 
     def close_lammps(self):
-        self._lmp.close()
-        self._lmp = None
+        if self._lmp is not None:
+            # Kill lammps jobs
+            self._lmp.close()
+            self._lmp = None
         return self._lmp
 
     def slice_array(self, name, num_types=None):
@@ -261,24 +266,34 @@ class ParallelTools:
                 s = slice(self._sub_rank, None, self._sub_size)
                 self.shared_arrays[name].sliced_array = self.shared_arrays[name].array[s][:]
             else:
-                nof = len(pt.shared_arrays["number_of_atoms"].array)
-                s = slice(self._sub_rank, nof, self._sub_size)
-                self.shared_arrays[name].energies_index = self.shared_arrays[name].array[s][:]
-                e_temp = []
-                for i in range(nof):
-                    e_temp.append(i)
-                f_temp = [e_temp[-1]+1]
-                s_temp = []
-                for i in range(nof):
-                    noa = pt.shared_arrays["number_of_atoms"].array[i]
-                    f_temp.append(3 * noa + f_temp[-1])
-                for i in range(nof):
-                    s_temp.append(6 * i + f_temp[-1])
-                self.shared_arrays[name].energies_index = e_temp[s]
-                self.shared_arrays[name].forces_index = f_temp[s]
-                self.shared_arrays[name].stress_index = s_temp[s]
+                self.slice_a()
         else:
             raise IndexError("{} not found in shared objects".format(name))
+
+    def slice_a(self, name='a'):
+        nof = len(pt.shared_arrays["number_of_atoms"].array)
+        s = slice(self._sub_rank, nof, self._sub_size)
+        self.shared_arrays[name].energies_index = self.shared_arrays[name].array[s][:]
+        e_temp = []
+        for i in range(nof):
+            e_temp.append(i)
+        f_temp = [e_temp[-1] + 1]
+        s_temp = []
+        for i in range(nof):
+            noa = pt.shared_arrays["number_of_atoms"].array[i]
+            f_temp.append(3 * noa + f_temp[-1])
+        for i in range(nof):
+            s_temp.append(6 * i + f_temp[-1])
+        self.shared_arrays[name].energies_index = e_temp[s]
+        self.shared_arrays[name].forces_index = f_temp[s]
+        self.shared_arrays[name].stress_index = s_temp[s]
+
+    @stub_check
+    def combine_coeffs(self, coeff):
+        new_coeff = None
+        if self._sub_rank == 0:
+            new_coeff = self._head_group_comm.allreduce(coeff)/self._number_of_nodes
+        return self._sub_comm.bcast(new_coeff)
 
 
 class SharedArray:

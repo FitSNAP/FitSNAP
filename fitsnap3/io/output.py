@@ -1,17 +1,5 @@
+from fitsnap3.io.outputs.output_factory import output_factory
 from fitsnap3.io.input import config
 
-
-# TODO : Add file handling and screen handling
-class Output:
-
-    def __init__(self):
-        self._screen = config.args.screen
-        self._pscreen = config.args.pscreen
-        self._logfile = config.args.logfile
-
-    def output(self):
-        pass
-
-
-if __name__ == "fitsnap.io.input":
-    output = Output()
+if __name__ == "fitsnap3.io.output":
+    output = output_factory(config.sections["OUTFILE"].output_style)

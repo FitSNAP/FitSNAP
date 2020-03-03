@@ -33,6 +33,7 @@ from fitsnap3.parallel_tools import pt
 from fitsnap3.scrapers.scraper_factory import scraper
 from fitsnap3.calculators.calculator_factory import calculator
 from fitsnap3.solvers.solver_factory import solver
+from fitsnap3.io.output import output
 from fitsnap3.io.input import config
 
 # TODO : Fancy memory feature
@@ -44,6 +45,7 @@ class FitSnap:
         self.data = []
         self.calculator = calculator("LAMMPSSNAP")
         self.solver = solver("SVD")
+        self.fit = None
 
     @pt.single_timeit
     def scrape_configs(self):
@@ -61,5 +63,9 @@ class FitSnap:
     @pt.sub_rank_zero
     @pt.single_timeit
     def perform_fit(self):
-        self.solver.perform_fit()
-        return None
+        self.fit = self.solver.perform_fit()
+        self.solver.error_analysis(self.data)
+
+    @pt.single_timeit
+    def write_output(self):
+        output.output(self.fit)

@@ -36,7 +36,7 @@ from os import path, listdir, stat
 import numpy as np
 from random import shuffle
 from fitsnap3.parallel_tools import pt
-from natsort import natsorted
+# from natsort import natsorted
 
 
 class Scraper:

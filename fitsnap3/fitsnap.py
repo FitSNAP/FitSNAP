@@ -59,6 +59,7 @@ class FitSnap:
         self.calculator.create_a()
         for i, configuration in enumerate(self.data):
             self.calculator.process_configs(configuration, i)
+        output.screen("a takes up ", 100*pt.shared_arrays['a'].get_memory()/pt.get_ram(), "% of the total memory")
 
     @pt.sub_rank_zero
     @pt.single_timeit

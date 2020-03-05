@@ -301,6 +301,9 @@ class ParallelTools:
         mem = virtual_memory()
         return mem.total
 
+    def abort(self):
+        self._comm.Abort()
+
 
 class SharedArray:
 

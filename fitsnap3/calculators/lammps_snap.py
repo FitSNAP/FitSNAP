@@ -4,7 +4,7 @@ from fitsnap3.parallel_tools import pt
 from fitsnap3.io.input import config
 import numpy as np
 
-# TODO: Check for nan or inf, ask about onehot_fraction for energy
+# TODO: Ask about onehot_fraction for energy
 
 
 class LammpsSnap(Calculator):
@@ -162,6 +162,9 @@ class LammpsSnap(Calculator):
         s_index = pt.shared_arrays['a'].stress_index[self._i]
 
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
+        if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
+            raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
+                                                                                  self._data["Group"]))
 
         irow = 0
         b_sum_temp = lmp_snap[irow, :ncols_bispectrum] / num_atoms

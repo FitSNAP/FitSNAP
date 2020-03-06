@@ -26,7 +26,7 @@ class Calculator:
         pt.create_shared_array('b', a_len)
         pt.create_shared_array('w', a_len)
         output.screen("'a' takes up ", 100*pt.shared_arrays['a'].get_memory()/pt.get_ram(), "% of the total memory")
-        if pt.shared_arrays['a'].get_memory()/pt.get_ram() > 0.5:
+        if pt.shared_arrays['a'].get_memory()/pt.get_ram() > 0.5: # Allow override of 50% break-point by user in future.
             raise MemoryError("The 'a' matrix is larger than 50% of your RAM. \n Aborting...!")
         pt.slice_array('a', num_types=num_types)
 

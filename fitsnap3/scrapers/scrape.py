@@ -36,7 +36,7 @@ from os import path, listdir, stat
 import numpy as np
 from random import shuffle
 from fitsnap3.parallel_tools import pt
-from natsort import natsorted
+# from natsort import natsorted
 
 
 class Scraper:
@@ -85,9 +85,9 @@ class Scraper:
 
     # TODO : Fix divvy up to distribute groups evenly and based on memory
     def divvy_up_configs(self):
-        # self.files = natsorted(self.files)
         for folder in self.files:
             shuffle(self.files[folder], pt.get_seed)
+            # self.files[folder] = natsorted(self.files[folder])
 
         temp_list = []
         for folder in self.files:

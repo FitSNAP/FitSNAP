@@ -33,6 +33,7 @@ from time import time
 import numpy as np
 from lammps import lammps
 from random import random
+from psutil import virtual_memory
 try:
     # stubs = 0 MPI is active
     stubs = 0
@@ -295,6 +296,14 @@ class ParallelTools:
             new_coeff = self._head_group_comm.allreduce(coeff)/self._number_of_nodes
         return self._sub_comm.bcast(new_coeff)
 
+    @staticmethod
+    def get_ram():
+        mem = virtual_memory()
+        return mem.total
+
+    def abort(self):
+        self._comm.Abort()
+
 
 class SharedArray:
 
@@ -316,11 +325,11 @@ class SharedArray:
         else:
             raise TypeError("dtype {} has not been implemented yet".format(dtype))
         if rank == 0:
-            nbytes = size1 * size2 * item_size
+            self._nbytes = size1 * size2 * item_size
         else:
-            nbytes = 0
+            self._nbytes = 0
 
-        win = MPI.Win.Allocate_shared(nbytes, item_size, comm=comm)
+        win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=comm)
 
         buff, item_size = win.Shared_query(0)
 
@@ -332,6 +341,9 @@ class SharedArray:
             self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(size1, ))
         else:
             self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(size1, size2))
+
+    def get_memory(self):
+        return self._nbytes
 
 
 class StubsArray:
@@ -350,6 +362,9 @@ class StubsArray:
             self.array = np.ndarray(shape=(size1, ), dtype=dtype)
         else:
             self.array = np.ndarray(shape=(size1, size2), dtype=dtype)
+
+    def get_memory(self):
+        return self.array.nbytes
 
 
 if __name__ == "fitsnap3.parallel_tools":

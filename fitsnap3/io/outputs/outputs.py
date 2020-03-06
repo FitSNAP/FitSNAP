@@ -34,6 +34,10 @@ class Output:
         # Try to funnel all of the error message to a log or screen
         self.log("%s" % err)
         # self.screen("%s" % err)
+        if '{}'.format(err) == 'MPI_ERR_INTERN: internal error':
+            # Known Issues: Allocating too much memory
+            self.screen("Attempting to handle MPI error gracefully.\nAborting MPI...")
+            pt.abort()
         raise_err(err)
 
     def output(self, dummy):

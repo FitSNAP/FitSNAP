@@ -73,6 +73,13 @@ except Exception as e:
     raise e
 
 try:
+    import scipy as sp
+    pt.single_print("scipy version: ", sp.__version__)
+except Exception as e:
+    pt.single_print("Trouble importing scipy package, exiting...")
+    raise e
+
+try:
     import pandas as pd
     pt.single_print("pandas version: ", pd.__version__)
 except Exception as e:

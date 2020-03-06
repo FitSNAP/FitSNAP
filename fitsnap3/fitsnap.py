@@ -36,8 +36,6 @@ from fitsnap3.solvers.solver_factory import solver
 from fitsnap3.io.output import output
 from fitsnap3.io.input import config
 
-# TODO : Fancy memory feature
-
 
 class FitSnap:
     def __init__(self):

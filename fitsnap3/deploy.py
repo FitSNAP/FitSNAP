@@ -58,8 +58,8 @@ def compute_bispec_datasets(input_configs, bispec_options, n_procs, mpi=False,ch
         else:
             compute_function = compute_multi
         results = compute_function(input_configs, bispec_options, n_procs, chunk_size, log=log)
-    assert all(i==j==data["Index"] for i,(j,data) in enumerate(results)),\
-        "Configurations dropped or out of order"
+    # assert all(i==j==data["Index"] for i,(j,data) in enumerate(results)),\
+    #     "Configurations dropped or out of order"
     return results
 
 ### Compute using single process

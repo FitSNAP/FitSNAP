@@ -1,28 +1,28 @@
 # <!----------------BEGIN-HEADER------------------------------------>
-# ## FitSNAP3 
+# ## FitSNAP3
 # A Python Package For Training SNAP Interatomic Potentials for use in the LAMMPS molecular dynamics package
-# 
+#
 # _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
 # ##
-# 
-# #### Original author: 
+#
+# #### Original author:
 #     Aidan P. Thompson, athomps (at) sandia (dot) gov (Sandia National Labs)
-#     http://www.cs.sandia.gov/~athomps 
-# 
+#     http://www.cs.sandia.gov/~athomps
+#
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
-# 
-# #### Additional authors (alphabetical): 
+#
+# #### Additional authors (alphabetical):
 #     Elizabeth Decolvenaere (D. E. Shaw Research)
 #     Stan Moore (Sandia National Labs)
 #     Steve Plimpton (Sandia National Labs)
 #     Gary Saavedra (Sandia National Labs)
 #     Peter Schultz (Sandia National Labs)
 #     Laura Swiler (Sandia National Labs)
-#     
+#
 # <!-----------------END-HEADER------------------------------------->
 
 
@@ -40,7 +40,7 @@ def extract_compute_np(lmp,name,compute_style,result_type,array_shape):
     Convert a lammps compute to a numpy array.
     Assumes the compute stores floating point numbers.
     Note that the result is a view into the original memory.
-    If the result type is 0 (scalar) then conversion to numpy is 
+    If the result type is 0 (scalar) then conversion to numpy is
     skipped and a python float is returned.
 
     From LAMMPS/src/library.cpp:
@@ -48,7 +48,7 @@ def extract_compute_np(lmp,name,compute_style,result_type,array_shape):
     type = 0 for scalar, 1 for vector, 2 for array
 
     """
-    ptr = lmp.extract_compute(name, compute_style, result_type) 
+    ptr = lmp.extract_compute(name, compute_style, result_type)
     if result_type == 0: return ptr # No casting needed, lammps.py already works
     if result_type == 2: ptr = ptr.contents
     total_size = np.prod(array_shape)
@@ -122,7 +122,7 @@ def set_computes(lmp, bispec_options):
             "quadraticflag": "quadraticflag",
             "switchflag": "switchflag",
             "alloyflag": "alloyflag",
-            "wselfallflag": "wselfallflag",
+#            "wselfallflag": "wselfallflag",
         }.items()
         if v in bispec_options
     }

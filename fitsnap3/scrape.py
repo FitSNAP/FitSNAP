@@ -73,9 +73,9 @@ def create_smartweights_grouplist(base_path,json_directory):
                     data = json.loads(file.read(),parse_constant=True)
                 except Exception as e:
                      print("Trouble Parsing Training Data: ",fname)
-                     raise e   
+                     raise e
                 current_num_atoms = float(data['Dataset']['Data'][0]['NumAtoms'])
-                num_atoms_group += current_num_atoms   
+                num_atoms_group += current_num_atoms
         group_name = group
         group_size = num_files
         group_eweight = float(1/num_files)
@@ -87,8 +87,8 @@ def create_smartweights_grouplist(base_path,json_directory):
         group_table.at[row_count, 'fweight'] = group_fweight
         group_table.at[row_count, 'vweight'] = group_vweight
 
-        row_count += 1      
-    
+        row_count += 1
+
     new_grouplist_path = os.path.join(base_path,'grouplist_smartweights.in')
     new_grouplist_file = open(new_grouplist_path,'w')
     new_grouplist_file.write("#   Grouplist generated using smartweights" + '\n' + '#')
@@ -96,9 +96,8 @@ def create_smartweights_grouplist(base_path,json_directory):
 
     new_grouplist_file.close()
 
-    print("Generating new group weights using smartweights....")
+    print("Generating new group weights using smartweights...")
     print(group_table)
-    
 
     return group_table
 
@@ -119,9 +118,11 @@ def read_groups(group_file):
 
 def read_configs(json_folder,group_table,bispec_options):
     all_data = []
+    test_data = []
     BOLTZT = bispec_options["BOLTZT"]
     styles = collections.defaultdict(lambda: set())
     all_index = 0
+    test_index = 0
     if bispec_options["units"]=="real":
         kb=0.00198198665029335
     if bispec_options["units"]=="metal":
@@ -140,29 +141,25 @@ def read_configs(json_folder,group_table,bispec_options):
 #        assert len(files) == group_info.size, \
 #        ("Found a different number of files than what is defined in grouplist.in", group_name)
         #print(group_name)
+
         if group_info.size>=1.0:
             folder_files=natsort.natsorted(os.listdir(folder))
             nfiles=len(folder_files)
             nfiles_train=nfiles
+            nfiles_test=0
             print(group_info.name,": Gathering and fitting whole training set")
         else:
-            if not bispec_options["compute_testerrs"]:
-                folder_files=sklearn.utils.shuffle(os.listdir(folder))
-                nfiles=int(abs(group_info.size)*len(folder_files))
-                nfiles_train=nfiles
-                print(group_info.name,": Gathering ",nfiles ,", fitting all of this training subset")
-            else:
-                folder_files=sklearn.utils.shuffle(os.listdir(folder))
-                nfiles=len(folder_files)
-                nfiles_train=max(1,int(abs(group_info.size)*len(folder_files)-0.5))
-                print(group_info.name,": Gathering ",nfiles ," fitting on ",nfiles_train)
+            folder_files=sklearn.utils.shuffle(os.listdir(folder))
+            nfiles=len(folder_files)
+            nfiles_train=max(1,int(abs(group_info.size)*len(folder_files)-0.5))
+            nfiles_test=max(1,int(float(bispec_options["compute_testerrs"])*len(folder_files)-0.5))
             # Rather than sorting, can randomize the list and only take the top X% of training
         #print(group_info.name,nfiles)
+        print(nfiles_train,nfiles_test)
         for i, fname_end in tqdm.tqdm(enumerate(folder_files),
-                                      desc="Configs",position=1,leave=False,total=nfiles,disable=(not bispec_options["verbosity"]), ascii=True):
-            if i==nfiles:
-                break
-
+                                      desc="Configs",position=1,leave=False,total=(nfiles_train+nfiles_test),disable=(not bispec_options["verbosity"]), ascii=True):
+            if (i>(nfiles_train + nfiles_test)):
+                    break
             fname = os.path.join(folder, fname_end)
 
             with open(fname) as file:
@@ -217,22 +214,28 @@ def read_configs(json_folder,group_table,bispec_options):
 
             data.update(geometry.rotate_coords(data,units_conv))
             data.update(geometry.translate_coords(data,units_conv))
-            if (bispec_options["compute_testerrs"] and (i > nfiles_train)): wprefac=0.0
-            else: wprefac=1.0
 
             if getattr(group_info, 'eweight')>=0.0:
                     for wtype in ['eweight', 'fweight', 'vweight']:
-                        data[wtype] = wprefac*getattr(group_info, wtype)
+                        data[wtype] = getattr(group_info, wtype)
             else:
-                data['eweight'] = wprefac*np.exp((getattr(group_info, 'eweight')-data["Energy"]/float(natoms))/(kb*float(bispec_options["BOLTZT"])))
-                data['fweight'] = wprefac*data['eweight']*getattr(group_info, 'fweight')
-                data['vweight'] = wprefac*data['eweight']*getattr(group_info, 'vweight')
+                data['eweight'] = np.exp((getattr(group_info, 'eweight')-data["Energy"]/float(natoms))/(kb*float(bispec_options["BOLTZT"])))
+                data['fweight'] = data['eweight']*getattr(group_info, 'fweight')
+                data['vweight'] = data['eweight']*getattr(group_info, 'vweight')
 
-            all_data.append(data)
-
-            all_index += 1
+            if i<nfiles_train:
+                all_data.append(data)
+                all_index += 1
+            elif (i==nfiles_train and nfiles_test==0):
+                all_data.append(data)
+                all_index += 1
+                test_data.append(data)
+                test_index += 1
+            else:
+                test_data.append(data)
+                test_index += 1
 
     for style_name, style_set in styles.items():
         assert len(style_set) == 1, "Multiple styles ({}) for {}".format(len(style_set), style_name)
 
-    return all_data, {k:v.pop() for k,v in styles.items()}
+    return all_data, test_data, {k:v.pop() for k,v in styles.items()}

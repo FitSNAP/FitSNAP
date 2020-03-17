@@ -34,6 +34,7 @@ import numpy as np
 from lammps import lammps
 from random import random
 from psutil import virtual_memory
+from itertools import chain
 try:
     # stubs = 0 MPI is active
     stubs = 0
@@ -116,6 +117,7 @@ class ParallelTools:
         self._seed = 0.0
         self._set_seed()
         self.shared_arrays = {}
+        self._calculator_options = {}
 
     @stub_check
     def _comm_split(self):
@@ -212,6 +214,9 @@ class ParallelTools:
         else:
             raise TypeError("name must be a string")
 
+    def add_calculator_option(self, option, boolean):
+        self._calculator_options[option] = boolean
+
     @stub_check
     def all_barrier(self):
         self._comm.Barrier()
@@ -227,6 +232,8 @@ class ParallelTools:
             for key in obj:
                 obj[key] = obj[key][self._node_index::self._number_of_nodes]
             return obj
+        elif isinstance(obj, np.ndarray):
+            return obj[self._node_index::self._number_of_nodes]
         else:
             raise TypeError("Parallel tools cannot split {} by node.".format(obj))
 
@@ -274,20 +281,60 @@ class ParallelTools:
     def slice_a(self, name='a'):
         nof = len(pt.shared_arrays["number_of_atoms"].array)
         s = slice(self._sub_rank, nof, self._sub_size)
-        self.shared_arrays[name].energies_index = self.shared_arrays[name].array[s][:]
+        indices = [0]
+        self.shared_arrays[name].group_index = []
+        self.shared_arrays[name].group_energy_index = []
+        self.shared_arrays[name].group_force_index = []
+        self.shared_arrays[name].group_stress_index = []
+        count = [0]
+        for i, value in enumerate(self.shared_arrays['files_per_group'].array):
+            count.append(count[i]+value)
+        j = 0
         e_temp = []
-        for i in range(nof):
-            e_temp.append(i)
-        f_temp = [e_temp[-1] + 1]
+        f_temp = []
         s_temp = []
         for i in range(nof):
-            noa = pt.shared_arrays["number_of_atoms"].array[i]
-            f_temp.append(3 * noa + f_temp[-1])
-        for i in range(nof):
-            s_temp.append(6 * i + f_temp[-1])
-        self.shared_arrays[name].energies_index = e_temp[s]
-        self.shared_arrays[name].forces_index = f_temp[s]
-        self.shared_arrays[name].stress_index = s_temp[s]
+            if i in count:
+                self.shared_arrays[name].group_index.append(j)
+                if self._calculator_options["energy"] and i > 0:
+                    self.shared_arrays[name].group_energy_index.append(e_temp)
+                    e_temp = []
+                if self._calculator_options["force"] and i > 0:
+                    self.shared_arrays[name].group_force_index.append(f_temp)
+                    f_temp = []
+                if self._calculator_options["stress"] and i > 0:
+                    self.shared_arrays[name].group_stress_index.append(s_temp)
+                    s_temp = []
+            if self._calculator_options["energy"]:
+                e_temp.append(j)
+                j += 1
+            if self._calculator_options["force"]:
+                f_temp.append(j)
+                j += 3 * pt.shared_arrays["number_of_atoms"].array[i]
+            if self._calculator_options["stress"]:
+                s_temp.append(j)
+                j += 6
+            indices.append(j)
+        if self._calculator_options["energy"]:
+            self.shared_arrays[name].group_energy_index.append(e_temp)
+            self.shared_arrays[name].energy_index = \
+                list(chain.from_iterable(self.shared_arrays[name].group_energy_index))
+            self.shared_arrays[name].group_energy_length = \
+                sum(len(row) for row in self.shared_arrays[name].group_energy_index)
+        if self._calculator_options["force"]:
+            self.shared_arrays[name].group_force_index.append(f_temp)
+            self.shared_arrays[name].force_index = \
+                list(chain.from_iterable(self.shared_arrays[name].group_force_index))
+            self.shared_arrays[name].group_force_length = \
+                sum(len(row) for row in self.shared_arrays[name].group_force_index)
+        if self._calculator_options["stress"]:
+            self.shared_arrays[name].group_stress_index.append(s_temp)
+            self.shared_arrays[name].stress_index = \
+                list(chain.from_iterable(self.shared_arrays[name].group_stress_index))
+            self.shared_arrays[name].group_stress_length = \
+                sum(len(row) for row in self.shared_arrays[name].group_stress_index)
+        self.shared_arrays[name].group_index.append(j)
+        self.shared_arrays[name].indices = indices[s]
 
     @stub_check
     def combine_coeffs(self, coeff):

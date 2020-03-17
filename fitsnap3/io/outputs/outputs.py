@@ -40,7 +40,7 @@ class Output:
             pt.abort()
         raise_err(err)
 
-    def output(self, dummy):
+    def output(self, *args):
         pass
 
 

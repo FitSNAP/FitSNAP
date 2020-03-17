@@ -1,6 +1,5 @@
 from fitsnap3.solvers.solver import Solver
 from fitsnap3.parallel_tools import pt
-from fitsnap3.io.input import config
 from scipy.linalg import lstsq
 import numpy as np
 
@@ -11,9 +10,10 @@ class SVD(Solver):
         super().__init__(name)
 
     def perform_fit(self):
-        w = pt.shared_arrays['w'].array
-        aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array, w * pt.shared_arrays['b'].array
-        self.fit, residues, rank, s = lstsq(aw, bw)
-        if config.sections["MODEL"].bzeroflag:
-            self._offset()
-        return self.fit
+        if pt.shared_arrays['files_per_group'].testing != 0:
+            testing = -1*pt.shared_arrays['files_per_group'].testing
+        else:
+            testing = len(pt.shared_arrays['w'].array)
+        w = pt.shared_arrays['w'].array[:testing]
+        aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[:testing], w * pt.shared_arrays['b'].array[:testing]
+        self.fit, residues, rank, s = lstsq(aw, bw, 1.0e-13)

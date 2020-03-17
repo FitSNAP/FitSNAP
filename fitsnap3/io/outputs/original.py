@@ -2,7 +2,6 @@ from fitsnap3.io.outputs.outputs import Output, optional_write
 from fitsnap3.parallel_tools import pt
 from datetime import datetime
 from fitsnap3.io.input import config
-import numpy as np
 
 
 class Original(Output):
@@ -10,20 +9,22 @@ class Original(Output):
     def __init__(self, name):
         super().__init__(name)
 
-    def output(self, coeffs):
+    def output(self, coeffs, errors):
         new_coeffs = pt.combine_coeffs(coeffs)
         if new_coeffs is not None:
             coeffs = new_coeffs
-        self.write(coeffs)
+        self.write(coeffs, errors)
 
     @pt.rank_zero
-    def write(self, coeffs):
+    def write(self, coeffs, errors):
         with optional_write(config.sections["OUTFILE"].potential_name and
                             config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
             file.write(_to_coeff_string(coeffs))
         with optional_write(config.sections["OUTFILE"].potential_name and
                             config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
             file.write(_to_param_string())
+        with optional_write(config.sections["OUTFILE"].metric_file, 'wt') as file:
+            errors.to_csv(file)
 
 
 def _to_param_string():

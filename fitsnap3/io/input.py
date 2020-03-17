@@ -3,6 +3,7 @@ import argparse
 from pickle import HIGHEST_PROTOCOL
 from fitsnap3.io.sections.section_factory import new_section
 from fitsnap3.parallel_tools import pt
+from os import path, listdir
 
 
 class Config:
@@ -11,15 +12,7 @@ class Config:
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
         self.parse_cmdline()
-        self.sections = {"DEFAULT": None,
-                         "BISPECTRUM": None,
-                         "MODEL": None,
-                         "PATH": None,
-                         "OUTFILE": None,
-                         "REFERENCE": None,
-                         "ESHIFT": None,
-                         "MEMORY": None,
-                         "SCRAPER": None}
+        self.sections = {}
         self.parse_config()
         self._reset_alloyflag()
 
@@ -81,8 +74,17 @@ class Config:
         self.set_sections(tmp_config)
 
     def set_sections(self, tmp_config):
-        for section in self.sections:
-            self.sections[section] = new_section(section, tmp_config, self.args)
+        location = '/' + '/'.join(path.abspath(__file__).split("/")[:-1]) + '/sections'
+        temp = {file: None for file in listdir(location)}
+        for file in temp:
+            if file.split('.')[-1] != 'py' or file == 'sections.py' or file == 'section_factory.py':
+                continue
+            else:
+                section = '.'.join(file.split('.')[:-1]).upper()
+                if section == "TEMPLATE":
+                    section = "DEFAULT"
+                self.sections[section] = new_section(section, tmp_config, self.args)
+        del temp
 
     def _reset_alloyflag(self):
         if self.sections["MODEL"].alloyflag != 0:

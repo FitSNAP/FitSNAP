@@ -1,5 +1,4 @@
 from fitsnap3.io.sections.sections import Section
-from distutils.util import strtobool
 from os import getcwd, path
 
 
@@ -12,7 +11,7 @@ class Path(Section):
         for directory in paths[:-1]:
             working_directory += directory + '/'
         working_directory += paths[-1]
-        self.datapath = path.join(working_directory, self._config.get("PATH", "dataPath", fallback="JSON"))
-        self.group_file = path.join(working_directory, self._config.get("PATH", "groupfile", fallback="grouplist.in"))
-        self.smartweights = strtobool(self._config.get("PATH", "smartweights", fallback="0"))
+        self.datapath = path.join(working_directory, self.get_value("PATH", "dataPath", "JSON"))
+        self.group_file = path.join(working_directory, self.get_value("PATH", "groupfile", "grouplist.in"))
+        self.smartweights = self.get_value("PATH", "smartweights", "0", "bool")
         self.delete()

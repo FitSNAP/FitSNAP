@@ -27,7 +27,7 @@ class Calculator:
 
         a_width = config.sections["BISPECTRUM"].ncoeff * num_types
 
-        if not config.sections["MODEL"].bzeroflag:
+        if not config.sections["CALCULATOR"].bzeroflag:
             pt.create_shared_array('a', a_len, a_width + num_types)
         else:
             pt.create_shared_array('a', a_len, a_width)

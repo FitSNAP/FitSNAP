@@ -293,6 +293,7 @@ class ParallelTools:
         e_temp = []
         f_temp = []
         s_temp = []
+        atoms = []
         for i in range(nof):
             if i in count:
                 self.shared_arrays[name].group_index.append(j)
@@ -315,6 +316,7 @@ class ParallelTools:
                 s_temp.append(j)
                 j += 6
             indices.append(j)
+            atoms.append(pt.shared_arrays["number_of_atoms"].array[i])
         if self._calculator_options["energy"]:
             self.shared_arrays[name].group_energy_index.append(e_temp)
             self.shared_arrays[name].energy_index = \
@@ -335,6 +337,7 @@ class ParallelTools:
                 sum(len(row) for row in self.shared_arrays[name].group_stress_index)
         self.shared_arrays[name].group_index.append(j)
         self.shared_arrays[name].indices = indices[s]
+        self.shared_arrays[name].num_atoms = atoms
 
     @stub_check
     def combine_coeffs(self, coeff):

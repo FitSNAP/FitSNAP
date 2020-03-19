@@ -87,12 +87,12 @@ class Config:
         del temp
 
     def _reset_alloyflag(self):
-        if self.sections["MODEL"].alloyflag != 0:
+        if self.sections["CALCULATOR"].alloyflag != 0:
             alloyflag = "{}".format(self.sections['BISPECTRUM'].numtypes)
             for element in self.sections["BISPECTRUM"].type_mapping:
                 element_type = self.sections["BISPECTRUM"].type_mapping[element]
                 alloyflag += " {}".format(element_type - 1)
-            self.sections["MODEL"].alloyflag = "{}".format(alloyflag)
+            self.sections["CALCULATOR"].alloyflag = "{}".format(alloyflag)
 
 
 if __name__ == "fitsnap3.io.input":

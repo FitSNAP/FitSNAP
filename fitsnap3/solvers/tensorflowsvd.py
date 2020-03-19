@@ -17,7 +17,7 @@ try:
             aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array, w * pt.shared_arrays['b'].array
             bw = bw.reshape((len(bw), 1))
             self.fit = tf.linalg.lstsq(aw, bw)
-            if config.sections["MODEL"].bzeroflag:
+            if config.sections["CALCULATOR"].bzeroflag:
                 self._offset()
 
 except ModuleNotFoundError:

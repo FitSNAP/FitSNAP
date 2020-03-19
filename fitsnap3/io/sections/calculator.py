@@ -13,4 +13,8 @@ class Calculator(Section):
         pt.add_calculator_option("force", self.force)
         self.stress = self.get_value("CALCULATOR", "stress", "True", "bool")
         pt.add_calculator_option("stress", self.stress)
+        self.alloyflag = self.get_value("CALCULATOR", "alloyflag", "0", "bool")
+        self.wselfallflag = self.get_value("CALCULATOR", "wselfallflag", "0", "bool")
+        self.bzeroflag = self.get_value("CALCULATOR", "bzeroflag", "0", "bool")
+        self.quadraticflag = self.get_value("CALCULATOR", "quadraticflag", "0", "bool")
         self.delete()

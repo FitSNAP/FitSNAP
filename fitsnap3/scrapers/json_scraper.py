@@ -83,24 +83,17 @@ class Json(Scraper):
                 self._rotate_coords()
                 self._translate_coords()
 
-                # TODO : Fix compute testers by adding in amount of files in folder
-                nfiles_train = 500
-                if config.sections["MODEL"].compute_testerrs and (self.data['GroupIndex'] > nfiles_train):
-                    wprefac = 0.0
-                else:
-                    wprefac = 1.0
-
                 if self.group_table['eweight'][self.data['GroupIndex']] >= 0.0:
                     for wtype in ['eweight', 'fweight', 'vweight']:
-                        self.data[wtype] = wprefac * self.group_table[wtype][self.data['GroupIndex']]
+                        self.data[wtype] = self.group_table[wtype][self.data['GroupIndex']]
                 else:
-                    self.data['eweight'] = wprefac * np.exp(
+                    self.data['eweight'] = np.exp(
                         (self.group_table['eweight'][self.data['GroupIndex']] - self.data["Energy"] /
                          float(natoms)) / (self.kb * float(config.sections["BISPECTRUM"].boltz)))
                     self.data['fweight'] = \
-                        wprefac * self.data['eweight'] * self.group_table['fweight'][self.data['GroupIndex']]
+                        self.data['eweight'] * self.group_table['fweight'][self.data['GroupIndex']]
                     self.data['vweight'] = \
-                        wprefac * self.data['eweight'] * self.group_table['vweight'][self.data['GroupIndex']]
+                        self.data['eweight'] * self.group_table['vweight'][self.data['GroupIndex']]
 
                 self.all_data.append(self.data)
 

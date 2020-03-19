@@ -39,10 +39,10 @@ class Bispectrum(Section):
                     if j >= j1:
                         i += 1
                         self.blist.append([i, j1, j2, j])
-        if self.get_value("MODEL", "alloyflag", "0", "bool"):
+        if self.get_value("CALCULATOR", "alloyflag", "0", "bool"):
             self.blist *= self.numtypes ** 3
             self.blist = np.array(self.blist).tolist()
-        if self.get_value("MODEL", "quadraticflag", "0", "bool"):
+        if self.get_value("CALCULATOR", "quadraticflag", "0", "bool"):
             # Note, combinations_with_replacement precisely generates the upper-diagonal entries we want
             self.blist += [[i, a, b] for i, (a, b) in
                            enumerate(combinations_with_replacement(self.blist, r=2), start=len(self.blist))]

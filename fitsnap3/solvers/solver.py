@@ -14,6 +14,9 @@ class Solver:
         self.errors = []
         self.weighted = 'Unweighted'
         self.residuals = None
+        self.a = None
+        self.b = None
+        self.w = None
 
     def perform_fit(self):
         pass
@@ -40,7 +43,7 @@ class Solver:
         self.errors = DataFrame.from_records(self.errors)
         self.errors = self.errors.set_index(["Group", "Weighting", "Subsystem", ]).sort_index()
 
-        if config.sections["MODEL"].bzeroflag:
+        if config.sections["CALCULATOR"].bzeroflag:
             self._offset()
 
     def _all_error(self):
@@ -54,36 +57,46 @@ class Solver:
 
     def _energy(self):
         testing = -1 * pt.shared_arrays['files_per_group'].testing
-        a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index)
+        a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
         self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
         if testing != 0:
             self._errors([[testing, 0]], ['*ALL'], "Energy_testing", a, b, w)
 
     def _force(self):
         testing = -1 * pt.shared_arrays['files_per_group'].testing
-        a, b, w = self._make_abw(pt.shared_arrays['a'].force_index)
+        a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, pt.shared_arrays['a'].num_atoms)
         self._errors([[0, testing]], ['*ALL'], "Force", a, b, w)
         if testing != 0:
             self._errors([[testing, 0]], ['*ALL'], "Force_testing", a, b, w)
 
     def _stress(self):
         testing = -1 * pt.shared_arrays['files_per_group'].testing
-        a, b, w = self._make_abw(pt.shared_arrays['a'].stress_index)
+        a, b, w = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
         self._errors([[0, testing]], ['*ALL'], "Stress", a, b, w)
         if testing != 0:
             self._errors([[testing, 0]], ['*ALL'], "Stress_testing", a, b, w)
 
     @staticmethod
-    def _make_abw(type_index):
+    def _make_abw(type_index, buffer):
+        if isinstance(buffer, list):
+            length = sum(buffer)
+            length *= 3
+        else:
+            length = len(type_index) * buffer
         width = np.shape(pt.shared_arrays['a'].array)[1]
-        length = len(type_index)
         a = np.zeros((length, width))
         b = np.zeros((length,))
         w = np.zeros((length,))
-        for i, value in enumerate(type_index):
-            a[i] = pt.shared_arrays['a'].array[value]
-            b[i] = pt.shared_arrays['b'].array[value]
-            w[i] = pt.shared_arrays['w'].array[value]
+        i = 0
+        for j, value in enumerate(type_index):
+            if isinstance(buffer, list):
+                spacing = buffer[j]*3
+            else:
+                spacing = buffer
+            a[i:i+spacing] = pt.shared_arrays['a'].array[value:value+spacing]
+            b[i:i+spacing] = pt.shared_arrays['b'].array[value:value+spacing]
+            w[i:i+spacing] = pt.shared_arrays['w'].array[value:value+spacing]
+            i += spacing
         return a, b, w
 
     def _combined(self):
@@ -112,36 +125,45 @@ class Solver:
     def _group_energy(self, groups):
         group_index = pt.shared_arrays['a'].group_energy_index
         length = pt.shared_arrays['a'].group_energy_length
-        index, a, b, w = self._make_group_abw(group_index, length)
+        index, a, b, w = self._make_group_abw(group_index, length, 1)
         self._errors(index, groups, "Energy", a, b, w)
 
     def _group_force(self, groups):
         group_index = pt.shared_arrays['a'].group_force_index
         length = pt.shared_arrays['a'].group_force_length
-        index, a, b, w = self._make_group_abw(group_index, length)
-        self._errors(index, groups, "Force")
+        index, a, b, w = self._make_group_abw(group_index, length, pt.shared_arrays['a'].num_atoms)
+        self._errors(index, groups, "Force", a, b, w)
 
     def _group_stress(self, groups):
         group_index = pt.shared_arrays['a'].group_stress_index
-        length = pt.shared_arrays['a'].group_stress_length
-        index, a, b, w = self._make_group_abw(group_index, length)
-        self._errors(index, groups, "Stress")
+        length = pt.shared_arrays['a'].group_stress_length*6
+        index, a, b, w = self._make_group_abw(group_index, length, 6)
+        self._errors(index, groups, "Stress", a, b, w)
 
     @staticmethod
-    def _make_group_abw(group_index, length):
+    def _make_group_abw(group_index, length, buffer):
         index = []
         width = np.shape(pt.shared_arrays['a'].array)[1]
+        if isinstance(buffer, list):
+            length = 3 * sum(buffer)
         a = np.zeros((length, width))
         b = np.zeros((length,))
         w = np.zeros((length,))
         i = 0
+        j = 0
         for group in group_index:
             temp = [i]
             for value in group:
-                a[i] = pt.shared_arrays['a'].array[value]
-                b[i] = pt.shared_arrays['b'].array[value]
-                w[i] = pt.shared_arrays['w'].array[value]
-                i += 1
+                if isinstance(buffer, list):
+                    spacing = buffer[j]
+                    j += 1
+                    spacing *= 3
+                else:
+                    spacing = buffer
+                a[i:i+spacing] = pt.shared_arrays['a'].array[value:value+spacing]
+                b[i:i+spacing] = pt.shared_arrays['b'].array[value:value+spacing]
+                w[i:i+spacing] = pt.shared_arrays['w'].array[value:value+spacing]
+                i += spacing
             temp.append(i)
             index.append(temp)
         return index, a, b, w

@@ -42,8 +42,7 @@ class FitSnap:
         self.scraper = scraper(config.sections["SCRAPER"].scraper)
         self.data = []
         self.calculator = calculator(config.sections["CALCULATOR"].calculator)
-        # self.solver = solver(config.sections["SOLVER"].solver)
-        self.solver = solver(config.sections["MODEL"].solver)
+        self.solver = solver(config.sections["SOLVER"].solver)
         self.fit = None
 
     @pt.single_timeit

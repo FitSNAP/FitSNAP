@@ -103,7 +103,7 @@ class LammpsSnap(Calculator):
         wj = " ".join([f"${{wj{i}}}" for i in range(1, numtypes + 1)])
 
         kw_options = {
-            k: config.sections["MODEL"].__dict__[v]
+            k: config.sections["CALCULATOR"].__dict__[v]
             for k, v in
             {
                 "rmin0": "rmin0",
@@ -113,7 +113,7 @@ class LammpsSnap(Calculator):
                 "alloyflag": "alloyflag",
                 "wselfallflag": "wselfallflag",
             }.items()
-            if v in config.sections["MODEL"].__dict__
+            if v in config.sections["CALCULATOR"].__dict__
         }
         if kw_options["alloyflag"] == 0:
             kw_options.pop("alloyflag")
@@ -168,7 +168,7 @@ class LammpsSnap(Calculator):
         icolref = ncols_bispectrum
         if config.sections["CALCULATOR"].energy:
             b_sum_temp = lmp_snap[irow, :ncols_bispectrum] / num_atoms
-            if not config.sections["MODEL"].bzeroflag:
+            if not config.sections["CALCULATOR"].bzeroflag:
                 b_sum_temp.shape = (num_types, n_coeff)
                 onehot_atoms = np.ones((num_types, 1))
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
@@ -186,7 +186,7 @@ class LammpsSnap(Calculator):
         if config.sections["CALCULATOR"].force:
             db_atom_temp = lmp_snap[irow:irow + nrows_force, :ncols_bispectrum]
             db_atom_temp.shape = (num_atoms * ndim_force, n_coeff * num_types)
-            if not config.sections["MODEL"].bzeroflag:
+            if not config.sections["CALCULATOR"].bzeroflag:
                 onehot_atoms = np.zeros((np.shape(db_atom_temp)[0],))
                 db_atom_temp = np.concatenate([onehot_atoms[:, np.newaxis], db_atom_temp], axis=1)
             pt.shared_arrays['a'].array[index:index+num_atoms * ndim_force] = db_atom_temp
@@ -201,7 +201,7 @@ class LammpsSnap(Calculator):
         if config.sections["CALCULATOR"].stress:
             vb_sum_temp = 1.6021765e6*lmp_snap[irow:irow + nrows_virial, :ncols_bispectrum] / lmp_volume
             vb_sum_temp.shape = (ndim_virial, n_coeff * num_types)
-            if not config.sections["MODEL"].bzeroflag:
+            if not config.sections["CALCULATOR"].bzeroflag:
                 onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0],))
                 vb_sum_temp = np.concatenate([onehot_atoms[:, np.newaxis], vb_sum_temp], axis=1)
             pt.shared_arrays['a'].array[index:index+ndim_virial] = vb_sum_temp

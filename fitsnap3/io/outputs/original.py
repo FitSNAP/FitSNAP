@@ -28,7 +28,7 @@ class Original(Output):
 
 
 def _to_param_string():
-    if config.sections["MODEL"].alloyflag != 0:
+    if config.sections["CALCULATOR"].alloyflag != 0:
         alloyflag_int = 1
     else:
         alloyflag_int = 0
@@ -40,9 +40,9 @@ def _to_param_string():
     #  optional
     rfac0 {config.sections["BISPECTRUM"].rfac0}
     rmin0 {config.sections["BISPECTRUM"].rmin0}
-    bzeroflag {config.sections["MODEL"].bzeroflag}
-    quadraticflag {config.sections["MODEL"].quadraticflag}
-    wselfallflag {config.sections["MODEL"].wselfallflag}
+    bzeroflag {config.sections["CALCULATOR"].bzeroflag}
+    quadraticflag {config.sections["CALCULATOR"].quadraticflag}
+    wselfallflag {config.sections["CALCULATOR"].wselfallflag}
     alloyflag {alloyflag_int}
     """
 

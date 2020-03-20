@@ -1,5 +1,4 @@
 from fitsnap3.io.sections.sections import Section
-# TODO: Update examples to use SOLVER section instead of MODEL section
 
 
 class Solver(Section):

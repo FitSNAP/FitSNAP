@@ -419,3 +419,4 @@ class StubsArray:
 
 if __name__ == "fitsnap3.parallel_tools":
     pt = ParallelTools()
+    double_size = MPI.DOUBLE.Get_size()

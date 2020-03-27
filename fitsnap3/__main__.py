@@ -31,7 +31,7 @@ import configparser
 import gzip
 import pickle
 import datetime
-
+import numpy as np
 import contextlib
 
 from distutils.util import strtobool
@@ -235,7 +235,8 @@ def main():
         if args.perform_fit:
             with printdoing("Assembling linear system"):
                 offset = not bispec_options["bzeroflag"]
-                subsystems = (True,True,True) if bispec_options["compute_dbvb"] else (True,False,False)
+#                subsystems = (True,True,True) if bispec_options["compute_dbvb"] else (True,False,False)
+                subsystems = (bispec_options["UseEnergies"], bispec_options["UseForces"], bispec_options["UseStresses"])
                 A, b, w = linearfit.make_Abw(configs=configs, offset=offset, return_subsystems=False,subsystems=subsystems)
 
             with printdoing("Performing fit"):
@@ -279,7 +280,8 @@ def main():
 
         with printdoing("Assembling linear system"):
             offset = not bispec_options["bzeroflag"]
-            subsystems = (True,True,True) if bispec_options["compute_dbvb"] else (True,False,False)
+#            subsystems = (True,True,True) if bispec_options["compute_dbvb"] else (True,False,False)
+            subsystems = (bispec_options["UseEnergies"], bispec_options["UseForces"], bispec_options["UseStresses"])
             A, b, w = linearfit.make_Abw(configs=test_configs, offset=offset, return_subsystems=False,subsystems=subsystems)
 
         with printdoing("Measuring training errors"):

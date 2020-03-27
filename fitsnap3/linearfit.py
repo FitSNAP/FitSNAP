@@ -108,8 +108,8 @@ def make_Abw(configs, offset, return_subsystems=True,subsystems=(True,True,True)
             return submatrices[0]
 
     A, b, w = map(np.concatenate,zip(*submatrices))
-    # np.save('a.out',A)
-    # np.save('b.out',b)
+    np.save('a.out',A)
+    np.save('b.out',b)
     # np.save('w.out',w)
     #A_load=np.load('../FitSNAP2/A.out.npy')
     #A=np.reshape(A_fs2,(np.shape(A_fs2)[0],1,np.shape(A_fs2)[1]))
@@ -267,6 +267,9 @@ def sklearn_model_to_fn(modelcls,**model_kwargs):
     def fitfn(*args,**kwargs):
         model = modelcls(**model_kwargs)
         fit_result = model.fit(*args,**kwargs)
+        print("Rank: ",model.rank_)
+        print("Intercept: ",model.intercept_)
+        print("Singular Values: ",model.singular_)
         return model.coef_, model, fit_result
     return fitfn
 
@@ -274,8 +277,8 @@ def get_solver_fn(solver,normweight=None,normratio=None,**kwargs):
     if normweight is not None: normweight = float(10 ** (float(normweight)))
     if normratio is not None: normratio = float(normratio)
     solver_fndict = {
-        "SVD": sp.linalg.lstsq,
-        #sklearn_model_to_fn(skl.linear_model.LinearRegression,),
+        "SVD": sklearn_model_to_fn(skl.linear_model.LinearRegression,),
+        #sp.linalg.lstsq,
         "LASSO":
             sklearn_model_to_fn(skl.linear_model.Lasso,
                                 alpha=normweight,max_iter=1E6,fit_intercept=False),

@@ -97,6 +97,7 @@ def get_filenames(base_path,allow_exists,configs=None,metrics=None,potential=Non
         "config":(configfile,'b'),
         "metrics_train":(metricfile + '_train','t'),
         "metrics_test":(metricfile + '_test','t'),
+        "metrics_validation":(metricfile + '_validation','t'),
         "snapparam":(potentialname and potentialname + '.snapparam','t'),  # Keeps None if already None
         "snapcoeff":(potentialname and potentialname + '.snapcoeff','t'),
     }
@@ -183,7 +184,9 @@ def main():
 
     # Set fallback values if not found in input file
     bispec_options["BOLTZT"] = cp.get("BISPECTRUM","BOLTZT",fallback='10000')
-    bispec_options["compute_testerrs"] = cp.get("MODEL","compute_testerrs",fallback=0)
+    bispec_options["test_fraction"] = cp.get("MODEL", "test_fraction", fallback=0)
+    bispec_options["detailed_errors"] = strtobool(cp.get("MODEL", "detailed_errors", fallback='0'))
+    bispec_options["lammps_validation"] = strtobool(cp.get("MODEL","lammps_validation",fallback='0'))
     bispec_options["smartweights"] = strtobool(cp.get("PATH","smartweights",fallback='0'))
     bispec_options["units"] = cp.get("REFERENCE","units",fallback='metal').lower()
     bispec_options["atom_style"] = cp.get("REFERENCE","atom_style",fallback='atomic').lower()
@@ -235,16 +238,17 @@ def main():
         if args.perform_fit:
             with printdoing("Assembling linear system"):
                 offset = not bispec_options["bzeroflag"]
-#                subsystems = (True,True,True) if bispec_options["compute_dbvb"] else (True,False,False)
                 subsystems = (bispec_options["UseEnergies"], bispec_options["UseForces"], bispec_options["UseStresses"])
-                A, b, w = linearfit.make_Abw(configs=configs, offset=offset, return_subsystems=False,subsystems=subsystems)
+                A, b, w = linearfit.make_Abw(configs=configs, offset=offset, tag="Training", return_subsystems=False,
+                                             subsystems=subsystems)
 
             with printdoing("Performing fit"):
                 solver = linearfit.get_solver_fn(**cp["MODEL"])
                 fit_coeffs, solver_info = linearfit.solve_linear_snap(A,b,w, solver=solver, offset=offset)
 
             with printdoing("Measuring training errors"):
-                error_metrics = linearfit.group_errors(fit_coeffs,configs,bispec_options,subsystems=subsystems)
+                error_metrics = linearfit.group_errors(fit_coeffs,configs,bispec_options,
+                                                       subsystems=subsystems,tag="Training")
                 configs.update(linearfit.get_residuals(fit_coeffs,configs,subsystems=subsystems))
             print("Units for reported errors:")
             if bispec_options["units"]=="real":
@@ -266,31 +270,63 @@ def main():
         print("Fitting interrupted! Attempting to save computed data.",file=sys.stderr)
         raise e
     finally:
-        save_dict = {"configs": configs,"bispec_otions": bispec_options,"styles": style_info}
+        save_dict = {"configs": configs,"bispec_options": bispec_options,"styles": style_info}
 #        with optional_write(*fnameinfo["config"]) as pfile:
 #            pickle.dump(save_dict, pfile, protocol=pickle.DEFAULT_PROTOCOL)
-    if float(bispec_options["compute_testerrs"]) > 0:
-
-        test_configs = deploy.compute_bispec_datasets(test_configs,
-                                                    bispec_options,
-                                                    n_procs=args.jobs,
-                                                    mpi=args.mpi,
-                                                    log=args.lammpslog)
-        test_configs = serialize.pack(test_configs)
+    if float(bispec_options["test_fraction"]) > 0:
+        configs,test_configs,style_info = scrape.read_configs(json_directory, group_table,bispec_options)
+        with printdoing("Computing testing bispectrum data", end='\n'):
+            test_configs = deploy.compute_bispec_datasets(test_configs,
+                                                     bispec_options,
+                                                     n_procs=args.jobs,
+                                                     mpi=args.mpi,
+                                                     log=args.lammpslog)
+            test_configs = serialize.pack(test_configs)
 
         with printdoing("Assembling linear system"):
             offset = not bispec_options["bzeroflag"]
-#            subsystems = (True,True,True) if bispec_options["compute_dbvb"] else (True,False,False)
             subsystems = (bispec_options["UseEnergies"], bispec_options["UseForces"], bispec_options["UseStresses"])
-            A, b, w = linearfit.make_Abw(configs=test_configs, offset=offset, return_subsystems=False,subsystems=subsystems)
+            A, b, w = linearfit.make_Abw(configs=test_configs, offset=offset, return_subsystems=False,
+                                         subsystems=subsystems)
 
         with printdoing("Measuring training errors"):
-            error_metrics = linearfit.group_errors(fit_coeffs,test_configs,bispec_options,subsystems=subsystems)
+            error_metrics = linearfit.group_errors(fit_coeffs,test_configs,bispec_options,
+                                                   subsystems=subsystems,tag="Testing")
             test_configs.update(linearfit.get_residuals(fit_coeffs,test_configs,subsystems=subsystems))
         if args.verbose:
             print_error_summary(error_metrics)
 
         with optional_write(*fnameinfo["metrics_test"]) as file:
+            error_metrics.to_csv(file)
+
+    if bispec_options["lammps_validation"]:
+        lmp_pairdecl = []
+        lmp_pairdecl.append("pair_style snap")
+        lmp_pairdecl.append("pair_coeff * * Ta_pot.snapcoeff Ta_pot.snapparam Ta ")
+        bispec_options["pair_func"] = lmp_pairdecl
+
+        with printdoing("Computing validation bispectrum data", end='\n'):
+            valid_configs = deploy.compute_bispec_datasets(configs,
+                                                     bispec_options,
+                                                     n_procs=args.jobs,
+                                                     mpi=args.mpi,
+                                                     log=args.lammpslog)
+            valid_configs = serialize.pack(valid_configs)
+
+        with printdoing("Assembling linear system"):
+            offset = not bispec_options["bzeroflag"]
+            subsystems = (bispec_options["UseEnergies"], bispec_options["UseForces"], bispec_options["UseStresses"])
+            A, b, w = linearfit.make_Abw(configs=valid_configs, offset=offset, return_subsystems=False,
+                                         subsystems=subsystems)
+
+        with printdoing("Measuring validation errors"):
+            error_metrics = linearfit.group_errors(fit_coeffs,valid_configs,bispec_options,
+                                                   subsystems=subsystems,tag="Validation")
+            valid_configs.update(linearfit.get_residuals(fit_coeffs,valid_configs,subsystems=subsystems))
+        if args.verbose:
+            print_error_summary(error_metrics)
+
+        with optional_write(*fnameinfo["metrics_validation"]) as file:
             error_metrics.to_csv(file)
     return
 

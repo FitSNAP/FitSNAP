@@ -152,10 +152,10 @@ def read_configs(json_folder,group_table,bispec_options):
             folder_files=sklearn.utils.shuffle(os.listdir(folder))
             nfiles=len(folder_files)
             nfiles_train=max(1,int(abs(group_info.size)*len(folder_files)-0.5))
-            nfiles_test=max(1,int(float(bispec_options["compute_testerrs"])*len(folder_files)-0.5))
+            nfiles_test=max(1,int(float(bispec_options["test_fraction"])*len(folder_files)-0.5))
             # Rather than sorting, can randomize the list and only take the top X% of training
         #print(group_info.name,nfiles)
-        print(nfiles_train,nfiles_test)
+        #print(nfiles_train,nfiles_test)
         for i, fname_end in tqdm.tqdm(enumerate(folder_files),
                                       desc="Configs",position=1,leave=False,total=(nfiles_train+nfiles_test),disable=(not bispec_options["verbosity"]), ascii=True):
             if (i>(nfiles_train + nfiles_test)):

@@ -105,8 +105,8 @@ def to_param_string(rcutfac,twojmax,rfac0,rmin0,bzeroflag,quadraticflag,wselfall
     rmin0 {rmin0}
     bzeroflag {bzeroflag}
     quadraticflag {quadraticflag}
-    wselfallflag {wselfallflag}
-    alloyflag {alloyflag_int}
+    #wselfallflag {wselfallflag}
+    #alloyflag {alloyflag_int}
     """
 
 def to_coeff_string(coeffs,bispec_options):

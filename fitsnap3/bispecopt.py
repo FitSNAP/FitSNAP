@@ -46,7 +46,6 @@ untyped_keys = {
 fitkeys = {
     "bzeroflag": strtobool,
     "quadraticflag": strtobool,
-    "compute_dbvb": strtobool,
     "UseEnergies" : strtobool,
     "UseForces" : strtobool,
     "UseStresses" : strtobool,

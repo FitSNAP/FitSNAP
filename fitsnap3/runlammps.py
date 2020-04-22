@@ -122,7 +122,7 @@ def set_computes(lmp, bispec_options):
             "quadraticflag": "quadraticflag",
             "switchflag": "switchflag",
             "alloyflag": "alloyflag",
-#            "wselfallflag": "wselfallflag",
+            #"wselfallflag": "wselfallflag",
         }.items()
         if v in bispec_options
     }
@@ -137,7 +137,7 @@ def set_computes(lmp, bispec_options):
     command = f"{base_snap} {radelem} {wj} {kwargs}"
     lmp.command(command)
 
-def extract_computes(lmp, num_atoms, n_coeff,num_types, compute_dbvb, TrainFile):
+def extract_computes(lmp, num_atoms, n_coeff,num_types, TrainFile):
 
     lmp_atom_ids = lmp.numpy.extract_atom_iarray("id", num_atoms).flatten()
     assert np.all(lmp_atom_ids==1+np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
@@ -177,17 +177,16 @@ def extract_computes(lmp, num_atoms, n_coeff,num_types, compute_dbvb, TrainFile)
         print("Inf or NaN Energy returned from LAMMPS :",TrainFile)
     res["ref_Energy"] = lmp_sume
     irow += nrows_energy
-
-    if compute_dbvb:
-        res["db_atom"] = lmp_snap[irow:irow+nrows_force,:ncols_bispectrum]
-        res["db_atom"].shape = (num_atoms,ndim_force,num_types,n_coeff)
-        res["ref_Forces"] = lmp_snap[irow:irow+nrows_force,icolref]
-        res["ref_Forces"].shape = (num_atoms,ndim_force)
-        irow += nrows_force
-
-        res["vb_sum"] = lmp_snap[irow:irow+nrows_virial,:ncols_bispectrum]
-        res["vb_sum"].shape = (ndim_virial,num_types,n_coeff)
-        res["ref_Stress"] = lmp_snap[irow:irow+nrows_virial,icolref]
+    #if UseForces:
+    res["db_atom"] = lmp_snap[irow:irow+nrows_force,:ncols_bispectrum]
+    res["db_atom"].shape = (num_atoms,ndim_force,num_types,n_coeff)
+    res["ref_Forces"] = lmp_snap[irow:irow+nrows_force,icolref]
+    res["ref_Forces"].shape = (num_atoms,ndim_force)
+    irow += nrows_force
+    #if UseStresses:
+    res["vb_sum"] = lmp_snap[irow:irow+nrows_virial,:ncols_bispectrum]
+    res["vb_sum"].shape = (ndim_virial,num_types,n_coeff)
+    res["ref_Stress"] = lmp_snap[irow:irow+nrows_virial,icolref]
 
     # Copy arrays because lammps will reuse memory.
     return {k: copy.copy(v) for k, v in res.items()}
@@ -234,7 +233,8 @@ def compute_lammps(lmp, data, bispec_options):
     set_variables(lmp, **lammps_variables(bispec_options))
 
     for line in bispec_options["pair_func"]:
-        lmp.command(line.lower())
+#        lmp.command(line.lower())
+        lmp.command(line)
 
     if bispec_options["alloyflag"] != 0:
         alloyflag = "{}".format(bispec_options["numtypes"])
@@ -254,7 +254,6 @@ def compute_lammps(lmp, data, bispec_options):
                                      num_atoms=data["NumAtoms"],
                                      n_coeff=bispec_options["n_coeff"],
                                      num_types=bispec_options["numtypes"],
-                                     compute_dbvb=bispec_options["compute_dbvb"],
                                      TrainFile=data["File"]
                                      )
     # raises AssertionError if lammps moved the atoms by anything other than a lattice vector

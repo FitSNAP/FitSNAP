@@ -36,6 +36,7 @@ from os import path, listdir, stat
 import numpy as np
 from random import shuffle
 from fitsnap3.parallel_tools import pt
+from fitsnap3.io.output import output
 # from natsort import natsorted
 
 
@@ -46,6 +47,7 @@ class Scraper:
         self.group_types = {}
         self.group_table = []
         self.files = {}
+        self.tests = None
         self.convert = {"Energy": 1.0, "Force": 1.0, "Stress": 1.0, "Distance": 1.0}
         self.data = {}
 
@@ -82,21 +84,55 @@ class Scraper:
                 if folder not in self.files:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
+            shuffle(self.files[folder], pt.get_seed)
+            if group_info.size < 1:
+                if self.tests is None:
+                    self.tests = {}
+                nfiles = len(folder_files)
+                nfiles_train = max(1, int(abs(group_info.size) * len(folder_files) - 0.5))
+                output.screen(group_info.name, ": Gathering ", nfiles, " fitting on ", nfiles_train)
+                self.tests[folder] = []
+                for i in range(nfiles - nfiles_train):
+                    self.tests[folder].append(self.files[folder].pop())
+
+            # self.files[folder] = natsorted(self.files[folder])
 
     # TODO : Fix divvy up to distribute groups evenly and based on memory
     def divvy_up_configs(self):
-        for folder in self.files:
-            shuffle(self.files[folder], pt.get_seed)
-            # self.files[folder] = natsorted(self.files[folder])
-
+        groups = []
+        group_list = []
         temp_list = []
-        for folder in self.files:
+        test_list = []
+        for i, folder in enumerate(self.files):
             for file in self.files[folder]:
                 temp_list.append(file[0])
+                groups.append(folder)
 
         self.files = temp_list
-
         self.files = pt.split_by_node(self.files)
+
+        if self.tests is not None:
+            for i, folder in enumerate(self.tests):
+                for file in self.tests[folder]:
+                    test_list.append(file[0])
+                    group_list.append(folder)
+            test_list = pt.split_by_node(test_list)
+            self.files += test_list
+
+        groups = pt.split_by_node(groups)
+        group_list = pt.split_by_node(group_list)
+        group_test = sorted(set(group_list))
+        group_set = sorted(set(groups))
+        group_counts = np.zeros((len(group_set) + len(group_test),), dtype='i')
+        for i, group in enumerate(group_set+group_test):
+            group_counts[i] = groups.count(group)
+
+        pt.create_shared_array('files_per_group', len(self.files), dtype='i')
+        pt.shared_arrays['files_per_group'].array = group_counts
+
+        pt.shared_arrays['files_per_group'].testing = 0
+        if self.tests is not None:
+            pt.shared_arrays['files_per_group'].testing = len(test_list)
 
         number_of_files_per_node = len(self.files)
         pt.create_shared_array('number_of_atoms', number_of_files_per_node, dtype='i')

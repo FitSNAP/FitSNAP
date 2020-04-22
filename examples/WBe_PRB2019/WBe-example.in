@@ -12,9 +12,11 @@ type1 = W
 type2 = Be
 BOLTZT = 1000
 
-[MODEL]
+[CALCULATOR]
 bzeroflag = 1   
 quadraticflag = 0
+
+[SOLVER]
 solver = SVD	
 normweight = -12
 normratio = 0.5
@@ -22,7 +24,7 @@ compute_dbvb = 1
 compute_testerrs = 0
 
 [PATH]
-jsonPath = ./JSON
+dataPath = ./JSON
 groupFile = ./grouplist-WBe.in
 
 [OUTFILE]

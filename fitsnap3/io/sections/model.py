@@ -1,18 +1,17 @@
 from fitsnap3.io.sections.sections import Section
-from distutils.util import strtobool
 
 
 class Model(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.alloyflag = strtobool(self._config.get("MODEL", "alloyflag", fallback='0'))
-        self.wselfallflag = strtobool(self._config.get("MODEL", "wselfallflag", fallback='0'))
-        self.bzeroflag = strtobool(self._config.get("MODEL", "bzeroflag", fallback='0'))
-        self.quadraticflag = strtobool(self._config.get("MODEL", "quadraticflag", fallback='0'))
-        self.solver = self._config.get("MODEL", "solver", fallback='SVD')
-        self.normalweight = float(self._config.get("MODEL", "normalweight", fallback='-12'))
-        self.normratio = float(self._config.get("MODEL", "normratio", fallback='0.5'))
-        self.compute_dbvb = strtobool(self._config.get("MODEL", "compute_dbvb", fallback='0'))
-        self.compute_testerrs = strtobool(self._config.get("MODEL", "compute_testerrs", fallback='0'))
-        self.delete()
+        self.alloyflag = self.get_value("MODEL", "alloyflag", "0", "bool")
+        self.wselfallflag = self.get_value("MODEL", "wselfallflag", "0", "bool")
+        self.bzeroflag = self.get_value("MODEL", "bzeroflag", "0", "bool")
+        self.quadraticflag = self.get_value("MODEL", "quadraticflag", "0", "bool")
+        # self.solver = self.get_value("MODEL", "solver", "SVD")
+        # self.normalweight = self.get_value("MODEL", "normalweight", "-12", "float")
+        # self.normratio = self.get_value("MODEL", "normratio", "0.5", "float")
+        # self.compute_dbvb = self.get_value("MODEL", "compute_dbvb", "0", "bool")
+        # self.compute_testerrs = self.get_value("MODEL", "compute_testerrs", "0", "bool")
+        # self.delete()

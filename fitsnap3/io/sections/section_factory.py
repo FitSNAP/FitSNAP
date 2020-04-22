@@ -1,13 +1,15 @@
 from fitsnap3.io.sections.sections import Section
-from fitsnap3.io.sections.template import Default
 from fitsnap3.io.sections.bispectrum import Bispectrum
-from fitsnap3.io.sections.model import Model
-from fitsnap3.io.sections.path import Path
-from fitsnap3.io.sections.outfile import Outfile
-from fitsnap3.io.sections.reference import Reference
+from fitsnap3.io.sections.calculator import Calculator
+from fitsnap3.io.sections.template import Default
 from fitsnap3.io.sections.eshift import Eshift
 from fitsnap3.io.sections.memory import Memory
+from fitsnap3.io.sections.model import Model
+from fitsnap3.io.sections.outfile import Outfile
+from fitsnap3.io.sections.path import Path
+from fitsnap3.io.sections.reference import Reference
 from fitsnap3.io.sections.scraper import Scraper
+from fitsnap3.io.sections.solver import Solver
 
 
 def new_section(section, config, args):

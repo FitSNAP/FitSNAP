@@ -12,12 +12,12 @@ try:
             super().__init__(name)
 
         @pt.single_timeit
-        def perform_fit(self):
+        def perform_fit(self, testing):
             w = pt.shared_arrays['w'].array
             aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array, w * pt.shared_arrays['b'].array
             bw = bw.reshape((len(bw), 1))
             self.fit = tf.linalg.lstsq(aw, bw)
-            if config.sections["MODEL"].bzeroflag:
+            if config.sections["CALCULATOR"].bzeroflag:
                 self._offset()
 
 except ModuleNotFoundError:

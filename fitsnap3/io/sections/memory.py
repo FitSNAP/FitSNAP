@@ -8,10 +8,8 @@ class Memory(Section):
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
         self._check_memory()
-        if "MEMORY" in self._config:
-            self.memory = int(self._config.get("MEMORY", "memory", fallback="{}".format(self.mem_bytes)))
-        else:
-            self.memory = self.mem_bytes
+        self.memory = self.get_value("MEMORY", "memory", "{}".format(self.mem_bytes), "int")
+        self.override = self.get_value("MEMORY", "override", "False", interpreter="bool")
         self.delete()
 
     def _check_memory(self):

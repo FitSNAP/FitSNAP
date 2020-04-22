@@ -8,15 +8,15 @@ class Outfile(Section):
         super().__init__(name, config, args)
         self._check_relative()
         self._outfile()
-        self.output_style = self._config.get("OUTFILE", "output_style", fallback="ORIGINAL")
+        self.output_style = self.get_value("OUTFILE", "output_style", "ORIGINAL")
         self.delete()
 
     def _outfile(self):
-        self.config_file = self._config.get("OUTFILE", "configs", fallback="fitsnap_configs.pkl.gz")
+        self.config_file = self.get_value("OUTFILE", "configs", "fitsnap_configs.pkl.gz")
         self._check_path(self.config_file)
-        self.metric_file = self._config.get("OUTFILE", "metrics", fallback="fitsnap_metrics.csv")
+        self.metric_file = self.get_value("OUTFILE", "metrics", "fitsnap_metrics.csv")
         self._check_path(self.metric_file)
-        self.potential_name = self._config.get("OUTFILE", "potential", fallback="fitsnap_potential")
+        self.potential_name = self.get_value("OUTFILE", "potential", "fitsnap_potential")
         self._check_path(self.potential_name)
         return
 

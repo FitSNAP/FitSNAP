@@ -41,8 +41,8 @@ class FitSnap:
     def __init__(self):
         self.scraper = scraper(config.sections["SCRAPER"].scraper)
         self.data = []
-        self.calculator = calculator("LAMMPSSNAP")
-        self.solver = solver("SVD")
+        self.calculator = calculator(config.sections["CALCULATOR"].calculator)
+        self.solver = solver(config.sections["SOLVER"].solver)
         self.fit = None
 
     @pt.single_timeit
@@ -61,9 +61,9 @@ class FitSnap:
     @pt.sub_rank_zero
     @pt.single_timeit
     def perform_fit(self):
-        self.fit = self.solver.perform_fit()
+        self.solver.perform_fit()
         self.solver.error_analysis(self.data)
 
     @pt.single_timeit
     def write_output(self):
-        output.output(self.fit)
+        output.output(self.solver.fit, self.solver.errors)

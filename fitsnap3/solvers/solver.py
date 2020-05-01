@@ -8,8 +8,9 @@ class Solver:
 
     def __init__(self, name):
         self.name = name
-        self.fit = None
         self.configs = None
+        self.fit = None
+        self.all_fits = None
         self.template_error = False
         self.errors = []
         self.weighted = 'Unweighted'
@@ -20,6 +21,9 @@ class Solver:
 
     def perform_fit(self):
         pass
+
+    def fit_gather(self):
+        self.all_fits = pt.allgather(self.fit)
 
     def _offset(self):
         num_types = config.sections["BISPECTRUM"].numtypes

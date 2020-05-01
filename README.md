@@ -12,6 +12,7 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 #### Key contributors (alphabetical):
     Mary Alice Cusentino (Sandia National Labs)
     Nicholas Lubbers (Los Alamos National Lab)
+    Charles Sievers (Sandia National Labs)
     Adam Stephens (Sandia National Labs)
     Mitchell Wood (Sandia National Labs)
 

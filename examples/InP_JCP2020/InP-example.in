@@ -1,0 +1,49 @@
+[BISPECTRUM]
+numTypes = 2
+twojmax = 6
+rcutfac = 1.0
+rfac0 = 0.99363
+rmin0 = 0.0
+wj1 = 1.0
+wj2 = 9.293160905266721e-01
+radelem1 = 3.812045629514403e+00
+radelem2 = 3.829453817954964e+00
+type1 = In
+type2 = P
+eshift = In : -1.65967588701534, P : 4.38159549501534
+BOLTZT = 1000
+
+[ESHIFT]
+In = -1.65967588701534
+P = 4.38159549501534
+
+[CALCULATOR]
+wselfallflag = 1
+alloyflag = 1
+bzeroflag = 1   
+quadraticflag = 0
+
+[SOLVER]
+solver = SVD	
+normweight = -12
+normratio = 0.5
+compute_dbvb = 1
+compute_testerrs = 0
+
+[PATH]
+jsonPath = ./JSON
+groupFile = ./grouplist.in
+
+[OUTFILE]
+configs = InP_configs.pkl.gz
+metrics = InP_metrics.csv
+potential = InP_pot
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.2
+pair_coeff1 = * * zero
+pair_coeff2 = 1 1 zbl 49 49
+pair_coeff3 = 1 2 zbl 49 15
+pair_coeff4 = 2 2 zbl 15 15

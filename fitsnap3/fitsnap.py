@@ -15,7 +15,7 @@
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
-#     Maybe me ¯\_(ツ)_/¯
+#     Charles Sievers (Sandia National Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
 #
@@ -62,6 +62,7 @@ class FitSnap:
     @pt.single_timeit
     def perform_fit(self):
         self.solver.perform_fit()
+        self.solver.fit_gather()
         self.solver.error_analysis(self.data)
 
     @pt.single_timeit

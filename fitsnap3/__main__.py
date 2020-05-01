@@ -15,7 +15,7 @@
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
-#     Maybe me ¯\_(ツ)_/¯
+#     Charles Sievers (Sandia Nation Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
 #
@@ -45,7 +45,7 @@ def main():
         snap.perform_fit()
         snap.write_output()
     except Exception as e:
-        output.error(e)
+        output.exception(e)
 
 
 if __name__ == "__main__":

@@ -10,4 +10,5 @@ class Solver(Section):
         self.normratio = self.get_value("SOLVER", "normratio", "0.5", "float")
         self.compute_dbvb = self.get_value("SOLVER", "compute_dbvb", "0", "bool")
         self.compute_testerrs = self.get_value("SOLVER", "compute_testerrs", "0", "bool")
+        self.multinode_testing = self.get_value("SOLVER", "multinode_testing", "0", "bool")
         self.delete()

@@ -2,6 +2,7 @@ from fitsnap3.scrapers.scrape import Scraper
 from fitsnap3.io.input import config
 from json import loads
 from fitsnap3.parallel_tools import pt
+from fitsnap3.io.output import output
 import numpy as np
 from _collections import defaultdict
 
@@ -24,16 +25,18 @@ class Json(Scraper):
 
     def scrape_groups(self):
         super().scrape_groups()
+        self.configs = self.files
 
     def scrape_configs(self):
+        self.files = self.configs
         for i, file_name in enumerate(self.files):
             with open(file_name) as file:
                 file.readline()
                 try:
                     self.data = loads(file.read(), parse_constant=True)
                 except Exception as e:
-                    pt.sinlge_print("Trouble Parsing Training Data: ", file_name)
-                    pt.error(e)
+                    output.error("Trouble Parsing Training Data: ", file_name)
+                    output.exception(e)
 
                 assert len(self.data) == 1, "More than one object (dataset) is in this file"
 

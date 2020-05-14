@@ -54,7 +54,7 @@ class Config:
         parser.add_argument("--pscreen", "-ps", action="store_true", dest="pscreen",
                             help="Print each processors screen")
         parser.add_argument("--log", action="store", dest="log",
-                            default="log.fitsnap", help="Write fitsnap log to this file")
+                            default=None, help="Write fitsnap log to this file")
 
         self.args = parser.parse_args()
 

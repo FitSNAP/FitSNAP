@@ -15,7 +15,7 @@
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
-#     Maybe me ¯\_(ツ)_/¯
+#     Charles Sievers (Sandia National Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
 #
@@ -57,7 +57,7 @@ try:
     from fitsnap3.io.output import output
 except Exception as e:
     pt.single_print("Trouble reading input, exiting...")
-    raise e
+    pt.error(e)
 
 try:
     pt.single_print("mpi4py version: ", mpi4py.__version__)

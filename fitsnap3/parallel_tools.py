@@ -15,7 +15,7 @@
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
-#     Maybe me ¯\_(ツ)_/¯
+#     Charles Sievers (Sandia National Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
 #
@@ -29,18 +29,38 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from time import time
+from time import time, sleep
 import numpy as np
 from lammps import lammps
 from random import random
 from psutil import virtual_memory
 from itertools import chain
+import signal
 try:
     # stubs = 0 MPI is active
     stubs = 0
     from mpi4py import MPI
 except ModuleNotFoundError:
     stubs = 1
+
+
+class GracefulKiller:
+
+    def __init__(self, comm, failsafe=False):
+        self._comm = comm
+        self._rank = 0
+        self.failsafe = failsafe
+        if self._comm is not None:
+            self._rank = self._comm.Get_rank()
+            signal.signal(signal.SIGINT, self.exit_gracefully)
+            signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, signum, frame):
+        if self._rank == 0:
+            print("attempting to exit gracefully", flush=True)
+            print("exiting from exit code", signum, "at", frame, flush=True)
+        if self.failsafe:
+            self._comm.Abort()
 
 
 def _rank_zero(method):
@@ -112,12 +132,15 @@ class ParallelTools:
             self._node_index = 0
             self._number_of_nodes = 1
 
+        killer = GracefulKiller(self._comm)
+
         self._comm_split()
         self._lmp = None
         self._seed = 0.0
         self._set_seed()
         self.shared_arrays = {}
         self._calculator_options = {}
+        self.logger = None
 
     @stub_check
     def _comm_split(self):
@@ -213,6 +236,10 @@ class ParallelTools:
                 self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)
         else:
             raise TypeError("name must be a string")
+
+    @stub_check
+    def allgather(self, array):
+        return self._head_group_comm.allgather(array)
 
     def add_calculator_option(self, option, boolean):
         self._calculator_options[option] = boolean
@@ -343,7 +370,7 @@ class ParallelTools:
     def combine_coeffs(self, coeff):
         new_coeff = None
         if self._sub_rank == 0:
-            new_coeff = self._head_group_comm.allreduce(coeff)/self._number_of_nodes
+            new_coeff = self._head_group_comm.allreduce(coeff) / self._number_of_nodes
         return self._sub_comm.bcast(new_coeff)
 
     @staticmethod
@@ -351,8 +378,21 @@ class ParallelTools:
         mem = virtual_memory()
         return mem.total
 
+    def set_logger(self, logger):
+        self.logger = logger
+
     def abort(self):
         self._comm.Abort()
+
+    def exception(self, err):
+        if pt.logger is None:
+            raise err
+
+        pt.close_lammps()
+        if self._rank == 0:
+            self.logger.exception(err)
+        sleep(5)
+        self.abort()
 
 
 class SharedArray:

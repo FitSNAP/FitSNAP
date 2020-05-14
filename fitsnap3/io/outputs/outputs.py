@@ -3,9 +3,9 @@ from fitsnap3.parallel_tools import pt
 from contextlib import contextmanager
 import gzip
 from datetime import datetime
+import logging
 
 
-# TODO : Add file handling for log file, use logger module
 class Output:
 
     def __init__(self, name):
@@ -14,6 +14,12 @@ class Output:
         self._pscreen = config.args.pscreen
         self._nscreen = config.args.nscreen
         self._logfile = config.args.log
+        if self._logfile is None:
+            logging.basicConfig(level=logging.DEBUG)
+        else:
+            logging.basicConfig(level=logging.DEBUG, filename=self._logfile)
+        self.logger = logging.getLogger(__name__)
+        pt.set_logger(self.logger)
 
     def screen(self, *args, **kw):
         if self._pscreen:
@@ -26,19 +32,20 @@ class Output:
             pass
 
     @pt.rank_zero
-    def log(self, *args):
-        pass
+    def info(self, msg):
+        self.logger.info(msg)
 
-    def error(self, err):
-        pt.close_lammps()
-        # Try to funnel all of the error message to a log or screen
-        self.log("%s" % err)
-        # self.screen("%s" % err)
-        if '{}'.format(err) == 'MPI_ERR_INTERN: internal error':
-            # Known Issues: Allocating too much memory
-            self.screen("Attempting to handle MPI error gracefully.\nAborting MPI...")
-            pt.abort()
-        raise_err(err)
+    @pt.rank_zero
+    def warning(self, msg):
+        self.logger.warning(msg)
+
+    @staticmethod
+    def exception(err):
+        pt.exception(err)
+        # if '{}'.format(err) == 'MPI_ERR_INTERN: internal error':
+        #     # Known Issues: Allocating too much memory
+        #     self.screen("Attempting to handle MPI error gracefully.\nAborting MPI...")
+        #     pt.abort()
 
     def output(self, *args):
         pass
@@ -66,8 +73,3 @@ def print_doing(msg, sep='', flush=True, end='', **kwargs):
     print(msg, '...', sep=sep, flush=flush, end=end, **kwargs)
     yield
     print(f"Done! ({datetime.now()-start_time})")
-
-
-@pt.rank_zero
-def raise_err(err):
-    raise err

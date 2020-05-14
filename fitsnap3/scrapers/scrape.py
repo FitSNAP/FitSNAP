@@ -47,6 +47,7 @@ class Scraper:
         self.group_types = {}
         self.group_table = []
         self.files = {}
+        self.configs = {}
         self.tests = None
         self.convert = {"Energy": 1.0, "Force": 1.0, "Stress": 1.0, "Distance": 1.0}
         self.data = {}
@@ -103,13 +104,16 @@ class Scraper:
         group_list = []
         temp_list = []
         test_list = []
-        for i, folder in enumerate(self.files):
-            for file in self.files[folder]:
-                temp_list.append(file[0])
+        for i, folder in enumerate(self.configs):
+            for configuration in self.configs[folder]:
+                if isinstance(configuration, list):
+                    temp_list.append(configuration[0])
+                else:
+                    temp_list.append(configuration)
                 groups.append(folder)
 
-        self.files = temp_list
-        self.files = pt.split_by_node(self.files)
+        self.configs = temp_list
+        self.configs = pt.split_by_node(self.configs)
 
         if self.tests is not None:
             for i, folder in enumerate(self.tests):
@@ -117,7 +121,7 @@ class Scraper:
                     test_list.append(file[0])
                     group_list.append(folder)
             test_list = pt.split_by_node(test_list)
-            self.files += test_list
+            self.configs += test_list
 
         groups = pt.split_by_node(groups)
         group_list = pt.split_by_node(group_list)
@@ -127,17 +131,17 @@ class Scraper:
         for i, group in enumerate(group_set+group_test):
             group_counts[i] = groups.count(group)
 
-        pt.create_shared_array('files_per_group', len(self.files), dtype='i')
+        pt.create_shared_array('files_per_group', len(self.configs), dtype='i')
         pt.shared_arrays['files_per_group'].array = group_counts
 
         pt.shared_arrays['files_per_group'].testing = 0
         if self.tests is not None:
             pt.shared_arrays['files_per_group'].testing = len(test_list)
 
-        number_of_files_per_node = len(self.files)
+        number_of_files_per_node = len(self.configs)
         pt.create_shared_array('number_of_atoms', number_of_files_per_node, dtype='i')
         pt.slice_array('number_of_atoms')
-        self.files = pt.split_within_node(self.files)
+        self.configs = pt.split_within_node(self.configs)
 
     def scrape_configs(self):
         raise NotImplementedError("Call to virtual Scraper.scrape_configs method")

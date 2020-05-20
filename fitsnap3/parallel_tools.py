@@ -172,7 +172,7 @@ class ParallelTools:
 
     @_rank_zero
     def single_print(self, *args, **kw):
-        print(*args)
+        print(*args, flush=True)
 
     @_sub_rank_zero
     def sub_print(self, *args, **kw):
@@ -191,7 +191,7 @@ class ParallelTools:
                 name = kw.get('log_name', method.__name__.upper())
                 kw['log_time'][name] = int((te - ts) * 1000)
             else:
-                print("'{0}' took {1:.2f} ms on rank {2}".format(method.__name__, (te - ts) * 1000, self._rank))
+                print("'{0}' took {1:.2f} ms on rank {2}".format(method.__name__, (te - ts) * 1000, self._rank), flush=True)
             return result
         return timed
 
@@ -204,7 +204,7 @@ class ParallelTools:
                 name = kw.get('log_name', method.__name__.upper())
                 kw['log_time'][name] = int((te - ts) * 1000)
             else:
-                print("'{0}' took {1:.2f} ms on rank {2}".format(method.__name__, (te - ts) * 1000, self._rank))
+                print("'{0}' took {1:.2f} ms on rank {2}".format(method.__name__, (te - ts) * 1000, self._rank), flush=True)
             return result
         return timed
 

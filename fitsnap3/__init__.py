@@ -56,7 +56,7 @@ try:
     pt.single_print("Finished reading input")
     from fitsnap3.io.output import output
 except Exception as e:
-    output.single_print("Trouble reading input, exiting...")
+    pt.single_print("Trouble reading input, exiting...")
     pt.exception(e)
 
 try:

@@ -10,6 +10,7 @@ from fitsnap3.io.sections.path import Path
 from fitsnap3.io.sections.reference import Reference
 from fitsnap3.io.sections.scraper import Scraper
 from fitsnap3.io.sections.solver import Solver
+from fitsnap3.io.sections.groups import Groups
 
 
 def new_section(section, config, args):

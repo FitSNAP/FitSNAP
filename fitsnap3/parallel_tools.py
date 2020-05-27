@@ -44,6 +44,10 @@ except ModuleNotFoundError:
     stubs = 1
 
 
+def printf(*args, **kw):
+    print(*args, flush=True)
+
+
 class GracefulKiller:
 
     def __init__(self, comm, failsafe=False):
@@ -57,8 +61,8 @@ class GracefulKiller:
 
     def exit_gracefully(self, signum, frame):
         if self._rank == 0:
-            print("attempting to exit gracefully", flush=True)
-            print("exiting from exit code", signum, "at", frame, flush=True)
+            printf("attempting to exit gracefully")
+            printf("exiting from exit code", signum, "at", frame)
         if self.failsafe:
             self._comm.Abort()
 
@@ -109,7 +113,7 @@ def stub_check(method):
 
 def print_lammps(method):
     def new_method(*args, **kw):
-        print(*args)
+        printf(*args)
         return method(*args, **kw)
     return new_method
 
@@ -172,14 +176,14 @@ class ParallelTools:
 
     @_rank_zero
     def single_print(self, *args, **kw):
-        print(*args)
+        printf(*args)
 
     @_sub_rank_zero
     def sub_print(self, *args, **kw):
-        print(*args)
+        printf(*args)
 
     def all_print(self, *args, **kw):
-        print("Rank", self._rank, ":", *args)
+        printf("Rank", self._rank, ":", *args)
 
     @_rank_zero_decorator
     def single_timeit(self, method):
@@ -191,7 +195,8 @@ class ParallelTools:
                 name = kw.get('log_name', method.__name__.upper())
                 kw['log_time'][name] = int((te - ts) * 1000)
             else:
-                print("'{0}' took {1:.2f} ms on rank {2}".format(method.__name__, (te - ts) * 1000, self._rank))
+                printf("'{0}' took {1:.2f} ms on rank {2}".format(
+                    method.__name__, (te - ts) * 1000, self._rank))
             return result
         return timed
 
@@ -204,7 +209,8 @@ class ParallelTools:
                 name = kw.get('log_name', method.__name__.upper())
                 kw['log_time'][name] = int((te - ts) * 1000)
             else:
-                print("'{0}' took {1:.2f} ms on rank {2}".format(method.__name__, (te - ts) * 1000, self._rank))
+                printf("'{0}' took {1:.2f} ms on rank {2}".format(
+                    method.__name__, (te - ts) * 1000, self._rank))
             return result
         return timed
 
@@ -385,7 +391,7 @@ class ParallelTools:
         self._comm.Abort()
 
     def exception(self, err):
-        if pt.logger is None:
+        if pt.logger is None and self._rank == 0:
             raise err
 
         pt.close_lammps()
@@ -457,6 +463,22 @@ class StubsArray:
         return self.array.nbytes
 
 
+class Output:
+
+    def __init__(self):
+        self.none = None
+
+    @staticmethod
+    def screen(*args, **kw):
+        pt.single_print(*args, **kw)
+
+    @staticmethod
+    def exception(err):
+        # There is almost never a reason to use this
+        pt.exception(err)
+
+
 if __name__ == "fitsnap3.parallel_tools":
     pt = ParallelTools()
     double_size = MPI.DOUBLE.Get_size()
+    output = Output()

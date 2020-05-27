@@ -56,42 +56,35 @@ try:
     pt.single_print("Finished reading input")
     from fitsnap3.io.output import output
 except Exception as e:
-    pt.single_print("Trouble reading input, exiting...")
-    pt.error(e)
+    output.single_print("Trouble reading input, exiting...")
+    pt.exception(e)
 
 try:
-    pt.single_print("mpi4py version: ", mpi4py.__version__)
+    output.screen("mpi4py version: ", mpi4py.__version__)
 
 except NameError:
     print("No mpi4py detected, using fitsnap stubs...")
 
 try:
     import numpy as np
-    pt.single_print("numpy version: ", np.__version__)
+    output.screen("numpy version: ", np.__version__)
 except Exception as e:
-    pt.single_print("Trouble importing numpy package, exiting...")
-    raise e
+    output.screen("Trouble importing numpy package, exiting...")
+    output.exception(e)
 
 try:
     import scipy as sp
-    pt.single_print("scipy version: ", sp.__version__)
+    output.screen("scipy version: ", sp.__version__)
 except Exception as e:
-    pt.single_print("Trouble importing scipy package, exiting...")
-    raise e
+    output.screen("Trouble importing scipy package, exiting...")
+    output.exception(e)
 
 try:
     import pandas as pd
-    pt.single_print("pandas version: ", pd.__version__)
+    output.screen("pandas version: ", pd.__version__)
 except Exception as e:
-    pt.single_print("Trouble importing pandas package, exiting...")
-    raise e
-
-try:
-    import tqdm
-    pt.single_print("tqdm version: ", tqdm.__version__)
-except Exception as e:
-    pt.single_print("Trouble importing tqdm package, exiting...")
-    raise e
+    output.screen("Trouble importing pandas package, exiting...")
+    output.exception(e)
 
 # try:
 #     import lammps
@@ -99,4 +92,4 @@ except Exception as e:
 # except Exception as e:
 #     print("Trouble importing LAMMPS library, exiting...")
 #     raise e
-pt.single_print("-----------")
+output.screen("-----------")

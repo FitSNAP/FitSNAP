@@ -2,7 +2,7 @@ import configparser
 import argparse
 from pickle import HIGHEST_PROTOCOL
 from fitsnap3.io.sections.section_factory import new_section
-from fitsnap3.parallel_tools import pt
+from fitsnap3.parallel_tools import pt, output
 from os import path, listdir
 
 
@@ -61,9 +61,10 @@ class Config:
     def parse_config(self):
 
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
+        tmp_config.optionxform = str
         tmp_config.read(self.args.infile)
 
-        vprint = pt.single_print if self.args.verbose else lambda *arguments, **kwargs: None
+        vprint = output.screen if self.args.verbose else lambda *arguments, **kwargs: None
         if self.args.keyword_replacements:
             for kwg, kwn, kwv in self.args.keyword_replacements:
                 if kwg not in tmp_config:

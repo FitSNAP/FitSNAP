@@ -23,7 +23,7 @@ class Output:
 
     def screen(self, *args, **kw):
         if self._pscreen:
-            print(*args)
+            print(*args, flush=True)
         elif self._nscreen:
             pt.sub_print(*args, **kw)
         elif self._screen:

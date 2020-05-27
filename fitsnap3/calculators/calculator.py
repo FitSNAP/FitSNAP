@@ -31,8 +31,9 @@ class Calculator:
 
         # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
         a_size = a_len * a_width * double_size
-        output.screen("'a' takes up ", 100 * a_size / pt.get_ram(), "% of the total memory")
-        output.screen("'a' takes up ", 100 * a_size / config.sections["MEMORY"].memory, "% of the total memory")
+        # output.screen("'a' takes up ", 100 * a_size / pt.get_ram(), "% of the total memory")
+        output.screen("'a' takes up ", 100 * a_size / config.sections["MEMORY"].memory,
+                      "% of the total memory", config.sections["MEMORY"].memory*1e-9, "GB of RAM")
         if a_size / pt.get_ram() > 0.5 and not config.sections["MEMORY"].override:
             raise MemoryError("The 'a' matrix is larger than 50% of your RAM. \n Aborting...!")
         elif a_size / pt.get_ram() > 0.5 and config.sections["MEMORY"].override:

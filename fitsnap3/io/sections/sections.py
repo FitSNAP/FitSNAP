@@ -1,4 +1,4 @@
-from fitsnap3.parallel_tools import pt
+from fitsnap3.parallel_tools import pt, output
 from distutils.util import strtobool
 
 
@@ -23,7 +23,7 @@ class Section:
         del self._args
 
     def print_name(self):
-        pt.single_print(self.name)
+        output.screen(self.name)
 
     def get_value(self, section, key, fallback, interpreter="str"):
         if self._args == "verbose" and section.lower() == self.name.lower():
@@ -43,6 +43,11 @@ class Section:
             return convert(fallback)
         else:
             return convert(self._config.get(section, key, fallback=fallback))
+
+    def get_section(self, section):
+        if section not in self._config:
+            return None
+        return self._config.items(section)
 
     @classmethod
     def add_parameter(cls, section, key, fallback, interpreter):

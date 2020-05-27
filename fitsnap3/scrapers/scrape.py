@@ -55,46 +55,46 @@ class Scraper:
         self._init_units()
 
     def scrape_groups(self):
-        self.group_types = {'name': str, 'size': float, 'eweight': float, 'fweight': float, 'vweight': float}
-        group_names = [key for key in self.group_types]
+        self.group_table = config.sections["GROUPS"].group_table
 
-        self.group_table = read_csv(config.sections["PATH"].group_file,
-                                    delim_whitespace=True,
-                                    comment='#',
-                                    skip_blank_lines=True,
-                                    names=group_names,
-                                    index_col=False)
+        for key in self.group_table:
+            testing_size = None
+            if 'size' in self.group_table[key]:
+                testing_size = self.group_table[key]['size']
+            if 'testing_size' in self.group_table[key]:
+                testing_size = self.group_table[key]['size']
+            if 'training_size' in self.group_table[key]:
+                if testing_size < 1:
+                    raise ValueError("Do not set size/testing_size < 1 if training_size is set")
+                training_size = self.group_table[key]['size']
+            else:
+                training_size = 0
+            if testing_size is None:
+                output.error("Please set training size for", key)
 
-        # Remove blank lines ; skip_blank_lines doesn't seem to work.
-        self.group_table = self.group_table.dropna()
-        self.group_table.index = range(len(self.group_table.index))
-
-        # Convert data types
-        self.group_table = self.group_table.astype(dtype=dict(self.group_types))
-
-        for group_info in tqdm(self.group_table.itertuples(),
-                               desc="Groups",
-                               position=0,
-                               total=len(self.group_table),
-                               disable=(not config.args.verbose),
-                               ascii=True):
-            group_name = group_info.name
-            folder = path.join(config.sections["PATH"].datapath, group_name)
+            folder = path.join(config.sections["PATH"].datapath, key)
             folder_files = listdir(folder)
             for file_name in folder_files:
                 if folder not in self.files:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
             shuffle(self.files[folder], pt.get_seed)
-            if group_info.size < 1:
+
+            nfiles = len(folder_files)
+            if testing_size < 1 or training_size != 0:
+                training_size = max(1, int(abs(testing_size) * len(folder_files) - 0.5))
+                output.screen(key, ": Gathering ", nfiles, " fitting on ", training_size)
                 if self.tests is None:
                     self.tests = {}
-                nfiles = len(folder_files)
-                nfiles_train = max(1, int(abs(group_info.size) * len(folder_files) - 0.5))
-                output.screen(group_info.name, ": Gathering ", nfiles, " fitting on ", nfiles_train)
                 self.tests[folder] = []
-                for i in range(nfiles - nfiles_train):
-                    self.tests[folder].append(self.files[folder].pop())
+                if testing_size < 1:
+                    for i in range(nfiles - training_size):
+                        self.tests[folder].append(self.files[folder].pop())
+                else:
+                    for i in range(nfiles - training_size - testing_size):
+                        self.files[folder].pop()
+                    for i in range(testing_size - training_size):
+                        self.tests[folder].append(self.files[folder].pop())
 
             # self.files[folder] = natsorted(self.files[folder])
 

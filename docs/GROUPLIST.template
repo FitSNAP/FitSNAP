@@ -1,25 +1,21 @@
 # This file details the groups of training data that are contained in the jsonPath directory.
-# Each group should be its own subfolder in jsonPath/
+# Each group should be its own subfolder in dataPath/
 # There are a few different allowed syntaxes, subfolder name in the first column is common to all styles.
 #-----------------------------------------------------------------------------------------------
 
-# The first style is used when all files within a training group are parsed and used in the fit.
-# (STR) (INT) (REAL) (REAL) (REAL)
+# The default grouplist format has five columns and is as follows
+# name  size  eweight  fweight  vweight
+# (STR) (REAL) (REAL)  (REAL)   (REAL)
+# The first column is the name of the subfolder with training data
+# The second column defines the number of files to be used in training the fit.
 # The last three columns are real numbers defining the weight vector for all configurations in this group
 NAME_OF_SUBFOLDER NUMBER_OF_FILES ENERGY_WEIGHT FORCE_WEIGHT VIRIAL_WEIGHT
 
-# The second style is used when a subset of files within a training group are parsed and used in the fit.
+# If the second column is a fraction:
 # (STR) (REAL, <=1.0) (REAL) (REAL) (REAL)
-# The second column now defines the fraction of this group to be used in fitting. This will sample at random from the list of files in this group. Using compute_testerrs=true, the remaining training is omitted from the fit, but prediction errors are calculated.
+# The second column now defines the fraction of this group to be used in fitting. This will sample at random from the list of files in this group.
 NAME_OF_SUBFOLDER FRACTION_OF_FILES ENERGY_WEIGHT FORCE_WEIGHT VIRIAL_WEIGHT
 
-# The third style is used when all files within a training group are parsed and used in the fit. But now weights are assigned using a Boltzman wieght.
-# (STR) (INT) (REAL, <0.0) (REAL) (REAL)
-# The third column now defines an energy (per-atom) value where the Boltzman is equal to 1.0, configurations of lower energy are valued more in the fitting (has larger weight), while configurations of higher energy are valued less (has smaller weight).
-# The third column must now be a (REAL < 0.0) in order to trigger this automatic weighting of the training data.
-# Forces and virials are weighted using the Boltzman weight based on energy, times what is defined in the last two columns respectively.
-NAME_OF_SUBFOLDER NUMBER_OF_FILES PER_ATOM_ENERGY FORCE_WEIGHT VIRIAL_WEIGHT
-
-# The fourth style is the combination of styles two and three.
-# (STR) (REAL) (REAL, <0.0) (REAL) (REAL)
-NAME_OF_SUBFOLDER FRACTION_OF_FILES PER_ATOM_ENERGY FORCE_WEIGHT VIRIAL_WEIGHT
+# Other available grouplist columns through the group_sections keyword are:
+# training_size = size or fraction of total files to be used in training
+# testing_size = size or fraction of total files to be used in testing

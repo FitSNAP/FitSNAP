@@ -30,14 +30,20 @@
 # <!-----------------END-HEADER------------------------------------->
 
 from fitsnap3.io.input import config
-from pandas import read_csv
-from tqdm import tqdm
 from os import path, listdir, stat
 import numpy as np
 from random import shuffle
 from fitsnap3.parallel_tools import pt
 from fitsnap3.io.output import output
 # from natsort import natsorted
+
+
+def _float_to_int(a_float):
+    if a_float == 0:
+        return int(a_float)
+    if a_float/int(a_float) != 1:
+        raise ValueError("Training and Testing Size must be interpretable as integers")
+    return int(a_float)
 
 
 class Scraper:
@@ -58,19 +64,21 @@ class Scraper:
         self.group_table = config.sections["GROUPS"].group_table
 
         for key in self.group_table:
-            testing_size = None
+            bc_bool = False
+            training_size = None
             if 'size' in self.group_table[key]:
-                testing_size = self.group_table[key]['size']
-            if 'testing_size' in self.group_table[key]:
-                testing_size = self.group_table[key]['size']
-            if 'training_size' in self.group_table[key]:
-                if testing_size < 1:
-                    raise ValueError("Do not set size/testing_size < 1 if training_size is set")
                 training_size = self.group_table[key]['size']
+                bc_bool = True
+            if 'training_size' in self.group_table[key]:
+                if training_size is not None:
+                    raise ValueError("Do not set both size and training size")
+                training_size = self.group_table[key]['training_size']
+            if 'testing_size' in self.group_table[key]:
+                testing_size = self.group_table[key]['testing_size']
             else:
-                training_size = 0
-            if testing_size is None:
-                output.error("Please set training size for", key)
+                testing_size = 0
+            if training_size is None:
+                raise ValueError("Please set training size for {}".format(key))
 
             folder = path.join(config.sections["PATH"].datapath, key)
             folder_files = listdir(folder)
@@ -81,20 +89,25 @@ class Scraper:
             shuffle(self.files[folder], pt.get_seed)
 
             nfiles = len(folder_files)
-            if testing_size < 1 or training_size != 0:
-                training_size = max(1, int(abs(testing_size) * len(folder_files) - 0.5))
-                output.screen(key, ": Gathering ", nfiles, " fitting on ", training_size)
-                if self.tests is None:
-                    self.tests = {}
-                self.tests[folder] = []
-                if testing_size < 1:
-                    for i in range(nfiles - training_size):
-                        self.tests[folder].append(self.files[folder].pop())
-                else:
-                    for i in range(nfiles - training_size - testing_size):
-                        self.files[folder].pop()
-                    for i in range(testing_size - training_size):
-                        self.tests[folder].append(self.files[folder].pop())
+            if training_size < 1:
+                training_size = max(1, int(abs(training_size) * len(folder_files) - 0.5))
+                if bc_bool and testing_size == 0:
+                    testing_size = nfiles - training_size
+            if testing_size != 0 and testing_size < 1:
+                testing_size = max(1, int(abs(testing_size) * len(folder_files) - 0.5))
+            training_size = _float_to_int(training_size)
+            testing_size = _float_to_int(testing_size)
+            if nfiles-testing_size-training_size < 0:
+                raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
+                    training_size, testing_size, nfiles))
+            output.screen(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
+            if self.tests is None:
+                self.tests = {}
+            self.tests[folder] = []
+            for i in range(nfiles - training_size - testing_size):
+                self.files[folder].pop()
+            for i in range(training_size - testing_size):
+                self.tests[folder].append(self.files[folder].pop())
 
             # self.files[folder] = natsorted(self.files[folder])
 

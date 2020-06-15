@@ -241,6 +241,9 @@ def main():
                 subsystems = (bispec_options["UseEnergies"], bispec_options["UseForces"], bispec_options["UseStresses"])
                 A, b, w = linearfit.make_Abw(configs=configs, offset=offset, tag="Training", return_subsystems=False,
                                              subsystems=subsystems)
+#                A_flat = A.reshape(A.shape[0], -1)
+#                a_avg = np.mean(A_flat,axis=(0,1))
+#                np.savetxt('a_avg.txt',a_avg)
 
             with printdoing("Performing fit"):
                 solver = linearfit.get_solver_fn(**cp["MODEL"])
@@ -288,7 +291,6 @@ def main():
             subsystems = (bispec_options["UseEnergies"], bispec_options["UseForces"], bispec_options["UseStresses"])
             A, b, w = linearfit.make_Abw(configs=test_configs, offset=offset, return_subsystems=False,
                                          subsystems=subsystems)
-
         with printdoing("Measuring training errors"):
             error_metrics = linearfit.group_errors(fit_coeffs,test_configs,bispec_options,
                                                    subsystems=subsystems,tag="Testing")

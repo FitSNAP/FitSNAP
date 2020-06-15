@@ -129,10 +129,9 @@ def make_Abw(configs, offset, return_subsystems=True,subsystems=(True,True,True)
             return submatrices[0]
 #    print(submatrices[0])
     A, b, w = map(np.concatenate,zip(*submatrices))
-
 #    np.save('a.out',A)
 #    np.save('b.out',b)
-    # np.save('w.out',w)
+#    np.save('w.out',w)
     #A_load=np.load('../FitSNAP2/A.out.npy')
     #A=np.reshape(A_fs2,(np.shape(A_fs2)[0],1,np.shape(A_fs2)[1]))
     #b=np.load('../FitSNAP2/b.out.npy')
@@ -309,9 +308,11 @@ def sklearn_model_to_fn(modelcls,**model_kwargs):
     def fitfn(*args,**kwargs):
         model = modelcls(**model_kwargs)
         fit_result = model.fit(*args,**kwargs)
-        print("Rank: ",model.rank_)
-        print("Intercept: ",model.intercept_)
-        print("Singular Values: ",model.singular_)
+#        print("Rank: ",model.rank_)
+#        print("Intercept: ",model.intercept_)
+#        print("Singular Values: ",model.singular_)
+#        print("Condition Number",model.singular_[0]/model.singular_[len(model.singular_)-1])
+#        np.savetxt('SingularValues.txt',model.singular_)
         return model.coef_, model, fit_result
     return fitfn
 

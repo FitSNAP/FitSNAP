@@ -12,6 +12,7 @@
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
+#     Charles Sievers (UC Davis, Sandia National Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
 #
@@ -22,7 +23,6 @@
 #     Gary Saavedra (Sandia National Labs)
 #     Peter Schultz (Sandia National Labs)
 #     Laura Swiler (Sandia National Labs)
-#
 # <!-----------------END-HEADER------------------------------------->
 
 import numpy as np
@@ -33,7 +33,7 @@ def units_conv(styles,bispec_options):
     units_conv["Force"] = 1.0
     units_conv["Stress"] = 1.0
     units_conv["Distance"] = 1.0
-    
+
     if (bispec_options["units"]=="metal" and (list(styles["Stress"])[0]=="kbar" or list(styles["Stress"])[0]=="kB")):
         units_conv["Stress"] = 1000.0
 #   Append other exceptions to unit conversion here

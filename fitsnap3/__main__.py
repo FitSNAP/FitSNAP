@@ -12,6 +12,7 @@
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
+#     Charles Sievers (UC Davis, Sandia National Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
 #
@@ -22,7 +23,6 @@
 #     Gary Saavedra (Sandia National Labs)
 #     Peter Schultz (Sandia National Labs)
 #     Laura Swiler (Sandia National Labs)
-#
 # <!-----------------END-HEADER------------------------------------->
 import sys
 import os

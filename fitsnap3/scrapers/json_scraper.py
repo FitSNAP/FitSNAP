@@ -35,7 +35,7 @@ class Json(Scraper):
                 try:
                     self.data = loads(file.read(), parse_constant=True)
                 except Exception as e:
-                    output.error("Trouble Parsing Training Data: ", file_name)
+                    output.screen("Trouble Parsing Training Data: ", file_name)
                     output.exception(e)
 
                 assert len(self.data) == 1, "More than one object (dataset) is in this file"
@@ -46,11 +46,6 @@ class Json(Scraper):
 
                 self.data['Group'] = file_name.split("/")[-2]
                 self.data['File'] = file_name.split("/")[-1]
-                if self.group_table.isin([self.data['Group']]).any().any():
-                    self.data['GroupIndex'] = \
-                        self.group_table.name[self.group_table.name == self.data['Group']].index.tolist()[0]
-                else:
-                    raise IndexError("{} was not found in dataframe".format(self.data['Group']))
 
                 for sty in self.style_vars:
                     self.styles[sty].add(self.data.pop(sty + "Style", ))
@@ -86,17 +81,19 @@ class Json(Scraper):
                 self._rotate_coords()
                 self._translate_coords()
 
-                if self.group_table['eweight'][self.data['GroupIndex']] >= 0.0:
-                    for wtype in ['eweight', 'fweight', 'vweight']:
-                        self.data[wtype] = self.group_table[wtype][self.data['GroupIndex']]
+                if self.group_table[self.data['Group']]['eweight'] >= 0.0:
+                    for key in self.group_table[self.data['Group']]:
+                        # Do not put the word weight in a group table unless you want to use it as a weight
+                        if 'weight' in key:
+                            self.data[key] = self.group_table[self.data['Group']][key]
                 else:
                     self.data['eweight'] = np.exp(
-                        (self.group_table['eweight'][self.data['GroupIndex']] - self.data["Energy"] /
+                        (self.group_table[self.data['Group']]['eweight'] - self.data["Energy"] /
                          float(natoms)) / (self.kb * float(config.sections["BISPECTRUM"].boltz)))
                     self.data['fweight'] = \
-                        self.data['eweight'] * self.group_table['fweight'][self.data['GroupIndex']]
+                        self.data['eweight'] * self.group_table[self.data['Group']]['fweight']
                     self.data['vweight'] = \
-                        self.data['eweight'] * self.group_table['vweight'][self.data['GroupIndex']]
+                        self.data['eweight'] * self.group_table[self.data['Group']]['vweight']
 
                 self.all_data.append(self.data)
 

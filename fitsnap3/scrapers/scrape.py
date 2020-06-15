@@ -30,14 +30,20 @@
 # <!-----------------END-HEADER------------------------------------->
 
 from fitsnap3.io.input import config
-from pandas import read_csv
-from tqdm import tqdm
 from os import path, listdir, stat
 import numpy as np
 from random import shuffle
 from fitsnap3.parallel_tools import pt
 from fitsnap3.io.output import output
 # from natsort import natsorted
+
+
+def _float_to_int(a_float):
+    if a_float == 0:
+        return int(a_float)
+    if a_float/int(a_float) != 1:
+        raise ValueError("Training and Testing Size must be interpretable as integers")
+    return int(a_float)
 
 
 class Scraper:
@@ -55,46 +61,53 @@ class Scraper:
         self._init_units()
 
     def scrape_groups(self):
-        self.group_types = {'name': str, 'size': float, 'eweight': float, 'fweight': float, 'vweight': float}
-        group_names = [key for key in self.group_types]
+        self.group_table = config.sections["GROUPS"].group_table
 
-        self.group_table = read_csv(config.sections["PATH"].group_file,
-                                    delim_whitespace=True,
-                                    comment='#',
-                                    skip_blank_lines=True,
-                                    names=group_names,
-                                    index_col=False)
+        for key in self.group_table:
+            bc_bool = False
+            training_size = None
+            if 'size' in self.group_table[key]:
+                training_size = self.group_table[key]['size']
+                bc_bool = True
+            if 'training_size' in self.group_table[key]:
+                if training_size is not None:
+                    raise ValueError("Do not set both size and training size")
+                training_size = self.group_table[key]['training_size']
+            if 'testing_size' in self.group_table[key]:
+                testing_size = self.group_table[key]['testing_size']
+            else:
+                testing_size = 0
+            if training_size is None:
+                raise ValueError("Please set training size for {}".format(key))
 
-        # Remove blank lines ; skip_blank_lines doesn't seem to work.
-        self.group_table = self.group_table.dropna()
-        self.group_table.index = range(len(self.group_table.index))
-
-        # Convert data types
-        self.group_table = self.group_table.astype(dtype=dict(self.group_types))
-
-        for group_info in tqdm(self.group_table.itertuples(),
-                               desc="Groups",
-                               position=0,
-                               total=len(self.group_table),
-                               disable=(not config.args.verbose),
-                               ascii=True):
-            group_name = group_info.name
-            folder = path.join(config.sections["PATH"].datapath, group_name)
+            folder = path.join(config.sections["PATH"].datapath, key)
             folder_files = listdir(folder)
             for file_name in folder_files:
                 if folder not in self.files:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
             shuffle(self.files[folder], pt.get_seed)
-            if group_info.size < 1:
-                if self.tests is None:
-                    self.tests = {}
-                nfiles = len(folder_files)
-                nfiles_train = max(1, int(abs(group_info.size) * len(folder_files) - 0.5))
-                output.screen(group_info.name, ": Gathering ", nfiles, " fitting on ", nfiles_train)
-                self.tests[folder] = []
-                for i in range(nfiles - nfiles_train):
-                    self.tests[folder].append(self.files[folder].pop())
+
+            nfiles = len(folder_files)
+            if training_size < 1:
+                training_size = max(1, int(abs(training_size) * len(folder_files) - 0.5))
+                if bc_bool and testing_size == 0:
+                    testing_size = nfiles - training_size
+            if testing_size != 0 and testing_size < 1:
+                testing_size = max(1, int(abs(testing_size) * len(folder_files) - 0.5))
+            training_size = _float_to_int(training_size)
+            testing_size = _float_to_int(testing_size)
+            if nfiles-testing_size-training_size < 0:
+                raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
+                    training_size, testing_size, nfiles))
+            output.screen(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
+            if self.tests is None:
+                self.tests = {}
+            self.tests[folder] = []
+            for i in range(nfiles - training_size - testing_size):
+                self.files[folder].pop()
+            for i in range(training_size - testing_size):
+                self.tests[folder].append(self.files[folder].pop())
 
             # self.files[folder] = natsorted(self.files[folder])
 

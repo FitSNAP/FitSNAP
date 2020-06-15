@@ -12,6 +12,6 @@ class Path(Section):
             working_directory += directory + '/'
         working_directory += paths[-1]
         self.datapath = path.join(working_directory, self.get_value("PATH", "dataPath", "JSON"))
-        self.group_file = path.join(working_directory, self.get_value("PATH", "groupfile", "grouplist.in"))
+        self.group_file = path.join(working_directory, self.get_value("PATH", "groupFile", "grouplist.in"))
         self.smartweights = self.get_value("PATH", "smartweights", "0", "bool")
         self.delete()

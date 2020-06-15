@@ -87,7 +87,6 @@ class Scraper:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
             shuffle(self.files[folder], pt.get_seed)
-
             nfiles = len(folder_files)
             if training_size < 1:
                 training_size = max(1, int(abs(training_size) * len(folder_files) - 0.5))
@@ -106,9 +105,8 @@ class Scraper:
             self.tests[folder] = []
             for i in range(nfiles - training_size - testing_size):
                 self.files[folder].pop()
-            for i in range(training_size - testing_size):
+            for i in range(testing_size):
                 self.tests[folder].append(self.files[folder].pop())
-
             # self.files[folder] = natsorted(self.files[folder])
 
     # TODO : Fix divvy up to distribute groups evenly and based on memory

@@ -105,7 +105,7 @@ class Scraper:
             self.tests[folder] = []
             for i in range(nfiles - training_size - testing_size):
                 self.files[folder].pop()
-            for i in range(nfiles - (training_size - testing_size)):
+            for i in range(testing_size):
                 self.tests[folder].append(self.files[folder].pop())
             # self.files[folder] = natsorted(self.files[folder])
 

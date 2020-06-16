@@ -1,14 +1,19 @@
 ## FitSnap3 Indium Phosphide example
 
 This example will generate a potential for InP as published in 
-Cusentino, M.A. et. al, J. Chem. Phys. ... (2020) ...  This version 
+Cusentino, M.A. et. al, J. Chem. Phys.  (2020).  This version 
 of the Indium Phosphide potential uses the linear version of SNAP.
+This particular example demostrates the Explicit Multi-Element (EME-SNAP)
+version of SNAP where the weighted densities are now broken into
+partial densities based on atom type leading to a better description 
+of chemically complex systems.  This option is denoted by "alloyflag" 
+in the FitSNAP input file.
 
 #### Running this example:
 
 To run this example, use the following command in this directory:
 
-python3 -m fitsnap3 InP-example.in
+mpirun -n 4 python3 -m fitsnap3 InP-example.in
 
 #### Files in this Directory
 
@@ -44,21 +49,23 @@ InP_metrics.csv
 
 Contains a variety of error metrics for all the training groups for this fit.
 
-Note that the 19Nov19_Standard/ directory contains sample output for this example
+Note that the 20Jun20_Standard/ directory contains sample output for this example
 
 
 #### Important input parameters for this example
 
-rcutfac = 1  : Radial cutoff (hyperparameters) chosen for this potential
+rcutfac = 1  : Radial cutoff (hyperparameter) chosen for this potential
 wj1 = 1.0 : Elemental weight on Indium for density expansion
 wj2 = 9.293160905266721e-01 : : Elemental weight on Phosphide for density expansion
-radelem1 = 3.812045629514403e+00 : Indium per-element cutoff
-radelem2 = 3.829453817954964e+00 : Phospide per-element cutoff
+radelem1 = 3.812045629514403e : Indium per-element cutoff
+radelem2 = 3.829453817954964e : Phospide per-element cutoff
 type1 = In : Chemical symbol for element which should match training files in JSON
 type2 = P  : Chemical symbol for element which should match training files in JSON
-eshift = In : -1.65967588701534
-eshift = P  : 4.38159549501534
+eshift = In : -1.65967588701534  : Per atom training data energy shift for In
+eshift = P  : 4.38159549501534 : Per atom training data energy shift for P
 quadraticflag = 0 : Quadratic SNAP is turned off, using linear SNAP
+alloyflag = 1 : Flag to turn on EME-SNAP
+wselfallflag = 1 : Adds wself contribution to the density 
 
 See docs/TEMPLATE.in for further information on input parameters
 
@@ -66,10 +73,13 @@ See docs/TEMPLATE.in for further information on input parameters
 
 The JSON configurations and hyperparameters used for this example are published in:
 
-Thompson, A. P., Swiler, L. P., Trott, C. R., Foiles, S. M., & Tucker, G. J. (2015). 
-Cusentino, M. A., Wood, M. A., & Thompson, A. P. (2020)
-Explicit Multi-element Extension of the Spectral Neighbor Analysis Potential for Chemically Complex Systems. 
-Journal of Chemical Physics, ..., ...
+- Thompson, A.P., et. al.,, Automated algorithms for quantum-level accuracy in
+  atomistic simulations: LDRD final report, Technical Report SAND 2014-17862, Sandia 
+  National Laboratories, Albuquerque, NM, 2014.
+
+- Cusentino, M.A., Wood, M.A., and Thompson, A.P., Explicit Multi-element Extension of 
+  the Spectral Neighbor Analysis Potential for Chemically Complex Systems, J. Chem. 
+  Phys. (2020).
 
 **Note to Developers: Make sure this example still reproduces the same results when modifying code**
 

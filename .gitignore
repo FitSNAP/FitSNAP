@@ -2,11 +2,12 @@
 *.pyc
 
 # ignoring FitSnap3 outputs
-*.lammps
-*.pkl.gz
-*.csv
-*.snapcoeff
-*.snapparam
+#*.lammps
+#*.pkl.gz
+#*.csv
+#*.snapcoeff
+#*.snapparam
+*Errors*
 
 # ignoring intermediate files
 *.swp

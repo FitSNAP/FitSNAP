@@ -19,9 +19,10 @@ P = 4.38159549501534
 
 [CALCULATOR]
 wselfallflag = 1
-alloyflag = 1
+chemflag = 1
 bzeroflag = 1   
 quadraticflag = 0
+bnormflag = 1
 
 [SOLVER]
 solver = SVD	

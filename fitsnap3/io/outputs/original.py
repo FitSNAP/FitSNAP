@@ -28,10 +28,10 @@ class Original(Output):
 
 
 def _to_param_string():
-    if config.sections["CALCULATOR"].alloyflag != 0:
-        alloyflag_int = 1
+    if config.sections["CALCULATOR"].chemflag != 0:
+        chemflag_int = 1
     else:
-        alloyflag_int = 0
+        chemflag_int = 0
     return f"""
     # required
     rcutfac {config.sections["BISPECTRUM"].rcutfac}
@@ -43,7 +43,7 @@ def _to_param_string():
     bzeroflag {config.sections["CALCULATOR"].bzeroflag}
     quadraticflag {config.sections["CALCULATOR"].quadraticflag}
     wselfallflag {config.sections["CALCULATOR"].wselfallflag}
-    alloyflag {alloyflag_int}
+    chemflag {chemflag_int}
     """
 
 

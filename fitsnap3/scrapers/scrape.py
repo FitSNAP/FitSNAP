@@ -61,7 +61,11 @@ class Scraper:
         self._init_units()
 
     def scrape_groups(self):
+        group_dict = {k: config.sections["GROUPS"].group_types[i]
+                      for i, k in enumerate(config.sections["GROUPS"].group_sections)}
         self.group_table = config.sections["GROUPS"].group_table
+        size_type = None
+        testing_size_type = None
 
         for key in self.group_table:
             bc_bool = False
@@ -69,12 +73,15 @@ class Scraper:
             if 'size' in self.group_table[key]:
                 training_size = self.group_table[key]['size']
                 bc_bool = True
+                size_type = group_dict['size']
             if 'training_size' in self.group_table[key]:
                 if training_size is not None:
                     raise ValueError("Do not set both size and training size")
                 training_size = self.group_table[key]['training_size']
+                size_type = group_dict['training_size']
             if 'testing_size' in self.group_table[key]:
                 testing_size = self.group_table[key]['testing_size']
+                testing_size_type = group_dict['testing_size']
             else:
                 testing_size = 0
             if training_size is None:
@@ -88,11 +95,14 @@ class Scraper:
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
             shuffle(self.files[folder], pt.get_seed)
             nfiles = len(folder_files)
-            if training_size < 1:
-                training_size = max(1, int(abs(training_size) * len(folder_files) - 0.5))
+            if training_size < 1 or (training_size == 1 and size_type == float):
+                if training_size == 1:
+                    training_size = abs(training_size) * len(folder_files)
+                else:
+                    training_size = max(1, int(abs(training_size) * len(folder_files) - 0.5))
                 if bc_bool and testing_size == 0:
                     testing_size = nfiles - training_size
-            if testing_size != 0 and testing_size < 1:
+            if testing_size != 0 and (testing_size < 1 or (testing_size == 1 and testing_size_type == float)):
                 testing_size = max(1, int(abs(testing_size) * len(folder_files) - 0.5))
             training_size = _float_to_int(training_size)
             testing_size = _float_to_int(testing_size)

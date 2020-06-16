@@ -14,7 +14,7 @@ class Config:
         self.parse_cmdline()
         self.sections = {}
         self.parse_config()
-        self._reset_alloyflag()
+        self._reset_chemflag()
 
     def parse_cmdline(self):
         parser = argparse.ArgumentParser(prog="FitSNAP3")
@@ -87,13 +87,13 @@ class Config:
                 self.sections[section] = new_section(section, tmp_config, self.args)
         del temp
 
-    def _reset_alloyflag(self):
-        if self.sections["CALCULATOR"].alloyflag != 0:
-            alloyflag = "{}".format(self.sections['BISPECTRUM'].numtypes)
+    def _reset_chemflag(self):
+        if self.sections["CALCULATOR"].chemflag != 0:
+            chemflag = "{}".format(self.sections['BISPECTRUM'].numtypes)
             for element in self.sections["BISPECTRUM"].type_mapping:
                 element_type = self.sections["BISPECTRUM"].type_mapping[element]
-                alloyflag += " {}".format(element_type - 1)
-            self.sections["CALCULATOR"].alloyflag = "{}".format(alloyflag)
+                chemflag += " {}".format(element_type - 1)
+            self.sections["CALCULATOR"].chemflag = "{}".format(chemflag)
 
 
 if __name__ == "fitsnap3.io.input":

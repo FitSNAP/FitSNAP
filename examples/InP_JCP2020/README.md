@@ -49,7 +49,7 @@ InP_metrics.csv
 
 Contains a variety of error metrics for all the training groups for this fit.
 
-Note that the 20June_Standard/ directory contains sample output for this example
+Note that the 20Jun20_Standard/ directory contains sample output for this example
 
 
 #### Important input parameters for this example

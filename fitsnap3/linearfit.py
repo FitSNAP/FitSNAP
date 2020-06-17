@@ -1,28 +1,28 @@
 # <!----------------BEGIN-HEADER------------------------------------>
-# ## FitSNAP3 
+# ## FitSNAP3
 # A Python Package For Training SNAP Interatomic Potentials for use in the LAMMPS molecular dynamics package
-# 
+#
 # _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
 # ##
-# 
-# #### Original author: 
+#
+# #### Original author:
 #     Aidan P. Thompson, athomps (at) sandia (dot) gov (Sandia National Labs)
-#     http://www.cs.sandia.gov/~athomps 
-# 
+#     http://www.cs.sandia.gov/~athomps
+#
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
-# 
-# #### Additional authors (alphabetical): 
+#
+# #### Additional authors (alphabetical):
 #     Elizabeth Decolvenaere (D. E. Shaw Research)
 #     Stan Moore (Sandia National Labs)
 #     Steve Plimpton (Sandia National Labs)
 #     Gary Saavedra (Sandia National Labs)
 #     Peter Schultz (Sandia National Labs)
 #     Laura Swiler (Sandia National Labs)
-#     
+#
 # <!-----------------END-HEADER------------------------------------->
 
 import numpy as np
@@ -108,7 +108,12 @@ def make_Abw(configs, offset, return_subsystems=True,subsystems=(True,True,True)
             return submatrices[0]
 
     A, b, w = map(np.concatenate,zip(*submatrices))
-
+    # np.save('a.out',A)
+    # np.save('b.out',b)
+    # np.save('w.out',w)
+    #A_load=np.load('../FitSNAP2/A.out.npy')
+    #A=np.reshape(A_fs2,(np.shape(A_fs2)[0],1,np.shape(A_fs2)[1]))
+    #b=np.load('../FitSNAP2/b.out.npy')
     if return_subsystems:
         return ((A, b, w), *submatrices)
     return A,b,w
@@ -244,25 +249,6 @@ def group_errors(x, configs,bispec_options,subsystems=(True,True,True)):
                 error_record["Subsystem"] = gtype
                 error_record["Weighting"] = wtype
                 all_records.append(error_record)
-                if bispec_options["compute_testerrs"] and (wtype=="Weighted"):
-                    # Special Case of weighted vector for Training Set
-                    A,b,_ = subsys
-                    for i in range(len(w)):
-                        if w[i]>0.0:w[i]=1.0
-                        else:w[i]=0.0
-                    error_record = get_error_metrics(x, A,b,w)
-                    error_record["Group"] = gname
-                    error_record["Subsystem"] = gtype
-                    error_record["Weighting"] = "CVTrain_Unweight"
-                    all_records.append(error_record)
-                    # Special Case of weighted vector for Test Set
-                    A,b,_ = subsys
-                    w=abs(1-w)# w=0.0 for fitted training, =1.0 for test
-                    error_record = get_error_metrics(x, A,b,w)
-                    error_record["Group"] = gname
-                    error_record["Subsystem"] = gtype
-                    error_record["Weighting"] = "CVTest_Unweight"
-                    all_records.append(error_record)
 
     all_records = pd.DataFrame.from_records(all_records)
     all_records = all_records.set_index(["Group", "Weighting", "Subsystem", ]).sort_index()
@@ -289,6 +275,7 @@ def get_solver_fn(solver,normweight=None,normratio=None,**kwargs):
     if normratio is not None: normratio = float(normratio)
     solver_fndict = {
         "SVD": sp.linalg.lstsq,
+        #sklearn_model_to_fn(skl.linear_model.LinearRegression,),
         "LASSO":
             sklearn_model_to_fn(skl.linear_model.Lasso,
                                 alpha=normweight,max_iter=1E6,fit_intercept=False),

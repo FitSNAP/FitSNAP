@@ -2,6 +2,7 @@
 # FitSNAP3 input file. Each keyword can only be used within the category to which it belongs. 
 # The categories are as follows:
 #  [BISPECTRUM]   SNAP potential options
+#  [ESHIFT]       SNAP element-wise energy shifts
 #  [MODEL]        SNAP fitting options
 #  [PATH]         locations of training data and meta-data
 #  [OUTFILE]      output options
@@ -31,7 +32,17 @@ type1 = Ta         # (STR)  Chemical symbol for this element, has to match JSON 
 type2 = W          # (STR)    type keywords with integer suffixes 1 to numTypes
 BOLTZT = 1000      # (REAL) Advanced Feature. Use a Boltzmann weighting to training at this temperature
 
+[ESHIFT]
+In = -1.6596758870 # (REAL) DFT energy shift per atom of first element type
+P = 4.381595495015 # (REAL) DFT energy shift per atom of second element type
+X = 3.242342234233 # (REAL) DFT energy shift per atom of third element type
+.   .              #   .     .
+.   .              #   .     .
+i = 2.342342342344 # (REAL) DFT energy shift per atom of ith element type
+
 [MODEL]
+alloyflag = 0        # (BOOL) Use multi-element bispectrum components
+wselfallflag = 0     # (BOOL) Add wself to all element labelings
 bzeroflag = 0	     # (BOOL) Subtract vacuum bispectrum, so isolated atoms have energy=0
 quadraticflag = 0    # (BOOL) Include quadratic terms in SNAP energy model
 solver = SVD	     # (STR)  Linear solver algorithm used (SVD, LASSO, RIDGE, ELASTIC allowed)
@@ -43,6 +54,7 @@ compute_testerrs = 0 # (BOOL) If less than the full training set is used in fitt
 [PATH]
 jsonPath = JSON          # (STR) Path to the training data JSON directory
 groupFile = grouplist.in # (STR) Path to the training data metadata file
+smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.  If no grouplist is specified, smartweights will automatically be used.
 
 [OUTFILE]
 metrics = newsnap_metrics.csv    # (STR) Overall errors and broken down by group, weighting, and variable type.

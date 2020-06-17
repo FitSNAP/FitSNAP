@@ -1,28 +1,28 @@
 # <!----------------BEGIN-HEADER------------------------------------>
-# ## FitSNAP3 
+# ## FitSNAP3
 # A Python Package For Training SNAP Interatomic Potentials for use in the LAMMPS molecular dynamics package
-# 
+#
 # _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
 # ##
-# 
-# #### Original author: 
+#
+# #### Original author:
 #     Aidan P. Thompson, athomps (at) sandia (dot) gov (Sandia National Labs)
-#     http://www.cs.sandia.gov/~athomps 
-# 
+#     http://www.cs.sandia.gov/~athomps
+#
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
-# 
-# #### Additional authors (alphabetical): 
+#
+# #### Additional authors (alphabetical):
 #     Elizabeth Decolvenaere (D. E. Shaw Research)
 #     Stan Moore (Sandia National Labs)
 #     Steve Plimpton (Sandia National Labs)
 #     Gary Saavedra (Sandia National Labs)
 #     Peter Schultz (Sandia National Labs)
 #     Laura Swiler (Sandia National Labs)
-#     
+#
 # <!-----------------END-HEADER------------------------------------->
 import sys
 import os
@@ -70,6 +70,8 @@ def parse_cmdline():
                         help="""Replace or add input keyword group GROUP, key NAME,
                         with value VALUE. Type carefully; a misspelled key name or value
                         may be silently ignored.""")
+    parser.add_argument("--mpi", action="store_true", dest="mpi",
+                        help="Use MPI for parallelizing lammps (control number of workers with --jobs argument)")
 
     args = parser.parse_args()
 
@@ -93,7 +95,8 @@ def get_filenames(base_path,allow_exists,configs=None,metrics=None,potential=Non
 
     fnameinfo ={
         "config":(configfile,'b'),
-        "metrics":(metricfile,'t'),
+        "metrics_train":(metricfile + '_train','t'),
+        "metrics_test":(metricfile + '_test','t'),
         "snapparam":(potentialname and potentialname + '.snapparam','t'),  # Keeps None if already None
         "snapcoeff":(potentialname and potentialname + '.snapcoeff','t'),
     }
@@ -169,17 +172,27 @@ def main():
                         **cp["OUTFILE"]
     )
 
+    # Check that lammps can open, and whether it has exception handling enabled.
+    deploy.check_lammps(args.lammps_noexceptions)
+
     bispec_options = bispecopt.read_bispec_options(cp["BISPECTRUM"],cp["MODEL"],cp["REFERENCE"])
     vprint("Bispectrum options:") #Sorted.
     for k,v in sorted(bispec_options.items(), key=lambda kv:kv[0]):
-        if k == "bnames": continue
+        if k == "bnames": continue # Informing the user about the individual bispectrum names is not helpful.
         vprint(f"{k:>16} : {v}")
 
     # Set fallback values if not found in input file
     bispec_options["BOLTZT"] = cp.get("BISPECTRUM","BOLTZT",fallback='10000')
-    bispec_options["compute_testerrs"] = strtobool(cp.get("MODEL","compute_testerrs",fallback=0))
+    bispec_options["compute_testerrs"] = cp.get("MODEL","compute_testerrs",fallback=0)
+    bispec_options["smartweights"] = strtobool(cp.get("PATH","smartweights",fallback='0'))
     bispec_options["units"] = cp.get("REFERENCE","units",fallback='metal').lower()
     bispec_options["atom_style"] = cp.get("REFERENCE","atom_style",fallback='atomic').lower()
+    bispec_options["wselfallflag"] = cp.get("MODEL","wselfallflag",fallback='0')
+
+    if "ESHIFT" in cp:
+        bispec_options["eshift"] = {}
+        for element in cp["ESHIFT"]:
+            bispec_options["eshift"][element.capitalize()] = float(cp["ESHIFT"][element])
 
     lmp_pairdecl = []
     lmp_pairdecl.append("pair_style "+excp.get("REFERENCE","pair_style",fallback='zero 10.0'))
@@ -189,24 +202,30 @@ def main():
 
     bispec_options["pair_func"] = lmp_pairdecl
     bispec_options["verbosity"] = args.verbose
-    #print(bispec_options)
     #Get group info
     group_file = cp.get("PATH","groupFile",fallback='grouplist.in')
     group_file = os.path.join(base_path, group_file)
-    group_table = scrape.read_groups(group_file)
-    vprint("Group table:")
-    vprint(group_table)
+    if ( bispec_options["smartweights"] ) or ( ( not bispec_options["smartweights"] ) and  ( not os.path.exists(group_file) ) ):
+        if not os.path.exists(group_file):
+            print("WARNING: No grouplist file specified.")
+        json_directory = cp["PATH"]["jsonPath"]
+        group_table = scrape.create_smartweights_grouplist(base_path,json_directory)
+
+    else:
+         group_table = scrape.read_groups(group_file)
+         vprint("Group table:")
+         vprint(group_table)
 
     with printdoing("Scraping Configurations",end='\n'):
         json_directory = cp["PATH"]["jsonPath"]
         json_directory = os.path.join(base_path, json_directory)
-        configs,style_info = scrape.read_configs(json_directory, group_table,bispec_options)
+        configs,test_configs,style_info = scrape.read_configs(json_directory, group_table,bispec_options)
 
-    deploy.check_lammps(args.lammps_noexceptions)
-    with printdoing("Computing bispectrum data",end='\n'):
+    with printdoing("Computing training bispectrum data",end='\n'):
         configs = deploy.compute_bispec_datasets(configs,
                                                         bispec_options,
                                                         n_procs=args.jobs,
+                                                        mpi=args.mpi,
                                                         log=args.lammpslog)
         configs = serialize.pack(configs)
 
@@ -223,19 +242,24 @@ def main():
                 solver = linearfit.get_solver_fn(**cp["MODEL"])
                 fit_coeffs, solver_info = linearfit.solve_linear_snap(A,b,w, solver=solver, offset=offset)
 
-            with printdoing("Measuring errors"):
+            with printdoing("Measuring training errors"):
                 error_metrics = linearfit.group_errors(fit_coeffs,configs,bispec_options,subsystems=subsystems)
                 configs.update(linearfit.get_residuals(fit_coeffs,configs,subsystems=subsystems))
+            print("Units for reported errors:")
+            if bispec_options["units"]=="real":
+                print("Energy(kcal/mol), Force(kcal/mol-Angstrom), Pressure(atm)")
+            if bispec_options["units"]=="metal":
+                print("Energy(eV/atom), Force(eV/Angstrom), Pressure(bar)")
 
             if args.verbose:
                 print_error_summary(error_metrics)
 
-            with optional_write(*fnameinfo["metrics"]) as file:
-                error_metrics.to_csv(file)
             with optional_write(*fnameinfo["snapparam"]) as file:
                 file.write(serialize.to_param_string(**bispec_options))
             with optional_write(*fnameinfo["snapcoeff"]) as file:
                 file.write(serialize.to_coeff_string(fit_coeffs, bispec_options))
+            with optional_write(*fnameinfo["metrics_train"]) as file:
+                error_metrics.to_csv(file)
 
     except Exception as e:
         print("Fitting interrupted! Attempting to save computed data.",file=sys.stderr)
@@ -244,7 +268,28 @@ def main():
         save_dict = {"configs": configs,"bispec_otions": bispec_options,"styles": style_info}
 #        with optional_write(*fnameinfo["config"]) as pfile:
 #            pickle.dump(save_dict, pfile, protocol=pickle.DEFAULT_PROTOCOL)
+    if float(bispec_options["compute_testerrs"]) > 0:
 
+        test_configs = deploy.compute_bispec_datasets(test_configs,
+                                                    bispec_options,
+                                                    n_procs=args.jobs,
+                                                    mpi=args.mpi,
+                                                    log=args.lammpslog)
+        test_configs = serialize.pack(test_configs)
+
+        with printdoing("Assembling linear system"):
+            offset = not bispec_options["bzeroflag"]
+            subsystems = (True,True,True) if bispec_options["compute_dbvb"] else (True,False,False)
+            A, b, w = linearfit.make_Abw(configs=test_configs, offset=offset, return_subsystems=False,subsystems=subsystems)
+
+        with printdoing("Measuring training errors"):
+            error_metrics = linearfit.group_errors(fit_coeffs,test_configs,bispec_options,subsystems=subsystems)
+            test_configs.update(linearfit.get_residuals(fit_coeffs,test_configs,subsystems=subsystems))
+        if args.verbose:
+            print_error_summary(error_metrics)
+
+        with optional_write(*fnameinfo["metrics_test"]) as file:
+            error_metrics.to_csv(file)
     return
 
 if __name__ == "__main__":

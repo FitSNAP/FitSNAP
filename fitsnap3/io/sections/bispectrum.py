@@ -39,7 +39,7 @@ class Bispectrum(Section):
                     if j >= j1:
                         i += 1
                         self.blist.append([i, j1, j2, j])
-        if self.get_value("CALCULATOR", "alloyflag", "0", "bool"):
+        if self.get_value("CALCULATOR", "chemflag", "0", "bool"):
             self.blist *= self.numtypes ** 3
             self.blist = np.array(self.blist).tolist()
         if self.get_value("CALCULATOR", "quadraticflag", "0", "bool"):

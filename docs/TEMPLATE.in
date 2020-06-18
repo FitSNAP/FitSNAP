@@ -41,7 +41,8 @@ calculator = LAMMPSSNAP # (STR)  Calculator used to produce set of linear equati
 energy = 1              # (BOOL) Use energies in fitting
 force = 1               # (BOOL) Use energies in fitting
 stress = 1              # (BOOL) Use energies in fitting
-alloyflag = 0           # (BOOL) Use multi-element bispectrum components
+chemflag = 0            # (BOOL) Use multi-element bispectrum components
+bnormflag = 0           # (BOOL) Produce bispectrum coefficients prenormalized by j
 wselfallflag = 0        # (BOOL) Add wself to all element labelings
 bzeroflag = 0	        # (BOOL) Subtract vacuum bispectrum, so isolated atoms have energy=0
 quadraticflag = 0       # (BOOL) Include quadratic terms in SNAP energy model

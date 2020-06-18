@@ -64,7 +64,8 @@ type2 = P  : Chemical symbol for element which should match training files in JS
 eshift = In : -1.65967588701534  : Per atom training data energy shift for In
 eshift = P  : 4.38159549501534 : Per atom training data energy shift for P
 quadraticflag = 0 : Quadratic SNAP is turned off, using linear SNAP
-alloyflag = 1 : Flag to turn on EME-SNAP
+chemflag = 1 : Flag to turn on EME-SNAP
+bnormflag = 1 : Flag to turn on normalization of j indices (speeds up MD runs)
 wselfallflag = 1 : Adds wself contribution to the density 
 
 See docs/TEMPLATE.in for further information on input parameters

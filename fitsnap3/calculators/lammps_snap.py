@@ -110,13 +110,14 @@ class LammpsSnap(Calculator):
                 "bzeroflag": "bzeroflag",
                 "quadraticflag": "quadraticflag",
                 "switchflag": "switchflag",
-                "alloyflag": "alloyflag",
+                "chem": "chemflag",
+                "bnormflag": "bnormflag",
                 "wselfallflag": "wselfallflag",
             }.items()
             if v in config.sections["CALCULATOR"].__dict__
         }
-        if kw_options["alloyflag"] == 0:
-            kw_options.pop("alloyflag")
+        if kw_options["chem"] == 0:
+            kw_options.pop("chem")
         kw_options["rmin0"] = config.sections["BISPECTRUM"].rmin0
         kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
         kwargs = " ".join(kw_substrings)

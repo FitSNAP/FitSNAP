@@ -5,7 +5,7 @@ class Model(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.alloyflag = self.get_value("MODEL", "alloyflag", "0", "bool")
+        self.chemflag = self.get_value("MODEL", "chemflag", "0", "bool")
         self.wselfallflag = self.get_value("MODEL", "wselfallflag", "0", "bool")
         self.bzeroflag = self.get_value("MODEL", "bzeroflag", "0", "bool")
         self.quadraticflag = self.get_value("MODEL", "quadraticflag", "0", "bool")

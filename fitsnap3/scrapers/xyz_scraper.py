@@ -299,7 +299,6 @@ class XYZ(Scraper):
         group_dict = {k: config.sections["GROUPS"].group_types[i]
                       for i, k in enumerate(config.sections["GROUPS"].group_sections)}
         self.group_table = config.sections["GROUPS"].group_table
-        pt.single_print(self.group_table)
         size_type = None
         testing_size_type = None
 
@@ -395,7 +394,7 @@ class XYZ(Scraper):
                     data = _read_xyz_frame(file, num_atoms)
                     self.data = data
 
-                    self.data['AtomNumbers'] = num_atoms
+                    self.data['NumAtoms'] = num_atoms
 
                     self.data['Group'] = filename.split("/")[-2]
                     self.data['File'] = filename.split("/")[-1]
@@ -406,7 +405,7 @@ class XYZ(Scraper):
                         else:
                             self.styles[sty].add(self.default_style_vars[j])
 
-                    pt.shared_arrays["number_of_atoms"].sliced_array[i] = self.data['AtomNumbers']
+                    pt.shared_arrays["number_of_atoms"].sliced_array[i] = self.data['NumAtoms']
 
                     self.data["QMLattice"] = self.data["Lattice"]
                     del self.data["Lattice"]  # We will populate this with the lammps-normalized lattice.
@@ -429,20 +428,22 @@ class XYZ(Scraper):
                     self._rotate_coords()
                     self._translate_coords()
 
-                    if self.group_table['eweight'][self.data['GroupIndex']] >= 0.0:
-                        for wtype in ['eweight', 'fweight', 'vweight']:
-                            self.data[wtype] = self.group_table[wtype][self.data['GroupIndex']]
+                    if self.group_table[self.data['Group']]['eweight'] >= 0.0:
+                        for key in self.group_table[self.data['Group']]:
+                            # Do not put the word weight in a group table unless you want to use it as a weight
+                            if 'weight' in key:
+                                self.data[key] = self.group_table[self.data['Group']][key]
                     else:
                         self.data['eweight'] = np.exp(
-                            (self.group_table['eweight'][self.data['GroupIndex']] - self.data["Energy"] /
+                            (self.group_table[self.data['Group']]['eweight'] - self.data["Energy"] /
                              float(num_atoms)) / (self.kb * float(config.sections["BISPECTRUM"].boltz)))
                         self.data['fweight'] = \
-                            self.data['eweight'] * self.group_table['fweight'][self.data['GroupIndex']]
+                            self.data['eweight'] * self.group_table[self.data['Group']]['fweight']
                         self.data['vweight'] = \
-                            self.data['eweight'] * self.group_table['vweight'][self.data['GroupIndex']]
+                            self.data['eweight'] * self.group_table[self.data['Group']]['vweight']
 
                     self.all_data.append(self.data)
-        exit(0)
+
         for style_name, style_set in self.styles.items():
             assert len(style_set) == 1, "Multiple styles ({}) for {}".format(len(style_set), style_name)
 

@@ -1,6 +1,7 @@
 """Groups Class"""
 from fitsnap3.io.sections.sections import Section, output
 from pandas import read_csv
+from os import path
 
 
 def _str_2_fun(some_list):
@@ -41,8 +42,9 @@ class Groups(Section):
             self.group_table[k] = {self.group_sections[i+1]: self.group_types[i+1](item) for i, item in enumerate(v)}
 
     def read_group_file(self):
+        working_directory = self._get_working_directory()
         group_types = {self.group_sections[i]: item for i, item in enumerate(self.group_types)}
-        group_table = read_csv(self.get_value("PATH", "groupFile", "None"),
+        group_table = read_csv(path.join(working_directory, self.get_value("PATH", "groupFile", "grouplist.in")),
                                delim_whitespace=True,
                                comment='#',
                                skip_blank_lines=True,

@@ -1,5 +1,6 @@
 from fitsnap3.parallel_tools import pt, output
 from distutils.util import strtobool
+from os import getcwd
 
 
 class Section:
@@ -48,6 +49,14 @@ class Section:
         if section not in self._config:
             return None
         return self._config.items(section)
+
+    def _get_working_directory(self):
+        paths = getcwd().split('/') + self._args.infile.split('/')[:-1]
+        working_directory = ''
+        for directory in paths[:-1]:
+            working_directory += directory + '/'
+        working_directory += paths[-1]
+        return working_directory
 
     @classmethod
     def add_parameter(cls, section, key, fallback, interpreter):

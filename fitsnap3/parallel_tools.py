@@ -35,6 +35,7 @@ from lammps import lammps
 from random import random
 from psutil import virtual_memory
 from itertools import chain
+import ctypes
 import signal
 try:
     # stubs = 0 MPI is active
@@ -320,7 +321,7 @@ class ParallelTools:
         self.shared_arrays[name].group_force_index = []
         self.shared_arrays[name].group_stress_index = []
         count = [0]
-        for i, value in enumerate(self.shared_arrays['files_per_group'].array):
+        for i, value in enumerate(self.shared_arrays['configs_per_group'].array):
             count.append(count[i]+value)
         j = 0
         e_temp = []
@@ -480,5 +481,8 @@ class Output:
 
 if __name__ == "fitsnap3.parallel_tools":
     pt = ParallelTools()
-    double_size = MPI.DOUBLE.Get_size()
+    if stubs == 0:
+        double_size = MPI.DOUBLE.Get_size()
+    else:
+        double_size = ctypes.sizeof(ctypes.c_double)
     output = Output()

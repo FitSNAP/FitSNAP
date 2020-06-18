@@ -38,14 +38,6 @@ from fitsnap3.io.output import output
 # from natsort import natsorted
 
 
-def _float_to_int(a_float):
-    if a_float == 0:
-        return int(a_float)
-    if a_float/int(a_float) != 1:
-        raise ValueError("Training and Testing Size must be interpretable as integers")
-    return int(a_float)
-
-
 class Scraper:
 
     def __init__(self, name):
@@ -104,8 +96,8 @@ class Scraper:
                     testing_size = nfiles - training_size
             if testing_size != 0 and (testing_size < 1 or (testing_size == 1 and testing_size_type == float)):
                 testing_size = max(1, int(abs(testing_size) * len(folder_files) - 0.5))
-            training_size = _float_to_int(training_size)
-            testing_size = _float_to_int(testing_size)
+            training_size = self._float_to_int(training_size)
+            testing_size = self._float_to_int(testing_size)
             if nfiles-testing_size-training_size < 0:
                 raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
                     training_size, testing_size, nfiles))
@@ -152,15 +144,15 @@ class Scraper:
         for i, group in enumerate(group_set+group_test):
             group_counts[i] = groups.count(group)
 
-        pt.create_shared_array('files_per_group', len(self.configs), dtype='i')
-        pt.shared_arrays['files_per_group'].array = group_counts
+        pt.create_shared_array('configs_per_group', len(self.configs), dtype='i')
+        pt.shared_arrays['configs_per_group'].array = group_counts
 
-        pt.shared_arrays['files_per_group'].testing = 0
+        pt.shared_arrays['configs_per_group'].testing = 0
         if self.tests is not None:
-            pt.shared_arrays['files_per_group'].testing = len(test_list)
+            pt.shared_arrays['configs_per_group'].testing = len(test_list)
 
-        number_of_files_per_node = len(self.configs)
-        pt.create_shared_array('number_of_atoms', number_of_files_per_node, dtype='i')
+        number_of_configs_per_node = len(self.configs)
+        pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
         pt.slice_array('number_of_atoms')
         self.configs = pt.split_within_node(self.configs)
 
@@ -246,6 +238,14 @@ class Scraper:
         if (config.sections["REFERENCE"].units == "metal" and
                 list(styles["Stress"])[0] == "kbar" or list(styles["Stress"])[0] == "kB"):
             self.convert["Stress"] = 1000.0
+
+    @staticmethod
+    def _float_to_int(a_float):
+        if a_float == 0:
+            return int(a_float)
+        if a_float / int(a_float) != 1:
+            raise ValueError("Training and Testing Size must be interpretable as integers")
+        return int(a_float)
 
     # def check_coords(self, cell, pos1, pos2):
     #     """Compares position 1 and position 2 with respect to periodic boundaries defined by cell"""

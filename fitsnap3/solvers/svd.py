@@ -10,8 +10,8 @@ class SVD(Solver):
         super().__init__(name)
 
     def perform_fit(self):
-        if pt.shared_arrays['files_per_group'].testing != 0:
-            testing = -1*pt.shared_arrays['files_per_group'].testing
+        if pt.shared_arrays['configs_per_group'].testing != 0:
+            testing = -1*pt.shared_arrays['configs_per_group'].testing
         else:
             testing = len(pt.shared_arrays['w'].array)
         w = pt.shared_arrays['w'].array[:testing]

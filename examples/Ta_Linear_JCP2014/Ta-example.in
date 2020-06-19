@@ -19,7 +19,7 @@ normweight = -12
 normratio = 0.5
 test_fraction = 0
 detailed_errors = 1
-lammps_validation = 0
+lammps_validation = 1
 
 UseEnergies = 1
 UseForces = 1

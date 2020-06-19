@@ -302,11 +302,14 @@ def main():
             error_metrics.to_csv(file)
 
     if bispec_options["lammps_validation"]:
+        coeff_string = ''
+        for i, k in enumerate(bispec_options["type"]):
+            coeff_string +=( k + ' ')
         lmp_pairdecl = []
         lmp_pairdecl.append("pair_style snap")
-        lmp_pairdecl.append("pair_coeff * * Ta_pot.snapcoeff Ta_pot.snapparam Ta ")
+        lmp_pairdecl.append("pair_coeff * * %s %s %s " % ([*fnameinfo["snapcoeff"]][0], [*fnameinfo["snapparam"]][0], coeff_string))
         bispec_options["pair_func"] = lmp_pairdecl
-
+        configs,test_configs,style_info = scrape.read_configs(json_directory, group_table,bispec_options)
         with printdoing("Computing validation bispectrum data", end='\n'):
             valid_configs = deploy.compute_bispec_datasets(configs,
                                                      bispec_options,

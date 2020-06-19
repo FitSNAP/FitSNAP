@@ -111,7 +111,7 @@ def to_param_string(rcutfac,twojmax,rfac0,rmin0,bzeroflag,quadraticflag,wselfall
 
 def to_coeff_string(coeffs,bispec_options):
     """
-    Convert a set of coefficients along with bispec options into a .snapparam file
+    Convert a set of coefficients along with bispec options into a .snapcoeff file
     """
     coeff_names = [[0]]+bispec_options["bnames"] # Includes the offset term, which was not in bnames
     type_names = bispec_options["type"]

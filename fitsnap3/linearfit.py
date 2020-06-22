@@ -287,7 +287,8 @@ def group_errors(x, configs,bispec_options,subsystems=(True,True,True),tag=""):
                 if bispec_options["detailed_errors"] and wtype=="Unweighted" and gtype!="Combined":
                     true, pred = get_full_error_metrics(x, A,b,w)
                     f=open("%s_%s_%s_FullErrors.txt"%(gname,gtype,tag),"w")
-                    output = '\n'.join('\t'.join(map(str, row)) for row in zip(true, pred))
+                    output = "# Predicted\t\tTrue\t\t\tError = Predicted - True\n"
+                    output += '\n'.join('\t'.join(map(str, row+tuple([row[0]-row[1]]))) for row in zip(pred, true))
                     f.write(output)
                     f.close()
 

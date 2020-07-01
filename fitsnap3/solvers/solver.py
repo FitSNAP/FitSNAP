@@ -70,7 +70,10 @@ class Solver:
 
     def _force(self):
         num_forces = np.array(pt.shared_arrays['a'].num_atoms)*3
-        testing = -1 * np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:])
+        if pt.shared_arrays['configs_per_group'].testing:
+            testing = -1 * np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:])
+        else:
+            testing = 0
         a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
         self._errors([[0, testing]], ['*ALL'], "Force", a, b, w)
         if testing != 0:

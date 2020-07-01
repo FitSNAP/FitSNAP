@@ -18,6 +18,7 @@ class Solver:
         self.a = None
         self.b = None
         self.w = None
+        self.testing = 0
 
     def perform_fit(self):
         pass
@@ -64,27 +65,30 @@ class Solver:
         a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
         self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
         if testing != 0:
+            self.testing += testing
             self._errors([[testing, 0]], ['*ALL'], "Energy_testing", a, b, w)
 
     def _force(self):
-        testing = -1 * pt.shared_arrays['configs_per_group'].testing
-        a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, pt.shared_arrays['a'].num_atoms)
+        num_forces = np.array(pt.shared_arrays['a'].num_atoms)*3
+        testing = -1 * np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:])
+        a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
         self._errors([[0, testing]], ['*ALL'], "Force", a, b, w)
         if testing != 0:
+            self.testing += testing
             self._errors([[testing, 0]], ['*ALL'], "Force_testing", a, b, w)
 
     def _stress(self):
-        testing = -1 * pt.shared_arrays['configs_per_group'].testing
+        testing = -6 * pt.shared_arrays['configs_per_group'].testing
         a, b, w = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
         self._errors([[0, testing]], ['*ALL'], "Stress", a, b, w)
         if testing != 0:
+            self.testing += testing
             self._errors([[testing, 0]], ['*ALL'], "Stress_testing", a, b, w)
 
     @staticmethod
     def _make_abw(type_index, buffer):
         if isinstance(buffer, list):
             length = sum(buffer)
-            length *= 3
         else:
             length = len(type_index) * buffer
         width = np.shape(pt.shared_arrays['a'].array)[1]
@@ -94,7 +98,7 @@ class Solver:
         i = 0
         for j, value in enumerate(type_index):
             if isinstance(buffer, list):
-                spacing = buffer[j]*3
+                spacing = buffer[j]
             else:
                 spacing = buffer
             a[i:i+spacing] = pt.shared_arrays['a'].array[value:value+spacing]
@@ -104,10 +108,9 @@ class Solver:
         return a, b, w
 
     def _combined(self):
-        testing = -1 * pt.shared_arrays['configs_per_group'].testing
-        self._errors([[0, testing]], ["*ALL"], "Combined")
-        if testing != 0:
-            self._errors([[testing, 0]], ['*ALL'], "Combined_testing")
+        self._errors([[0, self.testing]], ["*ALL"], "Combined")
+        if self.testing != 0:
+            self._errors([[self.testing, 0]], ['*ALL'], "Combined_testing")
 
     def _group_error(self, data):
         groups = []

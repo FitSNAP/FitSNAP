@@ -390,9 +390,16 @@ class XYZ(Scraper):
         for folder_num, folder in enumerate(self.files):
             filename = self.files[folder][0]
             with open(filename) as file:
-                for i, starting_line in enumerate(self.configs):
+                for i, configuration in enumerate(self.configs):
+                    if configuration[1] != folder:
+                        continue
+                    starting_line = configuration[0]
                     file.seek(starting_line)
-                    num_atoms = int(file.readline())
+                    try:
+                        num_atoms = int(file.readline())
+                    except ValueError:
+                        file.seek(starting_line)
+                        raise ValueError("bad frame: error at {}".format(file.readline()))
                     file.seek(starting_line)
                     file.readline()
 

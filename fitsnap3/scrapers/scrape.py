@@ -122,7 +122,7 @@ class Scraper:
                 if isinstance(configuration, list):
                     temp_list.append(configuration[0])
                 else:
-                    temp_list.append(configuration)
+                    temp_list.append([configuration, folder])
                 groups.append(folder)
 
         self.configs = temp_list
@@ -130,11 +130,11 @@ class Scraper:
 
         if self.tests is not None:
             for i, folder in enumerate(self.tests):
-                for file in self.tests[folder]:
+                for configuration in self.tests[folder]:
                     if isinstance(configuration, list):
-                        test_list.append(file[0])
+                        test_list.append(configuration[0])
                     else:
-                        test_list.append(configuration)
+                        test_list.append([configuration, folder])
                     group_list.append(folder)
             test_list = pt.split_by_node(test_list)
             self.configs += test_list
@@ -144,8 +144,10 @@ class Scraper:
         group_test = sorted(set(group_list))
         group_set = sorted(set(groups))
         group_counts = np.zeros((len(group_set) + len(group_test),), dtype='i')
-        for i, group in enumerate(group_set+group_test):
+        for i, group in enumerate(group_set):
             group_counts[i] = groups.count(group)
+        for i, group in enumerate(group_test):
+            group_counts[i+len(group_set)] = group_list.count(group)
 
         pt.create_shared_array('configs_per_group', len(self.configs), dtype='i')
         pt.shared_arrays['configs_per_group'].array = group_counts

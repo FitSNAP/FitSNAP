@@ -265,6 +265,9 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict, nvec=0
     if 'force' in arrays:
         data['Forces'] = arrays['force']
         del arrays['force']
+    elif 'forces' in arrays:
+        data['Forces'] = arrays['forces']
+        del arrays['forces']
 
     if 'energy' in info:
         data['Energy'] = info['energy']
@@ -301,6 +304,7 @@ class XYZ(Scraper):
         self.group_table = config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
+        folder_files = listdir(config.sections["PATH"].datapath)
 
         for key in self.group_table:
             bc_bool = False
@@ -322,25 +326,28 @@ class XYZ(Scraper):
             if training_size is None:
                 raise ValueError("Please set training size for {}".format(key))
 
-            folder = path.join(config.sections["PATH"].datapath, key)
-            folder_files = listdir(folder)
-            for file_name in folder_files:
-                if folder not in self.files:
-                    self.files[folder] = []
-                    self.configs[folder] = []
-                if "xyz" in file_name:
-                    self.files[folder].append(folder + '/' + file_name)
+            file_base = path.join(config.sections["PATH"].datapath, key)
 
-            if len(self.files[folder]) > 1:
-                raise IndexError("Too many xyz files in folder {}".format(folder))
-            if len(self.files[folder]) < 1:
-                raise IndexError("Too few xyz files in folder {}".format(folder))
+            if file_base.split('/')[-1] + ".extxyz" in folder_files:
+                file_name = file_base + ".extxyz"
+            elif file_base.split('/')[-1] + ".xyz" in folder_files:
+                file_name = file_base + ".xyz"
+            else:
+                raise FileNotFoundError("{}.xyz not found in {}".format(file_base, config.sections["PATH"].datapath))
+
+            if file_base + '.xyz' not in self.files or file_base + '.extxyz':
+                self.files[file_base] = []
+                self.configs[file_base] = []
+            else:
+                raise FileExistsError("{} was already found".format(file_base))
+
+            self.files[file_base].append(file_name)
 
             try:
-                with open(self.files[folder][0], 'r') as fp:
+                with open(self.files[file_base][0], 'r') as fp:
                     lines = fp.readlines()
                     fp.seek(0)
-                    self.configs[folder].append(0)
+                    self.configs[file_base].append(0)
                     count = lines[0]
                     line_number = 0
                     while True:
@@ -348,18 +355,18 @@ class XYZ(Scraper):
                         line_number += update
                         for i in range(update):
                             fp.readline()
-                        self.configs[folder].append(fp.tell())
+                        self.configs[file_base].append(fp.tell())
                         count = lines[line_number]
             except IndexError:
-                self.configs[folder].pop(-1)
+                self.configs[file_base].pop(-1)
 
-            shuffle(self.configs[folder], pt.get_seed)
-            nconfigs = len(self.configs[folder])
+            shuffle(self.configs[file_base], pt.get_seed)
+            nconfigs = len(self.configs[file_base])
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:
                     training_size = abs(training_size) * nconfigs
                 else:
-                    training_size = max(1, int(abs(training_size) * len(folder_files) - 0.5))
+                    training_size = max(1, int(abs(training_size) * nconfigs - 0.5))
                 if bc_bool and testing_size == 0:
                     testing_size = nconfigs - training_size
             if testing_size != 0 and (testing_size < 1 or (testing_size == 1 and testing_size_type == float)):
@@ -372,20 +379,18 @@ class XYZ(Scraper):
             output.screen(key, ": Detected ", nconfigs, " fitting on ", training_size, " testing on ", testing_size)
             if self.tests is None:
                 self.tests = {}
-            self.tests[folder] = []
+            self.tests[file_base] = []
             for i in range(nconfigs - training_size - testing_size):
-                self.configs[folder].pop()
+                self.configs[file_base].pop()
             for i in range(testing_size):
-                self.tests[folder].append(self.configs[folder].pop())
+                self.tests[file_base].append(self.configs[file_base].pop())
             # self.files[folder] = natsorted(self.files[folder])
 
     def scrape_configs(self):
         for folder_num, folder in enumerate(self.files):
-            config_num = pt.shared_arrays['configs_per_group'].array[folder_num]
             filename = self.files[folder][0]
             with open(filename) as file:
-                for i in range(config_num):
-                    starting_line = self.configs[i]
+                for i, starting_line in enumerate(self.configs):
                     file.seek(starting_line)
                     num_atoms = int(file.readline())
                     file.seek(starting_line)
@@ -396,7 +401,7 @@ class XYZ(Scraper):
 
                     self.data['NumAtoms'] = num_atoms
 
-                    self.data['Group'] = filename.split("/")[-2]
+                    self.data['Group'] = ".".join(filename.split("/")[-1].split(".")[:-1])
                     self.data['File'] = filename.split("/")[-1]
 
                     for j, sty in enumerate(self.style_vars):
@@ -422,8 +427,11 @@ class XYZ(Scraper):
                     self.data["Energy"] *= self.convert["Energy"]
 
                     if hasattr(config.sections["ESHIFT"], 'eshift'):
-                        for atom in self.data["AtomTypes"]:
-                            self.data["Energy"] += config.sections["ESHIFT"].eshift[atom]
+                        try:
+                            for atom in self.data["AtomTypes"]:
+                                self.data["Energy"] += config.sections["ESHIFT"].eshift[atom]
+                        except KeyError:
+                            raise KeyError("{} not found in atom types".format(atom))
 
                     self._rotate_coords()
                     self._translate_coords()

@@ -131,7 +131,10 @@ class Scraper:
         if self.tests is not None:
             for i, folder in enumerate(self.tests):
                 for file in self.tests[folder]:
-                    test_list.append(file[0])
+                    if isinstance(configuration, list):
+                        test_list.append(file[0])
+                    else:
+                        test_list.append(configuration)
                     group_list.append(folder)
             test_list = pt.split_by_node(test_list)
             self.configs += test_list
@@ -201,8 +204,10 @@ class Scraper:
         # Stress transforms on both the first and second axis.
         self.data["Lattice"] = out_cell
         self.data["Positions"] = self.data["Positions"] * self.convert["Distance"] @ rot.T
-        self.data["Forces"] = self.data["Forces"] * self.convert["Force"] @ rot.T
-        self.data["Stress"] = rot @ (self.data["Stress"] * self.convert["Stress"]) @ rot.T
+        if config.sections["CALCULATOR"].force:
+            self.data["Forces"] = self.data["Forces"] * self.convert["Force"] @ rot.T
+        if config.sections["CALCULATOR"].stress:
+            self.data["Stress"] = rot @ (self.data["Stress"] * self.convert["Stress"]) @ rot.T
         self.data["Rotation"] = rot
 
     def _translate_coords(self):

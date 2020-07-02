@@ -5,6 +5,7 @@ from os import getcwd
 
 class Section:
     parameters = []
+    relative_directory = None
 
     def __init__(self, name, config, args):
         self.name = name
@@ -50,14 +51,21 @@ class Section:
             return None
         return self._config.items(section)
 
-    def _get_working_directory(self):
-        paths = getcwd().split('/') + self._args.infile.split('/')[:-1]
-        working_directory = ''
-        for directory in paths[:-1]:
-            working_directory += directory + '/'
-        working_directory += paths[-1]
-        return working_directory
-
     @classmethod
     def add_parameter(cls, section, key, fallback, interpreter):
         cls.parameters.append([section, key, fallback, interpreter])
+
+    @classmethod
+    def _get_relative_directory(cls, self):
+        if cls.relative_directory is None:
+            cls._set_relative_directory(self)
+        return cls.relative_directory
+
+    @classmethod
+    def _set_working_directory(cls, self):
+        paths = getcwd().split('/') + self._args.infile.split('/')[:-1]
+        relative_directory = ''
+        for directory in paths[:-1]:
+            relative_directory += directory + '/'
+        relative_directory += paths[-1]
+        cls.working_directory = relative_directory

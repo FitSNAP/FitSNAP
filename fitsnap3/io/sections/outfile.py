@@ -22,7 +22,7 @@ class Outfile(Section):
 
     def _check_relative(self):
         if self._args.relative:
-            self.base_path, _ = path.split(self._args.infile)
+            self.base_path = self._get_relative_directory(self)
         else:
             self.base_path = None
 

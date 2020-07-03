@@ -16,4 +16,6 @@ class SVD(Solver):
             testing = len(pt.shared_arrays['w'].array)
         w = pt.shared_arrays['w'].array[:testing]
         aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[:testing], w * pt.shared_arrays['b'].array[:testing]
+        bw = aw.T@bw
+        aw = aw.T@aw
         self.fit, residues, rank, s = lstsq(aw, bw, 1.0e-13)

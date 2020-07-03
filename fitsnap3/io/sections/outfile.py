@@ -12,17 +12,14 @@ class Outfile(Section):
         self.delete()
 
     def _outfile(self):
-        self.config_file = self.get_value("OUTFILE", "configs", "fitsnap_configs.pkl.gz")
-        self._check_path(self.config_file)
-        self.metric_file = self.get_value("OUTFILE", "metrics", "fitsnap_metrics.csv")
-        self._check_path(self.metric_file)
-        self.potential_name = self.get_value("OUTFILE", "potential", "fitsnap_potential")
-        self._check_path(self.potential_name)
+        self.config_file = self._check_path(self.get_value("OUTFILE", "configs", "fitsnap_configs.pkl.gz"))
+        self.metric_file = self._check_path(self.get_value("OUTFILE", "metrics", "fitsnap_metrics.csv"))
+        self.potential_name = self._check_path(self.get_value("OUTFILE", "potential", "fitsnap_potential"))
         return
 
     def _check_relative(self):
         if self._args.relative:
-            self.base_path, _ = path.split(self._args.infile)
+            self.base_path = self._get_relative_directory(self)
         else:
             self.base_path = None
 
@@ -35,5 +32,6 @@ class Outfile(Section):
             return name
         names = [name, name + '.snapparam', name + '.snapcoeff']
         for element in names:
-            if self._args.overwrite and path.exists(element):
+            if not self._args.overwrite and path.exists(element):
                 raise FileExistsError(f"File {element} already exists.")
+        return name

@@ -62,10 +62,10 @@ class Section:
         return cls.relative_directory
 
     @classmethod
-    def _set_working_directory(cls, self):
+    def _set_relative_directory(cls, self):
         paths = getcwd().split('/') + self._args.infile.split('/')[:-1]
         relative_directory = ''
         for directory in paths[:-1]:
             relative_directory += directory + '/'
         relative_directory += paths[-1]
-        cls.working_directory = relative_directory
+        cls.relative_directory = relative_directory

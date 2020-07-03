@@ -42,9 +42,9 @@ class Groups(Section):
             self.group_table[k] = {self.group_sections[i+1]: self.group_types[i+1](item) for i, item in enumerate(v)}
 
     def read_group_file(self):
-        working_directory = self._get_working_directory(self)
+        relative_directory = self._get_relative_directory(self)
         group_types = {self.group_sections[i]: item for i, item in enumerate(self.group_types)}
-        group_table = read_csv(path.join(working_directory, self.get_value("PATH", "groupFile", "grouplist.in")),
+        group_table = read_csv(path.join(relative_directory, self.get_value("PATH", "groupFile", "grouplist.in")),
                                delim_whitespace=True,
                                comment='#',
                                skip_blank_lines=True,

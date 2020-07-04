@@ -14,6 +14,7 @@ class LammpsSnap(Calculator):
         self._data = {}
         self._i = 0
         self._lmp = None
+        pt.check_lammps()
 
     def create_a(self):
         super().create_a()

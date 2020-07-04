@@ -281,6 +281,18 @@ class ParallelTools:
         else:
             raise TypeError("Parallel tools cannot split {} within node.".format(obj))
 
+    def check_lammps(self, lammps_noexceptions=0):
+        cmds = ["-screen", "none", "-log", "none"]
+        if stubs == 0:
+            self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
+        else:
+            self._lmp = lammps(cmdargs=cmds)
+
+        if not (self._lmp.has_exceptions or lammps_noexceptions):
+            raise Exception("Fitting interrupted! LAMMPS not compiled with C++ exceptions handling enabled")
+        self._lmp.close()
+        self._lmp = None
+
     def initialize_lammps(self, lammpslog=0, printlammps=0):
         cmds = ["-screen", "none"]
         if not lammpslog:

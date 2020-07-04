@@ -411,7 +411,8 @@ class ParallelTools:
         if self._rank == 0:
             self.logger.exception(err)
         sleep(5)
-        self.abort()
+        if self._comm is not None:
+            self.abort()
 
 
 class SharedArray:

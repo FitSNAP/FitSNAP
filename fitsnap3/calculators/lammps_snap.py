@@ -20,16 +20,27 @@ class LammpsSnap(Calculator):
         super().create_a()
 
     def process_configs(self, data, i):
-        self._data = data
-        self._i = i
-        self._initialize_lammps()
-        self._prepare_lammps()
-        self._run_lammps()
-        self._collect_lammps()
-        self._lmp = pt.close_lammps()
+        try:
+            self._data = data
+            self._i = i
+            self._initialize_lammps()
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps()
+            self._lmp = pt.close_lammps()
+        except Exception as e:
+            if config.args.printlammps:
+                self._data = data
+                self._i = i
+                self._initialize_lammps(1)
+                self._prepare_lammps()
+                self._run_lammps()
+                self._collect_lammps()
+                self._lmp = pt.close_lammps()
+            raise e
 
-    def _initialize_lammps(self):
-        self._lmp = pt.initialize_lammps(config.args.lammpslog, config.args.printlammps)
+    def _initialize_lammps(self, printlammps=0):
+        self._lmp = pt.initialize_lammps(config.args.lammpslog, printlammps)
 
     def _prepare_lammps(self):
         self._lmp.command("clear")

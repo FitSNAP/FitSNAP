@@ -51,10 +51,10 @@ def printf(*args, **kw):
 
 class GracefulKiller:
 
-    def __init__(self, comm, failsafe=False):
+    def __init__(self, comm):
         self._comm = comm
         self._rank = 0
-        self.failsafe = failsafe
+        self.failsafe = False
         if self._comm is not None:
             self._rank = self._comm.Get_rank()
             signal.signal(signal.SIGINT, self.exit_gracefully)
@@ -63,9 +63,9 @@ class GracefulKiller:
     def exit_gracefully(self, signum, frame):
         if self._rank == 0:
             printf("attempting to exit gracefully")
-            printf("exiting from exit code", signum, "at", frame)
         if self.failsafe:
             self._comm.Abort()
+        raise SystemError("exiting from exit code", signum, "at", frame)
 
 
 def _rank_zero(method):

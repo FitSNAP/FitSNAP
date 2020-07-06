@@ -1,7 +1,5 @@
-from fitsnap3.scrapers.scrape import Scraper
-from fitsnap3.scrapers.template_scraper import Template
-from fitsnap3.scrapers.json_scraper import Json
-# from fitsnap3.scrapers.xyz_scraper import XYZ
+from fitsnap3.scrapers.scrape import Scraper, pt
+pt.get_subclasses(__name__, __file__, Scraper)
 
 
 def scraper(scraper_name):

@@ -37,6 +37,9 @@ from psutil import virtual_memory
 from itertools import chain
 import ctypes
 import signal
+from inspect import isclass
+from pkgutil import iter_modules
+from importlib import import_module
 try:
     # stubs = 0 MPI is active
     stubs = 0
@@ -400,6 +403,25 @@ class ParallelTools:
             self.logger.exception(err)
         sleep(5)
         self.abort()
+
+    # Where The Object Oriented Magic Happens
+    # from files in this_file's directory import subclass of this_class
+    @staticmethod
+    def get_subclasses(this_name, this_file, this_class):
+        # Reset Path cls to remove old cls paths
+        from pathlib import Path
+
+        name = this_name.split('.')
+        package_dir = Path(this_file).resolve().parent
+        for (_, module_name, c) in iter_modules([package_dir]):
+            if module_name != name[-1] and module_name != name[-2]:
+                module = import_module(f"{'.'.join(name[:-1])}.{module_name}")
+                for attribute_name in dir(module):
+                    attribute = getattr(module, attribute_name)
+
+                    if isclass(attribute) and issubclass(attribute, this_class) and attribute is not this_class:
+                        # Add the class to this package's variables
+                        globals()[attribute_name] = attribute
 
 
 class SharedArray:

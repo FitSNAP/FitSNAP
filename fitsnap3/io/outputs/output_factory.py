@@ -1,6 +1,5 @@
-from fitsnap3.io.outputs.outputs import Output
-from fitsnap3.io.outputs.template_output import Template
-from fitsnap3.io.outputs.original import Original
+from fitsnap3.io.outputs.outputs import Output, pt
+pt.get_subclasses(__name__, __file__, Output)
 
 
 def output_factory(output_name):

@@ -11,4 +11,5 @@ class Solver(Section):
         self.compute_dbvb = self.get_value("SOLVER", "compute_dbvb", "0", "bool")
         self.compute_testerrs = self.get_value("SOLVER", "compute_testerrs", "0", "bool")
         self.multinode_testing = self.get_value("SOLVER", "multinode_testing", "0", "bool")
+        self.apply_transpose = self.get_value("SOLVER", "apply_transpose", "0", "bool")
         self.delete()

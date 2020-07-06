@@ -37,7 +37,7 @@ class Calculator:
         if a_size / pt.get_ram() > 0.5 and not config.sections["MEMORY"].override:
             raise MemoryError("The 'a' matrix is larger than 50% of your RAM. \n Aborting...!")
         elif a_size / pt.get_ram() > 0.5 and config.sections["MEMORY"].override:
-            output.screen("Warning: I hope you know what your are doing!")
+            output.screen("Warning: I hope you know what you are doing!")
 
         pt.create_shared_array('a', a_len, a_width)
         pt.create_shared_array('b', a_len)

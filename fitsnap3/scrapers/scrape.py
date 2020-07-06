@@ -38,14 +38,6 @@ from fitsnap3.io.output import output
 # from natsort import natsorted
 
 
-def _float_to_int(a_float):
-    if a_float == 0:
-        return int(a_float)
-    if a_float/int(a_float) != 1:
-        raise ValueError("Training and Testing Size must be interpretable as integers")
-    return int(a_float)
-
-
 class Scraper:
 
     def __init__(self, name):
@@ -104,8 +96,8 @@ class Scraper:
                     testing_size = nfiles - training_size
             if testing_size != 0 and (testing_size < 1 or (testing_size == 1 and testing_size_type == float)):
                 testing_size = max(1, int(abs(testing_size) * len(folder_files) - 0.5))
-            training_size = _float_to_int(training_size)
-            testing_size = _float_to_int(testing_size)
+            training_size = self._float_to_int(training_size)
+            testing_size = self._float_to_int(testing_size)
             if nfiles-testing_size-training_size < 0:
                 raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
                     training_size, testing_size, nfiles))
@@ -130,7 +122,7 @@ class Scraper:
                 if isinstance(configuration, list):
                     temp_list.append(configuration[0])
                 else:
-                    temp_list.append(configuration)
+                    temp_list.append([configuration, folder])
                 groups.append(folder)
 
         self.configs = temp_list
@@ -138,8 +130,11 @@ class Scraper:
 
         if self.tests is not None:
             for i, folder in enumerate(self.tests):
-                for file in self.tests[folder]:
-                    test_list.append(file[0])
+                for configuration in self.tests[folder]:
+                    if isinstance(configuration, list):
+                        test_list.append(configuration[0])
+                    else:
+                        test_list.append([configuration, folder])
                     group_list.append(folder)
             test_list = pt.split_by_node(test_list)
             self.configs += test_list
@@ -149,18 +144,20 @@ class Scraper:
         group_test = sorted(set(group_list))
         group_set = sorted(set(groups))
         group_counts = np.zeros((len(group_set) + len(group_test),), dtype='i')
-        for i, group in enumerate(group_set+group_test):
+        for i, group in enumerate(group_set):
             group_counts[i] = groups.count(group)
+        for i, group in enumerate(group_test):
+            group_counts[i+len(group_set)] = group_list.count(group)
 
-        pt.create_shared_array('files_per_group', len(self.configs), dtype='i')
-        pt.shared_arrays['files_per_group'].array = group_counts
+        pt.create_shared_array('configs_per_group', len(self.configs), dtype='i')
+        pt.shared_arrays['configs_per_group'].array = group_counts
 
-        pt.shared_arrays['files_per_group'].testing = 0
+        pt.shared_arrays['configs_per_group'].testing = 0
         if self.tests is not None:
-            pt.shared_arrays['files_per_group'].testing = len(test_list)
+            pt.shared_arrays['configs_per_group'].testing = len(test_list)
 
-        number_of_files_per_node = len(self.configs)
-        pt.create_shared_array('number_of_atoms', number_of_files_per_node, dtype='i')
+        number_of_configs_per_node = len(self.configs)
+        pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
         pt.slice_array('number_of_atoms')
         self.configs = pt.split_within_node(self.configs)
 
@@ -209,8 +206,10 @@ class Scraper:
         # Stress transforms on both the first and second axis.
         self.data["Lattice"] = out_cell
         self.data["Positions"] = self.data["Positions"] * self.convert["Distance"] @ rot.T
-        self.data["Forces"] = self.data["Forces"] * self.convert["Force"] @ rot.T
-        self.data["Stress"] = rot @ (self.data["Stress"] * self.convert["Stress"]) @ rot.T
+        if config.sections["CALCULATOR"].force:
+            self.data["Forces"] = self.data["Forces"] * self.convert["Force"] @ rot.T
+        if config.sections["CALCULATOR"].stress:
+            self.data["Stress"] = rot @ (self.data["Stress"] * self.convert["Stress"]) @ rot.T
         self.data["Rotation"] = rot
 
     def _translate_coords(self):
@@ -246,6 +245,14 @@ class Scraper:
         if (config.sections["REFERENCE"].units == "metal" and
                 list(styles["Stress"])[0] == "kbar" or list(styles["Stress"])[0] == "kB"):
             self.convert["Stress"] = 1000.0
+
+    @staticmethod
+    def _float_to_int(a_float):
+        if a_float == 0:
+            return int(a_float)
+        if a_float / int(a_float) != 1:
+            raise ValueError("Training and Testing Size must be interpretable as integers")
+        return int(a_float)
 
     # def check_coords(self, cell, pos1, pos2):
     #     """Compares position 1 and position 2 with respect to periodic boundaries defined by cell"""

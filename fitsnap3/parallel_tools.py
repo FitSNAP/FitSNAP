@@ -321,7 +321,7 @@ class ParallelTools:
         self.shared_arrays[name].group_force_index = []
         self.shared_arrays[name].group_stress_index = []
         count = [0]
-        for i, value in enumerate(self.shared_arrays['files_per_group'].array):
+        for i, value in enumerate(self.shared_arrays['configs_per_group'].array):
             count.append(count[i]+value)
         j = 0
         e_temp = []

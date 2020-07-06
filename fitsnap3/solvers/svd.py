@@ -17,7 +17,11 @@ class SVD(Solver):
             testing = len(pt.shared_arrays['w'].array)
         w = pt.shared_arrays['w'].array[:testing]
         aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[:testing], w * pt.shared_arrays['b'].array[:testing]
-        # Transpose method does not work with Quadratic SNAP (why?)
+#        Transpose method does not work with Quadratic SNAP (why?)
+#        We need to revisit this preconditioning of the linear problem, we can make this a bit more elegant. 
+#        Since this breaks some examples this will stay as a 'secret' feature. 
+#        Need to chat with some mathy people on how we can profile A and find good preconditioners. 
+#        Will help when we want to try gradient based linear solvers as well. 
         if config.sections['SOLVER'].apply_transpose:
             bw = aw.T@bw
             aw = aw.T@aw

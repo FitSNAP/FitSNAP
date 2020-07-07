@@ -52,12 +52,18 @@ def printf(*args, **kw):
     print(*args, flush=True)
 
 
+class GracefulError(BaseException):
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+
 class GracefulKiller:
 
     def __init__(self, comm):
         self._comm = comm
         self._rank = 0
-        self.failsafe = False
+        self.already_killed = False
         if self._comm is not None:
             self._rank = self._comm.Get_rank()
             signal.signal(signal.SIGINT, self.exit_gracefully)
@@ -66,9 +72,9 @@ class GracefulKiller:
     def exit_gracefully(self, signum, frame):
         if self._rank == 0:
             printf("attempting to exit gracefully")
-        if self.failsafe:
+        if self.already_killed:
             self._comm.Abort()
-        raise SystemError("exiting from exit code", signum, "at", frame)
+        raise GracefulError("exiting from exit code", signum, "at", frame)
 
 
 def _rank_zero(method):
@@ -140,7 +146,7 @@ class ParallelTools:
             self._node_index = 0
             self._number_of_nodes = 1
 
-        killer = GracefulKiller(self._comm)
+        self.killer = GracefulKiller(self._comm)
 
         self._comm_split()
         self._lmp = None
@@ -407,12 +413,15 @@ class ParallelTools:
         self._comm.Abort()
 
     def exception(self, err):
+        self.killer.already_killed = True
+
         if pt.logger is None and self._rank == 0:
             raise err
 
         pt.close_lammps()
         if self._rank == 0:
             self.logger.exception(err)
+
         sleep(5)
         if self._comm is not None:
             self.abort()

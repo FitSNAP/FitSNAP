@@ -299,6 +299,20 @@ class XYZ(Scraper):
         self.style_info = {}
 
     def scrape_groups(self):
+        if config.sections["SCRAPER"].save_group_scrape != "None":
+            save_file = config.sections["PATH"].relative_directory + '/' + config.sections["SCRAPER"].save_group_scrape
+            if pt.get_rank() == 0:
+                with open(save_file, 'w') as fp:
+                    fp.write('')
+        else:
+            save_file = None
+        if config.sections["SCRAPER"].read_group_scrape != "None":
+            if config.sections["SCRAPER"].save_group_scrape != "None":
+                raise RuntimeError("Do not set both reading and writing of group_scrape")
+            read_file = config.sections["PATH"].relative_directory + '/' + config.sections["SCRAPER"].read_group_scrape
+        else:
+            read_file = None
+
         group_dict = {k: config.sections["GROUPS"].group_types[i]
                       for i, k in enumerate(config.sections["GROUPS"].group_sections)}
         self.group_table = config.sections["GROUPS"].group_table
@@ -343,22 +357,37 @@ class XYZ(Scraper):
 
             self.files[file_base].append(file_name)
 
-            try:
-                with open(self.files[file_base][0], 'r') as fp:
-                    lines = fp.readlines()
-                    fp.seek(0)
-                    self.configs[file_base].append(0)
-                    count = lines[0]
-                    line_number = 0
-                    while True:
-                        update = int(count) + 2
-                        line_number += update
-                        for i in range(update):
-                            fp.readline()
-                        self.configs[file_base].append(fp.tell())
-                        count = lines[line_number]
-            except IndexError:
-                self.configs[file_base].pop(-1)
+            if config.sections["SCRAPER"].read_group_scrape != "None":
+                with open(read_file, 'r') as fp:
+                    for line in fp:
+                        split_line = line.split()
+                        if split_line[0] == file_base:
+                            for element in split_line[1:]:
+                                self.configs[file_base].append(int(element))
+            else:
+                try:
+                    with open(self.files[file_base][0], 'r') as fp:
+                        lines = fp.readlines()
+                        fp.seek(0)
+                        self.configs[file_base].append(0)
+                        count = lines[0]
+                        line_number = 0
+                        while True:
+                            update = int(count) + 2
+                            line_number += update
+                            for i in range(update):
+                                fp.readline()
+                            self.configs[file_base].append(fp.tell())
+                            count = lines[line_number]
+                except IndexError:
+                    self.configs[file_base].pop(-1)
+            if config.sections["SCRAPER"].save_group_scrape != "None":
+                if pt.get_rank() == 0:
+                    with open(save_file, 'a') as fp:
+                        fp.write("{}".format(file_base))
+                        for item in self.configs[file_base]:
+                            fp.write(" {}".format(item))
+                        fp.write("\n")
 
             shuffle(self.configs[file_base], pt.get_seed)
             nconfigs = len(self.configs[file_base])

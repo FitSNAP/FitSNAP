@@ -72,7 +72,7 @@ def create_smartweights_grouplist(base_path,json_directory):
                 try:
                     data = json.loads(file.read(),parse_constant=True)
                 except Exception as e:
-                     print("Trouble Parsing Training Data: ",fname)
+                     print("Trouble Parsing Training Data: ",json_path)
                      raise e
                 current_num_atoms = float(data['Dataset']['Data'][0]['NumAtoms'])
                 num_atoms_group += current_num_atoms

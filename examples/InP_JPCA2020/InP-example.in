@@ -22,6 +22,9 @@ bnormflag = 1
 bzeroflag = 1   
 quadraticflag = 0
 
+[SCRAPER]
+scraper = JSON
+
 [SOLVER]
 solver = SVD
 

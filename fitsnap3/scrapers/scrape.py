@@ -139,10 +139,10 @@ class Scraper:
             test_list = pt.split_by_node(test_list)
             self.configs += test_list
 
-        groups = pt.split_by_node(groups)
-        group_list = pt.split_by_node(group_list)
-        group_test = sorted(set(group_list))
-        group_set = sorted(set(groups))
+        # groups = pt.split_by_node(groups)
+        # group_list = pt.split_by_node(group_list)
+        group_test = list(dict.fromkeys(group_list))
+        group_set = list(dict.fromkeys(groups))
         group_counts = np.zeros((len(group_set) + len(group_test),), dtype='i')
         for i, group in enumerate(group_set):
             group_counts[i] = groups.count(group)

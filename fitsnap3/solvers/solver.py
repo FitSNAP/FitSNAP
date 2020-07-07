@@ -36,11 +36,11 @@ class Solver:
         else:
             self.fit = np.insert(self.fit, 0, 0)
 
-    def error_analysis(self, data):
+    def error_analysis(self):
         for option in ["Unweighted", "Weighted"]:
             self.weighted = option
             self._all_error()
-            self._group_error(data)
+            self._group_error()
 
         if self.template_error is True:
             self._template_error()
@@ -115,15 +115,10 @@ class Solver:
         if self.testing != 0:
             self._errors([[self.testing, 0]], ['*ALL'], "Combined_testing")
 
-    def _group_error(self, data):
+    def _group_error(self):
         groups = []
-        testing = len(data)-pt.shared_arrays['configs_per_group'].testing
-        for i, file in enumerate(data):
-            if i < testing:
-                groups.append(file["Group"])
-            else:
-                groups.append(file["Group"]+'_Testing')
-        groups = sorted(set(groups))
+        for group in config.sections["GROUPS"].group_table:
+            groups.append(group)
         if config.sections["CALCULATOR"].energy:
             self._group_energy(groups)
         if config.sections["CALCULATOR"].force:

@@ -10,6 +10,8 @@ radelem1 = 3.812045629514403
 radelem2 = 3.829453817954964
 type1 = In
 type2 = P
+eshift = In : -1.65967588701534, P : 4.38159549501534
+BOLTZT = 1000
 
 [ESHIFT]
 In = -1.65967588701534
@@ -17,12 +19,15 @@ P = 4.38159549501534
 
 [CALCULATOR]
 wselfallflag = 1
-alloyflag = 1
+chemflag = 1
+bnormflag = 1
 bzeroflag = 1   
 quadraticflag = 0
 
 [SOLVER]
 solver = SVD	
+normweight = -12
+normratio = 0.5
 compute_dbvb = 1
 compute_testerrs = 0
 

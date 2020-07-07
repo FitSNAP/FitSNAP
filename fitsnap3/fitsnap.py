@@ -63,7 +63,7 @@ class FitSnap:
     def perform_fit(self):
         self.solver.perform_fit()
         self.solver.fit_gather()
-        self.solver.error_analysis(self.data)
+        self.solver.error_analysis()
 
     @pt.single_timeit
     def write_output(self):

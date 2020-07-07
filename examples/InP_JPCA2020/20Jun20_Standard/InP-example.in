@@ -17,14 +17,13 @@ P = 4.38159549501534
 
 [CALCULATOR]
 wselfallflag = 1
-alloyflag = 1
+chemflag = 1
+bnormflag = 1
 bzeroflag = 1   
 quadraticflag = 0
 
 [SOLVER]
-solver = SVD	
-compute_dbvb = 1
-compute_testerrs = 0
+solver = SVD
 
 [PATH]
 jsonPath = ./JSON

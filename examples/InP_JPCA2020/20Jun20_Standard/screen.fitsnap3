@@ -8,10 +8,10 @@
 -----------
 Reading input...
 Finished reading input
-mpi4py version:  3.0.3
-numpy version:  1.18.4
-scipy version:  1.3.1
-pandas version:  0.25.1
+No mpi4py detected, using fitsnap stubs...
+numpy version:  1.16.4
+scipy version:  1.3.0
+pandas version:  0.24.2
 -----------
 aa : Detected  20  fitting on  20  testing on  0
 aIn : Detected  54  fitting on  54  testing on  0
@@ -32,12 +32,12 @@ s_vP : Detected  77  fitting on  77  testing on  0
 s_vv : Detected  65  fitting on  65  testing on  0
 vP : Detected  10  fitting on  10  testing on  0
 vv : Detected  19  fitting on  19  testing on  0
-'scrape_configs' took 1330.52 ms on rank 0
-'a' takes up  0.26116166875844615 % of the total memory 540.943089664 GB of RAM
-'process_configs' took 18225.06 ms on rank 0
-'perform_fit' took 22464.73 ms on rank 0
-Writing file "InP_pot.snapcoeff"...Done! (0:00:00.001239)
-Writing file "InP_pot.snapparam"...Done! (0:00:00.000056)
-Writing file "InP_metrics.csv"...Done! (0:00:00.577472)
-'write_output' took 2418.47 ms on rank 0
-'main' took 45720.49 ms on rank 0
+'scrape_configs' took 1223.52 ms on rank 0
+'a' takes up  4.264499127023761 % of the total memory 33.127829504000005 GB of RAM
+'process_configs' took 198159.02 ms on rank 0
+'perform_fit' took 16478.66 ms on rank 0
+Writing file "InP_pot.snapcoeff"...Done! (0:00:00.000878)
+Writing file "InP_pot.snapparam"...Done! (0:00:00.000039)
+Writing file "InP_metrics.csv"...Done! (0:00:00.110480)
+'write_output' took 134.55 ms on rank 0
+'main' took 216499.21 ms on rank 0

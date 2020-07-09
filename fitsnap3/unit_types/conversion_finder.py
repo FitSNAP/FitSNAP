@@ -3,6 +3,7 @@ from pkgutil import iter_modules
 from importlib import import_module
 
 alt_names = {"stress": "pressure",
+             "virial": "pressure",
              "positions": "length",
              "position": "length",
              "forces": "force"}

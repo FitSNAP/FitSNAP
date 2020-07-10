@@ -34,7 +34,6 @@ radelem1 = 0.5     # (REAL) Radius of element 1, i-i' cutoff is rcutfac*(R_i + R
 radelem2 = 0.5     # (REAL)   radelem keywords with integer suffixes 1 to numTypes
 type1 = Ta         # (STR)  Chemical symbol for this element, has to match JSON training files
 type2 = W          # (STR)    type keywords with integer suffixes 1 to numTypes
-BOLTZT = 1000      # (REAL) Advanced Feature. Use a Boltzmann weighting to training at this temperature
 
 [CALCULATOR]
 calculator = LAMMPSSNAP # (STR)  Calculator used to produce set of linear equations for solver.
@@ -58,6 +57,8 @@ i = 2.342342342344 # (REAL) DFT energy shift per atom of ith element type
 [GROUPS]
 group_sections = name size eweight fweight vweight # (STR) List of column names for grouplist
 group_types =    str float float   float   float   # (STR) List of data types for group sections
+smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.  If no grouplist is specified, smartweights will automatically be used.
+BOLTZT = 0      # (REAL) Advanced Feature. Use a Boltzmann weighting to training at this temperature
 #   name      size eweight fweight   vweight    (See GROUPLIST.template for additional sections)
 Displaced_A15 = 9	100		1		1.00E-08           # (STR) See GROUPLIST.template
 Displaced_BCC = 9	100		1		1.00E-08           # (STR) See GROUPLIST.template
@@ -84,7 +85,6 @@ potential = Ta_pot               # (STR) Base name of SNAP potential files, i.e.
 [PATH]
 dataPath = JSON          # (STR) Path to the training data JSON directory
 groupFile = grouplist.in # (STR) Path to the training data metadata file
-smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.  If no grouplist is specified, smartweights will automatically be used.
 
 [REFERENCE]
 units = metal               # (STR) Units used in the LAMMPS calculations. See LAMMPS documentation.

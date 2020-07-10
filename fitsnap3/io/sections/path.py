@@ -9,5 +9,4 @@ class Path(Section):
         self.relative_directory = self._get_relative_directory(self)
         self.datapath = path.join(self.relative_directory, self.get_value("PATH", "dataPath", "JSON"))
         self.group_file = path.join(self.relative_directory, self.get_value("PATH", "groupFile", "grouplist.in"))
-        self.smartweights = self.get_value("PATH", "smartweights", "0", "bool")
         self.delete()

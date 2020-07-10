@@ -26,7 +26,6 @@ class Bispectrum(Section):
         for i, atom_type in enumerate(self.types):
             self.type_mapping[atom_type] = i+1
 
-        self.boltz = self.get_value("BISPECTRUM", "BOLTZ", "1000", "float")
         self._generate_b_list()
         self.delete()
 

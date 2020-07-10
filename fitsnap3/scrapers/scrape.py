@@ -249,6 +249,28 @@ class Scraper:
             raise ValueError("Training and Testing Size must be interpretable as integers")
         return int(a_float)
 
+    def _weighting(self, natoms):
+        if config.sections["GROUPS"].boltz == 0:
+            for key in self.group_table[self.data['Group']]:
+                # Do not put the word weight in a group table unless you want to use it as a weight
+                if 'weight' in key:
+                    self.data[key] = self.group_table[self.data['Group']][key]
+        else:
+            self.data['eweight'] = np.exp(
+                (self.group_table[self.data['Group']]['eweight'] - self.data["Energy"] /
+                 float(natoms)) / (self.kb * float(config.sections["GROUPS"].boltz)))
+            for key in self.group_table[self.data['Group']]:
+                # Do not put the word weight in a group table unless you want to use it as a weight
+                if 'weight' in key and key != 'eweight':
+                    self.data[key] = self.data['eweight'] * self.group_table[self.data['Group']][key]
+
+        if config.sections["GROUPS"].smartweights:
+            if config.sections["CALCULATOR"].force:
+                self.data['fweight'] /= natoms*3
+
+            if config.sections["CALCULATOR"].stress:
+                self.data['fweight'] /= 6
+
     # def check_coords(self, cell, pos1, pos2):
     #     """Compares position 1 and position 2 with respect to periodic boundaries defined by cell"""
     #     invcell = np.linalg.inv(np.asarray(cell).T).T

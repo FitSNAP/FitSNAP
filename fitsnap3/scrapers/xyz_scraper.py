@@ -446,19 +446,7 @@ class XYZ(Scraper):
                     self._rotate_coords()
                     self._translate_coords()
 
-                    if self.group_table[self.data['Group']]['eweight'] >= 0.0:
-                        for key in self.group_table[self.data['Group']]:
-                            # Do not put the word weight in a group table unless you want to use it as a weight
-                            if 'weight' in key:
-                                self.data[key] = self.group_table[self.data['Group']][key]
-                    else:
-                        self.data['eweight'] = np.exp(
-                            (self.group_table[self.data['Group']]['eweight'] - self.data["Energy"] /
-                             float(num_atoms)) / (self.kb * float(config.sections["BISPECTRUM"].boltz)))
-                        self.data['fweight'] = \
-                            self.data['eweight'] * self.group_table[self.data['Group']]['fweight']
-                        self.data['vweight'] = \
-                            self.data['eweight'] * self.group_table[self.data['Group']]['vweight']
+                    self._weighting(num_atoms)
 
                     self.all_data.append(self.data)
 

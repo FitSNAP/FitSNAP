@@ -22,6 +22,8 @@ class Groups(Section):
         super().__init__(name, config, args)
         self.group_sections = self.get_value("GROUPS", "group_sections", "name size eweight fweight vweight").split()
         self.group_types = self.get_value("GROUPS", "group_types", "str float float float float").split()
+        self.smartweights = self.get_value("GROUPS", "smartweights", "0", "bool")
+        self.boltz = self.get_value("BISPECTRUM", "BOLTZ", "0", "float")
         _str_2_fun(self.group_types)
         self.group_table = None
         if self.get_value("PATH", "groupFile", "None") != "None":

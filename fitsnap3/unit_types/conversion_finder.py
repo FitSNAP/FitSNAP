@@ -6,7 +6,8 @@ alt_names = {"stress": "pressure",
              "virial": "pressure",
              "positions": "length",
              "position": "length",
-             "forces": "force"}
+             "forces": "force",
+             "lattice": "length"}
 
 name = __name__.split('.')
 unit_dir = Path(__file__).resolve().parent

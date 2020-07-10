@@ -1,4 +1,4 @@
-from fitsnap3.io.sections.sections import Section
+from fitsnap3.io.sections.sections import Section, output
 
 
 class Scraper(Section):
@@ -8,7 +8,17 @@ class Scraper(Section):
         self.scraper = self.get_value("SCRAPER", "scraper", "JSON")
         self.save_group_scrape = self.get_value("SCRAPER", "save_group_scrape", "None", "str")
         self.read_group_scrape = self.get_value("SCRAPER", "read_group_scrape", "None", "str")
-        self.property_array = self.get_value("SCRAPER", "property_array", "None", "str")
-        self.unit_array = self.get_value("SCRAPER", "unit_array", "None", "str")
+        self.properties = {"Stress": ["pressure", "Metal", "Metal"],
+                           "Lattice": ["length", "Metal", "Metal"],
+                           "Energy": ["energy", "Metal", "Metal"],
+                           "Positions": ["length", "Metal", "Metal"],
+                           "Forces": ["force", "Metal", "Metal"]}
+        temp_array = self.get_value("SCRAPER", "property_array", "None", "str")
+        if temp_array != "None":
+            self.property_array = {}
+            temp_array = temp_array.replace("=", "").replace(":", "").replace(";", "\n").split("\n")
+            for item in temp_array:
+                key, value = item.split()
+                self.property_array[key] = value
         self.unit_system = self.get_value("SCRAPER", "unit_system", "None", "str")
         self.delete()

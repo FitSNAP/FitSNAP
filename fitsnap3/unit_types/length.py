@@ -1,5 +1,6 @@
 # This file should contain the conversion from some length type to angstroms
 metal = 1
+Metal = 1
 angstrom = 1
 angstroms = 1
 Angstrom = 1

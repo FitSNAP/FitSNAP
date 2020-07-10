@@ -1,5 +1,6 @@
 # This file should contain the conversion from some mass type to grams/mole
 metal = 1
+Metal = 1
 grams_per_mol = 1
 gpm = 1
 amu = 1

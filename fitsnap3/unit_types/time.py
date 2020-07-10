@@ -1,5 +1,6 @@
 # This file should contain the conversion from some time type to ps
 metal = 1
+Metal = 1
 s = 1e-12
 second = 1e-12
 ms = 1e-9

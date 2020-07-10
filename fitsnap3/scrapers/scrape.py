@@ -35,6 +35,7 @@ import numpy as np
 from random import shuffle
 from fitsnap3.parallel_tools import pt
 from fitsnap3.io.output import output
+from fitsnap3.units import convert
 # from natsort import natsorted
 
 
@@ -47,8 +48,10 @@ class Scraper:
         self.files = {}
         self.configs = {}
         self.tests = None
-        self.convert = {"Energy": 1.0, "Force": 1.0, "Stress": 1.0, "Distance": 1.0}
         self.data = {}
+        self.default_conversions = {key: convert(config.sections["SCRAPER"].properties[key])
+                                    for key in config.sections["SCRAPER"].properties}
+        self.conversions = {}
 
         self._init_units()
 
@@ -203,11 +206,11 @@ class Scraper:
         # Positions and forces transform on the second axis
         # Stress transforms on both the first and second axis.
         self.data["Lattice"] = out_cell
-        self.data["Positions"] = self.data["Positions"] * self.convert["Distance"] @ rot.T
+        self.data["Positions"] = self.data["Positions"] * self.conversions["Positions"] @ rot.T
         if config.sections["CALCULATOR"].force:
-            self.data["Forces"] = self.data["Forces"] * self.convert["Force"] @ rot.T
+            self.data["Forces"] = self.data["Forces"] * self.conversions["Forces"] @ rot.T
         if config.sections["CALCULATOR"].stress:
-            self.data["Stress"] = rot @ (self.data["Stress"] * self.convert["Stress"]) @ rot.T
+            self.data["Stress"] = rot @ (self.data["Stress"] * self.conversions["Stress"]) @ rot.T
         self.data["Rotation"] = rot
 
     def _translate_coords(self):
@@ -237,12 +240,6 @@ class Scraper:
         assert np.allclose(new_pos + trans_vec, position_in), "Translation failed to invert"
         self.data["Postions"] = new_pos
         self.data["Translation"] = trans_vec
-
-    def _stress_conv(self, styles):
-
-        if (config.sections["REFERENCE"].units == "metal" and
-                list(styles["Stress"])[0] == "kbar" or list(styles["Stress"])[0] == "kB"):
-            self.convert["Stress"] = 1000.0
 
     @staticmethod
     def _float_to_int(a_float):

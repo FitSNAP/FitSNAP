@@ -1,5 +1,7 @@
 # This file should contain the conversion from some force type to eV/Angstrom
 metal = 1
+Metal = 1
+electronvoltperangstrom = 1
 ev_per_angstrom = 1
 eV_per_Angstrom = 1
 eV_per_angstrom = 1

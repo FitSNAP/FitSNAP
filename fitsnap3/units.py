@@ -3,7 +3,9 @@ from fitsnap3.unit_types.conversion_finder import create_conversion
 conversions = {}
 
 
-def convert(unit_type, unit_a, unit_b):
+def convert(unit_type, unit_a=None, unit_b=None):
+    if isinstance(unit_type, list):
+        unit_type, unit_a, unit_b = [x for x in unit_type]
 
     try:
         return conversions[unit_type][unit_a][unit_b]

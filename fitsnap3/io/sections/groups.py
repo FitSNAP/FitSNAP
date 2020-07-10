@@ -33,7 +33,10 @@ class Groups(Section):
         self.delete()
 
     def read_group_config(self):
-        self.group_table = {k: v.split() for (k, v) in self.get_section("GROUPS")}
+        try:
+            self.group_table = {k: v.split() for (k, v) in self.get_section("GROUPS")}
+        except TypeError:
+            raise FileNotFoundError("Group File not found, make sure Input File can be found")
         # Deletes any key:value from self.groups that shares a key name with the vars of this instance
         for k in vars(self):
             if k in self.group_table:

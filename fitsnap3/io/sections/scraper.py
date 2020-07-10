@@ -15,10 +15,12 @@ class Scraper(Section):
                            "Forces": ["force", "Metal", "Metal"]}
         temp_array = self.get_value("SCRAPER", "property_array", "None", "str")
         if temp_array != "None":
-            self.property_array = {}
             temp_array = temp_array.replace("=", "").replace(":", "").replace(";", "\n").split("\n")
             for item in temp_array:
-                key, value = item.split()
-                self.property_array[key] = value
-        self.unit_system = self.get_value("SCRAPER", "unit_system", "None", "str")
+                if item == '':
+                    continue
+                elements = item.split()
+                self.properties[elements[0].capitalize()] = elements[1:]
+        # TODO: implement unit systems
+        # self.unit_system = self.get_value("SCRAPER", "unit_system", "None", "str")
         self.delete()

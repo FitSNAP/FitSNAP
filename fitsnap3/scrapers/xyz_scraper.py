@@ -5,6 +5,7 @@ from fitsnap3.io.output import output
 import numpy as np
 from random import shuffle
 from os import path, listdir
+from copy import copy
 import re
 from _collections import defaultdict
 
@@ -17,8 +18,8 @@ PROPERTY_NAME_MAP = {'positions': 'pos',
 
 REV_PROPERTY_NAME_MAP = dict(zip(PROPERTY_NAME_MAP.values(), PROPERTY_NAME_MAP.keys()))
 
-all_properties = ['energy', 'forces', 'stress', 'stresses', 'dipole',
-                  'charges', 'magmom', 'magmoms', 'free_energy', 'energies']
+# all_properties = ['energy', 'forces', 'stress', 'stresses', 'dipole',
+#                   'charges', 'magmom', 'magmoms', 'free_energy', 'energies']
 
 
 def key_val_str_to_dict(string, sep=None):
@@ -205,7 +206,7 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict, nvec=0
 
     if 'Lattice' in info:
         # NB: ASE cell is transpose of extended XYZ lattice
-        data['Lattice'] = info['Lattice'].T
+        data['Lattice'] = info['Lattice']
         del info['Lattice']
     elif nvec > 0:
         # cell information given as pseudo-Atoms
@@ -247,54 +248,14 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict, nvec=0
         data['AtomTypes'] = [s.capitalize() for s in arrays['symbols']]
         del arrays['symbols']
 
-    if 'numbers' in arrays:
-        if symbols is None:
-            data['numbers'] = arrays['numbers']
-        else:
-            data['duplicate_numbers'] = arrays['numbers']
-        del arrays['numbers']
-
-    if 'charges' in arrays:
-        data['Charges'] = arrays['charges']
-        del arrays['charges']
-
-    if 'positions' in arrays:
-        data['Positions'] = arrays['positions']
-        del arrays['positions']
-
-    if 'force' in arrays:
-        data['Forces'] = arrays['force']
-        del arrays['force']
-    elif 'forces' in arrays:
-        data['Forces'] = arrays['forces']
-        del arrays['forces']
-
-    if 'energy' in info:
-        data['Energy'] = info['energy']
-        del info['energy']
-
-    if 'virial' in info:
-        data['Stress'] = info['virial']
-        del info['virial']
-
-    return data
+    return data, arrays, info
 
 
 class XYZ(Scraper):
 
     def __init__(self, name):
         super().__init__(name)
-        self.style_vars = ['AtomType', 'Stress', 'Lattice', 'Energy', "Positions", "Forces"]
-        self.default_style_vars = ['chemicalsymbol', 'bar', 'angstrom',
-                                   'electronvolt', "angstrom", "electronvoltperangstrom"]
-        self.array_vars = ['AtomTypes', 'Stress', 'Lattice', "Positions", "Forces"]
-        if config.sections["REFERENCE"].atom_style == "spin":
-            self.style_vars.append("Spins")
-            self.array_vars.append("Spins")
-        if config.sections["REFERENCE"].atom_style == "charge":
-            self.style_vars.append("Charges")
-            self.array_vars.append("Charges")
-        self.styles = defaultdict(lambda: set())
+        self.conversions = copy(self.default_conversions)
         self.all_data = []
         self.style_info = {}
 
@@ -432,7 +393,27 @@ class XYZ(Scraper):
                     file.seek(starting_line)
                     file.readline()
 
-                    data = _read_xyz_frame(file, num_atoms)
+                    data, arrays, info = _read_xyz_frame(file, num_atoms)
+
+                    # TODO: Implement Styles in xyz_scraper for units to be defined in comment line
+                    for key in config.sections["SCRAPER"].properties:
+                        if key.lower() in arrays:
+                            data[key] = arrays[key.lower()]
+                            del arrays[key.lower()]
+                        if key in arrays:
+                            data[key] = arrays[key]
+                            del arrays[key]
+                        if key.lower() in info:
+                            data[key] = info[key.lower()]
+                            del info[key.lower()]
+                        if key in info:
+                            data[key] = info[key]
+                            del info[key]
+
+                    if 'positions' in arrays:
+                        data['Positions'] = arrays['positions']
+                        del arrays['positions']
+
                     self.data = data
 
                     self.data['NumAtoms'] = num_atoms
@@ -440,15 +421,9 @@ class XYZ(Scraper):
                     self.data['Group'] = ".".join(filename.split("/")[-1].split(".")[:-1])
                     self.data['File'] = filename.split("/")[-1]
 
-                    for j, sty in enumerate(self.style_vars):
-                        if sty + "Style" in self.data:
-                            self.styles[sty].add(self.data.pop(sty + "Style", ))
-                        else:
-                            self.styles[sty].add(self.default_style_vars[j])
-
                     pt.shared_arrays["number_of_atoms"].sliced_array[i] = self.data['NumAtoms']
 
-                    self.data["QMLattice"] = self.data["Lattice"]
+                    self.data["QMLattice"] = self.data["Lattice"] * self.conversions["Lattice"]
                     del self.data["Lattice"]  # We will populate this with the lammps-normalized lattice.
                     if "Label" in self.data:
                         del self.data["Label"]  # This comment line is not that useful to keep around.
@@ -459,8 +434,7 @@ class XYZ(Scraper):
                         # ({group_name}/{fname_end}) gives energy as an integer")
                         self.data["Energy"] = float(self.data["Energy"])
 
-                    self._stress_conv(self.styles)
-                    self.data["Energy"] *= self.convert["Energy"]
+                    self.data["Energy"] *= self.conversions["Energy"]
 
                     if hasattr(config.sections["ESHIFT"], 'eshift'):
                         try:
@@ -487,10 +461,5 @@ class XYZ(Scraper):
                             self.data['eweight'] * self.group_table[self.data['Group']]['vweight']
 
                     self.all_data.append(self.data)
-
-        for style_name, style_set in self.styles.items():
-            assert len(style_set) == 1, "Multiple styles ({}) for {}".format(len(style_set), style_name)
-
-        self.style_info = {k: v.pop() for k, v in self.styles.items()}
 
         return self.all_data

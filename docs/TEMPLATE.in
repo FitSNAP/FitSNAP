@@ -41,7 +41,7 @@ energy = 1              # (BOOL) Use energies in fitting
 force = 1               # (BOOL) Use energies in fitting
 stress = 1              # (BOOL) Use energies in fitting
 chemflag = 0            # (BOOL) Use multi-element bispectrum components
-bnormflag = 0           # (BOOL) Produce bispectrum coefficients prenormalized by j
+bnormflag = 0           # (BOOL) Produce bispectrum coefficients prenormalized by j. Saves some compute time when running LAMMPS, be careful when comparing fitted coefficients as equivalent fits can result in different coefficients with/without this option.
 wselfallflag = 0        # (BOOL) Add wself to all element labelings
 bzeroflag = 0	        # (BOOL) Subtract vacuum bispectrum, so isolated atoms have energy=0
 quadraticflag = 0       # (BOOL) Include quadratic terms in SNAP energy model
@@ -57,7 +57,8 @@ i = 2.342342342344 # (REAL) DFT energy shift per atom of ith element type
 [GROUPS]
 group_sections = name size eweight fweight vweight # (STR) List of column names for grouplist
 group_types =    str float float   float   float   # (STR) List of data types for group sections
-smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.  If no grouplist is specified, smartweights will automatically be used.
+smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.  
+# If no grouplist is specified, smartweights will automatically be used. If true, and group weights are provided by the user, then user defined weights are taken as the numerator in this normalization scheme.
 BOLTZT = 0      # (REAL) Advanced Feature. Use a Boltzmann weighting to training at this temperature
 #   name      size eweight fweight   vweight    (See GROUPLIST.template for additional sections)
 Displaced_A15 = 9	100		1		1.00E-08           # (STR) See GROUPLIST.template
@@ -102,5 +103,4 @@ scraper = JSON     # (STR)  Configuration Scraper used (JSON)
 solver = SVD	     # (STR)  Linear solver algorithm used (SVD, LASSO, RIDGE, ELASTIC allowed)
 normweight = -12     # (REAL) If solver!=SVD, this is the log of the penalty term coefficient
 normratio = 0.5	     # (REAL) If solver==ELASTIC this is ratio of the linear and quadratic penalty terms
-compute_dbvb = 1     # (BOOL) If true, fit is done on energy, forces and virials. False, only energy.
 compute_testerrs = 0 # (BOOL) If less than the full training set is used in fitting, a true value will calculate the errors on the remaining, unused training. In the output, group names are appended with CV_Train and CV_Test to designate the fitted and testing training errors.

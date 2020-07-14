@@ -434,14 +434,14 @@ class XYZ(Scraper):
                         # ({group_name}/{fname_end}) gives energy as an integer")
                         self.data["Energy"] = float(self.data["Energy"])
 
-                    self.data["Energy"] *= self.conversions["Energy"]
-
                     if hasattr(config.sections["ESHIFT"], 'eshift'):
                         try:
                             for atom in self.data["AtomTypes"]:
                                 self.data["Energy"] += config.sections["ESHIFT"].eshift[atom]
                         except KeyError:
                             raise KeyError("{} not found in atom types".format(atom))
+
+                    self.data["Energy"] *= self.conversions["Energy"]
 
                     self._rotate_coords()
                     self._translate_coords()

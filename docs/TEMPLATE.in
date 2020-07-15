@@ -25,7 +25,7 @@
 [BISPECTRUM]
 numTypes = 2       # (INT)  Number of element types for this fit
 twojmax = 6        # (INT)  Band limit for bispectrum components (2,4,6,8... allowed)
-rcutfac =  4.67637 # (REAL) Radial cutoff facgtor for atomic neighborhood
+rcutfac =  4.67637 # (REAL) Radial cutoff distance for atomic neighborhood. Defined using the units style in [REFERENCE] i.e. LAMMPS units.
 rfac0 = 0.99363    # (REAL) Parameter in distance to angle conversion
 rmin0 = 0.0        # (REAL) Parameter in distance to angle conversion
 wj1 = 1.0          # (REAL) Element weight for first element

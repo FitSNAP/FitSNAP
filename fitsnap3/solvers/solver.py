@@ -92,7 +92,6 @@ class Solver:
             self._errors([[testing, 0]], ['*ALL'], "Stress_testing", a, b, w)
 
     def _combined(self):
-        pt.single_print(self.testing, len(pt.shared_arrays['a'].array))
         self._errors([[0, self.testing]], ["*ALL"], "Combined")
         if self.testing != 0:
             self._errors([[self.testing, 0]], ['*ALL'], "Combined_testing")

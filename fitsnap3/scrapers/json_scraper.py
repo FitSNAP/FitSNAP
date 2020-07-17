@@ -74,6 +74,8 @@ class Json(Scraper):
                     for atom in self.data["AtomTypes"]:
                         self.data["Energy"] += config.sections["ESHIFT"].eshift[atom]
 
+                self.data["test_bool"] = self.test_bool[i]
+
                 self._rotate_coords()
                 self._translate_coords()
 

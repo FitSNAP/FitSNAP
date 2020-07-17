@@ -443,6 +443,8 @@ class XYZ(Scraper):
                         except KeyError:
                             raise KeyError("{} not found in atom types".format(atom))
 
+                    self.data["test_bool"] = self.test_bool[i]
+
                     self._rotate_coords()
                     self._translate_coords()
 

@@ -49,6 +49,7 @@ class Scraper:
         self.configs = {}
         self.tests = None
         self.data = {}
+        self.test_bool = None
         self.default_conversions = {key: convert(config.sections["SCRAPER"].properties[key])
                                     for key in config.sections["SCRAPER"].properties}
         self.conversions = {}
@@ -112,10 +113,18 @@ class Scraper:
                 self.files[folder].pop()
             for i in range(testing_size):
                 self.tests[folder].append(self.files[folder].pop())
+
+            self.group_table[self.data['Group']]['training_size'] = training_size
+            self.group_table[self.data['Group']]['testing_size'] = testing_size
             # self.files[folder] = natsorted(self.files[folder])
 
     # TODO : Fix divvy up to distribute groups evenly and based on memory
     def divvy_up_configs(self):
+        # TODO : When adding multinode functionality keep an eye out on the following two lines.
+        self.configs = pt.split_by_node(self.configs)
+        if self.tests is not None:
+            self.tests = pt.split_by_node(self.tests)
+        self.test_bool = []
         groups = []
         group_list = []
         temp_list = []
@@ -127,9 +136,9 @@ class Scraper:
                 else:
                     temp_list.append([configuration, folder])
                 groups.append(folder)
+                self.test_bool.append(0)
 
         self.configs = temp_list
-        self.configs = pt.split_by_node(self.configs)
 
         if self.tests is not None:
             for i, folder in enumerate(self.tests):
@@ -139,7 +148,7 @@ class Scraper:
                     else:
                         test_list.append([configuration, folder])
                     group_list.append(folder)
-            test_list = pt.split_by_node(test_list)
+                    self.test_bool.append(1)
             self.configs += test_list
 
         group_test = list(dict.fromkeys(group_list))
@@ -149,9 +158,14 @@ class Scraper:
             group_counts[i] = groups.count(group)
         for i, group in enumerate(group_test):
             group_counts[i+len(group_set)] = group_list.count(group)
+        for i in range(len(group_test)):
+            group_test[i] += '_testing'
 
-        pt.create_shared_array('configs_per_group', len(self.configs), dtype='i')
-        pt.shared_arrays['configs_per_group'].array = group_counts
+        pt.create_shared_array('configs_per_group', len(group_counts), dtype='i')
+        if pt.get_rank() == 0:
+            for i in range(len(group_counts)):
+                pt.shared_arrays['configs_per_group'].array[i] = group_counts[i]
+        pt.shared_arrays['configs_per_group'].list = group_set + group_test
 
         pt.shared_arrays['configs_per_group'].testing = 0
         if self.tests is not None:
@@ -160,6 +174,8 @@ class Scraper:
         number_of_configs_per_node = len(self.configs)
         pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
         pt.slice_array('number_of_atoms')
+        self.test_bool = pt.split_by_node(self.test_bool)
+        self.test_bool = np.array(self.test_bool)
         self.configs = pt.split_within_node(self.configs)
 
     def scrape_configs(self):
@@ -265,6 +281,13 @@ class Scraper:
                     self.data[key] = self.data['eweight'] * self.group_table[self.data['Group']][key]
 
         if config.sections["GROUPS"].smartweights:
+            for key in self.group_table[self.data['Group']]:
+                # Do not put the word weight in a group table unless you want to use it as a weight
+                if 'weight' in key:
+                    if self.data['test_bool']:
+                        self.data[key] /= self.group_table[self.data['Group']]['testing_size']
+                    else:
+                        self.data[key] /= self.group_table[self.data['Group']]['training_size']
             if config.sections["CALCULATOR"].force:
                 self.data['fweight'] /= natoms*3
 

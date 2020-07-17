@@ -35,6 +35,7 @@ import numpy as np
 from random import shuffle
 from fitsnap3.parallel_tools import pt
 from fitsnap3.io.output import output
+from fitsnap3.units import convert
 # from natsort import natsorted
 
 
@@ -47,8 +48,11 @@ class Scraper:
         self.files = {}
         self.configs = {}
         self.tests = None
-        self.convert = {"Energy": 1.0, "Force": 1.0, "Stress": 1.0, "Distance": 1.0}
         self.data = {}
+        self.test_bool = None
+        self.default_conversions = {key: convert(config.sections["SCRAPER"].properties[key])
+                                    for key in config.sections["SCRAPER"].properties}
+        self.conversions = {}
 
         self._init_units()
 
@@ -109,10 +113,18 @@ class Scraper:
                 self.files[folder].pop()
             for i in range(testing_size):
                 self.tests[folder].append(self.files[folder].pop())
+
+            self.group_table[self.data['Group']]['training_size'] = training_size
+            self.group_table[self.data['Group']]['testing_size'] = testing_size
             # self.files[folder] = natsorted(self.files[folder])
 
     # TODO : Fix divvy up to distribute groups evenly and based on memory
     def divvy_up_configs(self):
+        # TODO : When adding multinode functionality keep an eye out on the following two lines.
+        self.configs = pt.split_by_node(self.configs)
+        if self.tests is not None:
+            self.tests = pt.split_by_node(self.tests)
+        self.test_bool = []
         groups = []
         group_list = []
         temp_list = []
@@ -124,9 +136,9 @@ class Scraper:
                 else:
                     temp_list.append([configuration, folder])
                 groups.append(folder)
+                self.test_bool.append(0)
 
         self.configs = temp_list
-        self.configs = pt.split_by_node(self.configs)
 
         if self.tests is not None:
             for i, folder in enumerate(self.tests):
@@ -136,7 +148,7 @@ class Scraper:
                     else:
                         test_list.append([configuration, folder])
                     group_list.append(folder)
-            test_list = pt.split_by_node(test_list)
+                    self.test_bool.append(1)
             self.configs += test_list
 
         group_test = list(dict.fromkeys(group_list))
@@ -146,9 +158,14 @@ class Scraper:
             group_counts[i] = groups.count(group)
         for i, group in enumerate(group_test):
             group_counts[i+len(group_set)] = group_list.count(group)
+        for i in range(len(group_test)):
+            group_test[i] += '_testing'
 
-        pt.create_shared_array('configs_per_group', len(self.configs), dtype='i')
-        pt.shared_arrays['configs_per_group'].array = group_counts
+        pt.create_shared_array('configs_per_group', len(group_counts), dtype='i')
+        if pt.get_rank() == 0:
+            for i in range(len(group_counts)):
+                pt.shared_arrays['configs_per_group'].array[i] = group_counts[i]
+        pt.shared_arrays['configs_per_group'].list = group_set + group_test
 
         pt.shared_arrays['configs_per_group'].testing = 0
         if self.tests is not None:
@@ -157,6 +174,8 @@ class Scraper:
         number_of_configs_per_node = len(self.configs)
         pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
         pt.slice_array('number_of_atoms')
+        self.test_bool = pt.split_by_node(self.test_bool)
+        self.test_bool = np.array(self.test_bool)
         self.configs = pt.split_within_node(self.configs)
 
     def scrape_configs(self):
@@ -203,11 +222,11 @@ class Scraper:
         # Positions and forces transform on the second axis
         # Stress transforms on both the first and second axis.
         self.data["Lattice"] = out_cell
-        self.data["Positions"] = self.data["Positions"] * self.convert["Distance"] @ rot.T
+        self.data["Positions"] = self.data["Positions"] * self.conversions["Positions"] @ rot.T
         if config.sections["CALCULATOR"].force:
-            self.data["Forces"] = self.data["Forces"] * self.convert["Force"] @ rot.T
+            self.data["Forces"] = self.data["Forces"] * self.conversions["Forces"] @ rot.T
         if config.sections["CALCULATOR"].stress:
-            self.data["Stress"] = rot @ (self.data["Stress"] * self.convert["Stress"]) @ rot.T
+            self.data["Stress"] = rot @ (self.data["Stress"] * self.conversions["Stress"]) @ rot.T
         self.data["Rotation"] = rot
 
     def _translate_coords(self):
@@ -238,12 +257,6 @@ class Scraper:
         self.data["Postions"] = new_pos
         self.data["Translation"] = trans_vec
 
-    def _stress_conv(self, styles):
-
-        if (config.sections["REFERENCE"].units == "metal" and
-                list(styles["Stress"])[0] == "kbar" or list(styles["Stress"])[0] == "kB"):
-            self.convert["Stress"] = 1000.0
-
     @staticmethod
     def _float_to_int(a_float):
         if a_float == 0:
@@ -251,6 +264,35 @@ class Scraper:
         if a_float / int(a_float) != 1:
             raise ValueError("Training and Testing Size must be interpretable as integers")
         return int(a_float)
+
+    def _weighting(self, natoms):
+        if config.sections["GROUPS"].boltz == 0:
+            for key in self.group_table[self.data['Group']]:
+                # Do not put the word weight in a group table unless you want to use it as a weight
+                if 'weight' in key:
+                    self.data[key] = self.group_table[self.data['Group']][key]
+        else:
+            self.data['eweight'] = np.exp(
+                (self.group_table[self.data['Group']]['eweight'] - self.data["Energy"] /
+                 float(natoms)) / (self.kb * float(config.sections["GROUPS"].boltz)))
+            for key in self.group_table[self.data['Group']]:
+                # Do not put the word weight in a group table unless you want to use it as a weight
+                if 'weight' in key and key != 'eweight':
+                    self.data[key] = self.data['eweight'] * self.group_table[self.data['Group']][key]
+
+        if config.sections["GROUPS"].smartweights:
+            for key in self.group_table[self.data['Group']]:
+                # Do not put the word weight in a group table unless you want to use it as a weight
+                if 'weight' in key:
+                    if self.data['test_bool']:
+                        self.data[key] /= self.group_table[self.data['Group']]['testing_size']
+                    else:
+                        self.data[key] /= self.group_table[self.data['Group']]['training_size']
+            if config.sections["CALCULATOR"].force:
+                self.data['fweight'] /= natoms*3
+
+            if config.sections["CALCULATOR"].stress:
+                self.data['fweight'] /= 6
 
     # def check_coords(self, cell, pos1, pos2):
     #     """Compares position 1 and position 2 with respect to periodic boundaries defined by cell"""

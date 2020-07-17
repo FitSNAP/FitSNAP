@@ -37,6 +37,9 @@ from psutil import virtual_memory
 from itertools import chain
 import ctypes
 import signal
+from inspect import isclass
+from pkgutil import iter_modules
+from importlib import import_module
 try:
     # stubs = 0 MPI is active
     stubs = 0
@@ -49,12 +52,18 @@ def printf(*args, **kw):
     print(*args, flush=True)
 
 
+class GracefulError(BaseException):
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+
 class GracefulKiller:
 
     def __init__(self, comm):
         self._comm = comm
         self._rank = 0
-        self.failsafe = False
+        self.already_killed = False
         if self._comm is not None:
             self._rank = self._comm.Get_rank()
             signal.signal(signal.SIGINT, self.exit_gracefully)
@@ -63,9 +72,9 @@ class GracefulKiller:
     def exit_gracefully(self, signum, frame):
         if self._rank == 0:
             printf("attempting to exit gracefully")
-        if self.failsafe:
+        if self.already_killed:
             self._comm.Abort()
-        raise SystemError("exiting from exit code", signum, "at", frame)
+        raise GracefulError("exiting from exit code", signum, "at", frame)
 
 
 def _rank_zero(method):
@@ -137,7 +146,7 @@ class ParallelTools:
             self._node_index = 0
             self._number_of_nodes = 1
 
-        killer = GracefulKiller(self._comm)
+        self.killer = GracefulKiller(self._comm)
 
         self._comm_split()
         self._lmp = None
@@ -404,15 +413,37 @@ class ParallelTools:
         self._comm.Abort()
 
     def exception(self, err):
+        self.killer.already_killed = True
+
         if pt.logger is None and self._rank == 0:
             raise err
 
         pt.close_lammps()
         if self._rank == 0:
             self.logger.exception(err)
+
         sleep(5)
         if self._comm is not None:
             self.abort()
+
+    # Where The Object Oriented Magic Happens
+    # from files in this_file's directory import subclass of this_class
+    @staticmethod
+    def get_subclasses(this_name, this_file, this_class):
+        # Reset Path cls to remove old cls paths
+        from pathlib import Path
+
+        name = this_name.split('.')
+        package_dir = Path(this_file).resolve().parent
+        for (_, module_name, c) in iter_modules([package_dir]):
+            if module_name != name[-1] and module_name != name[-2]:
+                module = import_module(f"{'.'.join(name[:-1])}.{module_name}")
+                for attribute_name in dir(module):
+                    attribute = getattr(module, attribute_name)
+
+                    if isclass(attribute) and issubclass(attribute, this_class) and attribute is not this_class:
+                        # Add the class to this package's variables
+                        globals()[attribute_name] = attribute
 
 
 class SharedArray:

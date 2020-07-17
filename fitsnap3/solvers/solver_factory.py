@@ -1,7 +1,5 @@
-from fitsnap3.solvers.solver import Solver
-from fitsnap3.solvers.template_solver import Template
-from fitsnap3.solvers.svd import SVD
-from fitsnap3.solvers.tensorflowsvd import TensorflowSVD
+from fitsnap3.solvers.solver import Solver, pt
+pt.get_subclasses(__name__, __file__, Solver)
 
 
 def solver(solver_name):

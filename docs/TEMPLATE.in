@@ -25,7 +25,7 @@
 [BISPECTRUM]
 numTypes = 2       # (INT)  Number of element types for this fit
 twojmax = 6        # (INT)  Band limit for bispectrum components (2,4,6,8... allowed)
-rcutfac =  4.67637 # (REAL) Radial cutoff facgtor for atomic neighborhood
+rcutfac =  4.67637 # (REAL) Radial cutoff distance for atomic neighborhood. Defined using the units style in [REFERENCE] i.e. LAMMPS units.
 rfac0 = 0.99363    # (REAL) Parameter in distance to angle conversion
 rmin0 = 0.0        # (REAL) Parameter in distance to angle conversion
 wj1 = 1.0          # (REAL) Element weight for first element
@@ -34,7 +34,6 @@ radelem1 = 0.5     # (REAL) Radius of element 1, i-i' cutoff is rcutfac*(R_i + R
 radelem2 = 0.5     # (REAL)   radelem keywords with integer suffixes 1 to numTypes
 type1 = Ta         # (STR)  Chemical symbol for this element, has to match JSON training files
 type2 = W          # (STR)    type keywords with integer suffixes 1 to numTypes
-BOLTZT = 1000      # (REAL) Advanced Feature. Use a Boltzmann weighting to training at this temperature
 
 [CALCULATOR]
 calculator = LAMMPSSNAP # (STR)  Calculator used to produce set of linear equations for solver.
@@ -42,22 +41,25 @@ energy = 1              # (BOOL) Use energies in fitting
 force = 1               # (BOOL) Use energies in fitting
 stress = 1              # (BOOL) Use energies in fitting
 chemflag = 0            # (BOOL) Use multi-element bispectrum components
-bnormflag = 0           # (BOOL) Produce bispectrum coefficients prenormalized by j
+bnormflag = 0           # (BOOL) Produce bispectrum coefficients prenormalized by j. Saves some compute time when running LAMMPS, be careful when comparing fitted coefficients as equivalent fits can result in different coefficients with/without this option.
 wselfallflag = 0        # (BOOL) Add wself to all element labelings
 bzeroflag = 0	        # (BOOL) Subtract vacuum bispectrum, so isolated atoms have energy=0
 quadraticflag = 0       # (BOOL) Include quadratic terms in SNAP energy model
 
 [ESHIFT]
-In = -1.6596758870 # (REAL) DFT energy shift per atom of first element type
-P = 4.381595495015 # (REAL) DFT energy shift per atom of second element type
-X = 3.242342234233 # (REAL) DFT energy shift per atom of third element type
+In = -1.6596758870 # (REAL) Energy shift per atom of first element type
+P = 4.381595495015 # (REAL) This value is ADDED to each atom of the matching element type.
+X = 3.242342234233 # (REAL) FitSNAP assumes this value is of matching units to the TRAINING DATA.
 .   .              #   .     .
 .   .              #   .     .
-i = 2.342342342344 # (REAL) DFT energy shift per atom of ith element type
+i = 2.342342342344 # (REAL) Internal conversion of training data units to LAMMPS unit style happens after this energy shift.
 
 [GROUPS]
 group_sections = name size eweight fweight vweight # (STR) List of column names for grouplist
 group_types =    str float float   float   float   # (STR) List of data types for group sections
+smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.  
+# If no grouplist is specified, smartweights will automatically be used. If true, and group weights are provided by the user, then user defined weights are taken as the numerator in this normalization scheme.
+BOLTZT = 0      # (REAL) Advanced Feature. Use a Boltzmann weighting to training at this temperature
 #   name      size eweight fweight   vweight    (See GROUPLIST.template for additional sections)
 Displaced_A15 = 9	100		1		1.00E-08           # (STR) See GROUPLIST.template
 Displaced_BCC = 9	100		1		1.00E-08           # (STR) See GROUPLIST.template
@@ -84,7 +86,6 @@ potential = Ta_pot               # (STR) Base name of SNAP potential files, i.e.
 [PATH]
 dataPath = JSON          # (STR) Path to the training data JSON directory
 groupFile = grouplist.in # (STR) Path to the training data metadata file
-smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.  If no grouplist is specified, smartweights will automatically be used.
 
 [REFERENCE]
 units = metal               # (STR) Units used in the LAMMPS calculations. See LAMMPS documentation.
@@ -102,5 +103,4 @@ scraper = JSON     # (STR)  Configuration Scraper used (JSON)
 solver = SVD	     # (STR)  Linear solver algorithm used (SVD, LASSO, RIDGE, ELASTIC allowed)
 normweight = -12     # (REAL) If solver!=SVD, this is the log of the penalty term coefficient
 normratio = 0.5	     # (REAL) If solver==ELASTIC this is ratio of the linear and quadratic penalty terms
-compute_dbvb = 1     # (BOOL) If true, fit is done on energy, forces and virials. False, only energy.
 compute_testerrs = 0 # (BOOL) If less than the full training set is used in fitting, a true value will calculate the errors on the remaining, unused training. In the output, group names are appended with CV_Train and CV_Test to designate the fitted and testing training errors.

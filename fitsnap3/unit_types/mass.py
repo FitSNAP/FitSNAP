@@ -1,0 +1,20 @@
+# This file should contain the conversion from some mass type to grams/mole
+metal = 1
+Metal = 1
+grams_per_mol = 1
+gpm = 1
+amu = 1
+atomic = 1
+atomic_mass_unit = 1
+grams = 6.022e23
+gram = 6.022e23
+g = 6.022e23
+kg = 6.022e26
+kilograms = 6.022e26
+kilo = 6.022e26
+picogram = 6.022e11
+pico = 6.022e11
+pg = 6.022e11
+attogram = 6.022e5
+atto = 6.022e5
+ag = 6.022e5

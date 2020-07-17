@@ -65,7 +65,8 @@ class Solver:
         a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
         self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
         if testing != 0:
-            self.testing += testing
+            if self.weighted == "Unweighted":
+                self.testing += testing
             self._errors([[testing, 0]], ['*ALL'], "Energy_testing", a, b, w)
 
     def _force(self):
@@ -77,7 +78,8 @@ class Solver:
         a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
         self._errors([[0, testing]], ['*ALL'], "Force", a, b, w)
         if testing != 0:
-            self.testing += testing
+            if self.weighted == "Unweighted":
+                self.testing += testing
             self._errors([[testing, 0]], ['*ALL'], "Force_testing", a, b, w)
 
     def _stress(self):
@@ -85,8 +87,14 @@ class Solver:
         a, b, w = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
         self._errors([[0, testing]], ['*ALL'], "Stress", a, b, w)
         if testing != 0:
-            self.testing += testing
+            if self.weighted == "Unweighted":
+                self.testing += testing
             self._errors([[testing, 0]], ['*ALL'], "Stress_testing", a, b, w)
+
+    def _combined(self):
+        self._errors([[0, self.testing]], ["*ALL"], "Combined")
+        if self.testing != 0:
+            self._errors([[self.testing, 0]], ['*ALL'], "Combined_testing")
 
     @staticmethod
     def _make_abw(type_index, buffer):
@@ -110,14 +118,10 @@ class Solver:
             i += spacing
         return a, b, w
 
-    def _combined(self):
-        self._errors([[0, self.testing]], ["*ALL"], "Combined")
-        if self.testing != 0:
-            self._errors([[self.testing, 0]], ['*ALL'], "Combined_testing")
-
     def _group_error(self):
         groups = []
-        for group in config.sections["GROUPS"].group_table:
+        for group in pt.shared_arrays['configs_per_group'].list:
+            group = group.split('/')[-1]
             groups.append(group)
         if config.sections["CALCULATOR"].energy:
             self._group_energy(groups)

@@ -61,20 +61,17 @@ class Json(Scraper):
                 if "Label" in self.data:
                     del self.data["Label"]  # This comment line is not that useful to keep around.
 
-                # possibly due to JSON, some configurations have integer energy values.
                 if not isinstance(self.data["Energy"], float):
-                    # pt.print(f"Warning: Configuration {all_index}
-                    # ({group_name}/{fname_end}) gives energy as an integer")
                     self.data["Energy"] = float(self.data["Energy"])
 
-                self.data["Energy"] *= self.conversions["Energy"]
-
-                # Currently, ESHIFT should be in units of your calculator (note there is no conversion)
+                # Currently, ESHIFT should be in units of your training data (note there is no conversion)
                 if hasattr(config.sections["ESHIFT"], 'eshift'):
                     for atom in self.data["AtomTypes"]:
                         self.data["Energy"] += config.sections["ESHIFT"].eshift[atom]
 
                 self.data["test_bool"] = self.test_bool[i]
+
+                self.data["Energy"] *= self.conversions["Energy"]
 
                 self._rotate_coords()
                 self._translate_coords()

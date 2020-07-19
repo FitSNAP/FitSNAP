@@ -114,8 +114,8 @@ class Scraper:
             for i in range(testing_size):
                 self.tests[folder].append(self.files[folder].pop())
 
-            self.group_table[self.data['Group']]['training_size'] = training_size
-            self.group_table[self.data['Group']]['testing_size'] = testing_size
+            self.group_table[key]['training_size'] = training_size
+            self.group_table[key]['testing_size'] = testing_size
             # self.files[folder] = natsorted(self.files[folder])
 
     # TODO : Fix divvy up to distribute groups evenly and based on memory

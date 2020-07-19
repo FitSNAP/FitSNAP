@@ -374,6 +374,9 @@ class XYZ(Scraper):
                 self.configs[file_base].pop()
             for i in range(testing_size):
                 self.tests[file_base].append(self.configs[file_base].pop())
+
+            self.group_table[key]['training_size'] = training_size
+            self.group_table[key]['testing_size'] = testing_size
             # self.files[folder] = natsorted(self.files[folder])
 
     def scrape_configs(self):

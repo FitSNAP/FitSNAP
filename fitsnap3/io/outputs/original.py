@@ -44,6 +44,7 @@ def _to_param_string():
     quadraticflag {config.sections["CALCULATOR"].quadraticflag}
     wselfallflag {config.sections["CALCULATOR"].wselfallflag}
     chemflag {chemflag_int}
+    bnormflag {config.sections["CALCULATOR"].bnormflag}
     """
 
 

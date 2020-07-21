@@ -31,16 +31,15 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 * [Required] Compile LAMMPS (lammps.sandia.gov) as a shared library, detailed instructions can be found here `docs/LAMMPS.md`. If you can open python and run `import lammps; lmp = lammps.lammps()` and it succeeds, you should be good.
 
 #### Installing:
-* Put this directory somewhere that you like.
-* Add this directory in your Python path.
-* See docs/INSTALL.md for more information
+* For the most recent bug fixes/code changes:
+*   Clone this repository and add it to your PYTHONPATH environment variable. Periodically 'git pull' for code updates.
+* For stable, self-contained copy of this code:
+*   Set up a Conda environment, then 'pip install fitsnap3'. Less complications using mpi4py this way.
+* See docs/INSTALL.md for more information. 
+* We recommend always using an up-to-date LAMMPS version as this is the preferred decriptor calculator. 
 
 #### Running:
-* `python -m fitsnap3 [options] infile`
+* `(mpirun -np #) python -m fitsnap3 [options] infile` (optional) 
 * Command line options can be seen with `python -m fitsnap3 -h`
 * Input files are described by `docs/TEMPLATE.in` and `docs/GROUPLIST.template`
 * Examples of published SNAP interatomic potentials can be found in `examples/`
-
-#### Version Control:
-* `stable` branch is the latest validated stable version of the code. It is recommended for new users. 
-* `master` branch reflects all of the latest code changes. It is intended for active developers and requires an up-to-date version of LAMMPS as well. 

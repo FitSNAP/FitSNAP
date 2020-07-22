@@ -15,6 +15,8 @@ class Outfile(Section):
         self.config_file = self._check_path(self.get_value("OUTFILE", "configs", "fitsnap_configs.pkl.gz"))
         self.metric_file = self._check_path(self.get_value("OUTFILE", "metrics", "fitsnap_metrics.csv"))
         self.potential_name = self._check_path(self.get_value("OUTFILE", "potential", "fitsnap_potential"))
+        self.detailed_errors_file = \
+            self._check_path(self.get_value("OUTFILE", "detailed_errors", "fitsnap_detailed_errors.dat"))
         return
 
     def _check_relative(self):

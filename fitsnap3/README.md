@@ -18,3 +18,5 @@ _This folder should be on your PYTHONPATH, and if you change the name of this fo
 
 #### __parallel_tools.py__
   - This is the real star of the show in terms of functionality, all of the parent classes will lean on this to distribute tasks and collect data across ranks/nodes. Pull requests that modify this will be given heavy scrutiny, plenty of additional functionality can be more easily made within scrapers/calculators/solvers/io. 
+
+![FitSNAP3 Code Flow Chart](FitSNAP3_CodeFlowChart.png)

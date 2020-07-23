@@ -52,7 +52,7 @@ class Output:
 
 
 @contextmanager
-def optional_write(file, mode, *args, openfn=None, **kwargs):
+def optional_open(file, mode, *args, openfn=None, **kwargs):
     # Note: this is suboptimal in that whatever write operations
     # are still performed ; this is negligible compared to the computation, at the moment.
     """If file is None, yields a dummy file object."""

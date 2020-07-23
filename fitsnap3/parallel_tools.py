@@ -184,6 +184,9 @@ class ParallelTools:
     def get_rank(self):
         return self._rank
 
+    def get_subrank(self):
+        return self._sub_rank
+
     @_rank_zero
     def single_print(self, *args, **kw):
         printf(*args)

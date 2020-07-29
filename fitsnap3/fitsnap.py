@@ -59,6 +59,7 @@ class FitSnap:
         self.calculator.create_a()
         for i, configuration in enumerate(self.data):
             self.calculator.process_configs(configuration, i)
+        del self.data
 
     @pt.sub_rank_zero
     @pt.single_timeit

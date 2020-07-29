@@ -44,6 +44,8 @@ class FitSnap:
         self.calculator = calculator(config.sections["CALCULATOR"].calculator)
         self.solver = solver(config.sections["SOLVER"].solver)
         self.fit = None
+        if config.sections["SOLVER"].only_test:
+            self.fit = output.read_fit()
 
     @pt.single_timeit
     def scrape_configs(self):
@@ -57,11 +59,15 @@ class FitSnap:
         self.calculator.create_a()
         for i, configuration in enumerate(self.data):
             self.calculator.process_configs(configuration, i)
+        del self.data
 
     @pt.sub_rank_zero
     @pt.single_timeit
     def perform_fit(self):
-        self.solver.perform_fit()
+        if self.fit is None:
+            self.solver.perform_fit()
+        else:
+            self.solver.fit = self.fit
         self.solver.fit_gather()
         self.solver.error_analysis()
 

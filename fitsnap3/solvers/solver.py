@@ -18,7 +18,6 @@ class Solver:
         self.a = None
         self.b = None
         self.w = None
-        self.testing = 0
 
     def perform_fit(self):
         pass
@@ -41,6 +40,8 @@ class Solver:
             self.weighted = option
             self._all_error()
             self._group_error()
+        #   Print of errors per config
+        #     self._config_error()
 
         if self.template_error is True:
             self._template_error()
@@ -65,8 +66,6 @@ class Solver:
         a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
         self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
         if testing != 0:
-            if self.weighted == "Unweighted":
-                self.testing += testing
             self._errors([[testing, 0]], ['*ALL'], "Energy_testing", a, b, w)
 
     def _force(self):
@@ -76,10 +75,17 @@ class Solver:
         else:
             testing = 0
         a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
+        # print out predicted vs true forces
+        # detailed_errors = 1
+        # if detailed_errors and self.weighted == "Unweighted":
+        #     from csv import writer
+        #     true, pred = b, a @ self.fit
+        #     with open('detailed_errors.dat', 'w') as f:
+        #         writer = writer(f, delimiter=' ')
+        #         writer.writerows(zip(true, pred, true-pred))
+
         self._errors([[0, testing]], ['*ALL'], "Force", a, b, w)
         if testing != 0:
-            if self.weighted == "Unweighted":
-                self.testing += testing
             self._errors([[testing, 0]], ['*ALL'], "Force_testing", a, b, w)
 
     def _stress(self):
@@ -87,14 +93,12 @@ class Solver:
         a, b, w = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
         self._errors([[0, testing]], ['*ALL'], "Stress", a, b, w)
         if testing != 0:
-            if self.weighted == "Unweighted":
-                self.testing += testing
             self._errors([[testing, 0]], ['*ALL'], "Stress_testing", a, b, w)
 
     def _combined(self):
-        self._errors([[0, self.testing]], ["*ALL"], "Combined")
-        if self.testing != 0:
-            self._errors([[self.testing, 0]], ['*ALL'], "Combined_testing")
+        self._errors([[0, pt.shared_arrays["configs_per_group"].testing_elements]], ["*ALL"], "Combined")
+        if pt.shared_arrays["configs_per_group"].testing_elements != 0:
+            self._errors([[pt.shared_arrays["configs_per_group"].testing_elements, 0]], ['*ALL'], "Combined_testing")
 
     @staticmethod
     def _make_abw(type_index, buffer):
@@ -149,6 +153,13 @@ class Solver:
         index, a, b, w = self._make_group_abw(group_index, length, 6)
         self._errors(index, groups, "Stress", a, b, w)
 
+    def _group_combined(self, groups):
+        index = []
+        group_index = pt.shared_arrays['a'].group_index
+        for i in range(len(group_index) - 1):
+            index.append([group_index[i], group_index[i+1]])
+        self._errors(index, groups, "Combined")
+
     @staticmethod
     def _make_group_abw(group_index, length, buffer):
         index = []
@@ -177,12 +188,58 @@ class Solver:
             index.append(temp)
         return index, a, b, w
 
-    def _group_combined(self, groups):
-        index = []
-        group_index = pt.shared_arrays['a'].group_index
-        for i in range(len(group_index) - 1):
-            index.append([group_index[i], group_index[i+1]])
-        self._errors(index, groups, "Combined")
+    def _config_error(self):
+        config_index = 0
+        current_index = 0
+        for i, num_atoms in enumerate(pt.shared_arrays['a'].num_atoms):
+            this_config = pt.shared_arrays['number_of_atoms'].configs[i]
+            if isinstance(this_config, str):
+                this_config = this_config.split('/')[-2] + ':' + this_config.split('/')[-1]
+                this_config = [this_config]
+            elif isinstance(this_config, list):
+                this_config = [this_config[-1].split('/')[-1] + ':' + str(this_config[0])]
+            if config.sections["CALCULATOR"].energy:
+                # current index is the index of the top of energy
+                self._config_energy(this_config, current_index)
+                current_index += 1
+            if config.sections["CALCULATOR"].force:
+                # current index is the index of the top of force
+                self._config_force(this_config, current_index, 3*num_atoms)
+                current_index += 3*num_atoms
+            if config.sections["CALCULATOR"].stress:
+                self._config_stress(this_config, current_index)
+                current_index += 6
+            self._config_combined(this_config, config_index, current_index)
+            config_index = current_index
+
+    def _config_energy(self, this_config, current_index):
+        index, a, b, w = self._make_config_abw(current_index, 1)
+        self._errors(index, this_config, "Energy", a, b, w)
+
+    def _config_force(self, this_config, current_index, length):
+        index, a, b, w = self._make_config_abw(current_index, length)
+        self._errors(index, this_config, "Force", a, b, w)
+
+    def _config_stress(self, this_config, current_index):
+        index, a, b, w = self._make_config_abw(current_index, 6)
+        self._errors(index, this_config, "Stress", a, b, w)
+
+    def _config_combined(self, this_config, config_index, current_index):
+        index, a, b, w = self._make_config_abw(config_index, current_index-config_index)
+        self._errors(index, this_config, "Combined", a, b, w)
+
+    @staticmethod
+    def _make_config_abw(i, buffer):
+        index = None
+        width = np.shape(pt.shared_arrays['a'].array)[1]
+        a = np.zeros((buffer, width))
+        b = np.zeros((buffer,))
+        w = np.zeros((buffer,))
+        a[:] = pt.shared_arrays['a'].array[i:i + buffer]
+        b[:] = pt.shared_arrays['b'].array[i:i + buffer]
+        w[:] = pt.shared_arrays['w'].array[i:i + buffer]
+
+        return index, a, b, w
 
     def _errors(self, index, category, gtype, a=None, b=None, w=None):
         if a is None:
@@ -192,7 +249,11 @@ class Solver:
         if w is None:
             w = pt.shared_arrays['w'].array
         for i, group in enumerate(category):
-            if index[i][1] != 0:
+            if index is None:
+                a_err = a
+                b_err = b
+                w_err = w
+            elif index[i][1] != 0:
                 a_err = a[index[i][0]:index[i][1]]
                 b_err = b[index[i][0]:index[i][1]]
                 w_err = w[index[i][0]:index[i][1]]
@@ -208,6 +269,9 @@ class Solver:
                 nconfig = len(pred)
             res = true - pred
             mae = np.sum(np.abs(res) / nconfig)
+            # relative mae
+            # rres = ((true+1)-pred)/(true+1)
+            # rel_mae = np.sum(np.abs(rres) / nconfig)
             mean_dev = np.sum(np.abs(true - np.median(true)) / nconfig)
             ssr = np.square(res).sum()
             mse = ssr / nconfig

@@ -36,6 +36,7 @@ from random import shuffle
 from fitsnap3.parallel_tools import pt
 from fitsnap3.io.output import output
 from fitsnap3.units import convert
+from copy import copy
 # from natsort import natsorted
 
 
@@ -120,10 +121,6 @@ class Scraper:
 
     # TODO : Fix divvy up to distribute groups evenly and based on memory
     def divvy_up_configs(self):
-        # TODO : When adding multinode functionality keep an eye out on the following two lines.
-        self.configs = pt.split_by_node(self.configs)
-        if self.tests is not None:
-            self.tests = pt.split_by_node(self.tests)
         self.test_bool = []
         groups = []
         group_list = []
@@ -151,6 +148,13 @@ class Scraper:
                     self.test_bool.append(1)
             self.configs += test_list
 
+        # NODES SPLIT UP HERE
+        self.configs = pt.split_by_node(self.configs)
+        self.test_bool = pt.split_by_node(self.test_bool)
+        groups = pt.split_by_node(groups)
+        group_list = pt.split_by_node(group_list)
+        temp_configs = copy(self.configs)
+
         group_test = list(dict.fromkeys(group_list))
         group_set = list(dict.fromkeys(groups))
         group_counts = np.zeros((len(group_set) + len(group_test),), dtype='i')
@@ -174,7 +178,11 @@ class Scraper:
         number_of_configs_per_node = len(self.configs)
         pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
         pt.slice_array('number_of_atoms')
-        self.test_bool = pt.split_by_node(self.test_bool)
+        pt.shared_arrays['number_of_atoms'].configs = temp_configs
+
+        # PROCS SPLIT UP HERE
+        # TODO: Fix this split
+        self.test_bool = pt.split_within_node(self.test_bool)
         self.test_bool = np.array(self.test_bool)
         self.configs = pt.split_within_node(self.configs)
 

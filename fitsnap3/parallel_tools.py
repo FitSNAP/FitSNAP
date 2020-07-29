@@ -153,7 +153,7 @@ class ParallelTools:
         self._seed = 0.0
         self._set_seed()
         self.shared_arrays = {}
-        self._calculator_options = {}
+        self.fitsnap_dict = {}
         self.logger = None
 
     @stub_check
@@ -183,6 +183,9 @@ class ParallelTools:
 
     def get_rank(self):
         return self._rank
+
+    def get_subrank(self):
+        return self._sub_rank
 
     @_rank_zero
     def single_print(self, *args, **kw):
@@ -253,12 +256,29 @@ class ParallelTools:
         else:
             raise TypeError("name must be a string")
 
+    @_sub_rank_zero
+    def add_2_fitsnap(self, name, an_object):
+
+        if isinstance(name, str):
+            if name in self.fitsnap_dict:
+                raise NameError("name is already in dictionary")
+            self.fitsnap_dict[name] = an_object
+        else:
+            raise TypeError("name must be a string")
+
+    def _comm_fitsnap(self, name):
+
+        if self._sub_rank == 0:
+            if name not in self.fitsnap_dict:
+                raise NameError("Dictionary element not yet in fitsnap_dictionary")
+        else:
+            self.fitsnap_dict[name] = None
+
+        self.fitsnap_dict[name] = self._sub_comm.bcast(self.fitsnap_dict[name])
+
     @stub_check
     def allgather(self, array):
         return self._head_group_comm.allgather(array)
-
-    def add_calculator_option(self, option, boolean):
-        self._calculator_options[option] = boolean
 
     @stub_check
     def all_barrier(self):
@@ -336,6 +356,10 @@ class ParallelTools:
     def slice_a(self, name='a'):
         nof = len(pt.shared_arrays["number_of_atoms"].array)
         s = slice(self._sub_rank, nof, self._sub_size)
+        if self._sub_rank != 0:
+            self._comm_fitsnap("a_indices")
+            self.fitsnap_dict["a_indices"] = self.fitsnap_dict["a_indices"][s]
+            return
         indices = [0]
         self.shared_arrays[name].group_index = []
         self.shared_arrays[name].group_energy_index = []
@@ -352,46 +376,48 @@ class ParallelTools:
         for i in range(nof):
             if i in count:
                 self.shared_arrays[name].group_index.append(j)
-                if self._calculator_options["energy"] and i > 0:
+                if self.fitsnap_dict["energy"] and i > 0:
                     self.shared_arrays[name].group_energy_index.append(e_temp)
                     e_temp = []
-                if self._calculator_options["force"] and i > 0:
+                if self.fitsnap_dict["force"] and i > 0:
                     self.shared_arrays[name].group_force_index.append(f_temp)
                     f_temp = []
-                if self._calculator_options["stress"] and i > 0:
+                if self.fitsnap_dict["stress"] and i > 0:
                     self.shared_arrays[name].group_stress_index.append(s_temp)
                     s_temp = []
-            if self._calculator_options["energy"]:
+            if self.fitsnap_dict["energy"]:
                 e_temp.append(j)
                 j += 1
-            if self._calculator_options["force"]:
+            if self.fitsnap_dict["force"]:
                 f_temp.append(j)
                 j += 3 * pt.shared_arrays["number_of_atoms"].array[i]
-            if self._calculator_options["stress"]:
+            if self.fitsnap_dict["stress"]:
                 s_temp.append(j)
                 j += 6
             indices.append(j)
             atoms.append(pt.shared_arrays["number_of_atoms"].array[i])
-        if self._calculator_options["energy"]:
+        if self.fitsnap_dict["energy"]:
             self.shared_arrays[name].group_energy_index.append(e_temp)
             self.shared_arrays[name].energy_index = \
                 list(chain.from_iterable(self.shared_arrays[name].group_energy_index))
             self.shared_arrays[name].group_energy_length = \
                 sum(len(row) for row in self.shared_arrays[name].group_energy_index)
-        if self._calculator_options["force"]:
+        if self.fitsnap_dict["force"]:
             self.shared_arrays[name].group_force_index.append(f_temp)
             self.shared_arrays[name].force_index = \
                 list(chain.from_iterable(self.shared_arrays[name].group_force_index))
             self.shared_arrays[name].group_force_length = \
                 sum(len(row) for row in self.shared_arrays[name].group_force_index)
-        if self._calculator_options["stress"]:
+        if self.fitsnap_dict["stress"]:
             self.shared_arrays[name].group_stress_index.append(s_temp)
             self.shared_arrays[name].stress_index = \
                 list(chain.from_iterable(self.shared_arrays[name].group_stress_index))
             self.shared_arrays[name].group_stress_length = \
                 sum(len(row) for row in self.shared_arrays[name].group_stress_index)
         self.shared_arrays[name].group_index.append(j)
-        self.shared_arrays[name].indices = indices[s]
+        self.add_2_fitsnap("a_indices", indices)
+        self._comm_fitsnap("a_indices")
+        self.fitsnap_dict["a_indices"] = indices[s]
         self.shared_arrays[name].num_atoms = atoms
 
     @stub_check

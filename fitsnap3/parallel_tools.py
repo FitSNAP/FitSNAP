@@ -266,6 +266,7 @@ class ParallelTools:
         else:
             raise TypeError("name must be a string")
 
+    @stub_check
     def _comm_fitsnap(self, name):
 
         if self._sub_rank == 0:

@@ -55,18 +55,31 @@ Note that the 20Jun20_Standard/ directory contains sample output for this exampl
 #### Important input parameters for this example
 
 rcutfac = 1  : Radial cutoff (hyperparameter) chosen for this potential
+
 wj1 = 1.0 : Elemental weight on Indium for density expansion
+
 wj2 = 9.293160905266721e-01 : : Elemental weight on Phosphide for density expansion
+
 radelem1 = 3.812045629514403e : Indium per-element cutoff
+
 radelem2 = 3.829453817954964e : Phospide per-element cutoff
+
 type1 = In : Chemical symbol for element which should match training files in JSON
+
 type2 = P  : Chemical symbol for element which should match training files in JSON
+
 eshift = In : -1.65967588701534  : Per atom training data energy shift for In
+
 eshift = P  : 4.38159549501534 : Per atom training data energy shift for P
+
 quadraticflag = 0 : Quadratic SNAP is turned off, using linear SNAP
+
 chemflag = 1 : Flag to turn on EME-SNAP
+
 bnormflag = 1 : Flag to turn on normalization of j indices (speeds up MD runs)
+
 wselfallflag = 1 : Adds wself contribution to the density 
+
 
 See docs/TEMPLATE.in for further information on input parameters
 

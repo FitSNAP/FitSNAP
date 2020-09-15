@@ -83,6 +83,8 @@ class Config:
                 section = '.'.join(file.split('.')[:-1]).upper()
                 if section == "TEMPLATE":
                     section = "DEFAULT"
+                if section == "BASIC_CALCULATOR":
+                    section = "BASIC"
                 self.sections[section] = new_section(section, tmp_config, self.args)
         del temp
 

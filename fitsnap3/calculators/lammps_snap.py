@@ -3,6 +3,7 @@ from ..calculators.calculator import Calculator
 from ..parallel_tools import pt
 from ..io.input import config
 import numpy as np
+from ase.io import read
 
 # TODO: Ask about onehot_fraction for energy
 

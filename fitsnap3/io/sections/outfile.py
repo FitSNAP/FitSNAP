@@ -9,6 +9,7 @@ class Outfile(Section):
         self._check_relative()
         self._outfile()
         self.output_style = self.get_value("OUTFILE", "output_style", "ORIGINAL")
+        self.print_a = self.get_value("OUTFILE", "print_a", "False", "bool")
         self.delete()
 
     def _outfile(self):

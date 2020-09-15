@@ -19,12 +19,13 @@ class Original(Output):
     @pt.rank_zero
     def write(self, coeffs, errors):
         if config.sections["SOLVER"].only_test != 1:
-            with optional_open(config.sections["OUTFILE"].potential_name and
-                               config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
-                file.write(_to_coeff_string(coeffs))
-            with optional_open(config.sections["OUTFILE"].potential_name and
-                               config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
-                file.write(_to_param_string())
+            if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP":
+                with optional_open(config.sections["OUTFILE"].potential_name and
+                                   config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
+                    file.write(_to_coeff_string(coeffs))
+                with optional_open(config.sections["OUTFILE"].potential_name and
+                                   config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
+                    file.write(_to_param_string())
         with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
             errors.to_csv(file)
 

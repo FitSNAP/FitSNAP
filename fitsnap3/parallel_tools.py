@@ -344,7 +344,7 @@ class ParallelTools:
             self._lmp = None
         return self._lmp
 
-    def slice_array(self, name, num_types=None):
+    def slice_array(self, name):
         if name in self.shared_arrays:
             if name != 'a':
                 s = slice(self._sub_rank, None, self._sub_size)
@@ -550,7 +550,7 @@ class Output:
         pt.exception(err)
 
 
-if __name__ == "fitsnap3.parallel_tools":
+if __name__.split(".")[-1] == "parallel_tools":
     pt = ParallelTools()
     if stubs == 0:
         double_size = MPI.DOUBLE.Get_size()

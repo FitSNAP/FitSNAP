@@ -1,6 +1,6 @@
-from fitsnap3.solvers.solver import Solver
-from fitsnap3.parallel_tools import pt
-from fitsnap3.io.input import config
+from .solver import Solver
+from ..parallel_tools import pt
+from ..io.input import config
 import numpy as np
 try:
     import tensorflow as tf
@@ -29,7 +29,7 @@ try:
             bw = bw.reshape((len(bw), 1))
             self.fit = tf.linalg.lstsq(aw, bw)
             self.fit = self.fit.numpy()
-            if config.sections["CALCULATOR"].bzeroflag:
+            if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and config.sections["BISPECTRUM"].bzeroflag:
                 self._offset()
 
 except ModuleNotFoundError:

@@ -1,4 +1,4 @@
-from fitsnap3.io.outputs.outputs import Output, pt
+from .outputs import Output, pt
 pt.get_subclasses(__name__, __file__, Output)
 
 

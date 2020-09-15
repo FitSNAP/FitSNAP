@@ -1,4 +1,4 @@
-from fitsnap3.solvers.solver import Solver, pt
+from .solver import Solver, pt
 pt.get_subclasses(__name__, __file__, Solver)
 
 

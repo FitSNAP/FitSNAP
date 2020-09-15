@@ -10,9 +10,7 @@ radelem1 = 0.5
 radelem2 = 0.417932464
 type1 = W
 type2 = Be
-
-[CALCULATOR]
-bzeroflag = 1   
+bzeroflag = 1
 quadraticflag = 0
 
 [SOLVER]

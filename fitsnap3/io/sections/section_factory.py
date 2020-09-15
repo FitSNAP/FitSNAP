@@ -1,4 +1,4 @@
-from fitsnap3.io.sections.sections import Section, pt
+from .sections import Section, pt
 pt.get_subclasses(__name__, __file__, Section)
 
 

@@ -1,4 +1,4 @@
-from fitsnap3.io.sections.sections import Section, output
+from .sections import Section, output
 
 
 class Scraper(Section):

@@ -1,0 +1,57 @@
+[BISPECTRUM]
+numTypes = 3
+twojmax = 4
+rcutfac = 5.0
+rfac0 = 0.99363
+rmin0 = 0.0
+wj1 = 1.0
+wj2 = 1.0 
+wj3 = 1.0 
+radelem1 = 0.3e+00 #HP
+radelem2 = 0.4e+00 #HP
+radelem3 = 0.45e+00 #HP
+type1 = H
+type2 = C
+type3 = O
+
+[CALCULATOR]
+wselfallflag = 1
+chemflag = 1
+bnormflag = 1
+bzeroflag = 0   
+quadraticflag = 0
+stress = 0
+force = 0
+
+[GROUPS]
+group_sections = name training_size testing_size eweight 
+group_types = str float float float 
+
+[SCRAPER]
+scraper = xyz
+property_array =
+	positions = length metal metal
+	lattice = length metal metal
+	forces = force metal metal
+	energy = energy metal metal
+
+[SOLVER]
+solver = SVD	
+dump_a = 1
+dump_x = 1
+dump_b = 1
+
+[PATH]
+dataPath = ./data
+groupFile = ./grouplist.in
+
+[OUTFILE]
+configs = aerosol_configs.pkl.gz
+metrics = aerosol_metrics.csv
+potential = aerosol_pot
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = zero 10.0
+pair_coeff1 = * *

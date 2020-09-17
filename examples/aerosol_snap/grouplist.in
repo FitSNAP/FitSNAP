@@ -1,0 +1,9 @@
+# name training_size testing_size eweight 
+anisole_ice_263K	0.9 	0.1 	1
+mDMB_ice_263K    	0.9 	0.1 	1
+oDMB_ice_263K    	0.9 	0.1 	1
+pDMB_ice_263K    	0.9 	0.1 	1
+anisole_solution_300K	0.9 	0.1 	1
+mDMB_solution_300K	0.9 	0.1 	1
+oDMB_solution_300K	0.9 	0.1 	1
+pDMB_solution_300K	0.9 	0.1 	1

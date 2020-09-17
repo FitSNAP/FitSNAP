@@ -68,6 +68,7 @@ class FitSnap:
             self.solver.perform_fit()
         else:
             self.solver.fit = self.fit
+        self.solver.extras()
         self.solver.fit_gather()
         self.solver.error_analysis()
 

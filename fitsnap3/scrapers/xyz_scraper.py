@@ -455,4 +455,9 @@ class XYZ(Scraper):
 
                     self.all_data.append(self.data)
 
+        temp_list = []
+        temp_list[:] = [d for d in self.all_data if d.get('test_bool') == 1]
+        self.all_data[:] = [d for d in self.all_data if d.get('test_bool') == 0]
+        self.all_data += temp_list
+
         return self.all_data

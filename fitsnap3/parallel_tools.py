@@ -358,6 +358,7 @@ class ParallelTools:
         nof = len(pt.shared_arrays["number_of_atoms"].array)
         s = slice(self._sub_rank, nof, self._sub_size)
         if self._sub_rank != 0:
+            # Wait for head proc on node to fill indices
             self._comm_fitsnap("a_indices")
             self.fitsnap_dict["a_indices"] = self.fitsnap_dict["a_indices"][s]
             return

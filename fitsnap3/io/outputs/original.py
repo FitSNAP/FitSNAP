@@ -31,6 +31,7 @@ class Original(Output):
 
     @pt.sub_rank_zero
     def read_fit(self):
+        # TODO fix this fix reader for bzeroflag = 0
         if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
             raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
         with optional_open(config.sections["OUTFILE"].potential_name and

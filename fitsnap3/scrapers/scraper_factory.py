@@ -1,4 +1,4 @@
-from fitsnap3.scrapers.scrape import Scraper, pt
+from .scrape import Scraper, pt
 pt.get_subclasses(__name__, __file__, Scraper)
 
 

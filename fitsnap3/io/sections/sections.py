@@ -1,4 +1,4 @@
-from fitsnap3.parallel_tools import pt, output
+from ...parallel_tools import pt, output
 from distutils.util import strtobool
 from os import getcwd
 

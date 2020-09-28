@@ -1,5 +1,5 @@
 """Groups Class"""
-from fitsnap3.io.sections.sections import Section, output
+from .sections import Section, output
 from pandas import read_csv
 from os import path
 

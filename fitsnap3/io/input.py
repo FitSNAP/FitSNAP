@@ -1,8 +1,8 @@
 import configparser
 import argparse
 from pickle import HIGHEST_PROTOCOL
-from fitsnap3.io.sections.section_factory import new_section
-from fitsnap3.parallel_tools import pt, output
+from ..io.sections.section_factory import new_section
+from ..parallel_tools import pt, output
 from os import path, listdir
 
 
@@ -14,7 +14,6 @@ class Config:
         self.parse_cmdline()
         self.sections = {}
         self.parse_config()
-        self._reset_chemflag()
 
     def parse_cmdline(self):
         parser = argparse.ArgumentParser(prog="FitSNAP3")
@@ -84,17 +83,11 @@ class Config:
                 section = '.'.join(file.split('.')[:-1]).upper()
                 if section == "TEMPLATE":
                     section = "DEFAULT"
+                if section == "BASIC_CALCULATOR":
+                    section = "BASIC"
                 self.sections[section] = new_section(section, tmp_config, self.args)
         del temp
 
-    def _reset_chemflag(self):
-        if self.sections["CALCULATOR"].chemflag != 0:
-            chemflag = "{}".format(self.sections['BISPECTRUM'].numtypes)
-            for element in self.sections["BISPECTRUM"].type_mapping:
-                element_type = self.sections["BISPECTRUM"].type_mapping[element]
-                chemflag += " {}".format(element_type - 1)
-            self.sections["CALCULATOR"].chemflag = "{}".format(chemflag)
 
-
-if __name__ == "fitsnap3.io.input":
+if __name__.split(".")[-1] == "input":
     config = Config()

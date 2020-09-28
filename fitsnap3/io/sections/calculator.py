@@ -1,5 +1,5 @@
-from fitsnap3.io.sections.sections import Section
-from fitsnap3.parallel_tools import pt
+from .sections import Section
+from ...parallel_tools import pt
 
 
 class Calculator(Section):
@@ -13,9 +13,4 @@ class Calculator(Section):
         pt.add_2_fitsnap("force", self.force)
         self.stress = self.get_value("CALCULATOR", "stress", "True", "bool")
         pt.add_2_fitsnap("stress", self.stress)
-        self.chemflag = self.get_value("CALCULATOR", "chemflag", "0", "bool")
-        self.bnormflag = self.get_value("CALCULATOR", "bnormflag", "0", "bool")
-        self.wselfallflag = self.get_value("CALCULATOR", "wselfallflag", "0", "bool")
-        self.bzeroflag = self.get_value("CALCULATOR", "bzeroflag", "0", "bool")
-        self.quadraticflag = self.get_value("CALCULATOR", "quadraticflag", "0", "bool")
         self.delete()

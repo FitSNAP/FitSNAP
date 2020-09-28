@@ -1,4 +1,4 @@
-from fitsnap3.io.sections.sections import Section
+from .sections import Section
 from itertools import combinations_with_replacement
 import numpy as np
 
@@ -26,7 +26,14 @@ class Bispectrum(Section):
         for i, atom_type in enumerate(self.types):
             self.type_mapping[atom_type] = i+1
 
+        self.chemflag = self.get_value("BISPECTRUM", "chemflag", "0", "bool")
+        self.bnormflag = self.get_value("BISPECTRUM", "bnormflag", "0", "bool")
+        self.wselfallflag = self.get_value("BISPECTRUM", "wselfallflag", "0", "bool")
+        self.bzeroflag = self.get_value("BISPECTRUM", "bzeroflag", "0", "bool")
+        self.quadraticflag = self.get_value("BISPECTRUM", "quadraticflag", "0", "bool")
+
         self._generate_b_list()
+        self._reset_chemflag()
         self.delete()
 
     def _generate_b_list(self):
@@ -38,11 +45,19 @@ class Bispectrum(Section):
                     if j >= j1:
                         i += 1
                         self.blist.append([i, j1, j2, j])
-        if self.get_value("CALCULATOR", "chemflag", "0", "bool"):
+        if self.chemflag:
             self.blist *= self.numtypes ** 3
             self.blist = np.array(self.blist).tolist()
-        if self.get_value("CALCULATOR", "quadraticflag", "0", "bool"):
+        if self.quadraticflag:
             # Note, combinations_with_replacement precisely generates the upper-diagonal entries we want
             self.blist += [[i, a, b] for i, (a, b) in
                            enumerate(combinations_with_replacement(self.blist, r=2), start=len(self.blist))]
         self.ncoeff = len(self.blist)
+
+    def _reset_chemflag(self):
+        if self.chemflag != 0:
+            chemflag = "{}".format(self.numtypes)
+            for element in self.type_mapping:
+                element_type = self.type_mapping[element]
+                chemflag += " {}".format(element_type - 1)
+            self.chemflag = "{}".format(chemflag)

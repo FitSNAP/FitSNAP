@@ -29,9 +29,9 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from fitsnap3.fitsnap import FitSnap
-from fitsnap3.parallel_tools import pt
-from fitsnap3.io.output import output
+from .fitsnap import FitSnap
+from .parallel_tools import pt
+from .io.output import output
 # TODO : Make unit conversion object
 
 

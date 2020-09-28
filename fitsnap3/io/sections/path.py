@@ -1,4 +1,4 @@
-from fitsnap3.io.sections.sections import Section
+from .sections import Section
 from os import path
 
 

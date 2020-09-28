@@ -1,4 +1,4 @@
-from fitsnap3.calculators.calculator import Calculator, pt
+from .calculator import Calculator, pt
 pt.get_subclasses(__name__, __file__, Calculator)
 
 

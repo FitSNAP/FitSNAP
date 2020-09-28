@@ -1,4 +1,4 @@
-from fitsnap3.io.outputs.outputs import Output
+from .outputs import Output
 """Methods you may or must override in new output"""
 
 

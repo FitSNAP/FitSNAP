@@ -1,7 +1,7 @@
-from fitsnap3.io.outputs.outputs import Output, optional_open
-from fitsnap3.parallel_tools import pt
+from .outputs import Output, optional_open
+from ...parallel_tools import pt
 from datetime import datetime
-from fitsnap3.io.input import config
+from ..input import config
 import numpy as np
 
 
@@ -19,17 +19,20 @@ class Original(Output):
     @pt.rank_zero
     def write(self, coeffs, errors):
         if config.sections["SOLVER"].only_test != 1:
-            with optional_open(config.sections["OUTFILE"].potential_name and
-                               config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
-                file.write(_to_coeff_string(coeffs))
-            with optional_open(config.sections["OUTFILE"].potential_name and
-                               config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
-                file.write(_to_param_string())
+            if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP":
+                with optional_open(config.sections["OUTFILE"].potential_name and
+                                   config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
+                    file.write(_to_coeff_string(coeffs))
+                with optional_open(config.sections["OUTFILE"].potential_name and
+                                   config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
+                    file.write(_to_param_string())
         with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
             errors.to_csv(file)
 
     @pt.sub_rank_zero
     def read_fit(self):
+        if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
+            raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
         with optional_open(config.sections["OUTFILE"].potential_name and
                            config.sections["OUTFILE"].potential_name + '.snapcoeff', 'r') as file:
 
@@ -57,7 +60,9 @@ class Original(Output):
 
 
 def _to_param_string():
-    if config.sections["CALCULATOR"].chemflag != 0:
+    if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
+        raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
+    if config.sections["BISPECTRUM"].chemflag != 0:
         chemflag_int = 1
     else:
         chemflag_int = 0
@@ -69,11 +74,11 @@ def _to_param_string():
     #  optional
     rfac0 {config.sections["BISPECTRUM"].rfac0}
     rmin0 {config.sections["BISPECTRUM"].rmin0}
-    bzeroflag {config.sections["CALCULATOR"].bzeroflag}
-    quadraticflag {config.sections["CALCULATOR"].quadraticflag}
-    wselfallflag {config.sections["CALCULATOR"].wselfallflag}
+    bzeroflag {config.sections["BISPECTRUM"].bzeroflag}
+    quadraticflag {config.sections["BISPECTRUM"].quadraticflag}
+    wselfallflag {config.sections["BISPECTRUM"].wselfallflag}
     chemflag {chemflag_int}
-    bnormflag {config.sections["CALCULATOR"].bnormflag}
+    bnormflag {config.sections["BISPECTRUM"].bnormflag}
     """
 
 
@@ -81,6 +86,8 @@ def _to_coeff_string(coeffs):
     """
     Convert a set of coefficients along with bispec options into a .snapparam file
     """
+    if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
+        raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
     # Includes the offset term, which was not in blist
     coeffs = coeffs.reshape((config.sections["BISPECTRUM"].numtypes, -1))
     coeff_names = [[0]]+config.sections["BISPECTRUM"].blist

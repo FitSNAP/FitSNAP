@@ -8,7 +8,7 @@ for the purpose of studying plasma material interactions in fusion reactors.
 
 To run this example, use the following command in this directory:
 
-python3 -m fitsnap3 --overwrite -v  WBe-example.in
+mpirun -n 4 python3 -m fitsnap3 WBe-example.in
 
 #### Files in this Directory
 

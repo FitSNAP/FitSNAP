@@ -9,11 +9,13 @@ rmin0 = 0.0
 wj1 = 1.0
 radelem1 = 0.5
 type1 = Ta
-BOLTZT = 1000
-
-[MODEL]
 bzeroflag = 0
 quadraticflag = 0
+
+[CALCULATOR]
+calculator = LAMMPSSNAP
+
+[SOLVER]
 solver = SVD
 normweight = -12
 normratio = 0.5
@@ -26,9 +28,8 @@ UseForces = 1
 UseStresses = 1
 
 [PATH]
-jsonPath = ./JSON
+dataPath = ./JSON
 groupFile = ./grouplist-Ta.in
-
 
 [OUTFILE]
 configs = Ta_configs.pkl.gz

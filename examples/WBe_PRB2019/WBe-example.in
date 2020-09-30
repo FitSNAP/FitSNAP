@@ -10,24 +10,17 @@ radelem1 = 0.5
 radelem2 = 0.417932464
 type1 = W
 type2 = Be
-BOLTZT = 1000
-
-[MODEL]
-bzeroflag = 1   
+bzeroflag = 1
 quadraticflag = 0
-solver = SVD	
+
+[SOLVER]
+solver = SVD
 normweight = -12
 normratio = 0.5
-test_fraction = 0
-detailed_errors = 1
-lammps_validation = 0
-
-UseEnergies = 1
-UseForces = 1
-UseStresses = 1
+compute_testerrs = 0
 
 [PATH]
-jsonPath = ./JSON
+dataPath = ./JSON
 groupFile = ./grouplist-WBe.in
 
 [OUTFILE]

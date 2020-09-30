@@ -12,6 +12,7 @@
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
+#     Charles Sievers (UC Davis, Sandia National Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
 #
@@ -22,7 +23,6 @@
 #     Gary Saavedra (Sandia National Labs)
 #     Peter Schultz (Sandia National Labs)
 #     Laura Swiler (Sandia National Labs)
-#
 # <!-----------------END-HEADER------------------------------------->
 
 import os
@@ -72,7 +72,7 @@ def create_smartweights_grouplist(base_path,json_directory):
                 try:
                     data = json.loads(file.read(),parse_constant=True)
                 except Exception as e:
-                     print("Trouble Parsing Training Data: ",fname)
+                     print("Trouble Parsing Training Data: ",json_path)
                      raise e
                 current_num_atoms = float(data['Dataset']['Data'][0]['NumAtoms'])
                 num_atoms_group += current_num_atoms
@@ -152,10 +152,10 @@ def read_configs(json_folder,group_table,bispec_options):
             folder_files=sklearn.utils.shuffle(os.listdir(folder))
             nfiles=len(folder_files)
             nfiles_train=max(1,int(abs(group_info.size)*len(folder_files)-0.5))
-            nfiles_test=max(1,int(float(bispec_options["compute_testerrs"])*len(folder_files)-0.5))
+            nfiles_test=max(1,int(float(bispec_options["test_fraction"])*len(folder_files)-0.5))
             # Rather than sorting, can randomize the list and only take the top X% of training
         #print(group_info.name,nfiles)
-        print(nfiles_train,nfiles_test)
+        #print(nfiles_train,nfiles_test)
         for i, fname_end in tqdm.tqdm(enumerate(folder_files),
                                       desc="Configs",position=1,leave=False,total=(nfiles_train+nfiles_test),disable=(not bispec_options["verbosity"]), ascii=True):
             if (i>(nfiles_train + nfiles_test)):

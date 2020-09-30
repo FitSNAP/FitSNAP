@@ -1,28 +1,28 @@
 # <!----------------BEGIN-HEADER------------------------------------>
-# ## FitSNAP3 
+# ## FitSNAP3
 # A Python Package For Training SNAP Interatomic Potentials for use in the LAMMPS molecular dynamics package
-# 
+#
 # _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
 # ##
-# 
-# #### Original author: 
+#
+# #### Original author:
 #     Aidan P. Thompson, athomps (at) sandia (dot) gov (Sandia National Labs)
-#     http://www.cs.sandia.gov/~athomps 
-# 
+#     http://www.cs.sandia.gov/~athomps
+#
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
+#     Charles Sievers (UC Davis, Sandia National Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
-# 
-# #### Additional authors (alphabetical): 
+#
+# #### Additional authors (alphabetical):
 #     Elizabeth Decolvenaere (D. E. Shaw Research)
 #     Stan Moore (Sandia National Labs)
 #     Steve Plimpton (Sandia National Labs)
 #     Gary Saavedra (Sandia National Labs)
 #     Peter Schultz (Sandia National Labs)
 #     Laura Swiler (Sandia National Labs)
-#     
 # <!-----------------END-HEADER------------------------------------->
 
 import gzip
@@ -105,13 +105,13 @@ def to_param_string(rcutfac,twojmax,rfac0,rmin0,bzeroflag,quadraticflag,wselfall
     rmin0 {rmin0}
     bzeroflag {bzeroflag}
     quadraticflag {quadraticflag}
-    wselfallflag {wselfallflag}
-    alloyflag {alloyflag_int}
+    #wselfallflag {wselfallflag}
+    #alloyflag {alloyflag_int}
     """
 
 def to_coeff_string(coeffs,bispec_options):
     """
-    Convert a set of coefficients along with bispec options into a .snapparam file
+    Convert a set of coefficients along with bispec options into a .snapcoeff file
     """
     coeff_names = [[0]]+bispec_options["bnames"] # Includes the offset term, which was not in bnames
     type_names = bispec_options["type"]

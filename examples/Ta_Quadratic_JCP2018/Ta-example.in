@@ -17,8 +17,13 @@ quadraticflag = 1
 solver = SVD
 normweight = -12
 normratio = 0.5
-compute_dbvb = 1
-compute_testerrs = 1
+test_fraction = 0
+detailed_errors = 1
+lammps_validation = 0
+
+UseEnergies = 1
+UseForces = 1
+UseStresses = 1
 
 [PATH]
 jsonPath = ../Ta_Linear_JCP2014/JSON

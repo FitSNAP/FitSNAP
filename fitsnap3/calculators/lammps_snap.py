@@ -108,7 +108,7 @@ class LammpsSnap(Calculator):
 
     def _create_charge(self):
         for i, q in enumerate(self._data["Charges"]):
-            self._lmp.command(f"set atom {i + 1} charge {q:20.20g} ")
+            self._lmp.command(f"set atom {i + 1} charge {q[0]:20.20g} ")
         n_atoms = int(self._lmp.get_natoms())
         assert i + 1 == n_atoms, f"Atom counts don't match when assigning charge: {i + 1}, {n_atoms}"
 

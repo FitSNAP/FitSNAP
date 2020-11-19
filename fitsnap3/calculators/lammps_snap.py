@@ -180,6 +180,12 @@ class LammpsSnap(Calculator):
         index = pt.fitsnap_dict['a_indices'][self._i]
 
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
+        print('Saving A matrix before error calc')
+
+        with open("A_mat_before.csv", "ab") as f:
+            # f.write(b"\n")
+            np.savetxt(f, lmp_snap,delimiter=",")
+        # np.save('A_mat_before',lmp_snap)
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
             raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
                                                                                   self._data["Group"]))

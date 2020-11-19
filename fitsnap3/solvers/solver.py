@@ -250,12 +250,15 @@ class Solver:
         return index, a, b, w
 
     def _errors(self, index, category, gtype, a=None, b=None, w=None):
+        print('Error calc starting')
         if a is None:
             a = pt.shared_arrays['a'].array
+            np.save('A_matrix',a)
         if b is None:
             b = pt.shared_arrays['b'].array
         if w is None:
             w = pt.shared_arrays['w'].array
+            np.save('W_Y',b)
         for i, group in enumerate(category):
             if index is None:
                 a_err = a

@@ -6,9 +6,9 @@ twojmax =  6
 rcutfac =  4.67637
 rfac0 = 0.99363
 rmin0 = 0.0
-wj1 = 1.0
-radelem1 = 0.5
-type1 = Ta
+wj = 1.0
+radelem = 0.5
+type = Ta
 bzeroflag = 0
 quadraticflag = 0
 
@@ -22,10 +22,6 @@ normratio = 0.5
 test_fraction = 0
 detailed_errors = 1
 lammps_validation = 1
-
-UseEnergies = 1
-UseForces = 1
-UseStresses = 1
 
 [PATH]
 dataPath = ./JSON

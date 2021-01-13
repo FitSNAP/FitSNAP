@@ -1,17 +1,24 @@
 [BISPECTRUM]
 numTypes = 2
-twojmax = 8
+twojmax = 6 8
 rcutfac = 4.812302818
 rfac0 = 0.99363
 rmin0 = 0.0
-wj1 = 1.0
-wj2 = 0.9590493408
-radelem1 = 0.5
-radelem2 = 0.417932464
-type1 = W
-type2 = Be
-bzeroflag = 1
+wj = 1.0 0.9590493408
+radelem = 0.5 0.417932464
+type = W Be
+bzeroflag = 0
 quadraticflag = 0
+
+[CALCULATOR]
+calculator = LAMMPSSNAP
+energy = 1
+force = 1
+stress = 1
+alloyflag = 0
+#wselfallflag = 0
+#bzeroflag = 1
+#quadraticflag = 0
 
 [SOLVER]
 solver = SVD

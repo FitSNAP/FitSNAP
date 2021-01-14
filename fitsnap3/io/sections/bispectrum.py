@@ -26,7 +26,6 @@ class Bispectrum(Section):
 #            self.radelem.append(self.get_value("BISPECTRUM", "radelem{}".format(i + 1), "0.5", "float"))
 #        for i in range(self.numtypes):
 #            self.types.append(self.get_value("BISPECTRUM", "type{}".format(i + 1), "H"))
-
         for i, atom_type in enumerate(self.types):
             self.type_mapping[atom_type] = i+1
 

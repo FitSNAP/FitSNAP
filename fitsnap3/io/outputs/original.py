@@ -90,7 +90,7 @@ def _to_coeff_string(coeffs):
         raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
     # Includes the offset term, which was not in blist
     #coeffs = (coeffs * config.sections["BISPECTRUM"].blank2J).reshape((config.sections["BISPECTRUM"].numtypes, -1))
-    coeffs = coeffs .reshape((config.sections["BISPECTRUM"].numtypes, -1))
+    coeffs = coeffs.reshape((config.sections["BISPECTRUM"].numtypes, -1))
     blank2Js = config.sections["BISPECTRUM"].blank2J.reshape((config.sections["BISPECTRUM"].numtypes, -1))
     if config.sections["BISPECTRUM"].bzeroflag:
         blank2Js = np.insert(blank2Js,0,[1.0],axis=1)

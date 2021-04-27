@@ -262,7 +262,7 @@ class Scraper:
         new_pos = cell_frac_coords @ cell.T
         trans_vec = trans_nums @ cell.T
         assert np.allclose(new_pos + trans_vec, position_in), "Translation failed to invert"
-        self.data["Postions"] = new_pos
+        self.data["Positions"] = new_pos
         self.data["Translation"] = trans_vec
 
     @staticmethod

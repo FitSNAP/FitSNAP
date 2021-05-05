@@ -188,6 +188,23 @@ class LammpsSnap(Calculator):
         icolref = ncols_bispectrum
         if config.sections["CALCULATOR"].energy:
             b_sum_temp = lmp_snap[irow, :ncols_bispectrum] / num_atoms
+
+            # Check for no neighbors using B[0,0,0] components
+            # these strictly increase with total neighbor count
+            # minimum value depends on SNAP variant
+
+            EPS = 1.0e-10
+            b000sum0 = 0.0
+            nstride = n_coeff
+            if not config.sections["BISPECTRUM"].bzeroflag: b000sum0 = 1.0
+            if config.sections["BISPECTRUM"].chemflag:
+                nstride //= num_types*num_types*num_types
+                if config.sections["BISPECTRUM"].wselfallflag:
+                    b000sum0 *= num_types*num_types*num_types
+            b000sum = sum(b_sum_temp[::nstride])
+            if (abs(b000sum - b000sum0) < EPS): 
+                print("WARNING: Configuration has no SNAP neighbors")
+
             if not config.sections["BISPECTRUM"].bzeroflag:
                 b_sum_temp.shape = (num_types, n_coeff)
                 onehot_atoms = np.zeros((num_types, 1))

@@ -32,7 +32,7 @@ detailed_errors = 1
 scraper = JSON
 
 [PATH]
-jsonPath = JSON
+dataPath = JSON
 
 [OUTFILE]
 metrics = InP_metrics.md
@@ -76,3 +76,6 @@ vv = 		1.0  0.0 	5622278.70967226     	24308.6192988325  	1.0e-12
 dump_descriptors = 0
 dump_truth = 0
 dump_weights = 0
+
+[MEMORY]
+override = 0

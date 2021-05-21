@@ -7,7 +7,22 @@
 
 -----20May21------
 Reading input...
+>>> Found unmatched variable in GROUPS section of input:  Displaced_A15
+>>> Found unmatched variable in GROUPS section of input:  Displaced_BCC
+>>> Found unmatched variable in GROUPS section of input:  Displaced_FCC
+>>> Found unmatched variable in GROUPS section of input:  Elastic_BCC
+>>> Found unmatched variable in GROUPS section of input:  Elastic_FCC
+>>> Found unmatched variable in GROUPS section of input:  GSF_110
+>>> Found unmatched variable in GROUPS section of input:  GSF_112
+>>> Found unmatched variable in GROUPS section of input:  Liquid
+>>> Found unmatched variable in GROUPS section of input:  Surface
+>>> Found unmatched variable in GROUPS section of input:  Volume_A15
+>>> Found unmatched variable in GROUPS section of input:  Volume_BCC
+>>> Found unmatched variable in GROUPS section of input:  Volume_FCC
+>>> Found unmatched variable in REFERENCE section of input:  pair_coeff1
+>>> Found unmatched variable in REFERENCE section of input:  pair_coeff2
 Finished reading input
+------------------
 mpi4py version:  3.0.3
 numpy version:  1.19.2
 scipy version:  1.5.2
@@ -25,9 +40,9 @@ Surface : Detected  7  fitting on  7  testing on  0
 Volume_A15 : Detected  30  fitting on  30  testing on  0
 Volume_BCC : Detected  21  fitting on  21  testing on  0
 Volume_FCC : Detected  31  fitting on  31  testing on  0
-'scrape_configs' took 97.41 ms on rank 0
+'scrape_configs' took 95.84 ms on rank 0
 >>> Matrix of descriptors takes up  0.5650 % of the total memory: 34.3597 GB
-'process_configs' took 7411.98 ms on rank 0
-'perform_fit' took 3191.88 ms on rank 0
-'write_output' took 20.99 ms on rank 0
-'main' took 10736.20 ms on rank 0
+'process_configs' took 7536.09 ms on rank 0
+'perform_fit' took 3239.70 ms on rank 0
+'write_output' took 45.16 ms on rank 0
+'main' took 10930.76 ms on rank 0

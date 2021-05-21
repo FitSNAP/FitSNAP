@@ -34,7 +34,7 @@ class Config:
         # Not Implemented
         parser.add_argument("--nofit", "-nf", action="store_false", dest="perform_fit",
                             help="Don't perform fit, just compute bispectrum data.")
-        # Not Implemented
+
         parser.add_argument("--overwrite", action="store_true", dest="overwrite",
                             help="Allow overwriting existing files")
         # Not Implemented
@@ -76,6 +76,7 @@ class Config:
     def set_sections(self, tmp_config):
         location = '/' + '/'.join(path.abspath(__file__).split("/")[:-1]) + '/sections'
         temp = {file: None for file in listdir(location)}
+        allowedkeys = []
         for file in temp:
             if file.split('.')[-1] != 'py' or file == 'sections.py' or file == 'section_factory.py':
                 continue
@@ -86,6 +87,10 @@ class Config:
                 if section == "BASIC_CALCULATOR":
                     section = "BASIC"
                 self.sections[section] = new_section(section, tmp_config, self.args)
+                allowedkeys.append(section)
+        for property_name in tmp_config.keys():
+            if property_name in allowedkeys: continue
+            else: pt.single_print(">>> Found unmatched section in input: ",property_name)
         del temp
 
 

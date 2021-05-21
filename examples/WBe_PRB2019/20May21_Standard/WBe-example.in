@@ -101,3 +101,6 @@ vacancy                 = 1.0 0.0   3.9699030105      0.5623621081     1.00E-12
 dump_descriptors = 0
 dump_truth = 0
 dump_weights = 0
+
+[MEMORY]
+override = 0

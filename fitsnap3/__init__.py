@@ -54,6 +54,8 @@ try:
     pt.all_barrier()
     from .io.input import config
     pt.single_print("Finished reading input")
+    pt.single_print("------------------")
+
     from .io.output import output
 except Exception as e:
     pt.single_print("Trouble reading input, exiting...")

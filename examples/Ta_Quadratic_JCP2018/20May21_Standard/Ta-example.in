@@ -68,3 +68,6 @@ Volume_FCC    =  1.0    0.0    100.0      1.0  1.000000e-12
 dump_descriptors = 0
 dump_truth = 0
 dump_weights = 0
+
+[MEMORY]
+override = 0

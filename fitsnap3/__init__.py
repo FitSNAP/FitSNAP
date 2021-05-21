@@ -47,7 +47,7 @@ pt.single_print("  / /_   / // __/\__ \ /  |/ // /| |  / /_/ /")
 pt.single_print(" / __/  / // /_ ___/ // /|  // ___ | / ____/ ")
 pt.single_print("/_/    /_/ \__//____//_/ |_//_/  |_|/_/      ")
 pt.single_print("")
-pt.single_print("-----Mixed2J------")
+pt.single_print("-----20May21------")
 
 try:
     pt.single_print("Reading input...")

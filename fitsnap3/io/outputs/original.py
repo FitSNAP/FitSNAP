@@ -18,7 +18,7 @@ class Original(Output):
 
     @pt.rank_zero
     def write(self, coeffs, errors):
-        if config.sections["SOLVER"].only_test != 1:
+        if config.sections["EXTRAS"].only_test != 1:
             if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP":
                 with optional_open(config.sections["OUTFILE"].potential_name and
                                    config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
@@ -27,7 +27,8 @@ class Original(Output):
                                    config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
                     file.write(_to_param_string())
         with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
-            errors.to_csv(file)
+#            errors.to_csv(file,sep=' ',float_format="%.8f")
+            errors.to_markdown(file)
 
     @pt.sub_rank_zero
     def read_fit(self):
@@ -69,7 +70,7 @@ def _to_param_string():
     return f"""
     # required
     rcutfac {config.sections["BISPECTRUM"].rcutfac}
-    twojmax {config.sections["BISPECTRUM"].twojmax}
+    twojmax {max(config.sections["BISPECTRUM"].twojmax)}
 
     #  optional
     rfac0 {config.sections["BISPECTRUM"].rfac0}

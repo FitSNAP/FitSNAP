@@ -1,3 +1,4 @@
+
 # <!----------------BEGIN-HEADER------------------------------------>
 # ## FitSNAP3
 # A Python Package For Training SNAP Interatomic Potentials for use in the LAMMPS molecular dynamics package
@@ -44,7 +45,7 @@ class FitSnap:
         self.calculator = calculator(config.sections["CALCULATOR"].calculator)
         self.solver = solver(config.sections["SOLVER"].solver)
         self.fit = None
-        if config.sections["SOLVER"].only_test:
+        if config.sections["EXTRAS"].only_test:
             self.fit = output.read_fit()
 
     @pt.single_timeit
@@ -68,9 +69,9 @@ class FitSnap:
             self.solver.perform_fit()
         else:
             self.solver.fit = self.fit
-        self.solver.extras()
         self.solver.fit_gather()
         self.solver.error_analysis()
+        self.solver.extras()
 
     @pt.single_timeit
     def write_output(self):

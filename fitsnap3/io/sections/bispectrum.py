@@ -64,9 +64,20 @@ class Bispectrum(Section):
                             i += 1
                             self.blist.append([i, j1, j2, j])
                             self.blank2J.append([prefac])
+            if self.quadraticflag:
+                for i, (a, b) in enumerate(combinations_with_replacement(self.blist, r=2), start=len(self.blist)):
+                    prefac = 0.0
+                    quadIndex = a[1:]+b[1:]
+                    if all(ind <= int(self.twojmax[atype]) for ind in quadIndex):
+                        prefac = 1.0
+                    self.blank2J.append([prefac])
         if self.chemflag:
             self.blist *= self.numtypes ** 3
             self.blist = np.array(self.blist).tolist()
+            if int(min(self.twojmax)) != int(max(self.twojmax)):
+                raise RuntimeError("Still working on the capability to do mixed 2J values per-element and explicit multi-element descriptors \n Aborting...!")
+            self.blank2J *= self.numtypes ** 3
+            self.blank2J = np.array(self.blank2J).tolist()
         if self.quadraticflag:
             # Note, combinations_with_replacement precisely generates the upper-diagonal entries we want
             self.blist += [[i, a, b] for i, (a, b) in

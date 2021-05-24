@@ -88,10 +88,11 @@ except Exception as e:
     output.screen("Trouble importing pandas package, exiting...")
     output.exception(e)
 
-# try:
-#     import lammps
+try:
+    import lammps
+    lmp = lammps.lammps()
 #     print("LAMMPS version: ",lammps.version())
-# except Exception as e:
-#     print("Trouble importing LAMMPS library, exiting...")
-#     raise e
+except Exception as e:
+    print("Trouble importing LAMMPS library, exiting...")
+    raise e
 output.screen("-----------")

@@ -23,7 +23,7 @@ class Groups(Section):
         allowedkeys = ['group_sections','group_types','smartweights','random_sampling','BOLTZ']
         for value_name in config['GROUPS']:
             if value_name in allowedkeys: continue
-            else: pt.single_print(">>> Found unmatched variable in GROUPS section of input: ",value_name)
+#            else: pt.single_print(">>> Found unmatched variable in GROUPS section of input: ",value_name)
 
         self.group_sections = self.get_value("GROUPS", "group_sections", "name size eweight fweight vweight").split()
         self.group_types = self.get_value("GROUPS", "group_types", "str float float float float").split()

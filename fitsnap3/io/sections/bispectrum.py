@@ -12,7 +12,9 @@ class Bispectrum(Section):
                        'wselfallflag','chemflag','bzeroflag','quadraticflag','bnormflag']
         for value_name in config['BISPECTRUM']:
             if value_name in allowedkeys: continue
-            else: pt.single_print(">>> Found unmatched variable in BISPECTRUM section of input: ",value_name)
+            else:
+                raise RuntimeError(">>> Found unmatched variable in BISPECTRUM section of input: ",value_name)
+                #pt.single_print(">>> Found unmatched variable in BISPECTRUM section of input: ",value_name)
 
         self.numtypes = self.get_value("BISPECTRUM", "numTypes", "1", "int")
         self.twojmax = self.get_value("BISPECTRUM", "twojmax", "6").split()

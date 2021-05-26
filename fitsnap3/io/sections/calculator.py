@@ -9,7 +9,9 @@ class Calculator(Section):
         allowedkeys = ['calculator','energy','force','stress']
         for value_name in config['CALCULATOR']:
             if value_name in allowedkeys: continue
-            else: pt.single_print(">>> Found unmatched variable in CALCULATOR section of input: ",value_name)
+            else:
+                raise RuntimeError(">>> Found unmatched variable in CALCULATOR section of input: ", value_name)
+                #pt.single_print(">>> Found unmatched variable in CALCULATOR section of input: ",value_name)
 
         self.calculator = self.get_value("CALCULATOR", "calculator", "LAMMPSSNAP")
         self.energy = self.get_value("CALCULATOR", "energy", "True", "bool")

@@ -8,7 +8,9 @@ class Scraper(Section):
         allowedkeys = ['scraper','save_group_scrape','read_group_scrape','property_array']
         for value_name in config['SCRAPER']:
             if value_name in allowedkeys: continue
-            else: pt.single_print(">>> Found unmatched variable in SCRAPER section of input: ",value_name)
+            else:
+                raise RuntimeError(">>> Found unmatched variable in SCRAPER section of input: ", value_name)
+                #pt.single_print(">>> Found unmatched variable in SCRAPER section of input: ",value_name)
 
         self.scraper = self.get_value("SCRAPER", "scraper", "JSON")
         self.save_group_scrape = self.get_value("SCRAPER", "save_group_scrape", "None", "str")

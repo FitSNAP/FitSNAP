@@ -9,7 +9,9 @@ class Path(Section):
         allowedkeys = ['dataPath','groupFile']
         for value_name in config['PATH']:
             if value_name in allowedkeys: continue
-            else: pt.single_print(">>> Found unmatched variable in PATH section of input: ",value_name)
+            else:
+                raise RuntimeError(">>> Found unmatched variable in PATH section of input: ", value_name)
+                #pt.single_print(">>> Found unmatched variable in PATH section of input: ",value_name)
 
         self.relative_directory = self._get_relative_directory(self)
         self.datapath = path.join(self.relative_directory, self.get_value("PATH", "dataPath", "JSON"))

@@ -10,7 +10,9 @@ class Memory(Section):
         allowedkeys = ['memory','override']
         for value_name in config['MEMORY']:
             if value_name in allowedkeys: continue
-            else: pt.single_print(">>> Found unmatched variable in MEMORY section of input: ",value_name)
+            else:
+                raise RuntimeError(">>> Found unmatched variable in MEMORY section of input: ", value_name)
+                #pt.single_print(">>> Found unmatched variable in MEMORY section of input: ",value_name)
 
         self._check_memory()
         self.memory = self.get_value("MEMORY", "memory", "{}".format(self.mem_bytes), "int")

@@ -8,7 +8,9 @@ class Solver(Section):
         allowedkeys = ['solver','normalweight','normratio','compute_testerrs','detailed_errors']
         for value_name in config['SOLVER']:
             if value_name in allowedkeys: continue
-            else: pt.single_print(">>> Found unmatched variable in SOLVER section of input: ",value_name)
+            else:
+                raise RuntimeError(">>> Found unmatched variable in SOLVER section of input: ", value_name)
+                #pt.single_print(">>> Found unmatched variable in SOLVER section of input: ",value_name)
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
         self.normalweight = self.get_value("SOLVER", "normalweight", "-12", "float")

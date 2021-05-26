@@ -7,26 +7,13 @@
 
 -----20May21------
 Reading input...
->>> Found unmatched variable in GROUPS section of input:  Displaced_A15
->>> Found unmatched variable in GROUPS section of input:  Displaced_BCC
->>> Found unmatched variable in GROUPS section of input:  Displaced_FCC
->>> Found unmatched variable in GROUPS section of input:  Elastic_BCC
->>> Found unmatched variable in GROUPS section of input:  Elastic_FCC
->>> Found unmatched variable in GROUPS section of input:  GSF_110
->>> Found unmatched variable in GROUPS section of input:  GSF_112
->>> Found unmatched variable in GROUPS section of input:  Liquid
->>> Found unmatched variable in GROUPS section of input:  Surface
->>> Found unmatched variable in GROUPS section of input:  Volume_A15
->>> Found unmatched variable in GROUPS section of input:  Volume_BCC
->>> Found unmatched variable in GROUPS section of input:  Volume_FCC
->>> Found unmatched variable in REFERENCE section of input:  pair_coeff1
->>> Found unmatched variable in REFERENCE section of input:  pair_coeff2
 Finished reading input
 ------------------
 mpi4py version:  3.0.3
 numpy version:  1.19.2
 scipy version:  1.5.2
 pandas version:  1.1.2
+LAMMPS (14 May 2021)
 -----------
 Displaced_A15 : Detected  9  fitting on  9  testing on  0
 Displaced_BCC : Detected  9  fitting on  9  testing on  0
@@ -40,9 +27,10 @@ Surface : Detected  7  fitting on  7  testing on  0
 Volume_A15 : Detected  30  fitting on  30  testing on  0
 Volume_BCC : Detected  21  fitting on  21  testing on  0
 Volume_FCC : Detected  31  fitting on  31  testing on  0
-'scrape_configs' took 108.60 ms on rank 0
+'scrape_configs' took 117.65 ms on rank 0
 >>> Matrix of descriptors takes up  0.0110 % of the total memory: 34.3597 GB
-'process_configs' took 517.92 ms on rank 0
-'perform_fit' took 250.29 ms on rank 0
-'write_output' took 17.36 ms on rank 0
-'main' took 908.87 ms on rank 0
+'process_configs' took 557.25 ms on rank 0
+'perform_fit' took 263.33 ms on rank 0
+'write_output' took 15.72 ms on rank 0
+'main' took 956.87 ms on rank 0
+Total wall time: 0:00:01

@@ -68,12 +68,12 @@ class Solver:
             self._all_error()
             self._group_error()
             if config.sections["SOLVER"].detailed_errors:
-                config_indicies = self._config_error()
-                from csv import writer
-                with open('detailed_config_list.dat', 'w') as f:
-                    writer = writer(f, delimiter=' ')
-                    writer.writerow(['FileID N_Atoms A_Index FileName'])
-                    writer.writerows(config_indicies)
+                config_indicies,energy_list,force_list,stress_list = self._config_error()
+#                from csv import writer
+#                with open('detailed_config_list.dat', 'w') as f:
+#                    writer = writer(f, delimiter=' ')
+#                    writer.writerow(['FileID Usage N_Atoms FileName'])
+#                    writer.writerows(config_indicies)
 
         if self.template_error is True:
             self._template_error()
@@ -97,6 +97,7 @@ class Solver:
         if config.sections["CALCULATOR"].energy:
             testing = -1 * pt.shared_arrays['configs_per_group'].testing
             a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
+            config_indicies,energy_list,force_list,stress_list = self._config_error()
             self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
             if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
                 from csv import writer
@@ -105,8 +106,8 @@ class Solver:
                                              ['Testing'] * (pt.shared_arrays['configs_per_group'].testing)
                 with open('detailed_energy_errors.dat', 'w') as f:
                     writer = writer(f, delimiter=' ')
-                    writer.writerow(['Type True-Ref Predicted-Ref Difference(Pred-True)'])
-                    writer.writerows(zip(ConfigType,true, pred, pred-true))
+                    writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
+                    writer.writerows(zip(energy_list,ConfigType,true, pred, pred-true))
 
             if testing != 0:
                 self._errors([[testing, 0]], ['*ALL'], "Energy_testing", a, b, w)
@@ -120,6 +121,7 @@ class Solver:
                 testing = 0
 
             a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
+            config_indicies,energy_list,force_list,stress_list = self._config_error()
             if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
                 from csv import writer
                 true, pred = b, a @ self.fit
@@ -131,8 +133,8 @@ class Solver:
                     ConfigType = ['Training'] * np.shape(true)[0]
                 with open('detailed_force_errors.dat', 'w') as f:
                     writer = writer(f, delimiter=' ')
-                    writer.writerow(['Type True-Ref Predicted-Ref Difference'])
-                    writer.writerows(zip(ConfigType, true, pred, true-pred))
+                    writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
+                    writer.writerows(zip(force_list,ConfigType, true, pred, pred-true))
 
             self._errors([[0, testing]], ['*ALL'], "Force", a, b, w)
             if testing != 0:
@@ -142,6 +144,7 @@ class Solver:
         if config.sections["CALCULATOR"].stress:
             testing = -6 * pt.shared_arrays['configs_per_group'].testing
             a, b, w = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
+            config_indicies,energy_list,force_list,stress_list = self._config_error()
             if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
                 from csv import writer
                 true, pred = b, a @ self.fit
@@ -149,8 +152,8 @@ class Solver:
                                              ['Testing'] * (6 * pt.shared_arrays['configs_per_group'].testing)
                 with open('detailed_stress_errors.dat', 'w') as f:
                     writer = writer(f, delimiter=' ')
-                    writer.writerow(['Type True-Ref Predicted-Ref Difference'])
-                    writer.writerows(zip(ConfigType, true, pred, true-pred))
+                    writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
+                    writer.writerows(zip(stress_list,ConfigType, true, pred, pred-true))
 
             self._errors([[0, testing]], ['*ALL'], "Stress", a, b, w)
             if testing != 0:
@@ -253,6 +256,9 @@ class Solver:
         config_index = 0
         current_index = 0
         detailed_config_list = []
+        energy_list = []
+        force_list = []
+        stress_list = []
         for i, num_atoms in enumerate(pt.shared_arrays['a'].num_atoms):
             this_config = pt.shared_arrays['number_of_atoms'].configs[i]
             if isinstance(this_config, str):
@@ -264,13 +270,16 @@ class Solver:
                 # current index is the index of the top of energy
                 self._config_energy(this_config, current_index)
                 current_index += 1
+                energy_list += [this_config[0]]
             if config.sections["CALCULATOR"].force:
                 # current index is the index of the top of force
                 self._config_force(this_config, current_index, 3*num_atoms)
                 current_index += 3*num_atoms
+                force_list += 3*num_atoms*[this_config[0]]
             if config.sections["CALCULATOR"].stress:
                 self._config_stress(this_config, current_index)
                 current_index += 6
+                stress_list += 6*[this_config[0]]
             self._config_combined(this_config, config_index, current_index)
             config_index = current_index
             if pt.shared_arrays['configs_per_group'].testing > 0 and \
@@ -282,8 +291,8 @@ class Solver:
             else:
                 ConfigType = 'Training'
 
-            detailed_config_list.append([i,ConfigType,num_atoms,config_index,this_config[0]])
-        return detailed_config_list
+            detailed_config_list.append([i,ConfigType,num_atoms,this_config[0]])
+        return detailed_config_list,energy_list,force_list,stress_list
 
     def _config_energy(self, this_config, current_index):
         index, a, b, w = self._make_config_abw(current_index, 1)

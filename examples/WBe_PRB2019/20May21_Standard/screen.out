@@ -7,60 +7,13 @@
 
 -----20May21------
 Reading input...
->>> Found unmatched variable in GROUPS section of input:  001FreeSurf
->>> Found unmatched variable in GROUPS section of input:  010FreeSurf
->>> Found unmatched variable in GROUPS section of input:  100FreeSurf
->>> Found unmatched variable in GROUPS section of input:  Defect_BCrowd
->>> Found unmatched variable in GROUPS section of input:  Defect_BOct
->>> Found unmatched variable in GROUPS section of input:  Defect_BSplit
->>> Found unmatched variable in GROUPS section of input:  Defect_BTetra
->>> Found unmatched variable in GROUPS section of input:  Defect_Crowd
->>> Found unmatched variable in GROUPS section of input:  Defect_Oct
->>> Found unmatched variable in GROUPS section of input:  Defect_Tet
->>> Found unmatched variable in GROUPS section of input:  Defect_Vacancy
->>> Found unmatched variable in GROUPS section of input:  DFTMD_1000K
->>> Found unmatched variable in GROUPS section of input:  DFTMD_300K
->>> Found unmatched variable in GROUPS section of input:  Elast_BCC_Shear
->>> Found unmatched variable in GROUPS section of input:  Elast_BCC_Vol
->>> Found unmatched variable in GROUPS section of input:  Elast_FCC_Shear
->>> Found unmatched variable in GROUPS section of input:  Elast_FCC_Vol
->>> Found unmatched variable in GROUPS section of input:  Elast_HCP_Shear
->>> Found unmatched variable in GROUPS section of input:  Elast_HCP_Vol
->>> Found unmatched variable in GROUPS section of input:  EOS_BCC
->>> Found unmatched variable in GROUPS section of input:  EOS_FCC
->>> Found unmatched variable in GROUPS section of input:  EOS_HCP
->>> Found unmatched variable in GROUPS section of input:  StackFaults
->>> Found unmatched variable in GROUPS section of input:  Liquids
->>> Found unmatched variable in GROUPS section of input:  DFT_MD_1000K
->>> Found unmatched variable in GROUPS section of input:  DFT_MD_300K
->>> Found unmatched variable in GROUPS section of input:  ElasticDeform_Shear
->>> Found unmatched variable in GROUPS section of input:  ElasticDeform_Vol
->>> Found unmatched variable in GROUPS section of input:  EOS
->>> Found unmatched variable in GROUPS section of input:  WSurface_BeAdhesion
->>> Found unmatched variable in GROUPS section of input:  BCC_ForceLib_W110
->>> Found unmatched variable in GROUPS section of input:  BCC_ForceLib_W111
->>> Found unmatched variable in GROUPS section of input:  BCC_ForceLib_WOct
->>> Found unmatched variable in GROUPS section of input:  BCC_ForceLib_WTet
->>> Found unmatched variable in GROUPS section of input:  dislocation_quadrupole
->>> Found unmatched variable in GROUPS section of input:  Disordered_Struc
->>> Found unmatched variable in GROUPS section of input:  Divacancy
->>> Found unmatched variable in GROUPS section of input:  EOS_Data
->>> Found unmatched variable in GROUPS section of input:  gamma_surface
->>> Found unmatched variable in GROUPS section of input:  gamma_surface_vacancy
->>> Found unmatched variable in GROUPS section of input:  md_bulk
->>> Found unmatched variable in GROUPS section of input:  slice_sample
->>> Found unmatched variable in GROUPS section of input:  surface
->>> Found unmatched variable in GROUPS section of input:  vacancy
->>> Found unmatched variable in REFERENCE section of input:  pair_coeff1
->>> Found unmatched variable in REFERENCE section of input:  pair_coeff2
->>> Found unmatched variable in REFERENCE section of input:  pair_coeff3
->>> Found unmatched variable in REFERENCE section of input:  pair_coeff4
 Finished reading input
 ------------------
 mpi4py version:  3.0.3
 numpy version:  1.19.2
 scipy version:  1.5.2
 pandas version:  1.1.2
+LAMMPS (14 May 2021)
 -----------
 001FreeSurf : Detected  34  fitting on  34  testing on  0
 010FreeSurf : Detected  36  fitting on  36  testing on  0
@@ -106,9 +59,10 @@ md_bulk : Detected  60  fitting on  60  testing on  0
 slice_sample : Detected  2000  fitting on  2000  testing on  0
 surface : Detected  180  fitting on  180  testing on  0
 vacancy : Detected  420  fitting on  420  testing on  0
-'scrape_configs' took 8003.45 ms on rank 0
+'scrape_configs' took 8320.60 ms on rank 0
 >>> Matrix of descriptors takes up  4.5406 % of the total memory: 34.3597 GB
-'process_configs' took 190076.94 ms on rank 0
-'perform_fit' took 30594.74 ms on rank 0
-'write_output' took 29.70 ms on rank 0
-'main' took 229022.29 ms on rank 0
+'process_configs' took 176362.80 ms on rank 0
+'perform_fit' took 29276.00 ms on rank 0
+'write_output' took 27.39 ms on rank 0
+'main' took 216623.14 ms on rank 0
+Total wall time: 0:03:36

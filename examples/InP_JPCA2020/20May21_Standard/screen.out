@@ -7,35 +7,13 @@
 
 -----20May21------
 Reading input...
->>> Found unmatched variable in GROUPS section of input:  aa
->>> Found unmatched variable in GROUPS section of input:  aIn
->>> Found unmatched variable in GROUPS section of input:  aP
->>> Found unmatched variable in GROUPS section of input:  Bulk
->>> Found unmatched variable in GROUPS section of input:  EOS
->>> Found unmatched variable in GROUPS section of input:  iIn
->>> Found unmatched variable in GROUPS section of input:  iP
->>> Found unmatched variable in GROUPS section of input:  s_aa
->>> Found unmatched variable in GROUPS section of input:  s_aIn
->>> Found unmatched variable in GROUPS section of input:  s_aP
->>> Found unmatched variable in GROUPS section of input:  Shear
->>> Found unmatched variable in GROUPS section of input:  s_iIn
->>> Found unmatched variable in GROUPS section of input:  s_iP
->>> Found unmatched variable in GROUPS section of input:  Strain
->>> Found unmatched variable in GROUPS section of input:  s_vIn
->>> Found unmatched variable in GROUPS section of input:  s_vP
->>> Found unmatched variable in GROUPS section of input:  s_vv
->>> Found unmatched variable in GROUPS section of input:  vP
->>> Found unmatched variable in GROUPS section of input:  vv
->>> Found unmatched variable in REFERENCE section of input:  pair_coeff1
->>> Found unmatched variable in REFERENCE section of input:  pair_coeff2
->>> Found unmatched variable in REFERENCE section of input:  pair_coeff3
->>> Found unmatched variable in REFERENCE section of input:  pair_coeff4
 Finished reading input
 ------------------
 mpi4py version:  3.0.3
 numpy version:  1.19.2
 scipy version:  1.5.2
 pandas version:  1.1.2
+LAMMPS (14 May 2021)
 -----------
 aa : Detected  20  fitting on  20  testing on  0
 aIn : Detected  54  fitting on  54  testing on  0
@@ -56,9 +34,10 @@ s_vP : Detected  77  fitting on  77  testing on  0
 s_vv : Detected  65  fitting on  65  testing on  0
 vP : Detected  10  fitting on  10  testing on  0
 vv : Detected  19  fitting on  19  testing on  0
-'scrape_configs' took 586.93 ms on rank 0
+'scrape_configs' took 868.29 ms on rank 0
 >>> Matrix of descriptors takes up  4.1116 % of the total memory: 34.3597 GB
-'process_configs' took 61358.66 ms on rank 0
-'perform_fit' took 17910.53 ms on rank 0
-'write_output' took 16.06 ms on rank 0
-'main' took 80817.53 ms on rank 0
+'process_configs' took 68073.45 ms on rank 0
+'perform_fit' took 18912.17 ms on rank 0
+'write_output' took 22.50 ms on rank 0
+'main' took 88069.08 ms on rank 0
+Total wall time: 0:01:28

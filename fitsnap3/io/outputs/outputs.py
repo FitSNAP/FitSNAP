@@ -1,5 +1,5 @@
-from fitsnap3.io.input import config
-from fitsnap3.parallel_tools import pt
+from ..input import config
+from ...parallel_tools import pt
 from contextlib import contextmanager
 import gzip
 from datetime import datetime

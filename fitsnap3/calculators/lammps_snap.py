@@ -1,7 +1,7 @@
 import ctypes
-from fitsnap3.calculators.calculator import Calculator
-from fitsnap3.parallel_tools import pt
-from fitsnap3.io.input import config
+from ..calculators.calculator import Calculator
+from ..parallel_tools import pt
+from ..io.input import config
 import numpy as np
 
 # TODO: Ask about onehot_fraction for energy
@@ -15,6 +15,13 @@ class LammpsSnap(Calculator):
         self._i = 0
         self._lmp = None
         pt.check_lammps()
+
+    def get_width(self):
+        num_types = config.sections["BISPECTRUM"].numtypes
+        a_width = config.sections["BISPECTRUM"].ncoeff * num_types
+        if not config.sections["BISPECTRUM"].bzeroflag:
+            a_width += num_types
+        return a_width
 
     def create_a(self):
         super().create_a()
@@ -115,7 +122,7 @@ class LammpsSnap(Calculator):
         wj = " ".join([f"${{wj{i}}}" for i in range(1, numtypes + 1)])
 
         kw_options = {
-            k: config.sections["CALCULATOR"].__dict__[v]
+            k: config.sections["BISPECTRUM"].__dict__[v]
             for k, v in
             {
                 "rmin0": "rmin0",
@@ -126,7 +133,7 @@ class LammpsSnap(Calculator):
                 "bnormflag": "bnormflag",
                 "wselfallflag": "wselfallflag",
             }.items()
-            if v in config.sections["CALCULATOR"].__dict__
+            if v in config.sections["BISPECTRUM"].__dict__
         }
         if kw_options["chem"] == 0:
             kw_options.pop("chem")
@@ -170,7 +177,7 @@ class LammpsSnap(Calculator):
         ncols_bispectrum = num_types * n_coeff
         ncols_reference = 1
         ncols_snap = ncols_bispectrum + ncols_reference
-        index = pt.shared_arrays['a'].indices[self._i]
+        index = pt.fitsnap_dict['a_indices'][self._i]
 
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
@@ -181,7 +188,7 @@ class LammpsSnap(Calculator):
         icolref = ncols_bispectrum
         if config.sections["CALCULATOR"].energy:
             b_sum_temp = lmp_snap[irow, :ncols_bispectrum] / num_atoms
-            if not config.sections["CALCULATOR"].bzeroflag:
+            if not config.sections["BISPECTRUM"].bzeroflag:
                 b_sum_temp.shape = (num_types, n_coeff)
                 onehot_atoms = np.zeros((num_types, 1))
                 for atom in self._data["AtomTypes"]:
@@ -189,9 +196,6 @@ class LammpsSnap(Calculator):
                 onehot_atoms /= len(self._data["AtomTypes"])
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
-            # fix onehot_atoms to be true fraction not just 1
-            # onehot_atoms = np.stack([np.eye(num_types)[x - 1, :].sum(axis=0) for x in lmp_types])
-            # onehot_fraction = onehot_atoms / onehot_atoms.sum(axis=1)[:, np.newaxis
             pt.shared_arrays['a'].array[index] = b_sum_temp
             ref_energy = lmp_snap[irow, icolref]
             pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
@@ -202,10 +206,9 @@ class LammpsSnap(Calculator):
         if config.sections["CALCULATOR"].force:
             db_atom_temp = lmp_snap[irow:irow + nrows_force, :ncols_bispectrum]
             db_atom_temp.shape = (num_atoms * ndim_force, n_coeff * num_types)
-            if not config.sections["CALCULATOR"].bzeroflag:
-                # onehot_atoms = np.zeros((np.shape(db_atom_temp)[0],))
+            if not config.sections["BISPECTRUM"].bzeroflag:
                 db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types, n_coeff)
-                onehot_atoms = np.zeros((np.shape(db_atom_temp)[0],num_types,1))
+                onehot_atoms = np.zeros((np.shape(db_atom_temp)[0], num_types, 1))
                 db_atom_temp = np.concatenate([onehot_atoms, db_atom_temp], axis=2)
                 db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types * n_coeff + num_types)
             pt.shared_arrays['a'].array[index:index+num_atoms * ndim_force] = db_atom_temp
@@ -220,9 +223,11 @@ class LammpsSnap(Calculator):
         if config.sections["CALCULATOR"].stress:
             vb_sum_temp = 1.6021765e6*lmp_snap[irow:irow + nrows_virial, :ncols_bispectrum] / lmp_volume
             vb_sum_temp.shape = (ndim_virial, n_coeff * num_types)
-            if not config.sections["CALCULATOR"].bzeroflag:
-                onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0],))
-                vb_sum_temp = np.concatenate([onehot_atoms[:, np.newaxis], vb_sum_temp], axis=1)
+            if not config.sections["BISPECTRUM"].bzeroflag:
+                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types, n_coeff)
+                onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0], num_types, 1))
+                vb_sum_temp = np.concatenate([onehot_atoms, vb_sum_temp], axis=2)
+                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types * n_coeff + num_types)
             pt.shared_arrays['a'].array[index:index+ndim_virial] = vb_sum_temp
             ref_stress = lmp_snap[irow:irow + nrows_virial, icolref]
             pt.shared_arrays['b'].array[index:index+ndim_virial] = \

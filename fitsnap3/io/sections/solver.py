@@ -1,4 +1,4 @@
-from fitsnap3.io.sections.sections import Section
+from .sections import Section
 
 
 class Solver(Section):
@@ -12,4 +12,7 @@ class Solver(Section):
         self.multinode_testing = self.get_value("SOLVER", "multinode_testing", "0", "bool")
         self.apply_transpose = self.get_value("SOLVER", "apply_transpose", "0", "bool")
         self.only_test = self.get_value("SOLVER", "only_test", "0", "bool")
+        self.dump_a = self.get_value("SOLVER", "dump_a", "0", "bool")
+        self.dump_x = self.get_value("SOLVER", "dump_x", "0", "bool")
+        self.dump_b = self.get_value("SOLVER", "dump_b", "0", "bool")
         self.delete()

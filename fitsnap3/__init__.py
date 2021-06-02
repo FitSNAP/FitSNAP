@@ -31,10 +31,10 @@
 
 try:
     import mpi4py as mpi4py
-    from fitsnap3.parallel_tools import pt
+    from .parallel_tools import pt
 
 except ModuleNotFoundError:
-    from fitsnap3.parallel_tools import pt
+    from .parallel_tools import pt
 
 except Exception as e:
     print("Trouble importing mpi4py package, exiting...")
@@ -52,9 +52,9 @@ pt.single_print("-----------")
 try:
     pt.single_print("Reading input...")
     pt.all_barrier()
-    from fitsnap3.io.input import config
+    from .io.input import config
     pt.single_print("Finished reading input")
-    from fitsnap3.io.output import output
+    from .io.output import output
 except Exception as e:
     pt.single_print("Trouble reading input, exiting...")
     pt.exception(e)

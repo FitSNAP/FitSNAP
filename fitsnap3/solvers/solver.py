@@ -1,5 +1,5 @@
-from fitsnap3.io.input import config
-from fitsnap3.parallel_tools import pt
+from ..io.input import config
+from ..parallel_tools import pt
 import numpy as np
 from pandas import DataFrame
 
@@ -25,6 +25,14 @@ class Solver:
     def fit_gather(self):
         self.all_fits = pt.allgather(self.fit)
 
+    def extras(self):
+        if config.sections["SOLVER"].dump_a:
+            self._dump_a()
+        if config.sections["SOLVER"].dump_x:
+            self._dump_x()
+        if config.sections["SOLVER"].dump_b:
+            self._dump_b()
+
     def _offset(self):
         num_types = config.sections["BISPECTRUM"].numtypes
         if num_types > 1:
@@ -49,7 +57,7 @@ class Solver:
         self.errors = DataFrame.from_records(self.errors)
         self.errors = self.errors.set_index(["Group", "Weighting", "Subsystem", ]).sort_index()
 
-        if config.sections["CALCULATOR"].bzeroflag:
+        if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and config.sections["BISPECTRUM"].bzeroflag:
             self._offset()
 
     def _all_error(self):
@@ -295,3 +303,12 @@ class Solver:
 
     def _template_error(self):
         pass
+
+    def _dump_a(self):
+        raise NotImplementedError("This method is either not implemented or solver is not a linear solver")
+
+    def _dump_x(self):
+        raise NotImplementedError("This method is either not implemented or solver is not a linear solver")
+
+    def _dump_b(self):
+        raise NotImplementedError("This method is either not implemented or solver is not a linear solver")

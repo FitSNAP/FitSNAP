@@ -1,6 +1,6 @@
-from fitsnap3.parallel_tools import pt, double_size
-from fitsnap3.io.input import config
-from fitsnap3.io.output import output
+from ..parallel_tools import pt, double_size
+from ..io.input import config
+from ..io.output import output
 
 
 class Calculator:
@@ -9,6 +9,9 @@ class Calculator:
         self.name = name
         self.number_of_atoms = None
         self.number_of_files_per_node = None
+
+    def get_width(self):
+        pass
 
     def create_a(self):
         # TODO : Any extra config pulls should be done before this
@@ -28,8 +31,6 @@ class Calculator:
                     elements += 6
         pt.shared_arrays["configs_per_group"].testing_elements = elements
 
-        num_types = config.sections["BISPECTRUM"].numtypes
-
         a_len = 0
         if config.sections["CALCULATOR"].energy:
             a_len += self.number_of_files_per_node
@@ -38,9 +39,8 @@ class Calculator:
         if config.sections["CALCULATOR"].stress:
             a_len += self.number_of_files_per_node * 6
 
-        a_width = config.sections["BISPECTRUM"].ncoeff * num_types
-        if not config.sections["CALCULATOR"].bzeroflag:
-            a_width += num_types
+        a_width = self.get_width()
+        assert isinstance(a_width, int)
 
         # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
         a_size = a_len * a_width * double_size
@@ -55,7 +55,7 @@ class Calculator:
         pt.create_shared_array('a', a_len, a_width)
         pt.create_shared_array('b', a_len)
         pt.create_shared_array('w', a_len)
-        pt.slice_array('a', num_types=num_types)
+        pt.slice_array('a')
 
     def process_configs(self, data, i):
         pass

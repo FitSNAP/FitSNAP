@@ -29,12 +29,12 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from fitsnap3.parallel_tools import pt
-from fitsnap3.scrapers.scraper_factory import scraper
-from fitsnap3.calculators.calculator_factory import calculator
-from fitsnap3.solvers.solver_factory import solver
-from fitsnap3.io.output import output
-from fitsnap3.io.input import config
+from .parallel_tools import pt
+from .scrapers.scraper_factory import scraper
+from .calculators.calculator_factory import calculator
+from .solvers.solver_factory import solver
+from .io.output import output
+from .io.input import config
 
 
 class FitSnap:
@@ -68,6 +68,7 @@ class FitSnap:
             self.solver.perform_fit()
         else:
             self.solver.fit = self.fit
+        self.solver.extras()
         self.solver.fit_gather()
         self.solver.error_analysis()
 

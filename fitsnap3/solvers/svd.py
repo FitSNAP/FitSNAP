@@ -1,6 +1,6 @@
-from fitsnap3.solvers.solver import Solver
-from fitsnap3.parallel_tools import pt
-from fitsnap3.io.input import config
+from .solver import Solver
+from ..parallel_tools import pt
+from ..io.input import config
 from scipy.linalg import lstsq
 import numpy as np
 
@@ -26,3 +26,13 @@ class SVD(Solver):
             bw = aw.T@bw
             aw = aw.T@aw
         self.fit, residues, rank, s = lstsq(aw, bw, 1.0e-13)
+
+    def _dump_a(self):
+        np.savez_compressed('a.npz', a=pt.shared_arrays['a'].array)
+
+    def _dump_x(self):
+        np.savez_compressed('x.npz', x=self.fit)
+
+    def _dump_b(self):
+        b = pt.shared_arrays['a'].array @ self.fit
+        np.savez_compressed('b.npz', b=b)

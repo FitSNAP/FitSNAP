@@ -9,10 +9,11 @@ rmin0 = 0.0
 wj1 = 1.0
 radelem1 = 0.5
 type1 = Ta
-
-[CALCULATOR]
 bzeroflag = 0
 quadraticflag = 0
+
+[CALCULATOR]
+calculator = LAMMPSSNAP
 
 [SOLVER]
 solver = SVD

@@ -1,5 +1,5 @@
 # This file provides a one-line description of all the keywords that can be assigned in the 
-# FitSNAP3 input file. Each keyword can only be used within the category to which it belongs. 
+# FitSNAP3 input file. Each keyword can only be used within the category to which it belongs.
 # The categories are as follows:
 #  [BISPECTRUM]   SNAP potential options
 #  [CALCULATOR]   SNAP calculator options
@@ -57,7 +57,7 @@ i = 2.342342342344 # (REAL) Internal conversion of training data units to LAMMPS
 [GROUPS]
 group_sections = name size eweight fweight vweight # (STR) List of column names for grouplist
 group_types =    str float float   float   float   # (STR) List of data types for group sections
-smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.  
+smartweights = 0     # (BOOL) If true, a new grouplist will be made where the weights for energies, forces, and virials are (1/N_rows) where N_rows is the number of rows per group in the A matrix.
 # If no grouplist is specified, smartweights will automatically be used. If true, and group weights are provided by the user, then user defined weights are taken as the numerator in this normalization scheme.
 BOLTZT = 0      # (REAL) Advanced Feature. Use a Boltzmann weighting to training at this temperature
 #   name      size eweight fweight   vweight    (See GROUPLIST.template for additional sections)
@@ -92,7 +92,7 @@ units = metal               # (STR) Units used in the LAMMPS calculations. See L
 atom_style = atomic         # (STR) Atom style used in the LAMMPS calculations. See LAMMPS documentation.
 pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.8 # (STR) Reference potential used in LAMMPS calculations and subtracted from training data prior to fitting. 'zero 10.0' is a non-interacting potential with a cutoff of 10.0, this is needed to build neighbor lists for Bspec calculation.
 pair_coeff1 = * * zero      # (STR) Associated detials for the designated pair_style. See LAMMPS documentation.
-pair_coeff2 = 1 1 zbl 73 73 # (STR) ZBL is a purely repulsive potential used to safeguard against bad dynamics at small atom separations. 
+pair_coeff2 = 1 1 zbl 73 73 # (STR) ZBL is a purely repulsive potential used to safeguard against bad dynamics at small atom separations.
 pair_coeff3 = 1 2 zbl 73 74 # (STR)  pair_coeff keywords with consecutive integer suffixes
 pair_coeff4 = 2 2 zbl 74 74 # (STR)
 

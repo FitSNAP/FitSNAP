@@ -14,7 +14,7 @@ bzeroflag = 1
 quadraticflag = 0
 
 [SOLVER]
-solver = SVD	
+solver = SVD
 normweight = -12
 normratio = 0.5
 compute_testerrs = 0

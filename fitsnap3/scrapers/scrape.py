@@ -181,7 +181,6 @@ class Scraper:
         pt.shared_arrays['number_of_atoms'].configs = temp_configs
 
         # PROCS SPLIT UP HERE
-        # TODO: Fix this split
         self.test_bool = pt.split_within_node(self.test_bool)
         self.configs = pt.split_within_node(self.configs)
 

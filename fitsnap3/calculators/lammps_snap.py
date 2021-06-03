@@ -69,7 +69,20 @@ class LammpsSnap(Calculator):
         if config.sections["REFERENCE"].atom_style == "charge":
             self._create_charge()
 
-        self._set_variables(**_lammps_variables(config.sections["BISPECTRUM"].__dict__))
+        # this is super clean when there is only one value per key, needs reworking
+#        self._set_variables(**_lammps_variables(config.sections["BISPECTRUM"].__dict__))
+
+        #Needs reworking when lammps will accept variable 2J
+        self._lmp.command(f"variable twojmax equal {max(config.sections['BISPECTRUM'].twojmax)}")
+        self._lmp.command(f"variable rcutfac equal {config.sections['BISPECTRUM'].rcutfac}")
+        self._lmp.command(f"variable rfac0 equal {config.sections['BISPECTRUM'].rfac0}")
+#        self._lmp.command(f"variable rmin0 equal {config.sections['BISPECTRUM'].rmin0}")
+
+        for i,j in enumerate(config.sections["BISPECTRUM"].wj):
+            self._lmp.command(f"variable wj{i+1} equal {j}")
+
+        for i,j in enumerate(config.sections["BISPECTRUM"].radelem):
+            self._lmp.command(f"variable radelem{i+1} equal {j}")
 
         for line in config.sections["REFERENCE"].lmp_pairdecl:
             self._lmp.command(line.lower())
@@ -174,12 +187,13 @@ class LammpsSnap(Calculator):
         ndim_virial = 6
         nrows_virial = ndim_virial
         nrows_snap = nrows_energy + nrows_force + nrows_virial
-        ncols_bispectrum = num_types * n_coeff
+        ncols_bispectrum = n_coeff * num_types
         ncols_reference = 1
         ncols_snap = ncols_bispectrum + ncols_reference
         index = pt.fitsnap_dict['a_indices'][self._i]
 
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
+
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
             raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
                                                                                   self._data["Group"]))
@@ -213,7 +227,8 @@ class LammpsSnap(Calculator):
                 onehot_atoms /= len(self._data["AtomTypes"])
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
-            pt.shared_arrays['a'].array[index] = b_sum_temp
+
+            pt.shared_arrays['a'].array[index] = b_sum_temp * config.sections["BISPECTRUM"].blank2J
             ref_energy = lmp_snap[irow, icolref]
             pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
             pt.shared_arrays['w'].array[index] = self._data["eweight"]
@@ -228,7 +243,8 @@ class LammpsSnap(Calculator):
                 onehot_atoms = np.zeros((np.shape(db_atom_temp)[0], num_types, 1))
                 db_atom_temp = np.concatenate([onehot_atoms, db_atom_temp], axis=2)
                 db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types * n_coeff + num_types)
-            pt.shared_arrays['a'].array[index:index+num_atoms * ndim_force] = db_atom_temp
+            pt.shared_arrays['a'].array[index:index+num_atoms * ndim_force] = \
+                np.matmul(db_atom_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
             ref_forces = lmp_snap[irow:irow + nrows_force, icolref]
             pt.shared_arrays['b'].array[index:index+num_atoms * ndim_force] = \
                 self._data["Forces"].ravel() - ref_forces
@@ -245,7 +261,8 @@ class LammpsSnap(Calculator):
                 onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0], num_types, 1))
                 vb_sum_temp = np.concatenate([onehot_atoms, vb_sum_temp], axis=2)
                 vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types * n_coeff + num_types)
-            pt.shared_arrays['a'].array[index:index+ndim_virial] = vb_sum_temp
+            pt.shared_arrays['a'].array[index:index+ndim_virial] = \
+                np.matmul(vb_sum_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
             ref_stress = lmp_snap[irow:irow + nrows_virial, icolref]
             pt.shared_arrays['b'].array[index:index+ndim_virial] = \
                 self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
@@ -253,7 +270,7 @@ class LammpsSnap(Calculator):
                 self._data["vweight"]
             index += ndim_virial
 
-
+# this is super clean when there is only one value per key, needs reworking
 def _lammps_variables(bispec_options):
     d = {k: bispec_options[k] for k in
          ["rcutfac",

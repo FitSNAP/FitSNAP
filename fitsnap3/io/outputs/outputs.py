@@ -62,8 +62,8 @@ def optional_open(file, mode, *args, openfn=None, **kwargs):
         if openfn is None:
             openfn = gzip.open if file.endswith('.gz') else open
         with openfn(file, mode, *args, **kwargs) as open_file:
-            with print_doing(f'Writing file "{file}"'):
-                yield open_file
+#            with print_doing(f'Writing file "{file}"'):
+            yield open_file
 
 
 @contextmanager

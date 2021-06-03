@@ -47,13 +47,15 @@ pt.single_print("  / /_   / // __/\__ \ /  |/ // /| |  / /_/ /")
 pt.single_print(" / __/  / // /_ ___/ // /|  // ___ | / ____/ ")
 pt.single_print("/_/    /_/ \__//____//_/ |_//_/  |_|/_/      ")
 pt.single_print("")
-pt.single_print("-----------")
+pt.single_print("-----20May21------")
 
 try:
     pt.single_print("Reading input...")
     pt.all_barrier()
     from .io.input import config
     pt.single_print("Finished reading input")
+    pt.single_print("------------------")
+
     from .io.output import output
 except Exception as e:
     pt.single_print("Trouble reading input, exiting...")
@@ -86,10 +88,11 @@ except Exception as e:
     output.screen("Trouble importing pandas package, exiting...")
     output.exception(e)
 
-# try:
-#     import lammps
+try:
+    import lammps
+    lmp = lammps.lammps()
 #     print("LAMMPS version: ",lammps.version())
-# except Exception as e:
-#     print("Trouble importing LAMMPS library, exiting...")
-#     raise e
+except Exception as e:
+    print("Trouble importing LAMMPS library, exiting...")
+    raise e
 output.screen("-----------")

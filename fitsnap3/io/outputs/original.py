@@ -18,7 +18,7 @@ class Original(Output):
 
     @pt.rank_zero
     def write(self, coeffs, errors):
-        if config.sections["SOLVER"].only_test != 1:
+        if config.sections["EXTRAS"].only_test != 1:
             if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP":
                 with optional_open(config.sections["OUTFILE"].potential_name and
                                    config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
@@ -27,7 +27,8 @@ class Original(Output):
                                    config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
                     file.write(_to_param_string())
         with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
-            errors.to_csv(file)
+#            errors.to_csv(file,sep=' ',float_format="%.8f")
+            errors.to_markdown(file)
 
     @pt.sub_rank_zero
     def read_fit(self):
@@ -69,7 +70,7 @@ def _to_param_string():
     return f"""
     # required
     rcutfac {config.sections["BISPECTRUM"].rcutfac}
-    twojmax {config.sections["BISPECTRUM"].twojmax}
+    twojmax {max(config.sections["BISPECTRUM"].twojmax)}
 
     #  optional
     rfac0 {config.sections["BISPECTRUM"].rfac0}
@@ -89,11 +90,16 @@ def _to_coeff_string(coeffs):
     if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
         raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
     # Includes the offset term, which was not in blist
+    #coeffs = (coeffs * config.sections["BISPECTRUM"].blank2J).reshape((config.sections["BISPECTRUM"].numtypes, -1))
     coeffs = coeffs.reshape((config.sections["BISPECTRUM"].numtypes, -1))
+    blank2Js = config.sections["BISPECTRUM"].blank2J.reshape((config.sections["BISPECTRUM"].numtypes, -1))
+    if config.sections["BISPECTRUM"].bzeroflag:
+        blank2Js = np.insert(blank2Js,0,[1.0],axis=1)
+    coeffs = np.multiply(coeffs,blank2Js)
     coeff_names = [[0]]+config.sections["BISPECTRUM"].blist
     type_names = config.sections["BISPECTRUM"].types
     out = f"# fitsnap fit generated on {datetime.now()}\n\n"
-    out += "{} {}\n".format(len(type_names), len(coeff_names))
+    out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/config.sections["BISPECTRUM"].numtypes)))
     for elname, rjval, wjval, column in zip(type_names,
                                             config.sections["BISPECTRUM"].radelem,
                                             config.sections["BISPECTRUM"].wj,

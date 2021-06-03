@@ -1,20 +1,26 @@
 from os import path
 from .sections import Section
+from ...parallel_tools import pt
 
 
 class Outfile(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
+        allowedkeys = ['output_style','metrics','potential','detailed_errors']
+        for value_name in config['OUTFILE']:
+            if value_name in allowedkeys: continue
+            else:
+                raise RuntimeError(">>> Found unmatched variable in OUTFILE section of input: ", value_name)
+                #pt.single_print(">>> Found unmatched variable in OUTFILE section of input: ",value_name)
+
         self._check_relative()
         self._outfile()
         self.output_style = self.get_value("OUTFILE", "output_style", "ORIGINAL")
-        self.print_a = self.get_value("OUTFILE", "print_a", "False", "bool")
         self.delete()
 
     def _outfile(self):
-        self.config_file = self._check_path(self.get_value("OUTFILE", "configs", "fitsnap_configs.pkl.gz"))
-        self.metric_file = self._check_path(self.get_value("OUTFILE", "metrics", "fitsnap_metrics.csv"))
+        self.metric_file = self._check_path(self.get_value("OUTFILE", "metrics", "fitsnap_metrics.md"))
         self.potential_name = self._check_path(self.get_value("OUTFILE", "potential", "fitsnap_potential"))
         self.detailed_errors_file = \
             self._check_path(self.get_value("OUTFILE", "detailed_errors", "fitsnap_detailed_errors.dat"))

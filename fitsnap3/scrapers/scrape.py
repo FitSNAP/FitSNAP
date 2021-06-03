@@ -90,7 +90,8 @@ class Scraper:
                 if folder not in self.files:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
-            shuffle(self.files[folder], pt.get_seed)
+            if config.sections["GROUPS"].random_sampling:
+                shuffle(self.files[folder], pt.get_seed)
             nfiles = len(folder_files)
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:

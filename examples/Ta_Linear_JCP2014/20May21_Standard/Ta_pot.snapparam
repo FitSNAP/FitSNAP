@@ -8,4 +8,7 @@
     rmin0 0.0
     bzeroflag 0
     quadraticflag 0
+    wselfallflag 0
+    chemflag 0
+    bnormflag 0
     

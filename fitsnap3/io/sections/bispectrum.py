@@ -60,8 +60,6 @@ class Bispectrum(Section):
 #                            i += 1
 #                            self.blist.append([i, j1, j2, j])
         for atype in range(self.numtypes):
-            if not self.bzeroflag:
-                self.blank2J.append([1.0])
             for j1 in range(int(max(self.twojmax)) + 1):
                 for j2 in range(j1 + 1):
                     for j in range(abs(j1 - j2), min(int(max(self.twojmax)), j1 + j2) + 1, 2):
@@ -92,6 +90,9 @@ class Bispectrum(Section):
                            enumerate(combinations_with_replacement(self.blist, r=2), start=len(self.blist))]
         self.ncoeff = int(len(self.blist)/self.numtypes)
         if not self.bzeroflag:
+            self.blank2J = np.reshape(self.blank2J, (self.numtypes, int(len(self.blist)/self.numtypes)))
+            onehot_atoms = np.zeros((self.numtypes, 1))
+            self.blank2J = np.concatenate((onehot_atoms, self.blank2J), axis=1)
             self.blank2J = np.reshape(self.blank2J, (len(self.blist) + self.numtypes))
         else:
             self.blank2J = np.reshape(self.blank2J, len(self.blist))

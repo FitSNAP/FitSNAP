@@ -356,6 +356,8 @@ class XYZ(Scraper):
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:
                     training_size = abs(training_size) * nconfigs
+                elif training_size == 0:
+                    pass
                 else:
                     training_size = max(1, int(abs(training_size) * nconfigs - 0.5))
                 if bc_bool and testing_size == 0:

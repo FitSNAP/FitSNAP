@@ -91,7 +91,7 @@ class Bispectrum(Section):
         self.ncoeff = int(len(self.blist)/self.numtypes)
         if not self.bzeroflag:
             self.blank2J = np.reshape(self.blank2J, (self.numtypes, int(len(self.blist)/self.numtypes)))
-            onehot_atoms = np.zeros((self.numtypes, 1))
+            onehot_atoms = np.ones((self.numtypes, 1))
             self.blank2J = np.concatenate((onehot_atoms, self.blank2J), axis=1)
             self.blank2J = np.reshape(self.blank2J, (len(self.blist) + self.numtypes))
         else:

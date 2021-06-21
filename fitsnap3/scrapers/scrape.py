@@ -96,6 +96,8 @@ class Scraper:
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:
                     training_size = abs(training_size) * len(folder_files)
+                elif training_size == 0:
+                    pass
                 else:
                     training_size = max(1, int(abs(training_size) * len(folder_files) - 0.5))
                 if bc_bool and testing_size == 0:
@@ -294,7 +296,10 @@ class Scraper:
                     if self.data['test_bool']:
                         self.data[key] /= self.group_table[self.data['Group']]['testing_size']
                     else:
-                        self.data[key] /= self.group_table[self.data['Group']]['training_size']
+                        try:
+                            self.data[key] /= self.group_table[self.data['Group']]['training_size']
+                        except ZeroDivisionError:
+                            self.data[key] = 0
             if config.sections["CALCULATOR"].force:
                 self.data['fweight'] /= natoms*3
 

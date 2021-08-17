@@ -1,0 +1,68 @@
+
+    ______ _  __  _____  _   __ ___     ____  
+   / ____/(_)/ /_/ ___/ / | / //   |   / __ \ 
+  / /_   / // __/\__ \ /  |/ // /| |  / /_/ /
+ / __/  / // /_ ___/ // /|  // ___ | / ____/ 
+/_/    /_/ \__//____//_/ |_//_/  |_|/_/      
+
+-----20May21------
+Reading input...
+Finished reading input
+------------------
+mpi4py version:  3.0.3
+numpy version:  1.19.2
+scipy version:  1.5.2
+pandas version:  1.1.2
+LAMMPS (14 May 2021)
+-----------
+001FreeSurf : Detected  34  fitting on  34  testing on  0
+010FreeSurf : Detected  36  fitting on  36  testing on  0
+100FreeSurf : Detected  20  fitting on  20  testing on  0
+Defect_BCrowd : Detected  22  fitting on  22  testing on  0
+Defect_BOct : Detected  22  fitting on  22  testing on  0
+Defect_BSplit : Detected  22  fitting on  22  testing on  0
+Defect_BTetra : Detected  46  fitting on  46  testing on  0
+Defect_Crowd : Detected  22  fitting on  22  testing on  0
+Defect_Oct : Detected  22  fitting on  22  testing on  0
+Defect_Tet : Detected  10  fitting on  10  testing on  0
+Defect_Vacancy : Detected  13  fitting on  13  testing on  0
+DFTMD_1000K : Detected  505  fitting on  505  testing on  0
+DFTMD_300K : Detected  404  fitting on  404  testing on  0
+Elast_BCC_Shear : Detected  978  fitting on  978  testing on  0
+Elast_BCC_Vol : Detected  1000  fitting on  1000  testing on  0
+Elast_FCC_Shear : Detected  371  fitting on  371  testing on  0
+Elast_FCC_Vol : Detected  1000  fitting on  1000  testing on  0
+Elast_HCP_Shear : Detected  244  fitting on  244  testing on  0
+Elast_HCP_Vol : Detected  1001  fitting on  1001  testing on  0
+EOS_BCC : Detected  101  fitting on  101  testing on  0
+EOS_FCC : Detected  301  fitting on  301  testing on  0
+EOS_HCP : Detected  100  fitting on  100  testing on  0
+StackFaults : Detected  6  fitting on  6  testing on  0
+Liquids : Detected  75  fitting on  75  testing on  0
+DFT_MD_1000K : Detected  1562  fitting on  1562  testing on  0
+DFT_MD_300K : Detected  1798  fitting on  1798  testing on  0
+ElasticDeform_Shear : Detected  1483  fitting on  1483  testing on  0
+ElasticDeform_Vol : Detected  2833  fitting on  2833  testing on  0
+EOS : Detected  1113  fitting on  1113  testing on  0
+WSurface_BeAdhesion : Detected  381  fitting on  381  testing on  0
+BCC_ForceLib_W110 : Detected  5  fitting on  5  testing on  0
+BCC_ForceLib_W111 : Detected  3  fitting on  3  testing on  0
+BCC_ForceLib_WOct : Detected  4  fitting on  4  testing on  0
+BCC_ForceLib_WTet : Detected  3  fitting on  3  testing on  0
+dislocation_quadrupole : Detected  98  fitting on  98  testing on  0
+Disordered_Struc : Detected  27  fitting on  27  testing on  0
+Divacancy : Detected  39  fitting on  39  testing on  0
+EOS_Data : Detected  125  fitting on  125  testing on  0
+gamma_surface : Detected  6183  fitting on  6183  testing on  0
+gamma_surface_vacancy : Detected  750  fitting on  750  testing on  0
+md_bulk : Detected  60  fitting on  60  testing on  0
+slice_sample : Detected  2000  fitting on  2000  testing on  0
+surface : Detected  180  fitting on  180  testing on  0
+vacancy : Detected  420  fitting on  420  testing on  0
+'scrape_configs' took 8320.60 ms on rank 0
+>>> Matrix of descriptors takes up  4.5406 % of the total memory: 34.3597 GB
+'process_configs' took 176362.80 ms on rank 0
+'perform_fit' took 29276.00 ms on rank 0
+'write_output' took 27.39 ms on rank 0
+'main' took 216623.14 ms on rank 0
+Total wall time: 0:03:36

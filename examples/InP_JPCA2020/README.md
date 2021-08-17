@@ -22,12 +22,6 @@ InP-example.in
 Input file containing parameters to run FitSNAP and generate
 the Indium Phosphide potential
 
-grouplist.in
-
-File that lists all the training groups in the JSON directory, 
-the number of files in each group, and the energy, force, and virial training 
-weights on each group.
-
 JSON/
 
 Directory that contains all the training configurations which are organized
@@ -49,7 +43,7 @@ InP_metrics.csv
 
 Contains a variety of error metrics for all the training groups for this fit.
 
-Note that the 20Jun20_Standard/ directory contains sample output for this example
+Note that the 20May21_Standard/ directory contains sample output for this example
 
 
 #### Important input parameters for this example

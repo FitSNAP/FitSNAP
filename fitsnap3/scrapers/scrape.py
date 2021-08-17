@@ -90,11 +90,14 @@ class Scraper:
                 if folder not in self.files:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
-            shuffle(self.files[folder], pt.get_seed)
+            if config.sections["GROUPS"].random_sampling:
+                shuffle(self.files[folder], pt.get_seed)
             nfiles = len(folder_files)
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:
                     training_size = abs(training_size) * len(folder_files)
+                elif training_size == 0:
+                    pass
                 else:
                     training_size = max(1, int(abs(training_size) * len(folder_files) - 0.5))
                 if bc_bool and testing_size == 0:
@@ -260,7 +263,7 @@ class Scraper:
         new_pos = cell_frac_coords @ cell.T
         trans_vec = trans_nums @ cell.T
         assert np.allclose(new_pos + trans_vec, position_in), "Translation failed to invert"
-        self.data["Postions"] = new_pos
+        self.data["Positions"] = new_pos
         self.data["Translation"] = trans_vec
 
     @staticmethod
@@ -293,7 +296,10 @@ class Scraper:
                     if self.data['test_bool']:
                         self.data[key] /= self.group_table[self.data['Group']]['testing_size']
                     else:
-                        self.data[key] /= self.group_table[self.data['Group']]['training_size']
+                        try:
+                            self.data[key] /= self.group_table[self.data['Group']]['training_size']
+                        except ZeroDivisionError:
+                            self.data[key] = 0
             if config.sections["CALCULATOR"].force:
                 self.data['fweight'] /= natoms*3
 

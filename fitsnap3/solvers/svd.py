@@ -22,7 +22,7 @@ class SVD(Solver):
 #        Since this breaks some examples this will stay as a 'secret' feature. 
 #        Need to chat with some mathy people on how we can profile A and find good preconditioners. 
 #        Will help when we want to try gradient based linear solvers as well. 
-        if config.sections['SOLVER'].apply_transpose:
+        if config.sections['EXTRAS'].apply_transpose:
             bw = aw.T@bw
             aw = aw.T@aw
         self.fit, residues, rank, s = lstsq(aw, bw, 1.0e-13)

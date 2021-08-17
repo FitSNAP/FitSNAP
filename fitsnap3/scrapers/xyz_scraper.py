@@ -350,11 +350,14 @@ class XYZ(Scraper):
                             fp.write(" {}".format(item))
                         fp.write("\n")
 
-            shuffle(self.configs[file_base], pt.get_seed)
+            if config.sections["GROUPS"].random_sampling:
+                shuffle(self.configs[file_base], pt.get_seed)
             nconfigs = len(self.configs[file_base])
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:
                     training_size = abs(training_size) * nconfigs
+                elif training_size == 0:
+                    pass
                 else:
                     training_size = max(1, int(abs(training_size) * nconfigs - 0.5))
                 if bc_bool and testing_size == 0:

@@ -26,12 +26,31 @@ class Solver:
         self.all_fits = pt.allgather(self.fit)
 
     def extras(self):
-        if config.sections["SOLVER"].dump_a:
-            self._dump_a()
-        if config.sections["SOLVER"].dump_x:
-            self._dump_x()
-        if config.sections["SOLVER"].dump_b:
-            self._dump_b()
+        length,width = 0,np.shape(pt.shared_arrays['a'].array)[1]
+        if config.sections["CALCULATOR"].energy:
+            a_e, b_e, w_e = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
+        else:
+            a_e, b_e, w_e = np.zeros((length, width)),np.zeros((length,)),np.zeros((length,))
+        if config.sections["CALCULATOR"].force:
+            num_forces = np.array(pt.shared_arrays['a'].num_atoms)*3
+            a_f, b_f, w_f = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
+        else:
+            a_f, b_f, w_f = np.zeros((length, width)),np.zeros((length,)),np.zeros((length,))
+        if config.sections["CALCULATOR"].stress:
+            a_s, b_s, w_s = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
+        else:
+            a_s, b_s, w_s = np.zeros((length, width)),np.zeros((length,)),np.zeros((length,))
+        if not config.sections["SOLVER"].detailed_errors:
+            print(">>>Enable [SOLVER], detailed_errors = 1 to characterize the training/testing split of your output *.npy matricies")
+        if config.sections["EXTRAS"].dump_a:
+            # if config.sections["EXTRAS"].apply_transpose:
+            #     np.save('Descriptors_Compact.npy', (np.concatenate((a_e,a_f,a_s),axis=0) @ np.concatenate((a_e,a_f,a_s),axis=0).T))
+            # else:
+            np.save('Descriptors.npy', np.concatenate([x for x in (a_e, a_f, a_s) if x.size > 0],axis=0))
+        if config.sections["EXTRAS"].dump_b:
+            np.save('Truth-Ref.npy', np.concatenate([x for x in (b_e, b_f, b_s) if x.size > 0],axis=0))
+        if config.sections["EXTRAS"].dump_w:
+            np.save('Weights.npy', np.concatenate([x for x in (w_e, w_f, w_s) if x.size > 0],axis=0))
 
     def _offset(self):
         num_types = config.sections["BISPECTRUM"].numtypes
@@ -48,8 +67,13 @@ class Solver:
             self.weighted = option
             self._all_error()
             self._group_error()
-        #   Print of errors per config
-        #     self._config_error()
+            if config.sections["SOLVER"].detailed_errors:
+                config_indicies,energy_list,force_list,stress_list = self._config_error()
+#                from csv import writer
+#                with open('detailed_config_list.dat', 'w') as f:
+#                    writer = writer(f, delimiter=' ')
+#                    writer.writerow(['FileID Usage N_Atoms FileName'])
+#                    writer.writerows(config_indicies)
 
         if self.template_error is True:
             self._template_error()
@@ -67,41 +91,73 @@ class Solver:
             self._force()
         if config.sections["CALCULATOR"].stress:
             self._stress()
-        self._combined()
+        #self._combined()
 
     def _energy(self):
-        testing = -1 * pt.shared_arrays['configs_per_group'].testing
-        a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
-        self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
-        if testing != 0:
-            self._errors([[testing, 0]], ['*ALL'], "Energy_testing", a, b, w)
+        if config.sections["CALCULATOR"].energy:
+            testing = -1 * pt.shared_arrays['configs_per_group'].testing
+            a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
+            config_indicies,energy_list,force_list,stress_list = self._config_error()
+            self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
+            if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
+                from csv import writer
+                true, pred = b, a @ self.fit
+                ConfigType = ['Training'] * (np.shape(true)[0]-pt.shared_arrays['configs_per_group'].testing) + \
+                                             ['Testing'] * (pt.shared_arrays['configs_per_group'].testing)
+                with open('detailed_energy_errors.dat', 'w') as f:
+                    writer = writer(f, delimiter=' ')
+                    writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
+                    writer.writerows(zip(energy_list,ConfigType,true, pred, pred-true))
+
+            if testing != 0:
+                self._errors([[testing, 0]], ['*ALL'], "Energy_testing", a, b, w)
 
     def _force(self):
-        num_forces = np.array(pt.shared_arrays['a'].num_atoms)*3
-        if pt.shared_arrays['configs_per_group'].testing:
-            testing = -1 * np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:])
-        else:
-            testing = 0
-        a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
-        # print out predicted vs true forces
-        # detailed_errors = 1
-        # if detailed_errors and self.weighted == "Unweighted":
-        #     from csv import writer
-        #     true, pred = b, a @ self.fit
-        #     with open('detailed_errors.dat', 'w') as f:
-        #         writer = writer(f, delimiter=' ')
-        #         writer.writerows(zip(true, pred, true-pred))
+        if config.sections["CALCULATOR"].force:
+            num_forces = np.array(pt.shared_arrays['a'].num_atoms)*3
+            if pt.shared_arrays['configs_per_group'].testing:
+                testing = -1 * np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:])
+            else:
+                testing = 0
 
-        self._errors([[0, testing]], ['*ALL'], "Force", a, b, w)
-        if testing != 0:
-            self._errors([[testing, 0]], ['*ALL'], "Force_testing", a, b, w)
+            a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
+            config_indicies,energy_list,force_list,stress_list = self._config_error()
+            if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
+                from csv import writer
+                true, pred = b, a @ self.fit
+                if pt.shared_arrays['configs_per_group'].testing:
+                    ConfigType = ['Training'] * (
+                                np.shape(true)[0] - np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:])) + \
+                                 ['Testing'] * (np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:]))
+                else:
+                    ConfigType = ['Training'] * np.shape(true)[0]
+                with open('detailed_force_errors.dat', 'w') as f:
+                    writer = writer(f, delimiter=' ')
+                    writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
+                    writer.writerows(zip(force_list,ConfigType, true, pred, pred-true))
+
+            self._errors([[0, testing]], ['*ALL'], "Force", a, b, w)
+            if testing != 0:
+                self._errors([[testing, 0]], ['*ALL'], "Force_testing", a, b, w)
 
     def _stress(self):
-        testing = -6 * pt.shared_arrays['configs_per_group'].testing
-        a, b, w = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
-        self._errors([[0, testing]], ['*ALL'], "Stress", a, b, w)
-        if testing != 0:
-            self._errors([[testing, 0]], ['*ALL'], "Stress_testing", a, b, w)
+        if config.sections["CALCULATOR"].stress:
+            testing = -6 * pt.shared_arrays['configs_per_group'].testing
+            a, b, w = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
+            config_indicies,energy_list,force_list,stress_list = self._config_error()
+            if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
+                from csv import writer
+                true, pred = b, a @ self.fit
+                ConfigType = ['Training'] * (np.shape(true)[0] - 6 * pt.shared_arrays['configs_per_group'].testing) + \
+                                             ['Testing'] * (6 * pt.shared_arrays['configs_per_group'].testing)
+                with open('detailed_stress_errors.dat', 'w') as f:
+                    writer = writer(f, delimiter=' ')
+                    writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
+                    writer.writerows(zip(stress_list,ConfigType, true, pred, pred-true))
+
+            self._errors([[0, testing]], ['*ALL'], "Stress", a, b, w)
+            if testing != 0:
+                self._errors([[testing, 0]], ['*ALL'], "Stress_testing", a, b, w)
 
     def _combined(self):
         self._errors([[0, pt.shared_arrays["configs_per_group"].testing_elements]], ["*ALL"], "Combined")
@@ -141,7 +197,7 @@ class Solver:
             self._group_force(groups)
         if config.sections["CALCULATOR"].stress:
             self._group_stress(groups)
-        self._group_combined(groups)
+#        self._group_combined(groups)
 
     def _group_energy(self, groups):
         group_index = pt.shared_arrays['a'].group_energy_index
@@ -166,7 +222,7 @@ class Solver:
         group_index = pt.shared_arrays['a'].group_index
         for i in range(len(group_index) - 1):
             index.append([group_index[i], group_index[i+1]])
-        self._errors(index, groups, "Combined")
+        #self._errors(index, groups, "Combined")
 
     @staticmethod
     def _make_group_abw(group_index, length, buffer):
@@ -199,6 +255,10 @@ class Solver:
     def _config_error(self):
         config_index = 0
         current_index = 0
+        detailed_config_list = []
+        energy_list = []
+        force_list = []
+        stress_list = []
         for i, num_atoms in enumerate(pt.shared_arrays['a'].num_atoms):
             this_config = pt.shared_arrays['number_of_atoms'].configs[i]
             if isinstance(this_config, str):
@@ -210,31 +270,45 @@ class Solver:
                 # current index is the index of the top of energy
                 self._config_energy(this_config, current_index)
                 current_index += 1
+                energy_list += [this_config[0]]
             if config.sections["CALCULATOR"].force:
                 # current index is the index of the top of force
                 self._config_force(this_config, current_index, 3*num_atoms)
                 current_index += 3*num_atoms
+                force_list += 3*num_atoms*[this_config[0]]
             if config.sections["CALCULATOR"].stress:
                 self._config_stress(this_config, current_index)
                 current_index += 6
+                stress_list += 6*[this_config[0]]
             self._config_combined(this_config, config_index, current_index)
             config_index = current_index
+            if pt.shared_arrays['configs_per_group'].testing > 0 and \
+                    i < (np.shape(pt.shared_arrays['a'].array)[0] - pt.shared_arrays['configs_per_group'].testing):
+                ConfigType = 'Training'
+            elif pt.shared_arrays['configs_per_group'].testing > 0 and \
+                    i >= (np.shape(pt.shared_arrays['a'].array)[0] - pt.shared_arrays['configs_per_group'].testing):
+                ConfigType = 'Testing'
+            else:
+                ConfigType = 'Training'
+
+            detailed_config_list.append([i,ConfigType,num_atoms,this_config[0]])
+        return detailed_config_list,energy_list,force_list,stress_list
 
     def _config_energy(self, this_config, current_index):
         index, a, b, w = self._make_config_abw(current_index, 1)
-        self._errors(index, this_config, "Energy", a, b, w)
+        #self._errors(index, this_config, "Energy", a, b, w)
 
     def _config_force(self, this_config, current_index, length):
         index, a, b, w = self._make_config_abw(current_index, length)
-        self._errors(index, this_config, "Force", a, b, w)
+        #self._errors(index, this_config, "Force", a, b, w)
 
     def _config_stress(self, this_config, current_index):
         index, a, b, w = self._make_config_abw(current_index, 6)
-        self._errors(index, this_config, "Stress", a, b, w)
+        #self._errors(index, this_config, "Stress", a, b, w)
 
     def _config_combined(self, this_config, config_index, current_index):
         index, a, b, w = self._make_config_abw(config_index, current_index-config_index)
-        self._errors(index, this_config, "Combined", a, b, w)
+        #self._errors(index, this_config, "Combined", a, b, w)
 
     @staticmethod
     def _make_config_abw(i, buffer):
@@ -257,6 +331,7 @@ class Solver:
         if w is None:
             w = pt.shared_arrays['w'].array
         for i, group in enumerate(category):
+#            print(i,group,gtype)
             if index is None:
                 a_err = a
                 b_err = b
@@ -278,8 +353,8 @@ class Solver:
             res = true - pred
             mae = np.sum(np.abs(res) / nconfig)
             # relative mae
-            # rres = ((true+1)-pred)/(true+1)
-            # rel_mae = np.sum(np.abs(rres) / nconfig)
+            rres = ((true+1)-pred)/(true+1)
+            rel_mae = np.sum(np.abs(rres) / nconfig)
             mean_dev = np.sum(np.abs(true - np.median(true)) / nconfig)
             ssr = np.square(res).sum()
             mse = ssr / nconfig
@@ -291,12 +366,13 @@ class Solver:
                 "Subsystem": gtype,
                 "ncount": nconfig,
                 "mae": mae,
-                "rmae": mae / mean_dev,
                 "rmse": rmse,
-                "rrmse": rmse / np.std(true),
-                "ssr": ssr,
                 "rsq": rsq
             }
+#                "rmae": mae / mean_dev,
+#                "rrmse": rmse / np.std(true),
+#                "ssr": ssr,
+
             if self.residuals is not None:
                 error_record["residual"] = res
             self.errors.append(error_record)
@@ -304,11 +380,3 @@ class Solver:
     def _template_error(self):
         pass
 
-    def _dump_a(self):
-        raise NotImplementedError("This method is either not implemented or solver is not a linear solver")
-
-    def _dump_x(self):
-        raise NotImplementedError("This method is either not implemented or solver is not a linear solver")
-
-    def _dump_b(self):
-        raise NotImplementedError("This method is either not implemented or solver is not a linear solver")

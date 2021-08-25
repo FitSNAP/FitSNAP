@@ -31,7 +31,6 @@
 from .fitsnap import FitSnap
 from .parallel_tools import pt
 from .io.output import output
-# TODO : Make unit conversion object
 
 
 @pt.single_timeit

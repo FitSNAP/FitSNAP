@@ -26,7 +26,7 @@ class Solver:
         # self.all_fits = pt.allgather(self.fit)
         pass
 
-    @pt.sub_rank_zero
+    @pt.rank_zero
     def extras(self):
         length,width = 0,np.shape(pt.shared_arrays['a'].array)[1]
         if config.sections["CALCULATOR"].energy:
@@ -64,7 +64,7 @@ class Solver:
         else:
             self.fit = np.insert(self.fit, 0, 0)
 
-    @pt.sub_rank_zero
+    @pt.rank_zero
     def error_analysis(self):
         for option in ["Unweighted", "Weighted"]:
             self.weighted = option

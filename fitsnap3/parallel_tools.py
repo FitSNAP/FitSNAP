@@ -88,7 +88,7 @@ def _rank_zero(method):
 
 def _sub_rank_zero(method):
     def check_if_rank_zero(*args, **kw):
-        if args[0].get_rank() == 0:
+        if args[0].get_subrank() == 0:
             return method(*args, **kw)
         else:
             return dummy_function()
@@ -291,6 +291,7 @@ class ParallelTools:
         self.fitsnap_dict[name] = self._sub_comm.bcast(self.fitsnap_dict[name])
 
     @stub_check
+    @_sub_rank_zero
     def allgather(self, array):
         return self._head_group_comm.allgather(array)
 
@@ -314,21 +315,25 @@ class ParallelTools:
         elif isinstance(obj, SharedArray):
             scraped_length = obj.get_scraped_length()
             length = obj.get_node_length()
+            lengths = np.zeros(self._number_of_nodes)
             difference = np.zeros(self._number_of_nodes)
             if self._sub_rank == 0:
-                difference[self._node_index] = length - scraped_length
-                self._head_group_comm.allreduce(difference)
+                lengths[self._node_index] = length - scraped_length
+                self._head_group_comm.Allreduce([lengths, MPI.DOUBLE], [difference, MPI.DOUBLE])
                 if self._rank == 0:
                     if np.sum(difference) != 0:
                         raise ValueError(np.sum(difference), "sum of differences must be zero")
+                difference = difference.astype(int)
                 for i, i_val in enumerate(difference):
                     while i_val > 0:
                         for j, j_val in enumerate(difference):
-                            while j < 0:
+                            while j_val < 0:
                                 if self._node_index == i:
-                                    self._comm.send(obj.array[-i_val])
+                                    self._comm.send(obj.array[-i_val], dest=self._sub_head_procs[j], tag=11)
                                 if self._node_index == j:
-                                    self._comm.receive(obj.array[j_val])
+                                    obj.array[j_val] = self._comm.recv(source=self._sub_head_procs[i], tag=11)
+                                j_val += 1
+                                i_val -= 1
                                 self._head_group_comm.barrier()
         else:
             raise TypeError("Parallel tools cannot split {} by node.".format(obj))

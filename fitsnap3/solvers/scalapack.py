@@ -38,6 +38,7 @@ try:
                 bw = aw.T@bw
                 aw = aw.T@aw
             self.fit = lstsq(aw, bw, lengths=lengths)
+            self.fit = pt.allgather(self.fit)[0]
             # self.fit, residues, rank, s = lstsq(aw, bw, 1.0e-13)
 
         def _dump_a(self):

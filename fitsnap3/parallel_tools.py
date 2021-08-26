@@ -318,7 +318,7 @@ class ParallelTools:
             lengths = np.zeros(self._number_of_nodes)
             difference = np.zeros(self._number_of_nodes)
             if self._sub_rank == 0:
-                lengths[self._node_index] = length - scraped_length
+                lengths[self._node_index] = scraped_length - length
                 self._head_group_comm.Allreduce([lengths, MPI.DOUBLE], [difference, MPI.DOUBLE])
                 if self._rank == 0:
                     if np.sum(difference) != 0:
@@ -329,9 +329,9 @@ class ParallelTools:
                         for j, j_val in enumerate(difference):
                             while j_val < 0:
                                 if self._node_index == i:
-                                    self._comm.send(obj.array[-i_val], dest=self._sub_head_procs[j], tag=11)
+                                    self._comm.send(obj.array[scraped_length-i_val], dest=self._sub_head_procs[j], tag=11)
                                 if self._node_index == j:
-                                    obj.array[j_val] = self._comm.recv(source=self._sub_head_procs[i], tag=11)
+                                    obj.array[length+j_val] = self._comm.recv(source=self._sub_head_procs[i], tag=11)
                                 j_val += 1
                                 i_val -= 1
                                 self._head_group_comm.barrier()

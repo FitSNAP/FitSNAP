@@ -13,5 +13,7 @@ void descinit_(int*, int*, int*, int*, int*, int*, int*, int*, int*, int*);
 void pdpotrf_(char*, int*, double*, int*, int*, int*, int*);
 void blacs_gridexit_(int*);
 int numroc_(int*, int*, int*, int*, int*);
+int ilcm_(int*, int*);
+int indxg2p_(int*, int*, int*, int*, int*);
 
 #endif //EXAMPLE_SCALAPACK_H

@@ -50,6 +50,23 @@ def numroc(n, nb, iproc, nprocs):
     return numroc_info
 
 
+def ilcm(m, n):
+    cdef int cm = m
+    cdef int cn = n
+    cdef int ilcm_info = ilcm_(&cm, &cn)
+    return ilcm_info
+
+
+def indxg2p(indxglob, nb, iproc, nprocs):
+    cdef int cindxglob = indxglob
+    cdef int cnb = nb
+    cdef int ciproc = iproc
+    cdef int srcproc = 0
+    cdef int cnprocs = nprocs
+    cdef int indxg2p_info = indxg2p_(&cindxglob, &cnb, &ciproc, &srcproc, &cnprocs)
+    return indxg2p_info
+
+
 def descinit(m, n, mb, nb, ictxt, numroc_info):
     cdef int desc[9]
     cdef int cm = m

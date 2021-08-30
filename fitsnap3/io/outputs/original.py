@@ -11,7 +11,8 @@ class Original(Output):
         super().__init__(name)
 
     def output(self, coeffs, errors):
-        new_coeffs = pt.combine_coeffs(coeffs)
+        new_coeffs = None
+        # new_coeffs = pt.combine_coeffs(coeffs)
         if new_coeffs is not None:
             coeffs = new_coeffs
         self.write(coeffs, errors)

@@ -11,3 +11,5 @@ cdef extern from "scalapack.h":
     void pdgesvd_(char*, char*, int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, int*, double*, int*, int*, int*, double*, int*, int*)
     void blacs_gridexit_(int*)
     int numroc_(int*, int*, int*, int*, int*)
+    int ilcm_(int*, int*)
+    int indxg2p_(int*, int*, int*, int*, int*)

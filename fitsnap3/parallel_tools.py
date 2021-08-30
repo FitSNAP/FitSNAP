@@ -324,17 +324,27 @@ class ParallelTools:
                     if np.sum(difference) != 0:
                         raise ValueError(np.sum(difference), "sum of differences must be zero")
                 difference = difference.astype(int)
-                for i, i_val in enumerate(difference):
-                    while i_val > 0:
-                        for j, j_val in enumerate(difference):
-                            while j_val < 0:
-                                if self._node_index == i:
-                                    self._comm.send(obj.array[scraped_length-i_val], dest=self._sub_head_procs[j], tag=11)
-                                if self._node_index == j:
-                                    obj.array[length+j_val] = self._comm.recv(source=self._sub_head_procs[i], tag=11)
-                                j_val += 1
-                                i_val -= 1
-                                self._head_group_comm.barrier()
+                i, j, i_val, j_val = 0, 0, 0, 0
+                while not np.all((difference == 0)):
+                    for i, i_val in enumerate(difference):
+                        if i_val > 0:
+                            break
+                    for j, j_val in enumerate(difference):
+                        if j_val < 0:
+                            break
+                    val_min = min(i_val, -j_val)
+                    if self._node_index == i:
+                        # scraped length > scala length
+                        self._comm.send(obj.array[scraped_length-i_val:scraped_length-(i_val-val_min)],
+                                        dest=self._sub_head_procs[j],
+                                        tag=11)
+                    if self._node_index == j:
+                        # scraped length < scala length
+                        obj.array[length+j_val:length+(j_val+val_min)] = \
+                            self._comm.recv(source=self._sub_head_procs[i], tag=11)
+                    difference[j] += val_min
+                    difference[i] -= val_min
+                    self._head_group_comm.barrier()
         else:
             raise TypeError("Parallel tools cannot split {} by node.".format(obj))
 

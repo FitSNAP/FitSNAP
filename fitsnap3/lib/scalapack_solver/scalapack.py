@@ -1,4 +1,5 @@
 from scalapack_funcs import *
+import ctypes as ctypes
 from ...parallel_tools import pt
 
 
@@ -68,4 +69,7 @@ def lstsq(A, b, lengths=None):
     work_length = find_work_space(myrow, mycol, nprow, npcol, m, mb, n)
     work = np.zeros(work_length)
     pdgels(m, n, 1, A, descA, b, descB, work, work_length)
-    return b[:n]
+    if rank == 0:
+        b_ptr = b.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        b = np.ctypeslib.as_array(b_ptr,shape=(n,))
+    return b

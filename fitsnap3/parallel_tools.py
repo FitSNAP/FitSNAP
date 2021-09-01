@@ -196,6 +196,12 @@ class ParallelTools:
     def get_node(self):
         return self._node_index
 
+    def get_number_of_nodes(self):
+        return self._number_of_nodes
+
+    def get_node_list(self):
+        return self._sub_head_procs
+
     @_rank_zero
     def single_print(self, *args, **kw):
         printf(*args)
@@ -537,7 +543,6 @@ class SharedArray:
         self._length = size1
         self._scraped_length = self._length
         self._total_length = self._length
-        self._proc_length = None
         self._node_length = None
         self._width = size2
 
@@ -585,10 +590,6 @@ class SharedArray:
         # Length of A scraped by node
         return self._scraped_length
 
-    def get_proc_length(self):
-        # Length of A owned by current processor
-        return self._proc_length
-
     def get_node_length(self):
         # Length of A owned by current node
         return self._node_length
@@ -600,24 +601,18 @@ class SharedArray:
     def multinode_lengths(self):
         # Each head node needs to have mb or its scraped length if longer
         # Solvers which require this: ScaLAPACK
+        remainder = 0
         self._scraped_length = self._length
-        longest_length = None
         if self._comms[1][1] == 0:
             self._total_length = self._comms[2][0].allreduce(self._scraped_length)
-            longest_length = self._comms[2][0].allreduce(self._length, op=MPI.MAX)
             # mb is the floored average array length, extra elements are dumped into the first array
-            self._proc_length = int(np.floor(self._total_length / self._comms[0][2]))
-        self._total_length = self._comms[1][0].bcast(self._total_length)
-        longest_length = self._comms[1][0].bcast(longest_length)
-        self._proc_length = self._comms[1][0].bcast(self._proc_length)
-        leftover = 0
-        if self._comms[1][1] == 0:
+            self._node_length = int(np.floor(self._total_length / self._comms[2][2]))
             if self._comms[2][1] == 0:
-                leftover = self._total_length - self._proc_length*self._comms[0][2]
-            self._length = max(leftover+self._proc_length, longest_length)
-            self._node_length = self._proc_length * self._comms[1][2] + leftover
-        self._length = self._comms[1][0].bcast(self._length)
+                remainder = self._total_length - self._node_length*self._comms[2][2]
+            self._node_length += remainder
+        self._total_length = self._comms[1][0].bcast(self._total_length)
         self._node_length = self._comms[1][0].bcast(self._node_length)
+        self._length = max(self._node_length, self._scraped_length)
 
 
 class StubsArray:

@@ -2,8 +2,35 @@
 
 from Scalapack cimport *
 from libc.stdlib cimport calloc
+from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 import numpy as np
 cimport numpy as np
+
+
+cdef class CppList:
+    cdef int* data
+
+    def __cinit__(self, size_t number):
+        # allocate some memory (uninitialised, may contain arbitrary data)
+        self.data = <int*> PyMem_Malloc(
+            number * sizeof(int))
+        if not self.data:
+            raise MemoryError()
+
+    def resize(self, size_t new_number):
+        # Allocates new_number * sizeof(int) bytes,
+        # preserving the current content and making a best-effort to
+        # re-use the original data location.
+        mem = <int*> PyMem_Realloc(
+            self.data, new_number * sizeof(int))
+        if not mem:
+            raise MemoryError()
+        # Only overwrite the pointer if the memory was really reallocated.
+        # On error (mem is NULL), the originally memory has not been freed.
+        self.data = mem
+
+    def __dealloc__(self):
+        PyMem_Free(self.data)  # no-op if self.data is NULL
 
 
 def blacs_pinfo():
@@ -12,11 +39,12 @@ def blacs_pinfo():
     return rank, nprocs
 
 
-def blacs_get():
-    cdef int zero = 0
-    cdef int ictxt
-    blacs_get_(&zero, &zero, &ictxt)
-    return ictxt
+def blacs_get(ictxt, what):
+    cdef int cwhat = what
+    cdef int cictxt = ictxt
+    cdef int cval
+    blacs_get_(&cictxt, &cwhat, &cval)
+    return cval
 
 
 def blacs_gridinit(ictxt, layout, nprow, npcol):
@@ -31,6 +59,18 @@ def blacs_gridinit(ictxt, layout, nprow, npcol):
     return cictxt
 
 
+def blacs_gridmap(ictxt, usermap, ldumap, nprow, npcol):
+    cdef int cictxt = ictxt
+    cusermap = CppList(nprow)
+    for i, val in enumerate(usermap):
+        cusermap.data[i] = val
+    cdef int cldumap = ldumap
+    cdef int cnprow = nprow
+    cdef int cnpcol = npcol
+    blacs_gridmap_(&cictxt, cusermap.data, &cldumap, &cnprow, &cnpcol)
+    return cictxt
+
+
 def blacs_gridinfo(ictxt, nprow, npcol):
     cdef int myrow, mycol
     cdef int cictxt = ictxt
@@ -40,13 +80,21 @@ def blacs_gridinfo(ictxt, nprow, npcol):
     return cnprow, cnpcol, myrow, mycol
 
 
-def numroc(n, nb, iproc, nprocs):
+def blacs_pnum(ictxt, prow, pcol):
+    cdef int cictxt = ictxt
+    cdef int cprow = prow
+    cdef int cpcol = pcol
+    cdef int proc_num = blacs_pnum_(&cictxt, &cprow, &cpcol)
+    return proc_num
+
+
+def numroc(n, nb, iproc, nprocs, srcproc=0):
     cdef int cn = n
     cdef int cnb = nb
     cdef int ciproc = iproc
-    cdef int srcproc = 0
+    cdef int csrcproc = srcproc
     cdef int cnprocs = nprocs
-    cdef int numroc_info = numroc_(&cn, &cnb, &ciproc, &srcproc, &cnprocs)
+    cdef int numroc_info = numroc_(&cn, &cnb, &ciproc, &csrcproc, &cnprocs)
     return numroc_info
 
 
@@ -181,12 +229,16 @@ def pdgesvd(jobu, jobvt, m, n, A, ia, ja, descA, S, U, iu, ju, descU, VT, ivt, j
 cdef class Scalapack:
     cdef int ictxt, myrow, mycol, npcol, nprow, rzero, czero, myA_row, myA_col, a_len, a_wid, my_a_len, descA[9]
     cdef int myB_row, myB_col, descB[9]
+    cdef int* usermap_ptr
+    cdef np.ndarray usermap
 
     def __init__(self, num_nodes):
         self.nprow = num_nodes
         self.npcol = 1
         self.rzero = 0
         self.czero = 0
+        self.usermap = np.ascontiguousarray(np.array([0, 2], dtype=np.int), dtype=np.int)
+        self.usermap_ptr = <int*> self.usermap.data
         self.initialize_blacs()
 
     def initialize_blacs(self):
@@ -203,7 +255,10 @@ cdef class Scalapack:
         blacs_get_(&zero, &zero, &self.ictxt )
 
         # Context -> Initialize the grid
-        blacs_gridinit_(&self.ictxt, &layout, &self.nprow, &self.npcol )
+        # blacs_gridinit_(&self.ictxt, &layout, &self.nprow, &self.npcol )
+
+        # Context -> Initialize the grid
+        blacs_gridmap_(&self.ictxt, self.usermap_ptr, &self.nprow, &self.nprow, &self.npcol )
 
         # Context -> Context grid info (# procs row/col, current procs row/col)
         blacs_gridinfo_(&self.ictxt, &self.nprow, &self.npcol, &self.myrow, &self.mycol )
@@ -296,12 +351,12 @@ cdef class Scalapack:
         pdgels_(&trans, &self.a_len, &self.a_wid, &b_wid, A_ptr, &aone, &aone, self.descA, B_ptr, &bone, &bone, self.descB, X_ptr, &lwork, &info)
 
 
-def initialize_blacs(int num_nodes):
+def initialize_blacs(num_nodes):
     cdef int rank = 0
     cdef int nprocs = 0
     cdef int zero = 0
     cdef int ictxt, myrow, mycol
-    cdef int npcol = 1
+    cdef int npcol = num_nodes
     cdef int nprow = 1
     cdef char layout='R'
 
@@ -312,7 +367,9 @@ def initialize_blacs(int num_nodes):
     blacs_get_(&zero, &zero, &ictxt )
 
     # Context -> Initialize the grid
-    blacs_gridinit_(&ictxt, &layout, &nprow, &npcol )
+    # blacs_gridinit_(&ictxt, &layout, &nprow, &npcol )
+    cdef int[2] X_ptr = {0, 2}
+    blacs_gridmap_(&ictxt, X_ptr, &nprow, &nprow, &npcol )
 
     # Context -> Context grid info (# procs row/col, current procs row/col)
     blacs_gridinfo_(&ictxt, &nprow, &npcol, &myrow, &mycol )

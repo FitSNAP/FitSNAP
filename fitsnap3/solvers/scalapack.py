@@ -23,9 +23,8 @@ try:
             pt.split_by_node(pt.shared_arrays['b'])
             total_length = pt.shared_arrays['a'].get_total_length()
             node_length = pt.shared_arrays['a'].get_node_length()
-            proc_length = pt.shared_arrays['a'].get_proc_length()
             scraped_length = pt.shared_arrays['a'].get_scraped_length()
-            lengths = [total_length, node_length, proc_length, scraped_length]
+            lengths = [total_length, node_length, scraped_length]
             w = pt.shared_arrays['w'].array[:testing]
             aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[:testing], w * pt.shared_arrays['b'].array[:testing]
 

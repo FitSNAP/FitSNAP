@@ -8,7 +8,9 @@
 void blacs_get_(int*, int*, int*);
 void blacs_pinfo_(int*, int*);
 void blacs_gridinit_(int*, char*, int*, int*);
+void blacs_gridmap_(int*, int*, int*, int*, int*);
 void blacs_gridinfo_(int*, int*, int*, int*, int*);
+int blacs_pnum_(int*, int*, int*);
 void descinit_(int*, int*, int*, int*, int*, int*, int*, int*, int*, int*);
 void pdpotrf_(char*, int*, double*, int*, int*, int*, int*);
 void blacs_gridexit_(int*);

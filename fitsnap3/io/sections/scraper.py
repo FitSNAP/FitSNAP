@@ -1,5 +1,9 @@
 from .sections import Section, output
-from ...parallel_tools import pt
+from ...parallel_tools import ParallelTools
+
+
+pt = ParallelTools()
+
 
 class Scraper(Section):
 

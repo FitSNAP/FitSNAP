@@ -1,7 +1,11 @@
 from .sections import Section
 from itertools import combinations_with_replacement
 import numpy as np
-from ...parallel_tools import pt
+from ...parallel_tools import ParallelTools
+
+
+pt = ParallelTools()
+
 
 class Bispectrum(Section):
 

@@ -1,7 +1,11 @@
-from ..io.input import config
-from ..parallel_tools import pt
+from ..io.input import Config
+from ..parallel_tools import ParallelTools
 import numpy as np
 from pandas import DataFrame
+
+
+config = Config()
+pt = ParallelTools()
 
 
 class Solver:

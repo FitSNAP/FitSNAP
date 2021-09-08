@@ -2,7 +2,11 @@
 from .sections import Section, output
 from pandas import read_csv
 from os import path
-from ...parallel_tools import pt
+from ...parallel_tools import ParallelTools
+
+
+pt = ParallelTools()
+
 
 def _str_2_fun(some_list):
     for i, item in enumerate(some_list):

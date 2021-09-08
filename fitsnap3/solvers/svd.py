@@ -1,8 +1,12 @@
 from .solver import Solver
-from ..parallel_tools import pt
-from ..io.input import config
+from ..parallel_tools import ParallelTools
+from ..io.input import Config
 from scipy.linalg import lstsq
 import numpy as np
+
+
+config = Config()
+pt = ParallelTools()
 
 
 class SVD(Solver):

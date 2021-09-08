@@ -1,10 +1,14 @@
 from .scrape import Scraper, convert
-from ..io.input import config
+from ..io.input import Config
 from json import loads
-from ..parallel_tools import pt
+from ..parallel_tools import ParallelTools
 from ..io.output import output
 from copy import copy
 import numpy as np
+
+
+config = Config()
+pt = ParallelTools()
 
 
 class Json(Scraper):

@@ -1,7 +1,11 @@
 from .sections import Section
 from os import sysconf
 from subprocess import check_output
-from ...parallel_tools import pt
+from ...parallel_tools import ParallelTools
+
+
+pt = ParallelTools()
+
 
 class Memory(Section):
 

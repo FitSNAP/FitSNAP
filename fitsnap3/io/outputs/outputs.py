@@ -1,9 +1,13 @@
-from ..input import config
-from ...parallel_tools import pt
+from ..input import Config
+from ...parallel_tools import ParallelTools
 from contextlib import contextmanager
 import gzip
 from datetime import datetime
 import logging
+
+
+config = Config()
+pt = ParallelTools()
 
 
 class Output:

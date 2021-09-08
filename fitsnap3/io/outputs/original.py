@@ -1,8 +1,12 @@
 from .outputs import Output, optional_open
-from ...parallel_tools import pt
+from ...parallel_tools import ParallelTools
 from datetime import datetime
-from ..input import config
+from ..input import Config
 import numpy as np
+
+
+config = Config()
+pt = ParallelTools()
 
 
 class Original(Output):

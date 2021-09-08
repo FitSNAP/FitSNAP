@@ -1,6 +1,10 @@
-from ..parallel_tools import pt, double_size
-from ..io.input import config
+from ..parallel_tools import ParallelTools, double_size
+from ..io.input import Config
 from ..io.output import output
+
+
+config = Config()
+pt = ParallelTools()
 
 
 class Calculator:

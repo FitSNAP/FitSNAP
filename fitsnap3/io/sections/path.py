@@ -1,6 +1,10 @@
 from .sections import Section
 from os import path
-from ...parallel_tools import pt
+from ...parallel_tools import ParallelTools
+
+
+pt = ParallelTools()
+
 
 class Path(Section):
 

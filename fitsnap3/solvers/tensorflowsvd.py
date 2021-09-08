@@ -1,7 +1,12 @@
 from .solver import Solver
-from ..parallel_tools import pt
-from ..io.input import config
+from ..parallel_tools import ParallelTools
+from ..io.input import Config
 import numpy as np
+
+
+config = Config()
+pt = ParallelTools()
+
 try:
     import tensorflow as tf
 

@@ -1,6 +1,6 @@
 from .scrape import Scraper
-from ..io.input import config
-from ..parallel_tools import pt
+from ..io.input import Config
+from ..parallel_tools import ParallelTools
 from ..io.output import output
 import numpy as np
 from random import shuffle
@@ -8,6 +8,9 @@ from os import path, listdir
 from copy import copy
 import re
 from _collections import defaultdict
+
+config = Config()
+pt = ParallelTools()
 
 UNPROCESSED_KEYS = ['uid']
 

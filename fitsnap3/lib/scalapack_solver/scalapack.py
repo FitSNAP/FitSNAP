@@ -45,8 +45,6 @@ def lstsq(A, b, lengths=None):
     # npcol = Number of process columns in the current process grid.
     # myprow = Row coordinate of the calling process in the process grid.
     # mypcol = Column coordinate of the calling process in the process grid.
-    if pt.get_subrank() != 0:
-        return
     nprow, npcol, myrow, mycol = blacs_gridinfo(ictxt, nprow, npcol)
     numroc_Ar = numroc(m, mb, myrow, nprow)
     descA = descinit(m, n, mb, nb, ictxt, numroc_Ar)
@@ -57,7 +55,21 @@ def lstsq(A, b, lengths=None):
     work_length = find_work_space(myrow, mycol, nprow, npcol, m, mb, n)
     work = np.zeros(work_length)
     pdgels(m, n, 1, A, descA, b, descB, work, work_length)
-    if rank == 0:
+    if pt.get_rank() == 0:
         b_ptr = b.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
         b = np.ctypeslib.as_array(b_ptr,shape=(n,))
+    blacs_gridexit(ictxt)
+    pt.all_barrier()
     return b
+
+
+def dummy_lstsq():
+    nprow = pt.get_number_of_nodes()
+    npcol = 1
+    blacs_pinfo()
+
+    ictxt = blacs_get(0, 0)
+    ictxt = blacs_gridmap(ictxt, pt.get_node_list(), nprow, nprow, npcol)
+    nprow, npcol, myrow, mycol = blacs_gridinfo(ictxt, nprow, npcol)
+    pt.all_barrier()
+    return None

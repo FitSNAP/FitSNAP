@@ -66,8 +66,8 @@ if mpiversion == 'openmpi':
 
 if scalapackversion == 'intelmkl':
     # Set library includes (taking into account which MPI library we are using)."
-    scl_lib = ['mkl_scalapack_lp64', 'mkl_intel_lp64', 'mkl_intel_thread', 'mkl_core',
-               'mkl_blacs_'+mpiversion+'_lp64', 'iomp5', 'pthread', 'mkl_avx512', 'mkl_def']
+    scl_lib = ['mkl_scalapack_ilp64', 'mkl_intel_ilp64', 'mkl_intel_thread', 'mkl_core',
+               'mkl_blacs_'+mpiversion+'_ilp64', 'iomp5', 'pthread', 'mkl_avx512', 'mkl_def']
     scl_incl = os.environ['MKLROOT']+'/include'
     # scl_lib = ['mkl_blacs_'+mpiversion+'_lp64', 'iomp5', 'pthread']
     scl_libdir = [os.environ['MKLROOT']+'/lib' if 'MKLROOT' in os.environ else '']

@@ -39,10 +39,19 @@ def main():
     try:
         snap = FitSnap()
         snap.scrape_configs()
-        snap.process_configs()
-        pt.all_barrier()
-        snap.perform_fit()
-        snap.write_output()
+
+        if (snap.solver.name.lower() == 'svd_ata'):
+            print("Using least-squared tranpose method to reduce memory storage...")
+            snap.process_configs_ata()
+            pt.all_barrier()
+            snap.perform_atafit()
+            snap.write_coefficient()                        
+        else:
+            snap.process_configs()
+            pt.all_barrier()
+            snap.perform_fit()
+            snap.write_output()
+
     except Exception as e:
         output.exception(e)
 

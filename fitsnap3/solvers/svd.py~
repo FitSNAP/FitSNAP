@@ -31,11 +31,13 @@ class SVD(Solver):
             bw = aw.T@bw
             aw = aw.T@aw
         self.fit, residues, rank, s = lstsq(aw, bw, 1.0e-13)
-        
-    def perform_atafit(self):
+
         ata = 0.5*(pt.shared_arrays['ata'].array + pt.shared_arrays['ata'].array.T)
-        atb = pt.shared_arrays['atb'].array               
-        self.coeff, residues, rank, s = lstsq(ata, atb, 1.0e-13)
+        atb = pt.shared_arrays['atb'].array        
+        #x = np.linalg.solve(ata, atb)
+        x, residues, rank, s = lstsq(ata, atb, 1.0e-13)
+        #print(x)
+        #print(self.fit)        
 
     def _dump_a(self):
         np.savez_compressed('a.npz', a=pt.shared_arrays['a'].array)

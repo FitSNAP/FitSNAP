@@ -74,5 +74,26 @@ class FitSnap:
         self.solver.extras()
 
     @pt.single_timeit
-    def write_output(self):
+    def write_output(self):        
         output.output(self.solver.fit, self.solver.errors)
+
+    @pt.single_timeit
+    def process_configs_ata(self):
+        self.calculator.create_ata()
+        for i, configuration in enumerate(self.data):
+            self.calculator.process_configs_ata(configuration, i)
+        del self.data
+
+    @pt.sub_rank_zero
+    @pt.single_timeit
+    def perform_atafit(self):
+        if self.fit is None:
+            self.solver.perform_atafit()
+        else:
+            self.solver.fit = self.fit
+        self.solver.fit_gather()
+
+    @pt.single_timeit
+    def write_coefficient(self):        
+        output.writecoeff(self.solver.coeff)
+

@@ -244,7 +244,11 @@ class ParallelTools:
             return dummy_function
 
     def create_shared_array(self, name, size1, size2=1, dtype='d'):
-
+        #print(name)
+        #print(size1)
+        #print(size2)
+        #if (name == 'a'):
+        #    raise TypeError("name must be a string")
         if isinstance(name, str):
             if stubs == 0:
                 self.shared_arrays[name] = SharedArray(size1, size2=size2,

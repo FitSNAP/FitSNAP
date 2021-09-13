@@ -27,25 +27,10 @@ class Original(Output):
                                    config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
                     file.write(_to_param_string())
         #print(config.sections["OUTFILE"].metric_file)
-        #print(errors)
+        raise("erro);
         with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
 #            errors.to_csv(file,sep=' ',float_format="%.8f")
             errors.to_markdown(file)
-
-    @pt.rank_zero
-    def writecoeff(self, coeffs):
-        new_coeffs = pt.combine_coeffs(coeffs)
-        if new_coeffs is not None:
-            coeffs = new_coeffs
-
-        if config.sections["EXTRAS"].only_test != 1:
-            if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP":
-                with optional_open(config.sections["OUTFILE"].potential_name and
-                                   config.sections["OUTFILE"].potential_name + '_ata.snapcoeff', 'wt') as file:
-                    file.write(_to_coeff_string(coeffs))
-                with optional_open(config.sections["OUTFILE"].potential_name and
-                                   config.sections["OUTFILE"].potential_name + '_ata.snapparam', 'wt') as file:
-                    file.write(_to_param_string())
 
     @pt.sub_rank_zero
     def read_fit(self):

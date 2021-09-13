@@ -46,6 +46,26 @@ class LammpsSnap(Calculator):
                 self._lmp = pt.close_lammps()
             raise e
 
+    def process_configs_ata(self, data, i):
+        try:
+            self._data = data
+            self._i = i
+            self._initialize_lammps()
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps_ata()
+            self._lmp = pt.close_lammps()
+        except Exception as e:
+            if config.args.printlammps:
+                self._data = data
+                self._i = i
+                self._initialize_lammps(1)
+                self._prepare_lammps()
+                self._run_lammps()
+                self._collect_lammps_ata()
+                self._lmp = pt.close_lammps()
+            raise e
+
     def _initialize_lammps(self, printlammps=0):
         self._lmp = pt.initialize_lammps(config.args.lammpslog, printlammps)
 
@@ -192,7 +212,7 @@ class LammpsSnap(Calculator):
         ncols_snap = ncols_bispectrum + ncols_reference
         index = pt.fitsnap_dict['a_indices'][self._i]
 
-        lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
+        lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))        
 
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
             raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
@@ -235,7 +255,25 @@ class LammpsSnap(Calculator):
             irow += nrows_energy
             index += 1
 
+            a = self._data["eweight"]*b_sum_temp * config.sections["BISPECTRUM"].blank2J
+            b = self._data["eweight"]*(energy - ref_energy) / num_atoms            
+            pt.shared_arrays['ata'].array = pt.shared_arrays['ata'].array + np.outer(a, a);
+            pt.shared_arrays['atb'].array = pt.shared_arrays['atb'].array + np.dot(a, b);
+
         if config.sections["CALCULATOR"].force:
+            
+            # move_mask (input)
+            # index_keep = [move_mask if move_mask == "T"]                       
+            # num_atoms_keep = length(index_keep)
+            # a = np.matmul(db_atom_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
+            # pt.shared_arrays['a'].array[index + index_keep* ndim_force] = a[index_keep* ndim_force]
+            # b = self._data["Forces"].ravel() - ref_forces
+            # pt.shared_arrays['b'].array[index + index_keep* ndim_force] = b[index_keep* ndim_force]
+            # w = self._data["fweight"]
+            # pt.shared_arrays['w'].array[index + index_keep* ndim_force] = w[index_keep* ndim_force]
+            # irow += nrows_force
+            # index += num_atoms_keep * ndim_force
+
             db_atom_temp = lmp_snap[irow:irow + nrows_force, :ncols_bispectrum]
             db_atom_temp.shape = (num_atoms * ndim_force, n_coeff * num_types)
             if not config.sections["BISPECTRUM"].bzeroflag:
@@ -252,6 +290,20 @@ class LammpsSnap(Calculator):
                 self._data["fweight"]
             irow += nrows_force
             index += num_atoms * ndim_force
+            
+            a = self._data["fweight"]*(np.matmul(db_atom_temp, np.diag(config.sections["BISPECTRUM"].blank2J)))
+            b = self._data["fweight"]*(self._data["Forces"].ravel() - ref_forces)            
+            pt.shared_arrays['ata'].array = pt.shared_arrays['ata'].array + np.matmul(a.T, a);
+            pt.shared_arrays['atb'].array = pt.shared_arrays['atb'].array + np.dot(a.T, b);
+
+            #print(pt.shared_arrays['a'].array.shape)
+            #print(pt.shared_arrays['b'].array.shape)
+            #print(pt.shared_arrays['w'].array.shape)
+            #tm = np.matmul(db_atom_temp, np.diag(config.sections["BISPECTRUM"].blank2J))            
+            #print(tm.shape)
+            #tm = self._data["Forces"].ravel() - ref_forces
+            #print(tm.shape)
+            #print(self._data["fweight"])
 
         if config.sections["CALCULATOR"].stress:
             vb_sum_temp = 1.6021765e6*lmp_snap[irow:irow + nrows_virial, :ncols_bispectrum] / lmp_volume
@@ -269,6 +321,155 @@ class LammpsSnap(Calculator):
             pt.shared_arrays['w'].array[index:index+ndim_virial] = \
                 self._data["vweight"]
             index += ndim_virial
+
+            a = self._data["vweight"]*np.matmul(vb_sum_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
+            b = self._data["vweight"]*(self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress)
+            pt.shared_arrays['ata'].array = pt.shared_arrays['ata'].array + np.matmul(a.T, a);
+            pt.shared_arrays['atb'].array = pt.shared_arrays['atb'].array + np.dot(a.T, b);
+
+    def _collect_lammps_ata(self):
+
+        num_atoms = self._data["NumAtoms"]
+        num_types = config.sections['BISPECTRUM'].numtypes
+        n_coeff = config.sections['BISPECTRUM'].ncoeff
+        energy = self._data["Energy"]
+
+        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+
+        # Extract positions
+        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
+        # Extract types
+        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
+        lmp_volume = self._lmp.get_thermo("vol")
+
+        # Extract SNAP data, including reference potential data
+
+        nrows_energy = 1
+        ndim_force = 3
+        nrows_force = ndim_force * num_atoms
+        ndim_virial = 6
+        nrows_virial = ndim_virial
+        nrows_snap = nrows_energy + nrows_force + nrows_virial
+        ncols_bispectrum = n_coeff * num_types
+        ncols_reference = 1
+        ncols_snap = ncols_bispectrum + ncols_reference
+        #index = pt.fitsnap_dict['a_indices'][self._i]
+
+        lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))        
+
+        if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
+            raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
+                                                                                  self._data["Group"]))
+
+        irow = 0
+        icolref = ncols_bispectrum
+        if config.sections["CALCULATOR"].energy:
+            b_sum_temp = lmp_snap[irow, :ncols_bispectrum] / num_atoms
+
+            # Check for no neighbors using B[0,0,0] components
+            # these strictly increase with total neighbor count
+            # minimum value depends on SNAP variant
+
+            EPS = 1.0e-10
+            b000sum0 = 0.0
+            nstride = n_coeff
+            if not config.sections["BISPECTRUM"].bzeroflag: b000sum0 = 1.0
+            if config.sections["BISPECTRUM"].chemflag:
+                nstride //= num_types*num_types*num_types
+                if config.sections["BISPECTRUM"].wselfallflag:
+                    b000sum0 *= num_types*num_types*num_types
+            b000sum = sum(b_sum_temp[::nstride])
+            if (abs(b000sum - b000sum0) < EPS): 
+                print("WARNING: Configuration has no SNAP neighbors")
+
+            if not config.sections["BISPECTRUM"].bzeroflag:
+                b_sum_temp.shape = (num_types, n_coeff)
+                onehot_atoms = np.zeros((num_types, 1))
+                for atom in self._data["AtomTypes"]:
+                    onehot_atoms[config.sections["BISPECTRUM"].type_mapping[atom]-1] += 1
+                onehot_atoms /= len(self._data["AtomTypes"])
+                b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
+                b_sum_temp.shape = (num_types * n_coeff + num_types)
+
+            #pt.shared_arrays['a'].array[index] = b_sum_temp * config.sections["BISPECTRUM"].blank2J
+            ref_energy = lmp_snap[irow, icolref]
+            #pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
+            #pt.shared_arrays['w'].array[index] = self._data["eweight"]
+            irow += nrows_energy
+            #index += 1
+            
+            a = self._data["eweight"]*b_sum_temp * config.sections["BISPECTRUM"].blank2J
+            b = self._data["eweight"]*(energy - ref_energy) / num_atoms            
+            pt.shared_arrays['ata'].array = pt.shared_arrays['ata'].array + np.outer(a, a);
+            pt.shared_arrays['atb'].array = pt.shared_arrays['atb'].array + np.dot(a, b);
+
+        if config.sections["CALCULATOR"].force:
+            
+            # move_mask (input)
+            # index_keep = [move_mask if move_mask == "T"]                       
+            # num_atoms_keep = length(index_keep)
+            # a = np.matmul(db_atom_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
+            # pt.shared_arrays['a'].array[index + index_keep* ndim_force] = a[index_keep* ndim_force]
+            # b = self._data["Forces"].ravel() - ref_forces
+            # pt.shared_arrays['b'].array[index + index_keep* ndim_force] = b[index_keep* ndim_force]
+            # w = self._data["fweight"]
+            # pt.shared_arrays['w'].array[index + index_keep* ndim_force] = w[index_keep* ndim_force]
+            # irow += nrows_force
+            # index += num_atoms_keep * ndim_force
+
+            db_atom_temp = lmp_snap[irow:irow + nrows_force, :ncols_bispectrum]
+            db_atom_temp.shape = (num_atoms * ndim_force, n_coeff * num_types)
+            if not config.sections["BISPECTRUM"].bzeroflag:
+                db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types, n_coeff)
+                onehot_atoms = np.zeros((np.shape(db_atom_temp)[0], num_types, 1))
+                db_atom_temp = np.concatenate([onehot_atoms, db_atom_temp], axis=2)
+                db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types * n_coeff + num_types)
+            #pt.shared_arrays['a'].array[index:index+num_atoms * ndim_force] = \
+            #    np.matmul(db_atom_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
+            ref_forces = lmp_snap[irow:irow + nrows_force, icolref]
+            #pt.shared_arrays['b'].array[index:index+num_atoms * ndim_force] = \
+            #    self._data["Forces"].ravel() - ref_forces
+            #pt.shared_arrays['w'].array[index:index+num_atoms * ndim_force] = \
+            #    self._data["fweight"]
+            irow += nrows_force
+            #index += num_atoms * ndim_force
+            
+            a = self._data["fweight"]*(np.matmul(db_atom_temp, np.diag(config.sections["BISPECTRUM"].blank2J)))
+            b = self._data["fweight"]*(self._data["Forces"].ravel() - ref_forces)                       
+            pt.shared_arrays['ata'].array = pt.shared_arrays['ata'].array + np.matmul(a.T, a);
+            pt.shared_arrays['atb'].array = pt.shared_arrays['atb'].array + np.dot(a.T, b);
+
+            #print(pt.shared_arrays['a'].array.shape)
+            #print(pt.shared_arrays['b'].array.shape)
+            #print(pt.shared_arrays['w'].array.shape)
+            #tm = np.matmul(db_atom_temp, np.diag(config.sections["BISPECTRUM"].blank2J))            
+            #print(tm.shape)
+            #tm = self._data["Forces"].ravel() - ref_forces
+            #print(tm.shape)
+            #print(self._data["fweight"])
+
+        if config.sections["CALCULATOR"].stress:
+            vb_sum_temp = 1.6021765e6*lmp_snap[irow:irow + nrows_virial, :ncols_bispectrum] / lmp_volume
+            vb_sum_temp.shape = (ndim_virial, n_coeff * num_types)
+            if not config.sections["BISPECTRUM"].bzeroflag:
+                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types, n_coeff)
+                onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0], num_types, 1))
+                vb_sum_temp = np.concatenate([onehot_atoms, vb_sum_temp], axis=2)
+                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types * n_coeff + num_types)
+            #pt.shared_arrays['a'].array[index:index+ndim_virial] = \
+            #    np.matmul(vb_sum_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
+            ref_stress = lmp_snap[irow:irow + nrows_virial, icolref]
+            #pt.shared_arrays['b'].array[index:index+ndim_virial] = \
+            #    self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
+            #pt.shared_arrays['w'].array[index:index+ndim_virial] = \
+            #    self._data["vweight"]
+            #index += ndim_virial
+
+            a = self._data["vweight"]*np.matmul(vb_sum_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
+            b = self._data["vweight"]*(self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress)
+            pt.shared_arrays['ata'].array = pt.shared_arrays['ata'].array + np.matmul(a.T, a);
+            pt.shared_arrays['atb'].array = pt.shared_arrays['atb'].array + np.dot(a.T, b);
 
 # this is super clean when there is only one value per key, needs reworking
 def _lammps_variables(bispec_options):

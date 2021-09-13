@@ -5,7 +5,7 @@ from scipy.linalg import lstsq
 import numpy as np
 
 
-class SVD(Solver):
+class SVD_ATA(Solver):
 
     def __init__(self, name):
         super().__init__(name)
@@ -16,17 +16,7 @@ class SVD(Solver):
         else:
             testing = len(pt.shared_arrays['w'].array)
         w = pt.shared_arrays['w'].array[:testing]
-        aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[:testing], w * pt.shared_arrays['b'].array[:testing]
-        #print(w.shape)
-        #print(aw.shape)
-        #print(bw.shape)
-        #print(pt.shared_arrays['a'].array.shape)
-        #print(pt.shared_arrays['b'].array.shape)
-#        Transpose method does not work with Quadratic SNAP (why?)
-#        We need to revisit this preconditioning of the linear problem, we can make this a bit more elegant. 
-#        Since this breaks some examples this will stay as a 'secret' feature. 
-#        Need to chat with some mathy people on how we can profile A and find good preconditioners. 
-#        Will help when we want to try gradient based linear solvers as well. 
+        aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[:testing], w * pt.shared_arrays['b'].array[:testing]        
         if config.sections['EXTRAS'].apply_transpose:
             bw = aw.T@bw
             aw = aw.T@aw

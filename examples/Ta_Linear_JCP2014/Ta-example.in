@@ -22,7 +22,7 @@ stress = 1
 Ta = 0.0
 
 [SOLVER]
-solver = SVD
+solver = SVD_ATA
 compute_testerrs = 1
 detailed_errors = 1
 

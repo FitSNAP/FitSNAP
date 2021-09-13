@@ -20,10 +20,10 @@ class Outfile(Section):
         self.delete()
 
     def _outfile(self):
-        self.metric_file = self._check_path(self.get_value("OUTFILE", "metrics", "fitsnap_metrics.md"))
+        self.metric_file = self._check_path(self.get_value("OUTFILE", "metrics", "fitsnap_metrics.md"))        
         self.potential_name = self._check_path(self.get_value("OUTFILE", "potential", "fitsnap_potential"))
         self.detailed_errors_file = \
-            self._check_path(self.get_value("OUTFILE", "detailed_errors", "fitsnap_detailed_errors.dat"))
+            self._check_path(self.get_value("OUTFILE", "detailed_errors", "fitsnap_detailed_errors.dat"))        
         return
 
     def _check_relative(self):
@@ -40,7 +40,7 @@ class Outfile(Section):
         if self._args.overwrite is None:
             return name
         names = [name, name + '.snapparam', name + '.snapcoeff']
-        for element in names:
-            if not self._args.overwrite and path.exists(element):
-                raise FileExistsError(f"File {element} already exists.")
+        #for element in names:
+        #    if not self._args.overwrite and path.exists(element):
+        #        #raise FileExistsError(f"File {element} already exists.")
         return name

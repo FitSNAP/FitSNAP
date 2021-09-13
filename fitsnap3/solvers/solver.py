@@ -18,12 +18,15 @@ class Solver:
         self.a = None
         self.b = None
         self.w = None
+        self.coeff = None
 
     def perform_fit(self):
         pass
 
-    def fit_gather(self):
+    def fit_gather(self):        
         self.all_fits = pt.allgather(self.fit)
+        #print(self.fit)
+        #print(self.all_fits)
 
     def extras(self):
         length,width = 0,np.shape(pt.shared_arrays['a'].array)[1]
@@ -97,22 +100,25 @@ class Solver:
         if config.sections["CALCULATOR"].energy:
             testing = -1 * pt.shared_arrays['configs_per_group'].testing
             a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
+            #print(pt.shared_arrays['a'].energy_index)
             config_indicies,energy_list,force_list,stress_list = self._config_error()
             self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
             if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
                 from csv import writer
                 true, pred = b, a @ self.fit
                 ConfigType = ['Training'] * (np.shape(true)[0]-pt.shared_arrays['configs_per_group'].testing) + \
-                                             ['Testing'] * (pt.shared_arrays['configs_per_group'].testing)
+                                             ['Testing'] * (pt.shared_arrays['configs_per_group'].testing)                
                 with open('detailed_energy_errors.dat', 'w') as f:
                     writer = writer(f, delimiter=' ')
                     writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
                     writer.writerows(zip(energy_list,ConfigType,true, pred, pred-true))
-
+            
+            #print(testing)
+            #print(a.shape)
             if testing != 0:
                 self._errors([[testing, 0]], ['*ALL'], "Energy_testing", a, b, w)
 
-    def _force(self):
+    def _force(self):                
         if config.sections["CALCULATOR"].force:
             num_forces = np.array(pt.shared_arrays['a'].num_atoms)*3
             if pt.shared_arrays['configs_per_group'].testing:
@@ -331,7 +337,7 @@ class Solver:
         if w is None:
             w = pt.shared_arrays['w'].array
         for i, group in enumerate(category):
-#            print(i,group,gtype)
+            #print(i,group,gtype)
             if index is None:
                 a_err = a
                 b_err = b
@@ -353,13 +359,17 @@ class Solver:
             res = true - pred
             mae = np.sum(np.abs(res) / nconfig)
             # relative mae
-            rres = ((true+1)-pred)/(true+1)
-            rel_mae = np.sum(np.abs(rres) / nconfig)
-            mean_dev = np.sum(np.abs(true - np.median(true)) / nconfig)
+            #rres = ((true+1)-pred)/(true+1)
+            #rel_mae = np.sum(np.abs(rres) / nconfig)
+            #mean_dev = np.sum(np.abs(true - np.median(true)) / nconfig)
             ssr = np.square(res).sum()
             mse = ssr / nconfig
             rmse = np.sqrt(mse)
             rsq = 1 - ssr / np.sum(np.square(true - (true / nconfig).sum()))
+            #if (rsq<0.0):
+            #    print([rsq, mae, rmse, ssr, np.sum(np.square(true - (true / nconfig).sum()))])                
+            #if (rsq>=1.0-1e-6):
+            #    print([rsq, mae, rmse, ssr, np.sum(np.square(true - (true / nconfig).sum()))])                
             error_record = {
                 "Group": group,
                 "Weighting": self.weighted,

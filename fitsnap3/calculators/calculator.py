@@ -57,5 +57,47 @@ class Calculator:
         pt.create_shared_array('w', a_len)
         pt.slice_array('a')
 
+        pt.create_shared_array('ata', a_width, a_width)
+        pt.create_shared_array('atb', a_width)
+        pt.shared_arrays['ata'].array = 0.0*pt.shared_arrays['ata'].array;
+        pt.shared_arrays['atb'].array = 0.0*pt.shared_arrays['atb'].array;        
+
+    def create_ata(self):
+        # TODO : Any extra config pulls should be done before this
+        pt.sub_barrier()
+        self.number_of_atoms = pt.shared_arrays["number_of_atoms"].array.sum()
+        self.number_of_files_per_node = len(pt.shared_arrays["number_of_atoms"].array)
+
+        elements = 0
+        testing = pt.shared_arrays["configs_per_group"].testing
+        if testing > 0:
+            for i in range(testing):
+                if config.sections["CALCULATOR"].energy:
+                    elements += 1
+                if config.sections["CALCULATOR"].force:
+                    elements += 3 * pt.shared_arrays["number_of_atoms"].array[-testing+i]
+                if config.sections["CALCULATOR"].stress:
+                    elements += 6
+        pt.shared_arrays["configs_per_group"].testing_elements = elements
+
+        a_len = 0
+        if config.sections["CALCULATOR"].energy:
+            a_len += self.number_of_files_per_node
+        if config.sections["CALCULATOR"].force:
+            a_len += 3 * self.number_of_atoms
+        if config.sections["CALCULATOR"].stress:
+            a_len += self.number_of_files_per_node * 6
+
+        a_width = self.get_width()
+        assert isinstance(a_width, int)
+
+        pt.create_shared_array('ata', a_width, a_width)
+        pt.create_shared_array('atb', a_width)
+        pt.shared_arrays['ata'].array = 0.0;
+        pt.shared_arrays['atb'].array = 0.0;        
+
     def process_configs(self, data, i):
+        pass
+
+    def process_configs_ata(self, data, i):
         pass

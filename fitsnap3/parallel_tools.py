@@ -132,7 +132,10 @@ class ParallelTools:
 
     def __init__(self):
         if stubs == 0:
-            self._comm = MPI.COMM_WORLD
+            try:
+                self._comm = MPI.ADDED_COMM
+            except NameError:
+                self._comm = MPI.COMM_WORLD
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
         if stubs == 1:

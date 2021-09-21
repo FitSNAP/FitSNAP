@@ -10,6 +10,7 @@ class SVD(Solver):
     def __init__(self, name):
         super().__init__(name)
 
+    @pt.sub_rank_zero
     def perform_fit(self):
         if pt.shared_arrays['configs_per_group'].testing_elements != 0:
             testing = -1*pt.shared_arrays['configs_per_group'].testing_elements

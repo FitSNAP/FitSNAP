@@ -32,7 +32,6 @@
 from time import time, sleep
 import numpy as np
 from lammps import lammps
-from lammps.mliap import activate_mliappy
 from random import random
 from psutil import virtual_memory
 from itertools import chain
@@ -385,10 +384,12 @@ class ParallelTools:
         if stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
             if 'ML-IAP' in self._lmp.installed_packages:
+                from lammps.mliap import activate_mliappy
                 activate_mliappy(self._lmp)
         else:
             self._lmp = lammps(cmdargs=cmds)
             if 'ML-IAP' in self._lmp.installed_packages:
+                from lammps.mliap import activate_mliappy
                 activate_mliappy(self._lmp)
 
         if printlammps == 1:

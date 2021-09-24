@@ -109,9 +109,11 @@ def _to_coeff_string(coeffs):
     # Includes the offset term, which was not in blist
     #coeffs = (coeffs * config.sections["BISPECTRUM"].blank2J).reshape((config.sections["BISPECTRUM"].numtypes, -1))
     coeffs = coeffs.reshape((config.sections["BISPECTRUM"].numtypes, -1))
-    blank2Js = config.sections["BISPECTRUM"].blank2J.reshape((config.sections["BISPECTRUM"].numtypes, -1))
+    blank2Js = config.sections["BISPECTRUM"].blank2J.reshape((config.sections["BISPECTRUM"].numtypes, -1))    
     if config.sections["BISPECTRUM"].bzeroflag:
-        blank2Js = np.insert(blank2Js,0,[1.0],axis=1)
+        blank2Js = np.insert(blank2Js,0,[1.0],axis=1)    
+        if (blank2Js.shape[1]-coeffs.shape[1])==1: 
+            coeffs = np.insert(coeffs,0,[0.0],axis=1)    
     coeffs = np.multiply(coeffs,blank2Js)
     coeff_names = [[0]]+config.sections["BISPECTRUM"].blist
     type_names = config.sections["BISPECTRUM"].types

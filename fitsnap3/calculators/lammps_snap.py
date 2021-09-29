@@ -47,7 +47,7 @@ class LammpsSnap(Calculator):
             raise e
 
     def process_configs_ata(self, data, i):
-        try:
+        try:            
             self._data = data
             self._i = i
             self._initialize_lammps()
@@ -320,7 +320,7 @@ class LammpsSnap(Calculator):
                 self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
             pt.shared_arrays['w'].array[index:index+ndim_virial] = \
                 self._data["vweight"]
-            index += ndim_virial
+            index += ndim_virial                        
 
             a = self._data["vweight"]*np.matmul(vb_sum_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
             b = self._data["vweight"]*(self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress)
@@ -328,7 +328,9 @@ class LammpsSnap(Calculator):
             pt.shared_arrays['atb'].array = pt.shared_arrays['atb'].array + np.dot(a.T, b);
 
     def _collect_lammps_ata(self):
-
+        
+        file_num = self._data['FileNum']
+        nfiles = self._data['NumberOfFiles']
         num_atoms = self._data["NumAtoms"]
         num_types = config.sections['BISPECTRUM'].numtypes
         n_coeff = config.sections['BISPECTRUM'].ncoeff
@@ -403,6 +405,11 @@ class LammpsSnap(Calculator):
             b = self._data["eweight"]*(energy - ref_energy) / num_atoms            
             pt.shared_arrays['ata'].array = pt.shared_arrays['ata'].array + np.outer(a, a);
             pt.shared_arrays['atb'].array = pt.shared_arrays['atb'].array + np.dot(a, b);
+                        
+            a = b_sum_temp * config.sections["BISPECTRUM"].blank2J
+            b = (energy - ref_energy) / num_atoms            
+            pt.Ae[:,:,file_num] = pt.Ae[:,:,file_num] + np.outer(a, a);
+            pt.be[:,file_num] = pt.be[:,file_num] + np.dot(a, b);
 
         if config.sections["CALCULATOR"].force:
             
@@ -440,6 +447,11 @@ class LammpsSnap(Calculator):
             pt.shared_arrays['ata'].array = pt.shared_arrays['ata'].array + np.matmul(a.T, a);
             pt.shared_arrays['atb'].array = pt.shared_arrays['atb'].array + np.dot(a.T, b);
 
+            a = (np.matmul(db_atom_temp, np.diag(config.sections["BISPECTRUM"].blank2J)))
+            b = (self._data["Forces"].ravel() - ref_forces)                       
+            pt.Af[:,:,file_num] = pt.Af[:,:,file_num] +  np.matmul(a.T, a);
+            pt.bf[:,file_num] = pt.bf[:,file_num] + np.dot(a.T, b);
+
             #print(pt.shared_arrays['a'].array.shape)
             #print(pt.shared_arrays['b'].array.shape)
             #print(pt.shared_arrays['w'].array.shape)
@@ -470,6 +482,13 @@ class LammpsSnap(Calculator):
             b = self._data["vweight"]*(self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress)
             pt.shared_arrays['ata'].array = pt.shared_arrays['ata'].array + np.matmul(a.T, a);
             pt.shared_arrays['atb'].array = pt.shared_arrays['atb'].array + np.dot(a.T, b);
+
+            a = np.matmul(vb_sum_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
+            b = (self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress)
+            pt.Av[:,:,file_num] = pt.Av[:,:,file_num] +  np.matmul(a.T, a);
+            pt.bv[:,file_num] = pt.bv[:,file_num] + np.dot(a.T, b);
+
+            #print(self._data["vweight"])
 
 # this is super clean when there is only one value per key, needs reworking
 def _lammps_variables(bispec_options):

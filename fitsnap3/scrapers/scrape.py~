@@ -289,16 +289,13 @@ class Scraper:
                 if 'weight' in key and key != 'eweight':
                     self.data[key] = self.data['eweight'] * self.group_table[self.data['Group']][key]
 
-            #print(self.data['eweight'])
-            #print(self.data['fweight'])
-            #print(self.data['vweight'])
 
         if config.sections["GROUPS"].smartweights:
             for key in self.group_table[self.data['Group']]:
                 # Do not put the word weight in a group table unless you want to use it as a weight
                 if 'weight' in key:
                     if self.data['test_bool']:
-                        self.data[key] /= self.group_table[self.data['Group']]['testing_size']
+                        self.data[key] /= self.group_table[self.data['Group']]['testing_size']                        
                     else:
                         try:
                             self.data[key] /= self.group_table[self.data['Group']]['training_size']
@@ -310,10 +307,16 @@ class Scraper:
             if config.sections["CALCULATOR"].stress:
                 self.data['fweight'] /= 6
         
-        #print(self.data['eweight'])
-        #print(self.data['fweight'])
-        #print(self.data['vweight'])
+            print(self.data['eweight'])
+            print(self.data['fweight'])
+            print(self.data['vweight'])
+
+        print(self.data['eweight'])
+        print(self.data['fweight'])
+        print(self.data['vweight'])
         
+        raise("here")
+
     # def check_coords(self, cell, pos1, pos2):
     #     """Compares position 1 and position 2 with respect to periodic boundaries defined by cell"""
     #     invcell = np.linalg.inv(np.asarray(cell).T).T

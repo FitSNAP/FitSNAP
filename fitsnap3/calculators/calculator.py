@@ -1,7 +1,7 @@
 from ..parallel_tools import pt, double_size
 from ..io.input import config
 from ..io.output import output
-
+import numpy as np
 
 class Calculator:
 
@@ -59,10 +59,10 @@ class Calculator:
 
         pt.create_shared_array('ata', a_width, a_width)
         pt.create_shared_array('atb', a_width)
-        pt.shared_arrays['ata'].array = 0.0*pt.shared_arrays['ata'].array;
-        pt.shared_arrays['atb'].array = 0.0*pt.shared_arrays['atb'].array;        
+        pt.shared_arrays['ata'].array[:] = 0.0
+        pt.shared_arrays['atb'].array[:] = 0.0 
 
-    def create_ata(self):
+    def create_ata(self, nfiles):
         # TODO : Any extra config pulls should be done before this
         pt.sub_barrier()
         self.number_of_atoms = pt.shared_arrays["number_of_atoms"].array.sum()
@@ -93,8 +93,15 @@ class Calculator:
 
         pt.create_shared_array('ata', a_width, a_width)
         pt.create_shared_array('atb', a_width)
-        pt.shared_arrays['ata'].array = 0.0;
-        pt.shared_arrays['atb'].array = 0.0;        
+        pt.shared_arrays['ata'].array[:] = 0.0
+        pt.shared_arrays['atb'].array[:] = 0.0                 
+
+        pt.Ae = np.zeros((a_width, a_width, nfiles));
+        pt.Af = np.zeros((a_width, a_width, nfiles));
+        pt.Av = np.zeros((a_width, a_width, nfiles));        
+        pt.be = np.zeros((a_width, nfiles));
+        pt.bf = np.zeros((a_width, nfiles));
+        pt.bv = np.zeros((a_width, nfiles));        
 
     def process_configs(self, data, i):
         pass

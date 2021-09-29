@@ -382,11 +382,11 @@ class XYZ(Scraper):
             self.group_table[key]['testing_size'] = testing_size
             # self.files[folder] = natsorted(self.files[folder])
 
-    def scrape_configs(self):
+    def scrape_configs(self):        
         for folder_num, folder in enumerate(self.files):
-            filename = self.files[folder][0]
+            filename = self.files[folder][0]            
             with open(filename) as file:
-                for i, configuration in enumerate(self.configs):
+                for i, configuration in enumerate(self.configs):                    
                     if configuration[1] != folder:
                         continue
                     starting_line = configuration[0]
@@ -426,6 +426,8 @@ class XYZ(Scraper):
 
                     self.data['Group'] = ".".join(filename.split("/")[-1].split(".")[:-1])
                     self.data['File'] = filename.split("/")[-1]
+                    self.data['FileNum'] = folder_num;
+                    self.data['NumberOfFiles'] = len(self.files)
 
                     pt.shared_arrays["number_of_atoms"].sliced_array[i] = self.data['NumAtoms']
 

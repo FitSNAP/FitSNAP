@@ -61,18 +61,10 @@ class SVD_ATA(Solver):
         #print(atb)
         #print(self.coeff)
 
-        filea = open('ata.bin', 'wb');
-        ata = ata.flatten(order = 'F');
-        ata.astype('float64').tofile(filea);
-        filea.close();
         fileb = open('atb.bin', 'wb');
         atb = atb.flatten(order = 'F');
-        atb.astype('float64').tofile(fileb);
+        atb.astype('float64').tofile(filebv);
         fileb.close();
-        filec = open('coeff.bin', 'wb');
-        c = self.coeff.flatten(order = 'F');
-        c.astype('float64').tofile(filec);
-        filec.close();
 
     def _dump_a(self):
         np.savez_compressed('a.npz', a=pt.shared_arrays['a'].array)

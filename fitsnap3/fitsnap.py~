@@ -36,6 +36,7 @@ from .calculators.calculator_factory import calculator
 from .solvers.solver_factory import solver
 from .io.output import output
 from .io.input import config
+import numpy as np
 
 class FitSnap:
     def __init__(self):
@@ -77,9 +78,13 @@ class FitSnap:
         output.output(self.solver.fit, self.solver.errors)
 
     @pt.single_timeit
-    def process_configs_ata(self):            
+    def process_configs_ata(self):                
+        self.calculator.create_ata()        
+        a_width = pt.shared_arrays['ata'].array.shape
         nfiles = self.data[0]['NumberOfFiles']            
-        self.calculator.create_ata(nfiles)        
+        self.Ae = np.zeros((a_width[0], a_width[0], nfiles));
+    
+        print(self.Ae.shape)
         for i, configuration in enumerate(self.data):
             self.calculator.process_configs_ata(configuration, i)
         del self.data

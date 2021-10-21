@@ -48,6 +48,7 @@ class FitSnap:
         self.calculator = calculator(config.sections["CALCULATOR"].calculator)
         self.solver = solver(config.sections["SOLVER"].solver)
         self.fit = None
+        self.multinode = 0
         if config.sections["EXTRAS"].only_test:
             self.fit = output.read_fit()
 
@@ -65,7 +66,6 @@ class FitSnap:
             self.calculator.process_configs(configuration, i)
         del self.data
 
-    @pt.sub_rank_zero
     @pt.single_timeit
     def perform_fit(self):
         if self.fit is None:

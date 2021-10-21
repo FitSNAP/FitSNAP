@@ -17,6 +17,9 @@ class Solver(Section):
                 #pt.single_print(">>> Found unmatched variable in SOLVER section of input: ",value_name)
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
+        self.true_multinode = 0
+        if self.solver == "ScaLAPACK":
+            self.true_multinode = 1
         self.normalweight = self.get_value("SOLVER", "normalweight", "-12", "float")
         self.normratio = self.get_value("SOLVER", "normratio", "0.5", "float")
         self.compute_testerrs = self.get_value("SOLVER", "compute_testerrs", "0", "bool")

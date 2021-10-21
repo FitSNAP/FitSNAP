@@ -4,8 +4,6 @@ from fitsnap3.parallel_tools import ParallelTools
 from fitsnap3.io.input import Config
 import numpy as np
 
-# TODO: Ask about onehot_fraction for energy
-
 
 config = Config()
 pt = ParallelTools()

@@ -15,7 +15,8 @@ class Original(Output):
         super().__init__(name)
 
     def output(self, coeffs, errors):
-        new_coeffs = pt.combine_coeffs(coeffs)
+        new_coeffs = None
+        # new_coeffs = pt.combine_coeffs(coeffs)
         if new_coeffs is not None:
             coeffs = new_coeffs
         self.write(coeffs, errors)
@@ -36,6 +37,7 @@ class Original(Output):
 
     @pt.sub_rank_zero
     def read_fit(self):
+        # TODO fix this fix reader for bzeroflag = 0
         if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
             raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
         with optional_open(config.sections["OUTFILE"].potential_name and

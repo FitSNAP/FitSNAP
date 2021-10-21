@@ -31,7 +31,6 @@
 from .fitsnap import FitSnap
 from .parallel_tools import ParallelTools
 from .io.output import output
-# TODO : Make unit conversion object
 
 
 pt = ParallelTools()

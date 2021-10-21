@@ -1,0 +1,67 @@
+#SNAP file for Fe in the 0-1200K and |0-20|GPa range
+
+[BISPECTRUM]
+numTypes = 1
+twojmax =  6
+rcutfac =  4.519796866
+rfac0 = 0.99363
+rmin0 = 0.0
+wj = 1.0
+radelem = 0.5
+type = Fe
+wselfallflag = 0
+chemflag = 0
+bzeroflag = 1
+quadraticflag = 0
+
+[CALCULATOR]
+calculator = LAMMPSSNAP
+energy = 1
+force = 1
+stress = 1
+
+[SOLVER]
+solver = SVD
+normratio = 0.5
+compute_testerrs = 1
+detailed_errors = 1
+
+[SCRAPER]
+scraper = JSON
+
+[PATH]
+dataPath = JSON
+
+[GROUPS]
+group_sections = name training_size testing_size eweight fweight vweight
+group_types = str float float float float float
+random_sampling = 0
+smartweights = 0
+
+MD-bcc_Te300K                   = 1.0 0.0 7248.125779  7.175309915 1.0E-12
+EOS_100                         = 1.0 0.0 10.37680984  3.074864006 1.0E-12
+BCC-HCP-transition              = 1.0 0.0 2.39808552  2.320864338 1.0E-12
+liquid_mag_old                  = 1.0 0.0 5.541998374  6.473010639 1.0E-12
+point_def                       = 1.0 0.0 17.23319884  11.24367978 1.0E-12
+CCMC-bcc-hcp-elastic_Jun2020    = 1.0 0.0 1.382681069  1.963203872 1.0E-12
+liquid_nonmag                   = 1.0 0.0 63.68593312  1.29692425 1.0E-12
+
+[OUTFILE]
+metrics = Fe_metrics.csv
+potential = Fe_pot_snappy
+
+[REFERENCE]
+units = metal
+atom_style = spin
+pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.8 spin/exchange/biquadratic 5.0
+pair_coeff1 = * * zero
+pair_coeff2 = * * zbl 26 26 
+pair_coeff3 = * * spin/exchange/biquadratic biquadratic 5.0 0.2827 -4.747 0.7810 -0.03619 -2.973 0.5273 offset yes
+
+[EXTRAS]
+dump_descriptors = 1
+dump_truth = 1
+dump_weights = 1
+
+[MEMORY]
+override = 0

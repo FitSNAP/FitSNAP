@@ -28,9 +28,9 @@
 #     Laura Swiler (Sandia National Labs)
 # <!-----------------END-HEADER------------------------------------->
 
-from .fitsnap import FitSnap
-from .parallel_tools import ParallelTools
-from .io.output import output
+from fitsnap3.fitsnap import FitSnap
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.io.output import output
 
 
 pt = ParallelTools()

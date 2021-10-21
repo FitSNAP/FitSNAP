@@ -29,10 +29,12 @@
 # <!-----------------END-HEADER------------------------------------->
 
 from .fitsnap import FitSnap
-from .parallel_tools import pt
+from .parallel_tools import ParallelTools
 from .io.output import output
 # TODO : Make unit conversion object
 
+
+pt = ParallelTools()
 
 @pt.single_timeit
 def main():

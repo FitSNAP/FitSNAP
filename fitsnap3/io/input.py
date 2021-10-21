@@ -1,21 +1,41 @@
 import configparser
 import argparse
 from pickle import HIGHEST_PROTOCOL
-from ..io.sections.section_factory import new_section
-from ..parallel_tools import pt, output
+from fitsnap3.io.sections.section_factory import new_section
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.parallel_output import Output
 from os import path, listdir
 
 
-class Config:
+pt = ParallelTools()
+output = Output()
 
-    def __init__(self):
+
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if (
+                kwargs is not None
+                and "arguments_lst" in kwargs.keys()
+                and kwargs["arguments_lst"] is not None
+        ):
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class Config(metaclass=Singleton):
+
+    def __init__(self, arguments_lst=None):
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
-        self.parse_cmdline()
+        self.parse_cmdline(arguments_lst)
         self.sections = {}
         self.parse_config()
 
-    def parse_cmdline(self):
+    def parse_cmdline(self, arguments_lst=None):
         parser = argparse.ArgumentParser(prog="FitSNAP3")
 
         parser.add_argument("infile", action="store",
@@ -55,7 +75,7 @@ class Config:
         parser.add_argument("--log", action="store", dest="log",
                             default=None, help="Write fitsnap log to this file")
 
-        self.args = parser.parse_args()
+        self.args = parser.parse_args(arguments_lst)
 
     def parse_config(self):
 
@@ -78,7 +98,7 @@ class Config:
         temp = {file: None for file in listdir(location)}
         allowedkeys = []
         for file in temp:
-            if file.split('.')[-1] != 'py' or file == 'sections.py' or file == 'section_factory.py':
+            if file.split('.')[-1] != 'py' or file == 'sections.py' or file == 'section_factory.py' or file == '__init__.py':
                 continue
             else:
                 section = '.'.join(file.split('.')[:-1]).upper()
@@ -92,7 +112,3 @@ class Config:
             if property_name in allowedkeys: continue
             else: pt.single_print(">>> Found unmatched section in input: ",property_name)
         del temp
-
-
-if __name__.split(".")[-1] == "input":
-    config = Config()

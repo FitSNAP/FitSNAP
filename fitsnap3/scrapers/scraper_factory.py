@@ -1,5 +1,11 @@
-from .scrape import Scraper, pt
-pt.get_subclasses(__name__, __file__, Scraper)
+from fitsnap3.scrapers.scrape import Scraper
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.scrapers.xyz_scraper import XYZ
+from fitsnap3.scrapers.json_scraper import Json
+
+
+pt = ParallelTools()
+# pt.get_subclasses(__name__, __file__, Scraper)
 
 
 def scraper(scraper_name):

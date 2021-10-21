@@ -29,15 +29,19 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from ..io.input import config
+from fitsnap3.io.input import Config
 from os import path, listdir, stat
 import numpy as np
 from random import shuffle
-from ..parallel_tools import pt
-from ..io.output import output
-from ..units import convert
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.io.output import output
+from fitsnap3.units import convert
 from copy import copy
 # from natsort import natsorted
+
+
+config = Config()
+pt = ParallelTools()
 
 
 class Scraper:

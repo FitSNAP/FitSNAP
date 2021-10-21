@@ -1,5 +1,10 @@
-from .calculator import Calculator, pt
-pt.get_subclasses(__name__, __file__, Calculator)
+from fitsnap3.calculators.calculator import Calculator
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.calculators.lammps_snap import LammpsSnap
+
+
+pt = ParallelTools()
+# pt.get_subclasses(__name__, __file__, Calculator)
 
 
 def calculator(calculator_name):

@@ -1,4 +1,4 @@
-from .scrape import Scraper
+from fitsnap3.scrapers.scrape import Scraper
 """Methods you may or must override in new scrapers"""
 
 

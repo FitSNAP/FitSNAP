@@ -1,5 +1,9 @@
-from .sections import Section, output
-from ...parallel_tools import pt
+from fitsnap3.io.sections.sections import Section, output
+from fitsnap3.parallel_tools import ParallelTools
+
+
+pt = ParallelTools()
+
 
 class Scraper(Section):
 

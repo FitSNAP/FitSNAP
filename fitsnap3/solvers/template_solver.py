@@ -1,4 +1,4 @@
-from .solver import Solver
+from fitsnap3.solvers.solver import Solver
 """Methods you may or must override in new solvers"""
 
 

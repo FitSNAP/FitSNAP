@@ -1,5 +1,5 @@
 """Template Class"""
-from .sections import Section
+from fitsnap3.io.sections.sections import Section
 
 
 class Default(Section):

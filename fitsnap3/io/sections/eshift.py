@@ -1,16 +1,20 @@
-from .sections import Section
-import numpy as np
-from ...parallel_tools import pt
+from fitsnap3.io.sections.sections import Section
+# import numpy as np
+from fitsnap3.parallel_tools import ParallelTools
+
+
+pt = ParallelTools()
+
 
 class Eshift(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
         types = []
-        #for i in range(self.get_value("BISPECTRUM", "numTypes", "1", "int")):
+        # for i in range(self.get_value("BISPECTRUM", "numTypes", "1", "int")):
         #    types.append(self.get_value("BISPECTRUM", "type{}".format(i + 1), "H"))
         self.types = self.get_value("BISPECTRUM", "type", "H").split()
-        #self.types = np.reshape(self.types,(self.get_value("BISPECTRUM", "numTypes", "1", "int"),1))
+        # self.types = np.reshape(self.types,(self.get_value("BISPECTRUM", "numTypes", "1", "int"),1))
         if config.has_section("ESHIFT"):
             self.eshift = {}
         else:

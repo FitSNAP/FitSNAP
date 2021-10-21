@@ -1,5 +1,20 @@
-from .sections import Section, pt
-pt.get_subclasses(__name__, __file__, Section)
+from fitsnap3.io.sections.sections import Section
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.io.sections.bispectrum import Bispectrum
+from fitsnap3.io.sections.calculator import Calculator
+from fitsnap3.io.sections.eshift import Eshift
+from fitsnap3.io.sections.extras import Extras
+from fitsnap3.io.sections.groups import Groups
+from fitsnap3.io.sections.memory import Memory
+from fitsnap3.io.sections.outfile import Outfile
+from fitsnap3.io.sections.path import Path
+from fitsnap3.io.sections.reference import Reference
+from fitsnap3.io.sections.scraper import Scraper
+from fitsnap3.io.sections.solver import Solver
+from fitsnap3.io.sections.template import Default
+
+pt = ParallelTools()
+# pt.get_subclasses(__name__, __file__, Section)
 
 
 def new_section(section, config, args):

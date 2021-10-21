@@ -1,5 +1,8 @@
-from .sections import Section
-from ...parallel_tools import pt
+from fitsnap3.io.sections.sections import Section
+from fitsnap3.parallel_tools import ParallelTools
+
+
+pt = ParallelTools()
 
 
 class Calculator(Section):
@@ -12,7 +15,6 @@ class Calculator(Section):
             else:
                 raise RuntimeError(">>> Found unmatched variable in CALCULATOR section of input: ", value_name)
                 #pt.single_print(">>> Found unmatched variable in CALCULATOR section of input: ",value_name)
-
         self.calculator = self.get_value("CALCULATOR", "calculator", "LAMMPSSNAP")
         self.energy = self.get_value("CALCULATOR", "energy", "True", "bool")
         pt.add_2_fitsnap("energy", self.energy)

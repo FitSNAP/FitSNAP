@@ -21,6 +21,7 @@ class Solver:
         self.df = None
         self.linear = linear
         self._checks()
+        self.fit_sam = None
 
     def perform_fit(self):
         pass
@@ -39,8 +40,26 @@ class Solver:
         else:
             self.fit = np.insert(self.fit, 0, 0)
 
+        if self.fit_sam is not None:
+
+            if num_types > 1:
+                offsets = np.zeros((num_types, 1))
+                nsam, ncf = self.fit_sam.shape
+
+                fit_sam = np.empty((nsam, ncf + num_types))
+                for isam, fit in enumerate(self.fit_sam.reshape(nsam, num_types, config.sections["BISPECTRUM"].ncoeff)):
+                    fit = np.concatenate([offsets, fit], axis=1)
+                    fit_sam[isam, :] = fit.reshape((-1,))
+
+                self.fit_sam = fit_sam + 0.0
+
+            else:
+                self.fit_sam = np.insert(self.fit_sam, 0, 0, axis=1)
+
+
     def _checks(self):
         assert not (self.linear and config.sections['CALCULATOR'].per_atom_energy and config.args.perform_fit)
+
 
     @pt.rank_zero
     def error_analysis(self):

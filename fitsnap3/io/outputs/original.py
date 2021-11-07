@@ -10,15 +10,15 @@ class Original(Output):
     def __init__(self, name):
         super().__init__(name)
 
-    def output(self, coeffs, errors):
+    def output(self, coeffs, errors, coeffs_sam=None):
         new_coeffs = None
         # new_coeffs = pt.combine_coeffs(coeffs)
         if new_coeffs is not None:
             coeffs = new_coeffs
-        self.write(coeffs, errors)
+        self.write(coeffs, errors, coeffs_sam=coeffs_sam)
 
     @pt.rank_zero
-    def write(self, coeffs, errors):
+    def write(self, coeffs, errors, coeffs_sam=None):
         if config.sections["EXTRAS"].only_test != 1:
             if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP":
                 with optional_open(config.sections["OUTFILE"].potential_name and
@@ -27,6 +27,13 @@ class Original(Output):
                 with optional_open(config.sections["OUTFILE"].potential_name and
                                    config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
                     file.write(_to_param_string())
+                if coeffs_sam is not None:
+                    nsam = coeffs_sam.shape[0]
+                    for isam in range(nsam):
+                        with optional_open(config.sections["OUTFILE"].potential_name and
+                                           config.sections["OUTFILE"].potential_name + '_'+str(isam).zfill(len(str(nsam)))+'.snapcoeff', 'wt') as file:
+                            file.write(_to_coeff_string(coeffs_sam[isam, :]))
+
         with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
 #            errors.to_csv(file,sep=' ',float_format="%.8f")
             errors.to_markdown(file)

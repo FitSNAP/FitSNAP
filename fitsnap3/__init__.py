@@ -40,6 +40,7 @@ except Exception as e:
     print("Trouble importing mpi4py package, exiting...")
     raise e
 
+pt.single_print("This is ksargsyan's FitSNAP fork - use at your own risk.")
 pt.single_print("")
 pt.single_print("    ______ _  __  _____  _   __ ___     ____  ")
 pt.single_print("   / ____/(_)/ /_/ ___/ / | / //   |   / __ \ ")

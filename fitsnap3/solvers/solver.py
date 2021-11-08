@@ -4,6 +4,7 @@ import numpy as np
 from pandas import DataFrame
 
 
+
 class Solver:
 
     def __init__(self, name):
@@ -18,6 +19,7 @@ class Solver:
         self.a = None
         self.b = None
         self.w = None
+        self.cov = None
         self.fit_sam = None
 
     def perform_fit(self):
@@ -367,11 +369,31 @@ class Solver:
                 b_err = b[index[i][0]:]
                 w_err = w[index[i][0]:]
             true, pred = b_err, a_err @ self.fit
+
+            if self.fit_sam is not None:
+                if self.cov is None:
+                    pf_std = np.std(self.fit_sam @ a_err.T, axis=0)
+                else:
+                    # need to see which method is faster, both give the same results within numerical errors
+                    # Method 1
+                    chol = np.linalg.cholesky(self.cov)
+                    mat = a_err @ chol
+                    pf_std0 = np.linalg.norm(mat, axis=1)
+                    # Method 2
+                    # tmp = np.dot(a_err, self.cov)
+                    # pf_std = np.empty(a_err.shape[0])
+                    # for ipt in range(a_err.shape[0]):
+                    #     pf_std[ipt] = np.sqrt(np.dot(tmp[ipt, :], a_err[ipt, :]))
+                    # print(np.linalg.norm(pf_std-pf_std0), np.linalg.norm(pf_std0), np.linalg.norm(pf_std))
+            else:
+                pf_std = np.zeros(a_err.shape[0])
+
             if self.weighted == 'Weighted':
-                true, pred = w_err * true, w_err * pred
+                true, pred, pf_std = w_err * true, w_err * pred, w_err * pf_std
                 nconfig = np.count_nonzero(w_err)
             else:
                 nconfig = len(pred)
+
             res = true - pred
             mae = np.sum(np.abs(res) / nconfig)
             # relative mae
@@ -398,6 +420,32 @@ class Solver:
             if self.residuals is not None:
                 error_record["residual"] = res
             self.errors.append(error_record)
+
+            if config.sections["EXTRAS"].plot > 0:
+                import matplotlib as mpl
+                import matplotlib.pyplot as plt
+                import logging
+                logging.getLogger('matplotlib').setLevel(logging.ERROR)
+                mpl.rc('axes', linewidth=2, grid=True, labelsize=16)
+                mpl.rc('figure', max_open_warning=500)
+
+                plt.figure(figsize=(8,8))
+
+                if config.sections["EXTRAS"].plot == 1:
+                    plt.plot(true, pred, 'ro', markersize=11, markeredgecolor='w')
+                elif config.sections["EXTRAS"].plot > 1:
+                    plt.errorbar(true, pred, yerr=pf_std, fmt = 'ro', ecolor='r', elinewidth=2, markersize=11, markeredgecolor='w')
+
+                xmin, xmax = min(np.min(true),np.min(pred)), max(np.max(true),np.max(pred))
+                plt.plot([xmin, xmax], [xmin, xmax], 'k--', linewidth=1)
+                #plt.xlim([xmin, xmax])
+                #plt.ylim([xmin, xmax])
+                plt.xlabel('DFT')
+                plt.ylabel('SNAP')
+                plt.title(group+'; '+gtype+'; '+self.weighted)
+                plt.gcf().tight_layout()
+                plt.savefig('dm_'+group+'_'+gtype+'_'+self.weighted+'.png')
+                plt.clf()
 
     def _template_error(self):
         pass

@@ -6,7 +6,9 @@ class Extras(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        allowedkeys = ['multinode_testing','apply_transpose','only_test','dump_descriptors','dump_truth','dump_weights']
+        allowedkeys = ['multinode_testing','apply_transpose','only_test',
+                       'dump_descriptors','dump_truth','dump_weights',
+                       'plot']
         for value_name in config['EXTRAS']:
             if value_name in allowedkeys: continue
             else:
@@ -18,4 +20,5 @@ class Extras(Section):
         self.dump_a = self.get_value("EXTRAS", "dump_descriptors", "0", "bool")
         self.dump_b = self.get_value("EXTRAS", "dump_truth", "0", "bool")
         self.dump_w = self.get_value("EXTRAS", "dump_weights", "0", "bool")
+        self.plot = self.get_value("EXTRAS", "plot", "0", "int")
         self.delete()

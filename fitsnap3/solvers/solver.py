@@ -378,7 +378,7 @@ class Solver:
                     # Method 1
                     chol = np.linalg.cholesky(self.cov)
                     mat = a_err @ chol
-                    pf_std0 = np.linalg.norm(mat, axis=1)
+                    pf_std = np.linalg.norm(mat, axis=1)
                     # Method 2
                     # tmp = np.dot(a_err, self.cov)
                     # pf_std = np.empty(a_err.shape[0])

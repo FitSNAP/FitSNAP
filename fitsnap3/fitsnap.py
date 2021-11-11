@@ -82,6 +82,7 @@ class FitSnap:
             return
         # Prevent Output class from trying to process non-existing solver.fit when using nonlinear solvers.
         if self.solver.linear:
-            output.output(self.solver.fit, self.solver.errors)
+            output.output(self.solver.fit, self.solver.errors, coeffs_sam=self.solver.fit_sam)
         else:
             print("WARNING: Nonlinear solvers do not output generic output - see PyTorch/JAX model files.")
+

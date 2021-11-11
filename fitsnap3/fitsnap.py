@@ -75,4 +75,4 @@ class FitSnap:
 
     @pt.single_timeit
     def write_output(self):
-        output.output(self.solver.fit, self.solver.errors)
+        output.output(self.solver.fit, self.solver.errors, coeffs_sam=self.solver.fit_sam)

@@ -4,8 +4,6 @@ from ..parallel_tools import pt
 from ..io.input import config
 import numpy as np
 
-# TODO: Ask about onehot_fraction for energy
-
 
 class LammpsSnap(Calculator):
 

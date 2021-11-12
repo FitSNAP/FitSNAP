@@ -52,9 +52,9 @@ class Calculator:
         elif a_size / pt.get_ram() > 0.5 and config.sections["MEMORY"].override:
             output.screen("Warning: I hope you know what you are doing!")
 
-        pt.create_shared_array('a', a_len, a_width)
-        pt.create_shared_array('b', a_len)
-        pt.create_shared_array('w', a_len)
+        pt.create_shared_array('a', a_len, a_width, tm=config.sections["SOLVER"].true_multinode)
+        pt.create_shared_array('b', a_len, tm=config.sections["SOLVER"].true_multinode)
+        pt.create_shared_array('w', a_len, tm=config.sections["SOLVER"].true_multinode)
         pt.slice_array('a')
 
     def process_configs(self, data, i):

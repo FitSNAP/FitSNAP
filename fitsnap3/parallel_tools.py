@@ -88,7 +88,7 @@ def _rank_zero(method):
 
 def _sub_rank_zero(method):
     def check_if_rank_zero(*args, **kw):
-        if args[0].get_rank() == 0:
+        if args[0].get_subrank() == 0:
             return method(*args, **kw)
         else:
             return dummy_function()
@@ -181,11 +181,26 @@ class ParallelTools:
     def get_seed(self):
         return self._seed
 
+    def get_size(self):
+        return self._size
+
     def get_rank(self):
         return self._rank
 
+    def get_subsize(self):
+        return self._sub_size
+
     def get_subrank(self):
         return self._sub_rank
+
+    def get_node(self):
+        return self._node_index
+
+    def get_number_of_nodes(self):
+        return self._number_of_nodes
+
+    def get_node_list(self):
+        return self._sub_head_procs
 
     @_rank_zero
     def single_print(self, *args, **kw):
@@ -243,14 +258,17 @@ class ParallelTools:
         else:
             return dummy_function
 
-    def create_shared_array(self, name, size1, size2=1, dtype='d'):
+    def create_shared_array(self, name, size1, size2=1, dtype='d', tm=0):
 
         if isinstance(name, str):
             if stubs == 0:
+                comms = [[self._comm, self._rank, self._size],
+                         [self._sub_comm, self._sub_rank, self._sub_size],
+                         [self._head_group_comm, self._node_index, self._number_of_nodes]]
                 self.shared_arrays[name] = SharedArray(size1, size2=size2,
                                                        dtype=dtype,
-                                                       comm=self._sub_comm,
-                                                       rank=self._sub_rank)
+                                                       multinode=tm,
+                                                       comms=comms)
             else:
                 self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)
         else:
@@ -259,6 +277,7 @@ class ParallelTools:
     @_sub_rank_zero
     def add_2_fitsnap(self, name, an_object):
 
+        # TODO: Replace cluttered shared array hanging objects!
         if isinstance(name, str):
             if name in self.fitsnap_dict:
                 raise NameError("name is already in dictionary")
@@ -278,6 +297,7 @@ class ParallelTools:
         self.fitsnap_dict[name] = self._sub_comm.bcast(self.fitsnap_dict[name])
 
     @stub_check
+    @_sub_rank_zero
     def allgather(self, array):
         return self._head_group_comm.allgather(array)
 
@@ -298,6 +318,39 @@ class ParallelTools:
             return obj
         elif isinstance(obj, np.ndarray):
             return obj[self._node_index::self._number_of_nodes]
+        elif isinstance(obj, SharedArray):
+            scraped_length = obj.get_scraped_length()
+            length = obj.get_node_length()
+            lengths = np.zeros(self._number_of_nodes)
+            difference = np.zeros(self._number_of_nodes)
+            if self._sub_rank == 0:
+                lengths[self._node_index] = scraped_length - length
+                self._head_group_comm.Allreduce([lengths, MPI.DOUBLE], [difference, MPI.DOUBLE])
+                if self._rank == 0:
+                    if np.sum(difference) != 0:
+                        raise ValueError(np.sum(difference), "sum of differences must be zero")
+                difference = difference.astype(int)
+                i, j, i_val, j_val = 0, 0, 0, 0
+                while not np.all((difference == 0)):
+                    for i, i_val in enumerate(difference):
+                        if i_val > 0:
+                            break
+                    for j, j_val in enumerate(difference):
+                        if j_val < 0:
+                            break
+                    val_min = min(i_val, -j_val)
+                    if self._node_index == i:
+                        # scraped length > scala length
+                        self._comm.send(obj.array[scraped_length-i_val:scraped_length-(i_val-val_min)],
+                                        dest=self._sub_head_procs[j],
+                                        tag=11)
+                    if self._node_index == j:
+                        # scraped length < scala length
+                        obj.array[length+j_val:length+(j_val+val_min)] = \
+                            self._comm.recv(source=self._sub_head_procs[i], tag=11)
+                    difference[j] += val_min
+                    difference[i] -= val_min
+                    self._head_group_comm.barrier()
         else:
             raise TypeError("Parallel tools cannot split {} by node.".format(obj))
 
@@ -330,8 +383,14 @@ class ParallelTools:
             cmds.append("none")
         if stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
+            if 'ML-IAP' in self._lmp.installed_packages:
+                from lammps.mliap import activate_mliappy
+                activate_mliappy(self._lmp)
         else:
             self._lmp = lammps(cmdargs=cmds)
+            if 'ML-IAP' in self._lmp.installed_packages:
+                from lammps.mliap import activate_mliappy
+                activate_mliappy(self._lmp)
 
         if printlammps == 1:
             self._lmp.command = print_lammps(self._lmp.command)
@@ -358,6 +417,7 @@ class ParallelTools:
         nof = len(pt.shared_arrays["number_of_atoms"].array)
         s = slice(self._sub_rank, nof, self._sub_size)
         if self._sub_rank != 0:
+            # Wait for head proc on node to fill indices
             self._comm_fitsnap("a_indices")
             self.fitsnap_dict["a_indices"] = self.fitsnap_dict["a_indices"][s]
             return
@@ -475,7 +535,7 @@ class ParallelTools:
 
 class SharedArray:
 
-    def __init__(self, size1, size2=1, dtype='d', comm=None, rank=0):
+    def __init__(self, size1, size2=1, dtype='d', multinode=0, comms=None):
 
         # total array for all procs
         self.array = None
@@ -486,18 +546,33 @@ class SharedArray:
         self.forces_index = None
         self.strain_index = None
 
+        self._length = size1
+        self._scraped_length = self._length
+        self._total_length = self._length
+        self._node_length = None
+        self._width = size2
+
+        # These are sub comm and sub rank
+        # Comm, sub_com, head_node_comm
+        # comm, rank, size
+        self._comms = comms
+
+        if multinode:
+            self.multinode_lengths()
+
         if dtype == 'd':
             item_size = MPI.DOUBLE.Get_size()
         elif dtype == 'i':
             item_size = MPI.INT.Get_size()
         else:
             raise TypeError("dtype {} has not been implemented yet".format(dtype))
-        if rank == 0:
-            self._nbytes = size1 * size2 * item_size
+        if self._comms[1][1] == 0:
+            self._nbytes = self._length * self._width * item_size
         else:
             self._nbytes = 0
 
-        win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=comm)
+        # win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
+        win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
 
         buff, item_size = win.Shared_query(0)
 
@@ -505,13 +580,45 @@ class SharedArray:
             assert item_size == MPI.DOUBLE.Get_size()
         elif dtype == 'i':
             assert item_size == MPI.INT32_T.Get_size()
-        if size2 == 1:
-            self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(size1, ))
+        if self._width == 1:
+            self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, ))
         else:
-            self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(size1, size2))
+            self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, self._width))
 
     def get_memory(self):
         return self._nbytes
+
+    def get_storage_length(self):
+        # Maximum length of A storage on node
+        return self._length
+
+    def get_scraped_length(self):
+        # Length of A scraped by node
+        return self._scraped_length
+
+    def get_node_length(self):
+        # Length of A owned by current node
+        return self._node_length
+
+    def get_total_length(self):
+        # True Length of A
+        return self._total_length
+
+    def multinode_lengths(self):
+        # Each head node needs to have mb or its scraped length if longer
+        # Solvers which require this: ScaLAPACK
+        remainder = 0
+        self._scraped_length = self._length
+        if self._comms[1][1] == 0:
+            self._total_length = self._comms[2][0].allreduce(self._scraped_length)
+            # mb is the floored average array length, extra elements are dumped into the first array
+            self._node_length = int(np.floor(self._total_length / self._comms[2][2]))
+            if self._comms[2][1] == 0:
+                remainder = self._total_length - self._node_length*self._comms[2][2]
+            self._node_length += remainder
+        self._total_length = self._comms[1][0].bcast(self._total_length)
+        self._node_length = self._comms[1][0].bcast(self._node_length)
+        self._length = max(self._node_length, self._scraped_length)
 
 
 class StubsArray:

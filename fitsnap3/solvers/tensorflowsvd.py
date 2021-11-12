@@ -12,6 +12,7 @@ try:
             super().__init__(name)
 
         @pt.single_timeit
+        @pt.sub_rank_zero
         def perform_fit(self):
             if pt.shared_arrays['configs_per_group'].testing != 0:
                 testing = -1 * pt.shared_arrays['configs_per_group'].testing

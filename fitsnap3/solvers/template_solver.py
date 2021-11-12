@@ -1,4 +1,5 @@
 from .solver import Solver
+from ..parallel_tools import pt
 """Methods you may or must override in new solvers"""
 
 
@@ -8,6 +9,7 @@ class Template(Solver):
         super().__init__(name)
 
     # Solver must override perform_fit method
+    @pt.sub_rank_zero
     def perform_fit(self):
         """"""
         pass

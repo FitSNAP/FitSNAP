@@ -1,7 +1,6 @@
 [SOLVER]
 solver = MCMC
 nsam = 133
-cov_nugget = 1.e-10
 mcmc_num = 10000
 mcmc_gamma = 0.01
 

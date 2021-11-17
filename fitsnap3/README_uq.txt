@@ -17,6 +17,15 @@ solver = BCS
 # if solver==ANL or solver==MCMC, this is the number of fits requested
 nsam = 133
 
+# if solver==ANL, this is the small number to be added to inverse covariance for better conditioning
+cov_nugget = 1.e-10
+
+# if solver==MCMC, this is the number of total MCMC steps requested
+mcmc_num = 1000
+
+# if solver==MCMC, this is the MCMC proposal jump size (smaller gamma increases the acceptance rate)
+mcmc_gamma = 0.01
+
 [EXTRAS]
 plot = 1 # Options are 0, 1, 2. Plots 'diagonal' plots (DFT-vs-SNAP) for all groups, weighted and unweighted, requires matplotlib, and may take time to generate all png files. Option 2 plots with errorbars.
 

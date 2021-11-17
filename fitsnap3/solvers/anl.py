@@ -29,13 +29,15 @@ class ANL(Solver):
             bw = aw.T@bw
             aw = aw.T@aw
 
+        npt, nbas = aw.shape
 
-        invptp = np.linalg.inv(np.dot(aw.T, aw))
+        cov_nugget = config.sections["SOLVER"].cov_nugget
+        invptp = np.linalg.inv(np.dot(aw.T, aw)+cov_nugget*np.diag(np.ones((nbas,))))
+        np.savetxt('invptp', invptp)
         self.fit = np.dot(invptp, np.dot(aw.T, bw))
 
 
 
-        npt, nbas = aw.shape
         bp = np.dot(bw, bw - np.dot(aw, self.fit))/2.
         ap = (npt - nbas)/2.
 

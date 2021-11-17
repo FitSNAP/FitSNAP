@@ -58,7 +58,7 @@ def amcmc(inferpar, logpostFcn, aw, bw):
         else:
             samples[k + 1] = samples[k]
 
-        acc_rate = float(na) / nmcmc
+        acc_rate = float(na) / (k + 1)
         acc_rate_all.append(acc_rate)
         if((k + 2) % (nmcmc / 10) == 0) or k == nmcmc - 2:
             print('%d / %d completed, acceptance rate %lg' % (k + 2, nmcmc, acc_rate))
@@ -102,8 +102,8 @@ class MCMC(Solver):
         #param_ini = np.random.randn(aw.shape[1], )
         param_ini, residues, rank, s = lstsq(aw, bw, 1.0e-13)
         covini = np.zeros((aw.shape[1], aw.shape[1]))
-        nmcmc = 1000
-        gamma = 0.1
+        nmcmc = config.sections["SOLVER"].mcmc_num
+        gamma = config.sections["SOLVER"].mcmc_gamma
         t0 = 100
         tadapt = 100
         samples, cmode, pmode, acc_rate, acc_rate_all, pmode_all = amcmc([nmcmc, param_ini, gamma, t0, tadapt, covini], logpost, aw, bw)

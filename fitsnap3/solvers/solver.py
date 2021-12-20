@@ -55,14 +55,25 @@ class Solver:
             np.save('Weights.npy', np.concatenate([x for x in (w_e, w_f, w_s) if x.size > 0],axis=0))
 
     def _offset(self):
-        num_types = config.sections["BISPECTRUM"].numtypes
+        try:
+            num_types = config.sections["BISPECTRUM"].numtypes
+        except KeyError:
+            num_types = config.sections["ACE"].numtypes
         if num_types > 1:
-            self.fit = self.fit.reshape(num_types, config.sections["BISPECTRUM"].ncoeff)
+            try:
+                self.fit = self.fit.reshape(num_types, config.sections["BISPECTRUM"].ncoeff)
+            except KeyError:
+                self.fit = self.fit.reshape(num_types, config.sections["ACE"].ncoeff)
             offsets = np.zeros((num_types, 1))
             self.fit = np.concatenate([offsets, self.fit], axis=1)
             self.fit = self.fit.reshape((-1, 1))
+        #NOTE, I don't think I need 0th entry for pace method....
         else:
+            #if config.sections["ACE"]:
+            #    pass
+            #else:
             self.fit = np.insert(self.fit, 0, 0)
+                
 
     @pt.rank_zero
     def error_analysis(self):
@@ -85,6 +96,8 @@ class Solver:
         self.errors = self.errors.set_index(["Group", "Weighting", "Subsystem", ]).sort_index()
 
         if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and config.sections["BISPECTRUM"].bzeroflag:
+            self._offset()
+        elif config.sections["CALCULATOR"].calculator == "LAMMPSPACE" and config.sections["ACE"].bzeroflag:
             self._offset()
 
     def _all_error(self):
@@ -349,8 +362,11 @@ class Solver:
                 w_err = w[index[i][0]:]
             true, pred = b_err, a_err @ self.fit
             if self.weighted == 'Weighted':
-                true, pred = w_err * true, w_err * pred
-                nconfig = np.count_nonzero(w_err)
+                if config.sections["SOLVER"].solver  not in ['ARD','LASSO']:
+                    true, pred = w_err * true, w_err * pred
+                    nconfig = np.count_nonzero(w_err)
+                else:
+                    nconfig=len(pred)
             else:
                 nconfig = len(pred)
             res = true - pred

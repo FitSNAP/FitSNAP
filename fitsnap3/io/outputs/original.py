@@ -27,6 +27,10 @@ class Original(Output):
                 with optional_open(config.sections["OUTFILE"].potential_name and
                                    config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
                     file.write(_to_param_string())
+            elif config.sections["CALCULATOR"].calculator == "LAMMPSPACE":
+                with optional_open(config.sections["OUTFILE"].potential_name and
+                                   config.sections["OUTFILE"].potential_name + '.acecoeff','wt') as file:
+                    file.write(_to_coeff_string(coeffs))
         with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
 #            errors.to_csv(file,sep=' ',float_format="%.8f")
             errors.to_markdown(file)
@@ -89,25 +93,39 @@ def _to_coeff_string(coeffs):
     """
     Convert a set of coefficients along with bispec options into a .snapparam file
     """
-    if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
-        raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
+    if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP":
+        desc_str = "BISPECTRUM"
+    elif config.sections["CALCULATOR"].calculator == "LAMMPSPACE":
+        desc_str = "ACE"
+    else:
+        raise RuntimeError("Trying to access a LAMMPSSNAP/LAMMPSPACE specific method with different calculator")
     # Includes the offset term, which was not in blist
     #coeffs = (coeffs * config.sections["BISPECTRUM"].blank2J).reshape((config.sections["BISPECTRUM"].numtypes, -1))
-    coeffs = coeffs.reshape((config.sections["BISPECTRUM"].numtypes, -1))
-    blank2Js = config.sections["BISPECTRUM"].blank2J.reshape((config.sections["BISPECTRUM"].numtypes, -1))
-    if config.sections["BISPECTRUM"].bzeroflag:
+    coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))
+    blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
+    if config.sections[desc_str].bzeroflag:
         blank2Js = np.insert(blank2Js,0,[1.0],axis=1)
     coeffs = np.multiply(coeffs,blank2Js)
-    coeff_names = [[0]]+config.sections["BISPECTRUM"].blist
-    type_names = config.sections["BISPECTRUM"].types
-    out = f"# fitsnap fit generated on {datetime.now()}\n\n"
-    out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/config.sections["BISPECTRUM"].numtypes)))
-    for elname, rjval, wjval, column in zip(type_names,
-                                            config.sections["BISPECTRUM"].radelem,
-                                            config.sections["BISPECTRUM"].wj,
-                                            coeffs):
-        out += "{} {} {}\n".format(elname, rjval, wjval)
-        out += "\n".join(f" {bval:<30.18} #  B{bname} " for bval, bname in zip(column, coeff_names))
-        out += "\n"
-    out += "\n# End of potential"
+    coeff_names = [[0]]+config.sections[desc_str].blist
+    type_names = config.sections[desc_str].types
+    if desc_str =="BISPECTRUM":
+        out = f"# fitsnap fit generated on {datetime.now()}\n\n"
+        out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/config.sections[desc_str].numtypes)))
+        for elname, rjval, wjval, column in zip(type_names,
+                        config.sections[desc_str].radelem,
+                        config.sections[desc_str].wj,
+                        coeffs):
+            out += "{} {} {}\n".format(elname, rjval, wjval)
+            out += "\n".join(f" {bval:<30.18} #  B{bname} " for bval, bname in zip(column, coeff_names))
+            out += "\n"
+        out += "\n# End of potential"
+    elif desc_str == "ACE":
+        out = f"# fitsnap fit/pace generated on {datetime.now()}\n\n"
+        out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/config.sections[desc_str].numtypes)))
+        for elname, column in zip(type_names,
+                            coeffs):
+            out += "{}\n".format(elname)
+            out += "\n".join(f" {bval:<30.18} #  B{bname} " for bval, bname in zip(column, coeff_names))
+            out += "\n"
+        out += "\n# End of potential"
     return out

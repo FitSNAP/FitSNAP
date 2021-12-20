@@ -70,12 +70,18 @@ class Config:
                     raise ValueError(f"{kwg} is not a valid keyword group")
                 vprint(f"Substituting {kwg}:{kwn}={kwv}")
                 tmp_config[kwg][kwn] = kwv
+        if "ACE" in tmp_config:
+            aceflag = True
+        elif "ACE" not in tmp_config:
+            aceflag = False
+        self.set_sections(tmp_config,aceflag)
 
-        self.set_sections(tmp_config)
-
-    def set_sections(self, tmp_config):
+    def set_sections(self, tmp_config,aceflag):
         location = '/' + '/'.join(path.abspath(__file__).split("/")[:-1]) + '/sections'
-        temp = {file: None for file in listdir(location)}
+        if aceflag:
+            temp = {file: None for file in listdir(location) if 'bispectrum' not in file}
+        elif not aceflag:
+            temp = {file: None for file in listdir(location) if 'ace' not in file}
         allowedkeys = []
         for file in temp:
             if file.split('.')[-1] != 'py' or file == 'sections.py' or file == 'section_factory.py':

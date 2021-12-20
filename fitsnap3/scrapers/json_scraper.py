@@ -1,6 +1,6 @@
 from .scrape import Scraper, convert
 from ..io.input import config
-from json import loads
+from json import loads,load
 from ..parallel_tools import pt
 from ..io.output import output
 from copy import copy
@@ -24,11 +24,17 @@ class Json(Scraper):
             with open(file_name) as file:
                 file.readline()
                 try:
+                #with open(file_name,'r') as readin:
+                    #print ('readin',readin)
+                    #self.data = load(readin)
                     self.data = loads(file.read(), parse_constant=True)
                 except Exception as e:
                     output.screen("Trouble Parsing Training Data: ", file_name)
                     output.exception(e)
 
+
+                #print (self.data)
+		
                 assert len(self.data) == 1, "More than one object (dataset) is in this file"
 
                 self.data = self.data['Dataset']
@@ -65,7 +71,8 @@ class Json(Scraper):
                     self.data["Energy"] = float(self.data["Energy"])
 
                 # Currently, ESHIFT should be in units of your training data (note there is no conversion)
-                if hasattr(config.sections["ESHIFT"], 'eshift'):
+                if hasattr(config.sections["ESHIFT"].eshift, 'eshift'):
+                    print ('eshift',config.sections["ESHIFT"])
                     for atom in self.data["AtomTypes"]:
                         self.data["Energy"] += config.sections["ESHIFT"].eshift[atom]
 

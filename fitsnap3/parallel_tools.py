@@ -384,13 +384,15 @@ class ParallelTools:
         if stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
             if 'ML-IAP' in self._lmp.installed_packages:
-                from lammps.mliap import activate_mliappy
-                activate_mliappy(self._lmp)
+                tmp=None
+                #from lammps.mliap import activate_mliappy
+                #activate_mliappy(self._lmp)
         else:
             self._lmp = lammps(cmdargs=cmds)
             if 'ML-IAP' in self._lmp.installed_packages:
-                from lammps.mliap import activate_mliappy
-                activate_mliappy(self._lmp)
+                tmp=None
+                #from lammps.mliap import activate_mliappy
+                #activate_mliappy(self._lmp)
 
         if printlammps == 1:
             self._lmp.command = print_lammps(self._lmp.command)

@@ -71,7 +71,10 @@ class Bispectrum(Section):
                             self.blist.append([i, j1, j2, j])
                             self.blank2J.append([prefac])
             if self.quadraticflag:
-                for i, (a, b) in enumerate(combinations_with_replacement(self.blist, r=2), start=len(self.blist)):
+                slice = int(len(self.blist)/(atype+1))
+                start = slice*atype
+                end = slice*(atype+1)
+                for i, (a, b) in enumerate(combinations_with_replacement(self.blist[start:end], r=2), start=slice):
                     prefac = 0.0
                     quadIndex = a[1:]+b[1:]
                     if all(ind <= int(self.twojmax[atype]) for ind in quadIndex):
@@ -86,8 +89,12 @@ class Bispectrum(Section):
             self.blank2J = np.array(self.blank2J).tolist()
         if self.quadraticflag:
             # Note, combinations_with_replacement precisely generates the upper-diagonal entries we want
-            self.blist += [[i, a, b] for i, (a, b) in
-                           enumerate(combinations_with_replacement(self.blist, r=2), start=len(self.blist))]
+            self.blist = np.reshape(self.blist, (self.numtypes, -1, 4)).tolist()
+            for atype in range(self.numtypes):
+                self.blist[atype] += [[i, a, b] for i, (a, b) in
+                                      enumerate(combinations_with_replacement(self.blist[atype], r=2),
+                                                start=len(self.blist[atype]))]
+            self.blist = [item for sublist in self.blist for item in sublist]
         self.ncoeff = int(len(self.blist)/self.numtypes)
         if not self.bzeroflag:
             self.blank2J = np.reshape(self.blank2J, (self.numtypes, int(len(self.blist)/self.numtypes)))
@@ -96,6 +103,7 @@ class Bispectrum(Section):
             self.blank2J = np.reshape(self.blank2J, (len(self.blist) + self.numtypes))
         else:
             self.blank2J = np.reshape(self.blank2J, len(self.blist))
+
     def _reset_chemflag(self):
         if self.chemflag != 0:
             chemflag = "{}".format(self.numtypes)

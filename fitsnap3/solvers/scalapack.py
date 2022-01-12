@@ -61,3 +61,11 @@ except ModuleNotFoundError:
         def __init__(self, name):
             super().__init__(name)
             raise ModuleNotFoundError("ScaLAPACK module not installed in lib")
+
+except ImportError:
+
+    class ScaLAPACK(Solver):
+
+        def __init__(self, name):
+            super().__init__(name)
+            raise ImportError("ScaLAPACK module not installed in lib")

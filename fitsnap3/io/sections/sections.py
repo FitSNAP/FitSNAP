@@ -1,4 +1,5 @@
-from ...parallel_tools import pt, output
+from ...parallel_tools import output, pt
+from ..error import ExitFunc
 from distutils.util import strtobool
 from os import getcwd
 
@@ -7,22 +8,32 @@ class Section:
     parameters = []
     relative_directory = None
 
-    def __init__(self, name, config, args):
+    def __init__(self, name, config, args=None):
         self.name = name
         self._config = config
         self._args = args
+        self.allowedkeys = None
         try:
             on = self._on
         except AttributeError:
             on = "True"
         self._on = self.get_value(self.name.upper(), "on", on, "bool")
+        self._on = config.has_section(self.name.upper())
         if self._on is False:
             self.delete()
-            return
+            raise ExitFunc
 
     def delete(self):
         del self._config
         del self._args
+
+    def _check_section(self):
+        for value_name in self._config[self.name]:
+            if value_name in self.allowedkeys:
+                continue
+            else:
+                raise RuntimeError(">>> Found unmatched variable in {} section of input: {}".format(self.name,
+                                                                                                    value_name))
 
     def print_name(self):
         output.screen(self.name)

@@ -1,16 +1,13 @@
 from .sections import Section
 from ...parallel_tools import pt
 
+
 class Solver(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        allowedkeys = ['solver','normalweight','normratio','compute_testerrs','detailed_errors']
-        for value_name in config['SOLVER']:
-            if value_name in allowedkeys: continue
-            else:
-                raise RuntimeError(">>> Found unmatched variable in SOLVER section of input: ", value_name)
-                #pt.single_print(">>> Found unmatched variable in SOLVER section of input: ",value_name)
+        self.allowedkeys = ['solver', 'normalweight', 'normratio', 'compute_testerrs', 'detailed_errors']
+        self._check_section()
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
         self.true_multinode = 0

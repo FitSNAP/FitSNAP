@@ -35,7 +35,7 @@ import numpy as np
 from random import shuffle
 from ..parallel_tools import pt
 from ..io.output import output
-from ..units import convert
+from ..units.units import convert
 from copy import copy
 # from natsort import natsorted
 

@@ -3,16 +3,13 @@ from os import sysconf
 from subprocess import check_output
 from ...parallel_tools import pt
 
+
 class Memory(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        allowedkeys = ['memory','override']
-        for value_name in config['MEMORY']:
-            if value_name in allowedkeys: continue
-            else:
-                raise RuntimeError(">>> Found unmatched variable in MEMORY section of input: ", value_name)
-                #pt.single_print(">>> Found unmatched variable in MEMORY section of input: ",value_name)
+        self.allowedkeys = ['memory', 'override']
+        self._check_section()
 
         self._check_memory()
         self.memory = self.get_value("MEMORY", "memory", "{}".format(self.mem_bytes), "int")

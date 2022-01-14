@@ -3,18 +3,15 @@ from itertools import combinations_with_replacement
 import numpy as np
 from ...parallel_tools import pt
 
+
 class Bispectrum(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
 
-        allowedkeys = ['numTypes','twojmax','rcutfac','rfac0','rmin0','wj','radelem','type',
-                       'wselfallflag','chemflag','bzeroflag','quadraticflag','bnormflag']
-        for value_name in config['BISPECTRUM']:
-            if value_name in allowedkeys: continue
-            else:
-                raise RuntimeError(">>> Found unmatched variable in BISPECTRUM section of input: ",value_name)
-                #pt.single_print(">>> Found unmatched variable in BISPECTRUM section of input: ",value_name)
+        self.allowedkeys = ['numTypes', 'twojmax', 'rcutfac', 'rfac0', 'rmin0', 'wj', 'radelem', 'type',
+                            'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag']
+        self._check_section()
 
         self.numtypes = self.get_value("BISPECTRUM", "numTypes", "1", "int")
         self.twojmax = self.get_value("BISPECTRUM", "twojmax", "6").split()

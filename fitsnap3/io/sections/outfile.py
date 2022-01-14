@@ -7,16 +7,12 @@ class Outfile(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        allowedkeys = ['output_style','metrics','potential','detailed_errors']
-        for value_name in config['OUTFILE']:
-            if value_name in allowedkeys: continue
-            else:
-                raise RuntimeError(">>> Found unmatched variable in OUTFILE section of input: ", value_name)
-                #pt.single_print(">>> Found unmatched variable in OUTFILE section of input: ",value_name)
+        self.allowedkeys = ['output_style', 'metrics', 'potential', 'detailed_errors']
+        self._check_section()
 
         self._check_relative()
         self._outfile()
-        self.output_style = self.get_value("OUTFILE", "output_style", "ORIGINAL")
+        self.output_style = self.get_value("OUTFILE", "output_style", "SNAP")
         self.delete()
 
     def _outfile(self):

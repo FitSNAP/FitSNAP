@@ -1,4 +1,4 @@
-from .unit_types.conversion_finder import create_conversion
+from .conversion_finder import create_conversion
 
 conversions = {}
 

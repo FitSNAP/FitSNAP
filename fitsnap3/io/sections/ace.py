@@ -32,7 +32,7 @@ class Ace(Section):
         self.bzeroflag = self.get_value("ACE", "bzeroflag", "0", "bool")
         self.wigner_flag = self.get_value("ACE", "wigner_flag", "1", "bool")
         self.acefile = self.get_value("ACE", "acefile", "coupling_coefficients.ace")
-        self.dorder = self.get_value("ACE", "dorder", "0", "bool")
+        self.dorder = self.get_value("ACE", "dorder", "1", "bool")
         self.ranked_nus = [GenerateNL(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), self.dorder) for ind, rnk in
                            enumerate(self.ranks)]
         self.nus = [item for sublist in self.ranked_nus for item in sublist.nl]
@@ -239,9 +239,9 @@ class GenerateNL:
                     mstr = ','.join(str(i) for i in mlst) % tuple(self._marray[self._indices])
                     w = 1
                     for i in range(self.rank-3):
-                        w *= self._w3j['%d,%d,%d,%d,%d,%d' % (self._larray[i*3], self._marray[i*3],
-                                                              self._larray[i*3+1], self._marray[i*3+1],
-                                                              self._larray[i*3+2], -self._marray[i*3+2])]
+                        w *= self._w3j['%d,%d,%d,%d,%d,%d' % (self._larray[i*2], self._marray[i*2],
+                                                              self._larray[i*2+1], self._marray[i*2+1],
+                                                              self._larray[i*2+2], -self._marray[i*2+2])]
                     w *= self._w3j['%d,%d,%d,%d,%d,%d' % (self._larray[-2], self._marray[-2],
                                                           self._larray[-1], self._marray[-1],
                                                           self._larray[-3], self._marray[-3])]

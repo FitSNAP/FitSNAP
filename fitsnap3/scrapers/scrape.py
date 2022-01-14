@@ -199,7 +199,7 @@ class Scraper:
     def _rotate_coords(self):
         # Transpose here because Lammps stores lattice vectors as columns,
         # QM stores lattice vectors as rows; After transposing lattice vectors are columns
-        in_cell = np.asarray(self.data["QMLattice"]).T
+        in_cell = np.asarray(self.data["QMLattice"])
         assert np.linalg.det(in_cell) > 0, "Input cell is not right-handed!"
 
         # Q matrix of QR decomposition is an orthogonal (rotation-like)

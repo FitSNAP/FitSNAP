@@ -1,6 +1,7 @@
 import numpy as np
 from os import path
 from copy import deepcopy
+from time import time
 
 from .sections import Section
 from ...lib.pace.pace import CouplingCoeffs, intermediates
@@ -182,6 +183,8 @@ class GenerateNL:
             self._nloop(loop_count)
 
     def ccs(self, w3j):
+        start = time()
+        pt.single_print("Calculating Wigner Coupling for Rank {}".format(self.rank))
         self._w3j = w3j
         if self.rank == 1:
             for nl in self.nl:
@@ -200,11 +203,14 @@ class GenerateNL:
             self._indices = [0]
             self._indices.extend([*range(1, len(self._larray)-1, 2)])
             self._indices.append(-1)
-            for nl in self.nl:
+            for i, nl in enumerate(self.nl):
+                pt.single_print("rank {} {:2.2f}% done".format(self.rank, 100*i/len(self.nl)), overwrite=True)
                 self._this_nl = nl
                 self._larray[self._indices] = np.fromstring(nl, dtype=int, sep=',')[-self.rank:]
                 self.nl_dict[nl] = {}
                 self._tri_loop(self.rank-2)
+
+        pt.single_print("\nRank {} took {} ms".format(self.rank, time()-start))
 
     def _tri_loop(self, loop_count):
         loop_count -= 1
@@ -247,6 +253,7 @@ class GenerateNL:
                                                           self._larray[-3], self._marray[-3])]
                     w *= ((-1) ** (np.abs(np.sum(self._marray[2:-2][::2]))))
                     try:
+                        # pt.single_print(self.rank, mstr)
                         self.nl_dict[self._this_nl][mstr] += w
                     except KeyError:
                         self.nl_dict[self._this_nl][mstr] = w

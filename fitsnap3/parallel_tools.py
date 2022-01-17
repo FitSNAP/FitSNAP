@@ -49,7 +49,15 @@ except ModuleNotFoundError:
 
 
 def printf(*args, **kw):
-    print(*args, flush=True)
+    kw['flush'] = True
+
+    if 'overwrite' in kw:
+        del kw['overwrite']
+        kw['end'] = ''
+        print("\r", end='')
+        print(" ".join(map(str, args)), **kw)
+    else:
+        print(" ".join(map(str, args)), **kw)
 
 
 class GracefulError(BaseException):
@@ -204,14 +212,14 @@ class ParallelTools:
 
     @_rank_zero
     def single_print(self, *args, **kw):
-        printf(*args)
+        printf(" ".join(map(str, args)), **kw)
 
     @_sub_rank_zero
     def sub_print(self, *args, **kw):
-        printf(*args)
+        printf(" ".join(map(str, args)), **kw)
 
     def all_print(self, *args, **kw):
-        printf("Rank", self._rank, ":", *args)
+        printf("Rank", self._rank, ":", " ".join(map(str, args)), **kw)
 
     @_rank_zero_decorator
     def single_timeit(self, method):

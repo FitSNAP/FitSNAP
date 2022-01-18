@@ -1,5 +1,5 @@
-from .sections import Section
-from ...parallel_tools import pt
+from ..sections import Section
+from ....parallel_tools import pt
 
 
 class Calculator(Section):

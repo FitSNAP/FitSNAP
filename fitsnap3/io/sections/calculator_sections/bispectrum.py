@@ -1,7 +1,6 @@
-from .sections import Section
+from ..sections import Section
 from itertools import combinations_with_replacement
 import numpy as np
-from ...parallel_tools import pt
 
 
 class Bispectrum(Section):
@@ -12,6 +11,8 @@ class Bispectrum(Section):
         self.allowedkeys = ['numTypes', 'twojmax', 'rcutfac', 'rfac0', 'rmin0', 'wj', 'radelem', 'type',
                             'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag']
         self._check_section()
+
+        self._check_if_used("CALCULATOR", "calculator", "LAMMPSSNAP", "LAMMPSSNAP")
 
         self.numtypes = self.get_value("BISPECTRUM", "numTypes", "1", "int")
         self.twojmax = self.get_value("BISPECTRUM", "twojmax", "6").split()

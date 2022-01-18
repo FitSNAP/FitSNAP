@@ -62,6 +62,12 @@ class Section:
             return None
         return self._config.items(section)
 
+    def _check_if_used(self, from_sec, sec_type, default, name=None):
+        if not name:
+            name = self.__class__.__name__
+        if self.get_value(from_sec, sec_type, default).upper() != name.upper():
+            raise UserWarning("{0} {1} section is in input, but not set as {1}".format(name, sec_type))
+
     @classmethod
     def add_parameter(cls, section, key, fallback, interpreter):
         cls.parameters.append([section, key, fallback, interpreter])

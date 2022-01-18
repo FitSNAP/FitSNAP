@@ -1,7 +1,7 @@
 import configparser
 import argparse
 from pickle import HIGHEST_PROTOCOL
-from ..io.sections.section_factory import new_section
+from .sections.section_factory import new_section
 from ..parallel_tools import pt, output
 from os import path, listdir
 

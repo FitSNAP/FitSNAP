@@ -3,9 +3,9 @@ from os import path
 from copy import deepcopy
 from time import time
 
-from .sections import Section
-from ...lib.pace.pace import CouplingCoeffs, intermediates
-from ...parallel_tools import pt
+from ..sections import Section
+from ....lib.pace.pace import CouplingCoeffs, intermediates
+from ....parallel_tools import pt
 
 
 class Ace(Section):
@@ -16,6 +16,8 @@ class Ace(Section):
         self.allowedkeys = ['numTypes', 'ranks', 'lmax', 'nmax', 'nmaxbase', 'rcutfac',
                             'lambda', 'type', 'bzeroflag', 'wigner_flag', 'acefile', 'dorder']
         self._check_section()
+
+        self._check_if_used("CALCULATOR", "calculator", "LAMMPSSNAP")
 
         self.lmbda = self.get_value("ACE", "lambda", '5.0', "float")
         self.numtypes = self.get_value("ACE", "numTypes", "1", "int")

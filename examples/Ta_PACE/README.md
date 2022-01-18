@@ -1,8 +1,6 @@
 ## FitSnap3 Tantalum example
 
-This example will generate a potential for tantalum as published in 
-Thompson, A.P. et. al, J. Comp. Phys. 285 (2015) 316-330.  This version 
-of the tantalum potential uses the linear version of SNAP.
+This example will generate a potential for tantalum will be published soon.
 
 #### Running this example:
 
@@ -90,9 +88,11 @@ See docs/TEMPLATE.in for further information on input parameters
 Lasso regression applies an l1 norm penalty to the least squares cost function, and is useful for obtaining sparse solutions. 
 See https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoRegression.html for more info.
 
+```
 solver = LASSO               : flag to tell FitSNAP to use lasso regression
 alpha = 1.0E-4               : penalty for l1 norm term (defaults to 1e-8)
 max_iter = 1000              : maximum number of iterations to minimize the LASSO cost function
+```
 
 Warning: increasing max_iter may significantly increase training time if the fit is unstable. (See ARD for a more stable sparse training method.)
 
@@ -102,6 +102,7 @@ ARDR is a Bayesian method that is good at obtaining sparse solutions to fitting 
 The ARDR cost function has l1 and l2 regularizing properties.
 See https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ARDRegression.html for more info.
 
+```
 solver = ARD                 : flag to tell FitSNAP to use ARD regression
 alphabig = 1e-12             : shape parameter for gamma distribution of priors depending on alpha
 alphasmall = 1e-12           : rate parameter for gamma distribution of priors depending on alpha
@@ -109,6 +110,7 @@ lambdabig = 1e-6             : shape parameter for gamma distribution of priors 
 lambdasmall = 1e-6           : rate parameter for gamma distribution of priors depending on lambda 
 threshold_lambda = 100000    : threshold for removing parameters (controls model sparsity)
 max_iter = 1000              : maximum number of iterations to minimize ARD cost function (should not need to change)
+```
 
 #### Tantalum data from:
 

@@ -1,0 +1,765 @@
+
+    ______ _  __  _____  _   __ ___     ____  
+   / ____/(_)/ /_/ ___/ / | / //   |   / __ \ 
+  / /_   / // __/\__ \ /  |/ // /| |  / /_/ /
+ / __/  / // /_ ___/ // /|  // ___ | / ____/ 
+/_/    /_/ \__//____//_/ |_//_/  |_|/_/      
+
+-----20May21------
+Reading input...
+Opening Wigner Pickle
+Finished Opening Wigner Pickle
+Finished reading input
+------------------
+mpi4py version:  3.1.0a0
+numpy version:  1.19.2
+scipy version:  1.5.2
+pandas version:  1.1.3
+-----------
+LAMMPSPACE
+Displaced_A15 : Detected  9  fitting on  9  testing on  0
+Displaced_BCC : Detected  9  fitting on  9  testing on  0
+Displaced_FCC : Detected  9  fitting on  9  testing on  0
+Elastic_BCC : Detected  100  fitting on  100  testing on  0
+Elastic_FCC : Detected  100  fitting on  100  testing on  0
+GSF_110 : Detected  22  fitting on  22  testing on  0
+GSF_112 : Detected  22  fitting on  22  testing on  0
+Liquid : Detected  3  fitting on  3  testing on  0
+Surface : Detected  7  fitting on  7  testing on  0
+Volume_A15 : Detected  30  fitting on  30  testing on  0
+Volume_BCC : Detected  21  fitting on  21  testing on  0
+Volume_FCC : Detected  31  fitting on  31  testing on  0
+'scrape_configs' took 1676.91 ms on rank 0
+>>> Matrix of descriptors takes up  0.0082 % of the total memory: 201.4210 GB
+LAMMPS (27 Oct 2021)
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is speci'process_configs' took 31824.27 ms on rank 0
+'perform_fit' took 516.82 ms on rank 0
+'write_output' took 174.39 ms on rank 0
+'main' took 34194.49 ms on rank 0
+fied, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Notice! No embedding-function is specified, but potential has linear embedding, default embedding-function: FinnisSinclair would be assumed
+$! number of coefficients: 157
+Total wall time: 0:00:34

@@ -63,6 +63,7 @@ Contains a variety of error metrics for all the training groups for this fit.
 
 #### Important input parameters for this example
 ACE descriptors up to arbitrary rank may be used. 
+```
 For rank 1 descriptors lmax has no effect (only radial dependence for 2-body descriptors)
 For 2 <= rank <=3 it is recommended that lmax should not exceed 7.
 For rank 4 descriptors, it is recommended that lmax should not exceed 3,
@@ -79,7 +80,7 @@ rcutfac = 4.604694451   : Radial cutoff (hyperparameters) chosen for this potent
 lambda = 3.059235105    : lambda exponential decay factor in the Chebyshev exponential cosine basis from Drautz 2019 (controls how fast the scaled distance decays as r->rc)
 type = Ta               : Chemical symbol for elements matching those in JSON file
 wigner_flag = 1         : Flag to use wigner 3j coupling coefficients (generalized CG coefficients are not implemented in this version)
-
+```
 
 See docs/TEMPLATE.in for further information on input parameters
 

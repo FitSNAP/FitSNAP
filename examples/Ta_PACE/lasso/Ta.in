@@ -29,7 +29,7 @@ detailed_errors = 1
 scraper = JSON
 
 [PATH]
-dataPath = JSON
+dataPath = ../../Ta_Linear_JCP2014/JSON
 
 [OUTFILE]
 output_style = PACE

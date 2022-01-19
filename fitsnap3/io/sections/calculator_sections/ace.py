@@ -17,7 +17,7 @@ class Ace(Section):
                             'lambda', 'type', 'bzeroflag', 'wigner_flag', 'acefile', 'dorder']
         self._check_section()
 
-        self._check_if_used("CALCULATOR", "calculator", "LAMMPSSNAP")
+        self._check_if_used("CALCULATOR", "calculator", "LAMMPSSNAP", "LAMMPSPACE")
 
         self.lmbda = self.get_value("ACE", "lambda", '5.0', "float")
         self.numtypes = self.get_value("ACE", "numTypes", "1", "int")

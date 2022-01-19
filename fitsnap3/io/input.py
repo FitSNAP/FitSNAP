@@ -3,7 +3,7 @@ import argparse
 from pickle import HIGHEST_PROTOCOL
 from .sections.section_factory import new_section
 from ..parallel_tools import pt, output
-from os import path, listdir
+from pathlib import Path
 
 
 class Config:
@@ -62,6 +62,10 @@ class Config:
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
         tmp_config.read(self.args.infile)
+        infile_folder = str(Path(self.args.infile).parent.absolute())
+        file_name = self.args.infile.split('/')[-1]
+        if not Path(infile_folder+'/'+file_name).is_file():
+            raise RuntimeError("Input file {} not found in {}", file_name, infile_folder)
 
         vprint = output.screen if self.args.verbose else lambda *arguments, **kwargs: None
         if self.args.keyword_replacements:

@@ -136,6 +136,8 @@ class ParallelTools:
                 self._comm = MPI.ADDED_COMM
             except NameError:
                 self._comm = MPI.COMM_WORLD
+            except AttributeError:
+                self._comm = MPI.COMM_WORLD
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
         if stubs == 1:

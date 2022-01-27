@@ -33,10 +33,7 @@ class Outfile(Section):
             self.base_path = None
 
     def _check_path(self, name):
-        if self.base_path is not None:
-            name = path.join(self.base_path, name)
-        else:
-            name = name
+        name = self.check_path(name)
         if self._args.overwrite is None:
             return name
         names = [name, name + '.snapparam', name + '.snapcoeff']

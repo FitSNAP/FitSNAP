@@ -54,6 +54,8 @@ class Config:
                             help="Print each processors screen")
         parser.add_argument("--log", action="store", dest="log",
                             default=None, help="Write fitsnap log to this file")
+        parser.add_argument("--screen2file", "-s2f", action="store", dest="screen2file",
+                            default=None, help="Print screen to a file")
 
         self.args = parser.parse_args()
 

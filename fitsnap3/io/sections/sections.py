@@ -1,6 +1,7 @@
 from ...parallel_tools import pt, output
 from distutils.util import strtobool
 from os import getcwd
+from os import path
 
 
 class Section:
@@ -51,6 +52,14 @@ class Section:
             return None
         return self._config.items(section)
 
+    def check_path(self, name):
+        try:
+            if self.base_path is not None:
+                name = path.join(self.base_path, name)
+            return name
+        except AttributeError:
+            return name
+
     @classmethod
     def add_parameter(cls, section, key, fallback, interpreter):
         cls.parameters.append([section, key, fallback, interpreter])
@@ -63,9 +72,11 @@ class Section:
 
     @classmethod
     def _set_relative_directory(cls, self):
-        paths = getcwd().split('/') + self._args.infile.split('/')[:-1]
-        relative_directory = ''
-        for directory in paths[:-1]:
-            relative_directory += directory + '/'
-        relative_directory += paths[-1]
+        cwd = getcwd().split('/')
+        path_to_file = self._args.infile.split('/')[:-1]
+        count = 0
+        while path_to_file[count] == cwd[count]:
+            count += 1
+        cwd += (['..'] * (len(cwd)-count)) + path_to_file[count:]
+        relative_directory = '/'.join(cwd[count+1:])
         cls.relative_directory = relative_directory

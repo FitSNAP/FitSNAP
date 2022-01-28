@@ -48,11 +48,14 @@ class Solver:
             # if config.sections["EXTRAS"].apply_transpose:
             #     np.save('Descriptors_Compact.npy', (np.concatenate((a_e,a_f,a_s),axis=0) @ np.concatenate((a_e,a_f,a_s),axis=0).T))
             # else:
-            np.save('Descriptors.npy', np.concatenate([x for x in (a_e, a_f, a_s) if x.size > 0],axis=0))
+            np.save(config.sections['OUTFILE'].check_path('Descriptors.npy'),
+                    np.concatenate([x for x in (a_e, a_f, a_s) if x.size > 0], axis=0))
         if config.sections["EXTRAS"].dump_b:
-            np.save('Truth-Ref.npy', np.concatenate([x for x in (b_e, b_f, b_s) if x.size > 0],axis=0))
+            np.save(config.sections['OUTFILE'].check_path('Truth-Ref.npy'),
+                    np.concatenate([x for x in (b_e, b_f, b_s) if x.size > 0], axis=0))
         if config.sections["EXTRAS"].dump_w:
-            np.save('Weights.npy', np.concatenate([x for x in (w_e, w_f, w_s) if x.size > 0],axis=0))
+            np.save(config.sections['OUTFILE'].check_path('Weights.npy'),
+                    np.concatenate([x for x in (w_e, w_f, w_s) if x.size > 0], axis=0))
 
     def _offset(self):
         num_types = config.sections["BISPECTRUM"].numtypes
@@ -107,7 +110,7 @@ class Solver:
                 true, pred = b, a @ self.fit
                 ConfigType = ['Training'] * (np.shape(true)[0]-pt.shared_arrays['configs_per_group'].testing) + \
                                              ['Testing'] * (pt.shared_arrays['configs_per_group'].testing)
-                with open('detailed_energy_errors.dat', 'w') as f:
+                with open(config.sections['OUTFILE'].check_path('detailed_energy_errors.dat'), 'w') as f:
                     writer = writer(f, delimiter=' ')
                     writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
                     writer.writerows(zip(energy_list,ConfigType,true, pred, pred-true))
@@ -134,7 +137,7 @@ class Solver:
                                  ['Testing'] * (np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:]))
                 else:
                     ConfigType = ['Training'] * np.shape(true)[0]
-                with open('detailed_force_errors.dat', 'w') as f:
+                with open(config.sections['OUTFILE'].check_path('detailed_force_errors.dat'), 'w') as f:
                     writer = writer(f, delimiter=' ')
                     writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
                     writer.writerows(zip(force_list,ConfigType, true, pred, pred-true))
@@ -153,7 +156,7 @@ class Solver:
                 true, pred = b, a @ self.fit
                 ConfigType = ['Training'] * (np.shape(true)[0] - 6 * pt.shared_arrays['configs_per_group'].testing) + \
                                              ['Testing'] * (6 * pt.shared_arrays['configs_per_group'].testing)
-                with open('detailed_stress_errors.dat', 'w') as f:
+                with open(config.sections['OUTFILE'].check_path('detailed_stress_errors.dat'), 'w') as f:
                     writer = writer(f, delimiter=' ')
                     writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
                     writer.writerows(zip(stress_list,ConfigType, true, pred, pred-true))

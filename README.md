@@ -29,6 +29,9 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 #### Using this package:
 * [Required] This package expects a python 3.6+ version.
 * [Required] Compile LAMMPS (lammps.sandia.gov) as a shared library, detailed instructions can be found here `docs/LAMMPS.md`. If you can open python and run `import lammps; lmp = lammps.lammps()` and it succeeds, you should be good.
+* [Optional] (Required for atomic cluster expansion, ACE, capabilities ) Along with compiling LAMMPS with all of the typical FitSNAP flags, turn the ML-PACE package on.
+    * Clone the ML-PACE package with the implemented ACE descriptor computes into your build directory from: git@github.com:jmgoff/lammps-user-pace.git
+    * Follow the README.md and INSTALL.md in this repo to build lammps with ACE descriptor calculators
 
 #### Installing:
 * For the most recent bug fixes/code changes:

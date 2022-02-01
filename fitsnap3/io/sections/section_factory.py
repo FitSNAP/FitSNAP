@@ -1,11 +1,15 @@
 from .sections import Section, pt
+from ..error import ExitFunc
 pt.get_subclasses(__name__, __file__, Section)
 
 
 def new_section(section, config, args):
     """Section Factory"""
     instance = search(section)
-    instance.__init__(section, config, args)
+    try:
+        instance.__init__(section, config, args)
+    except ExitFunc:
+        pass
     return instance
 
 

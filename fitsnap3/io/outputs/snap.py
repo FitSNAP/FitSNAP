@@ -5,7 +5,7 @@ from ..input import config
 import numpy as np
 
 
-class Original(Output):
+class Snap(Output):
 
     def __init__(self, name):
         super().__init__(name)
@@ -20,22 +20,23 @@ class Original(Output):
     @pt.rank_zero
     def write(self, coeffs, errors):
         if config.sections["EXTRAS"].only_test != 1:
-            if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP":
-                with optional_open(config.sections["OUTFILE"].potential_name and
-                                   config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
-                    file.write(_to_coeff_string(coeffs))
-                with optional_open(config.sections["OUTFILE"].potential_name and
-                                   config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
-                    file.write(_to_param_string())
+            if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
+                raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
+        with optional_open(config.sections["OUTFILE"].potential_name and
+                           config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
+            file.write(_to_coeff_string(coeffs))
+        with optional_open(config.sections["OUTFILE"].potential_name and
+                           config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
+            file.write(_to_param_string())
         with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
-#            errors.to_csv(file,sep=' ',float_format="%.8f")
+            # errors.to_csv(file,sep=' ',float_format="%.8f")
             errors.to_markdown(file)
 
     @pt.sub_rank_zero
     def read_fit(self):
         # TODO fix this fix reader for bzeroflag = 0
         if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
-            raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
+            raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
         with optional_open(config.sections["OUTFILE"].potential_name and
                            config.sections["OUTFILE"].potential_name + '.snapcoeff', 'r') as file:
 
@@ -63,8 +64,6 @@ class Original(Output):
 
 
 def _to_param_string():
-    if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
-        raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
     if config.sections["BISPECTRUM"].chemflag != 0:
         chemflag_int = 1
     else:
@@ -89,15 +88,13 @@ def _to_coeff_string(coeffs):
     """
     Convert a set of coefficients along with bispec options into a .snapparam file
     """
-    if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
-        raise RuntimeError("Trying to access a LAMMPSSNAP specific method with different calculator")
     # Includes the offset term, which was not in blist
-    #coeffs = (coeffs * config.sections["BISPECTRUM"].blank2J).reshape((config.sections["BISPECTRUM"].numtypes, -1))
+    # coeffs = (coeffs * config.sections["BISPECTRUM"].blank2J).reshape((config.sections["BISPECTRUM"].numtypes, -1))
     coeffs = coeffs.reshape((config.sections["BISPECTRUM"].numtypes, -1))
     blank2Js = config.sections["BISPECTRUM"].blank2J.reshape((config.sections["BISPECTRUM"].numtypes, -1))
     if config.sections["BISPECTRUM"].bzeroflag:
-        blank2Js = np.insert(blank2Js,0,[1.0],axis=1)
-    coeffs = np.multiply(coeffs,blank2Js)
+        blank2Js = np.insert(blank2Js, 0, [1.0], axis=1)
+    coeffs = np.multiply(coeffs, blank2Js)
     coeff_names = [[0]]+config.sections["BISPECTRUM"].blist
     type_names = config.sections["BISPECTRUM"].types
     out = f"# fitsnap fit generated on {datetime.now()}\n\n"

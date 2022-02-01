@@ -1,9 +1,9 @@
 import configparser
 import argparse
 from pickle import HIGHEST_PROTOCOL
-from ..io.sections.section_factory import new_section
+from .sections.section_factory import new_section
 from ..parallel_tools import pt, output
-from os import path, listdir
+from pathlib import Path
 
 
 class Config:
@@ -62,6 +62,10 @@ class Config:
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
         tmp_config.read(self.args.infile)
+        infile_folder = str(Path(self.args.infile).parent.absolute())
+        file_name = self.args.infile.split('/')[-1]
+        if not Path(infile_folder+'/'+file_name).is_file():
+            raise RuntimeError("Input file {} not found in {}", file_name, infile_folder)
 
         vprint = output.screen if self.args.verbose else lambda *arguments, **kwargs: None
         if self.args.keyword_replacements:
@@ -74,24 +78,13 @@ class Config:
         self.set_sections(tmp_config)
 
     def set_sections(self, tmp_config):
-        location = '/' + '/'.join(path.abspath(__file__).split("/")[:-1]) + '/sections'
-        temp = {file: None for file in listdir(location)}
-        allowedkeys = []
-        for file in temp:
-            if file.split('.')[-1] != 'py' or file == 'sections.py' or file == 'section_factory.py':
-                continue
-            else:
-                section = '.'.join(file.split('.')[:-1]).upper()
-                if section == "TEMPLATE":
-                    section = "DEFAULT"
-                if section == "BASIC_CALCULATOR":
-                    section = "BASIC"
-                self.sections[section] = new_section(section, tmp_config, self.args)
-                allowedkeys.append(section)
-        for property_name in tmp_config.keys():
-            if property_name in allowedkeys: continue
-            else: pt.single_print(">>> Found unmatched section in input: ",property_name)
-        del temp
+        sections = tmp_config.sections()
+        for section in sections:
+            if section == "TEMPLATE":
+                section = "DEFAULT"
+            if section == "BASIC_CALCULATOR":
+                section = "BASIC"
+            self.sections[section] = new_section(section, tmp_config, self.args)
 
 
 if __name__.split(".")[-1] == "input":

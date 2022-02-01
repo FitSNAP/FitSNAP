@@ -49,7 +49,15 @@ except ModuleNotFoundError:
 
 
 def printf(*args, **kw):
-    print(*args, flush=True)
+    kw['flush'] = True
+
+    if 'overwrite' in kw:
+        del kw['overwrite']
+        kw['end'] = ''
+        print("\r", end='')
+        print(" ".join(map(str, args)), **kw)
+    else:
+        print(" ".join(map(str, args)), **kw)
 
 
 class GracefulError(BaseException):
@@ -209,14 +217,14 @@ class ParallelTools:
 
     @_rank_zero
     def single_print(self, *args, **kw):
-        printf(*args)
+        printf(" ".join(map(str, args)), **kw)
 
     @_sub_rank_zero
     def sub_print(self, *args, **kw):
-        printf(*args)
+        printf(" ".join(map(str, args)), **kw)
 
     def all_print(self, *args, **kw):
-        printf("Rank", self._rank, ":", *args)
+        printf("Rank", self._rank, ":", " ".join(map(str, args)), **kw)
 
     @_rank_zero_decorator
     def single_timeit(self, method):
@@ -388,14 +396,14 @@ class ParallelTools:
             cmds.append("none")
         if stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
-            if 'ML-IAP' in self._lmp.installed_packages:
-                from lammps.mliap import activate_mliappy
-                activate_mliappy(self._lmp)
+#            if 'ML-IAP' in self._lmp.installed_packages:
+#                from lammps.mliap import activate_mliappy
+#                activate_mliappy(self._lmp)
         else:
             self._lmp = lammps(cmdargs=cmds)
-            if 'ML-IAP' in self._lmp.installed_packages:
-                from lammps.mliap import activate_mliappy
-                activate_mliappy(self._lmp)
+#            if 'ML-IAP' in self._lmp.installed_packages:
+#                from lammps.mliap import activate_mliappy
+#                activate_mliappy(self._lmp)
 
         if printlammps == 1:
             self._lmp.command = print_lammps(self._lmp.command)
@@ -526,16 +534,26 @@ class ParallelTools:
         from pathlib import Path
 
         name = this_name.split('.')
-        package_dir = Path(this_file).resolve().parent
-        for (_, module_name, c) in iter_modules([package_dir]):
-            if module_name != name[-1] and module_name != name[-2]:
-                module = import_module(f"{'.'.join(name[:-1])}.{module_name}")
-                for attribute_name in dir(module):
-                    attribute = getattr(module, attribute_name)
+        main_dir = Path(this_file).resolve().parent
+        paths = [main_dir]
+        for path in main_dir.iterdir():
+            if path.is_dir():
+                paths.append(path)
+        for package_dir in paths:
+            for (_, module_name, c) in iter_modules([package_dir]):
+                if module_name != name[-1] and module_name != name[-2]:
+                    temp_name = name[:-1]
+                    the_path = str(package_dir).split("/")
+                    index = the_path.index(name[-2])
+                    if index != len(the_path)-1:
+                        temp_name.extend(the_path[index+1:])
+                    module = import_module(f"{'.'.join(temp_name)}.{module_name}")
+                    for attribute_name in dir(module):
+                        attribute = getattr(module, attribute_name)
 
-                    if isclass(attribute) and issubclass(attribute, this_class) and attribute is not this_class:
-                        # Add the class to this package's variables
-                        globals()[attribute_name] = attribute
+                        if isclass(attribute) and issubclass(attribute, this_class) and attribute is not this_class:
+                            # Add the class to this package's variables
+                            globals()[attribute_name] = attribute
 
 
 class SharedArray:

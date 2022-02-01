@@ -1,5 +1,5 @@
 """Basic Class"""
-from .sections import Section
+from ..sections import Section
 
 
 class Basic(Section):

@@ -111,9 +111,7 @@ class MPICheck:
 	@assert_mpi
 	def _find_mpirun(self):
 		""" Find mpirun, mpiexec, or orterun"""
-		result = self._dylib_reader()
-		result = result.stdout.decode('utf-8').replace('\t', '').split('\n')[1:]
-		mpilib = [string for string in result if 'libmpi' in string][0].split()[0]
+		mpilib = self._dylib_reader()
 		mpirun = str(Path(mpilib).parent.parent / 'bin/mpirun') \
 			if (Path(mpilib).parent.parent / 'bin/mpirun').exists() else None
 		mpiexec = str(Path(mpilib).parent.parent / 'bin/mpiexec') \
@@ -126,9 +124,13 @@ class MPICheck:
 	def _dylib_reader(self):
 		""" Find dynamically linked libraries used by mpi4py """
 		if self.system == 'Linux':
-			return run(['ldd', '{}'.format(self._mpi_shared_lib)], stdout=PIPE)
+			result = run(['ldd', '{}'.format(self._mpi_shared_lib)], stdout=PIPE)
+			result = result.stdout.decode('utf-8').replace('\t', '').split('\n')[1:]
+			return [string for string in result if 'libmpi' in string][0].split()[2]	
 		elif self.system == 'Darwin':
-			return run(['otool', '-L', '{}'.format(self._mpi_shared_lib)], stdout=PIPE)
+			result = run(['otool', '-L', '{}'.format(self._mpi_shared_lib)], stdout=PIPE)
+			result = result.stdout.decode('utf-8').replace('\t', '').split('\n')[1:]
+			return [string for string in result if 'libmpi' in string][0].split()[0]
 		else:
 			raise NotImplementedError('MPI4PY testing only implemented for Linux and MacOS not {}'.format(self.system))
 
@@ -166,7 +168,7 @@ def mpi_run(nprocs, nnodes=None):
 			if mpi.size == 1:
 				try:
 					the_func = get_pytest_input(test_func).split('::')[1]
-					check_output(
+					output = check_output(
 						[
 							mpi.get_mpi_executable(),
 							"-np",
@@ -175,10 +177,13 @@ def mpi_run(nprocs, nnodes=None):
 							"-c",
 							"from test_examples import {0}; {0}()".format(the_func)
 						],
+						
 						universal_newlines=True,
 					)
+					with open("completed_process", "w") as fp:
+						print(output, file=fp)
 				except CalledProcessError as error:
-					with open("hello", "w") as fp:
+					with open("failed_process", "w") as fp:
 						print(error, file=fp)
 					raise RuntimeError("Pytest Failed")
 			else:

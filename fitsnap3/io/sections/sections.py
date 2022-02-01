@@ -74,6 +74,9 @@ class Section:
     def _set_relative_directory(cls, self):
         cwd = getcwd().split('/')
         path_to_file = self._args.infile.split('/')[:-1]
+        if path_to_file == []:
+            cls.relative_directory = ''
+            return
         count = 0
         while path_to_file[count] == cwd[count]:
             count += 1

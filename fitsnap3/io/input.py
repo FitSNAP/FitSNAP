@@ -63,6 +63,8 @@ class Config:
 
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
+        if not path.exists(self.args.infile):
+            raise FileNotFoundError("Input file not found")
         tmp_config.read(self.args.infile)
 
         vprint = output.screen if self.args.verbose else lambda *arguments, **kwargs: None

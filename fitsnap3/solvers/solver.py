@@ -32,29 +32,29 @@ class Solver:
         if config.sections["CALCULATOR"].energy:
             a_e, b_e, w_e = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
         else:
-            a_e, b_e, w_e = np.zeros((length, width)),np.zeros((length,)),np.zeros((length,))
+            a_e, b_e, w_e = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
         if config.sections["CALCULATOR"].force:
             num_forces = np.array(pt.shared_arrays['a'].num_atoms)*3
             a_f, b_f, w_f = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
         else:
-            a_f, b_f, w_f = np.zeros((length, width)),np.zeros((length,)),np.zeros((length,))
+            a_f, b_f, w_f = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
         if config.sections["CALCULATOR"].stress:
             a_s, b_s, w_s = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
         else:
-            a_s, b_s, w_s = np.zeros((length, width)),np.zeros((length,)),np.zeros((length,))
+            a_s, b_s, w_s = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
         if not config.sections["SOLVER"].detailed_errors:
             print(">>>Enable [SOLVER], detailed_errors = 1 to characterize the training/testing split of your output *.npy matricies")
         if config.sections["EXTRAS"].dump_a:
             # if config.sections["EXTRAS"].apply_transpose:
             #     np.save('Descriptors_Compact.npy', (np.concatenate((a_e,a_f,a_s),axis=0) @ np.concatenate((a_e,a_f,a_s),axis=0).T))
             # else:
-            np.save(config.sections['OUTFILE'].check_path('Descriptors.npy'),
+            np.save(config.sections['EXTRAS'].descriptor_file,
                     np.concatenate([x for x in (a_e, a_f, a_s) if x.size > 0], axis=0))
         if config.sections["EXTRAS"].dump_b:
-            np.save(config.sections['OUTFILE'].check_path('Truth-Ref.npy'),
+            np.save(config.sections['EXTRAS'].truth_file,
                     np.concatenate([x for x in (b_e, b_f, b_s) if x.size > 0], axis=0))
         if config.sections["EXTRAS"].dump_w:
-            np.save(config.sections['OUTFILE'].check_path('Weights.npy'),
+            np.save(config.sections['EXTRAS'].weights_file,
                     np.concatenate([x for x in (w_e, w_f, w_s) if x.size > 0], axis=0))
 
     def _offset(self):
@@ -103,17 +103,17 @@ class Solver:
         if config.sections["CALCULATOR"].energy:
             testing = -1 * pt.shared_arrays['configs_per_group'].testing
             a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
-            config_indicies,energy_list,force_list,stress_list = self._config_error()
+            config_indicies, energy_list, force_list, stress_list = self._config_error()
             self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
             if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
                 from csv import writer
                 true, pred = b, a @ self.fit
                 ConfigType = ['Training'] * (np.shape(true)[0]-pt.shared_arrays['configs_per_group'].testing) + \
                                              ['Testing'] * (pt.shared_arrays['configs_per_group'].testing)
-                with open(config.sections['OUTFILE'].check_path('detailed_energy_errors.dat'), 'w') as f:
+                with open(config.sections['CALCULATOR'].dee, 'w') as f:
                     writer = writer(f, delimiter=' ')
                     writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
-                    writer.writerows(zip(energy_list,ConfigType,true, pred, pred-true))
+                    writer.writerows(zip(energy_list, ConfigType, true, pred, pred-true))
 
             if testing != 0:
                 self._errors([[testing, 0]], ['*ALL'], "Energy_testing", a, b, w)
@@ -127,7 +127,7 @@ class Solver:
                 testing = 0
 
             a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
-            config_indicies,energy_list,force_list,stress_list = self._config_error()
+            config_indicies, energy_list, force_list, stress_list = self._config_error()
             if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
                 from csv import writer
                 true, pred = b, a @ self.fit
@@ -137,10 +137,10 @@ class Solver:
                                  ['Testing'] * (np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:]))
                 else:
                     ConfigType = ['Training'] * np.shape(true)[0]
-                with open(config.sections['OUTFILE'].check_path('detailed_force_errors.dat'), 'w') as f:
+                with open(config.sections['CALCULATOR'].dfe, 'w') as f:
                     writer = writer(f, delimiter=' ')
                     writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
-                    writer.writerows(zip(force_list,ConfigType, true, pred, pred-true))
+                    writer.writerows(zip(force_list, ConfigType, true, pred, pred-true))
 
             self._errors([[0, testing]], ['*ALL'], "Force", a, b, w)
             if testing != 0:
@@ -150,16 +150,16 @@ class Solver:
         if config.sections["CALCULATOR"].stress:
             testing = -6 * pt.shared_arrays['configs_per_group'].testing
             a, b, w = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
-            config_indicies,energy_list,force_list,stress_list = self._config_error()
+            config_indicies, energy_list, force_list, stress_list = self._config_error()
             if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
                 from csv import writer
                 true, pred = b, a @ self.fit
                 ConfigType = ['Training'] * (np.shape(true)[0] - 6 * pt.shared_arrays['configs_per_group'].testing) + \
                                              ['Testing'] * (6 * pt.shared_arrays['configs_per_group'].testing)
-                with open(config.sections['OUTFILE'].check_path('detailed_stress_errors.dat'), 'w') as f:
+                with open(config.sections['CALCULATOR'].dse, 'w') as f:
                     writer = writer(f, delimiter=' ')
                     writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
-                    writer.writerows(zip(stress_list,ConfigType, true, pred, pred-true))
+                    writer.writerows(zip(stress_list, ConfigType, true, pred, pred-true))
 
             self._errors([[0, testing]], ['*ALL'], "Stress", a, b, w)
             if testing != 0:
@@ -297,7 +297,7 @@ class Solver:
             else:
                 ConfigType = 'Training'
 
-            detailed_config_list.append([i,ConfigType,num_atoms,this_config[0]])
+            detailed_config_list.append([i, ConfigType, num_atoms, this_config[0]])
         return detailed_config_list,energy_list,force_list,stress_list
 
     def _config_energy(self, this_config, current_index):

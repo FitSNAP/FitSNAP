@@ -1,12 +1,12 @@
 from ...parallel_tools import pt, output
 from distutils.util import strtobool
-from os import getcwd
-from os import path
+from os import getcwd, path
 
 
 class Section:
     parameters = []
-    relative_directory = None
+    _infile_directory = None
+    _outfile_directory = None
 
     def __init__(self, name, config, args):
         self.name = name
@@ -53,33 +53,51 @@ class Section:
         return self._config.items(section)
 
     def check_path(self, name):
-        try:
-            if self.base_path is not None:
-                name = path.join(self.base_path, name)
+        name = path.join(Section.get_outfile_directory(self), name)
+        if self._args.overwrite is None:
             return name
-        except AttributeError:
-            return name
+        names = [name, name + '.snapparam', name + '.snapcoeff']
+        for element in names:
+            if not self._args.overwrite and path.exists(element):
+                raise FileExistsError(f"File {element} already exists.")
+        return name
 
     @classmethod
     def add_parameter(cls, section, key, fallback, interpreter):
         cls.parameters.append([section, key, fallback, interpreter])
 
     @classmethod
-    def _get_relative_directory(cls, self):
-        if cls.relative_directory is None:
-            cls._set_relative_directory(self)
-        return cls.relative_directory
+    def get_infile_directory(cls, self):
+        if cls._infile_directory is None:
+            cls._set_infile_directory(self)
+        return cls._infile_directory
 
     @classmethod
-    def _set_relative_directory(cls, self):
+    def get_outfile_directory(cls, self):
+        if cls._outfile_directory is None:
+            cls._set_outfile_directory(self)
+        return cls._outfile_directory
+
+    @classmethod
+    def _set_infile_directory(cls, self):
+        """ Set path to input file directory """
         cwd = getcwd().split('/')
         path_to_file = self._args.infile.split('/')[:-1]
-        if path_to_file == []:
-            cls.relative_directory = ''
-            return
-        count = 0
-        while path_to_file[count] == cwd[count]:
-            count += 1
-        cwd += (['..'] * (len(cwd)-count)) + path_to_file[count:]
-        relative_directory = '/'.join(cwd[count+1:])
-        cls.relative_directory = relative_directory
+        if not path_to_file:
+            cls._infile_directory = ''
+        elif not path.isabs(self._args.infile):
+            cls._infile_directory = '/'.join(path_to_file)
+        else:
+            count = 0
+            while path_to_file[count] == cwd[count]:
+                count += 1
+            cwd = (['..'] * (len(cwd)-count)) + path_to_file[count:]
+            cls._infile_directory = '/'.join(cwd)
+
+    @classmethod
+    def _set_outfile_directory(cls, self):
+        """ Set current working directory, if args.relative == True: cwd = input file directory else: cwd = cd ./ """
+        if self._args.relative:
+            cls._outfile_directory = cls.get_infile_directory(self)
+        else:
+            cls._outfile_directory = getcwd()

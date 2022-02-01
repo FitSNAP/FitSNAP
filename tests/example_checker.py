@@ -180,6 +180,8 @@ def mpi_run(nprocs, nnodes=None):
 						
 						universal_newlines=True,
 					)
+					if 'Trouble reading input, exiting...' in output:
+						raise RuntimeError('Trouble reading input, exiting...')
 					with open("completed_process", "w") as fp:
 						print(output, file=fp)
 				except CalledProcessError as error:

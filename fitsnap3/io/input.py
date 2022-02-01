@@ -63,7 +63,6 @@ class Config:
 
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
-        # useless addition
         if not Path(self.args.infile).is_file():
             raise FileNotFoundError("Input file not found")
         tmp_config.read(self.args.infile)

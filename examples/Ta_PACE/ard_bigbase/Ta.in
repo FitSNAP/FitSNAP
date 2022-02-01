@@ -21,11 +21,11 @@ Ta = 0.0
 
 [SOLVER]
 solver = ARD
-alphabig=1e-12
-alphasmall=1e-12
-lambdabig=1e-6
-lambdasmall=1e-6
-threshold_lambda=210000
+alphabig = 1e-12
+#alphasmall = 1e-12
+#lambdabig = 1e-6
+lambdasmall = 1e-6
+threshold_lambda = 210000
 compute_testerrs = 1
 detailed_errors = 1
 

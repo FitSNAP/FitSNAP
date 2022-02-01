@@ -23,8 +23,8 @@ try:
             if config.sections['EXTRAS'].apply_transpose:
                 bw = aw.T @ bw
                 aw = aw.T @ aw
-            alval = config.sections['LASSO'].alpha
-            maxitr = config.sections['LASSO'].max_iter
+            alval = config.sections['SOLVER'].alpha
+            maxitr = config.sections['SOLVER'].max_iter
             reg = Lasso(alpha=alval, fit_intercept=False, max_iter=maxitr)
             reg.fit(aw, bw)
             self.fit = reg.coef_

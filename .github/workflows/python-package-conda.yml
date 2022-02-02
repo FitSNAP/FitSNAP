@@ -56,6 +56,7 @@ jobs:
     - name: Test rest of tests
       run: |
         cd tests
+        pwd
         pytest test_examples.py::test_fitsnap_mpi
         pytest test_examples.py::test_fitsnap_quad
         pytest test_examples.py::test_fitsnap_eme

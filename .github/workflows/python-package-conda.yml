@@ -50,6 +50,7 @@ jobs:
       run: |
         conda install pytest
         cd tests
+        export PYTHONPATH=$(pwd):$PYTHONPATH
         pytest test_examples.py::test_stubs
     - name: Get mpi4py 
       uses: mpi4py/setup-mpi@v1

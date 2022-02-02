@@ -49,18 +49,13 @@ jobs:
     - name: Test stubs with pytest
       run: |
         conda install pytest
-        pwd
-        ls
-        ls tests
-        echo $PYTHONPATH
-        export PYTHONPATH=$(pwd):$PYTHONPATH
-        echo $PYTHONPATH
         cd tests
         pytest test_examples.py::test_stubs
     - name: Get mpi4py 
       uses: mpi4py/setup-mpi@v1
     - name: Test rest of tests
       run: |
+        cd tests
         pytest test_examples.py::test_fitsnap_mpi
         pytest test_examples.py::test_fitsnap_quad
         pytest test_examples.py::test_fitsnap_eme

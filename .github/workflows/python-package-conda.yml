@@ -54,6 +54,7 @@ jobs:
    #      pytest test_examples.py::test_stubs
     - name: Get mpi4py 
       uses: mpi4py/setup-mpi@v1
+    - name: Run mpi4py
       run: |
           mpirun -n 4 echo "Hello"
           mpirun -n 2 python test_mpi4py.py

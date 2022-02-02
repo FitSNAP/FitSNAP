@@ -42,10 +42,10 @@ jobs:
         mkdir build
         cd build
         cmake -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
-        cmake --build . -j 20
+        make -j 20
         make install-python
         cd ../../../FitSNAP
-    - name: Test with pytest
+    - name: Test stubs with pytest
       run: |
         conda install pytest
         pwd
@@ -56,4 +56,13 @@ jobs:
         echo $PYTHONPATH
         cd tests
         pytest test_examples.py::test_stubs
-        # cat test_examples.py
+    - name: Get mpi4py 
+      run: |
+        conda install mpi4py
+    - name: Test rest of tests
+      run: |
+        pytest test_examples.py::test_fitsnap_mpi
+        pytest test_examples.py::test_fitsnap_quad
+        pytest test_examples.py::test_fitsnap_eme
+        pytest test_examples.py::test_fitsnap_xyz
+        pytest test_examples.py::test_fitsnap_neme

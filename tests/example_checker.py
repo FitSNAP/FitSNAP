@@ -115,7 +115,7 @@ class MPICheck:
 		mpibin = None
 		for i in range(1,len(mpilib.parts)):
 			if mpilib.parts[-i]=='lib':
-				mpibin = mpilib.parents[i-1] / 'bin' 
+				mpibin = mpilib.parents[i-2] / 'bin' 
 				break
 		if mpibin is None:
 			mpibin = mpilib.parent.parent / 'bin'
@@ -192,10 +192,8 @@ def mpi_run(nprocs, nnodes=None):
 					with open("failed_process", "w") as fp:
 						print(error, file=fp)
 					return
-					# raise error
-					# raise RuntimeError("Pytest Failed")
+					raise RuntimeError("Pytest Failed", error)
 			else:
-				return
 				test_func(*args, **kwargs)
 
 		return wrapper

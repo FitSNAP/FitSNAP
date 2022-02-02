@@ -10,10 +10,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-   #  - name: Set up Python
-   #    uses: actions/setup-python@v2
-   #    with:
-   #      python-version: '3.7'
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
@@ -21,51 +17,49 @@ jobs:
     - name: Install dependencies
       run: |
         which python
-   #      conda install numpy
-   #      conda install pandas
-   #      conda install tabulate
-   #      conda install scipy
-   #      conda install psutil
-   #  - name: Lint with flake8
-   #    run: |
-   #      conda install flake8
-   #      # stop the build if there are Python syntax errors or undefined names
-   #      flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-   #      # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-   #      flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-   #  - name: Get latest CMake
-   #    uses: lukka/get-cmake@latest 
-   #  - name: Install LAMMPS
-   #    run: |
-   #      cd ../
-   #      git clone https://github.com/lammps/lammps.git
-   #      cd lammps/cmake
-   #      mkdir build
-   #      cd build
-   #      cmake -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
-   #      make -j 20
-   #      make install-python
-   #      cd ../../../FitSNAP
-   #  - name: Test stubs with pytest
-   #    run: |
-   #      conda install pytest
-   #      export PYTHONPATH=$(pwd):$PYTHONPATH
-   #      cd tests
-   #      pytest test_examples.py::test_stubs
+        conda install numpy
+        conda install pandas
+        conda install tabulate
+        conda install scipy
+        conda install psutil
+    - name: Lint with flake8
+      run: |
+        conda install flake8
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Get latest CMake
+      uses: lukka/get-cmake@latest 
+    - name: Install LAMMPS
+      run: |
+        cd ../
+        git clone https://github.com/lammps/lammps.git
+        cd lammps/cmake
+        mkdir build
+        cd build
+        cmake -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
+        make -j 20
+        make install-python
+        cd ../../../FitSNAP
+    - name: Test stubs with pytest
+      run: |
+        conda install pytest
+        export PYTHONPATH=$(pwd):$PYTHONPATH
+        cd tests
+        pytest test_examples.py::test_stubs
     - name: Get mpi 
       uses: mpi4py/setup-mpi@v1
     - name: Get mpi4py
       run: |
-          mpirun -n 4 echo "Hello"
           conda install pip
           pip install mpi4py
-          mpirun -n 2 python test_mpi4py.py
-   #  - name: Test rest of tests
-   #    run: |
-   #      export PYTHONPATH=$(pwd):$PYTHONPATH
-   #      cd tests
-   #      pytest test_examples.py::test_fitsnap_mpi
-   #      pytest test_examples.py::test_fitsnap_quad
-   #      pytest test_examples.py::test_fitsnap_eme
-   #      pytest test_examples.py::test_fitsnap_xyz
-   #      pytest test_examples.py::test_fitsnap_neme
+    - name: Test rest of tests
+      run: |
+        export PYTHONPATH=$(pwd):$PYTHONPATH
+        cd tests
+        pytest test_examples.py::test_fitsnap_mpi
+        pytest test_examples.py::test_fitsnap_quad
+        pytest test_examples.py::test_fitsnap_eme
+        pytest test_examples.py::test_fitsnap_xyz
+        pytest test_examples.py::test_fitsnap_neme

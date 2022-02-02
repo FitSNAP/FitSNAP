@@ -18,7 +18,6 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
-        export PYTHONPATH=$(pwd):$PYTHONPATH
     - name: Install dependencies
       run: |
         conda install numpy
@@ -40,6 +39,8 @@ jobs:
         pwd
         ls
         ls tests
+        echo $PYTHONPATH
+        export PYTHONPATH=$(pwd):$PYTHONPATH
         echo $PYTHONPATH
         cd tests
         cat test_examples.py

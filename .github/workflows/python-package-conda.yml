@@ -10,6 +10,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Get mpi 
+      run: |
+        sudo apt-get update
+        sudo apt-get install mpi-default-bin mpi-default-dev ninja-build
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
@@ -17,21 +21,20 @@ jobs:
     - name: Install dependencies
       run: |
         which python
-        conda install numpy
-        conda install pandas
-        conda install tabulate
-        conda install scipy
-        conda install psutil
-    - name: Lint with flake8
-      run: |
-        conda install flake8
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Get latest CMake
-      uses: lukka/get-cmake@latest 
+    #     conda install numpy
+    #     conda install pandas
+    #     conda install tabulate
+    #     conda install scipy
+    #     conda install psutil
+    # - name: Lint with flake8
+    #   run: |
+    #     conda install flake8
+    #     # stop the build if there are Python syntax errors or undefined names
+    #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+    #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install LAMMPS
+      shell: bash
       run: |
         cd ../
         git clone https://github.com/lammps/lammps.git
@@ -42,24 +45,22 @@ jobs:
         make -j 20
         make install-python
         cd ../../../FitSNAP
-    - name: Test stubs with pytest
-      run: |
-        conda install pytest
-        export PYTHONPATH=$(pwd):$PYTHONPATH
-        cd tests
-        pytest test_examples.py::test_stubs
-    - name: Get mpi 
-      uses: mpi4py/setup-mpi@v1
+    # - name: Test stubs with pytest
+    #   run: |
+    #     conda install pytest
+    #     export PYTHONPATH=$(pwd):$PYTHONPATH
+    #     cd tests
+    #     pytest test_examples.py::test_stubs
     - name: Get mpi4py
       run: |
-          conda install pip
-          pip install mpi4py
-    - name: Test rest of tests
-      run: |
-        export PYTHONPATH=$(pwd):$PYTHONPATH
-        cd tests
-        pytest test_examples.py::test_fitsnap_mpi
-        pytest test_examples.py::test_fitsnap_quad
-        pytest test_examples.py::test_fitsnap_eme
-        pytest test_examples.py::test_fitsnap_xyz
-        pytest test_examples.py::test_fitsnap_neme
+        cd $CONDA
+        pwd
+    # - name: Test rest of tests
+    #   run: |
+    #     export PYTHONPATH=$(pwd):$PYTHONPATH
+    #     cd tests
+    #     pytest test_examples.py::test_fitsnap_mpi
+    #     pytest test_examples.py::test_fitsnap_quad
+    #     pytest test_examples.py::test_fitsnap_eme
+    #     pytest test_examples.py::test_fitsnap_xyz
+    #     pytest test_examples.py::test_fitsnap_neme

@@ -111,13 +111,17 @@ class MPICheck:
 	@assert_mpi
 	def _find_mpirun(self):
 		""" Find mpirun, mpiexec, or orterun"""
-		mpilib = self._dylib_reader()
-		mpirun = str(Path(mpilib).parent.parent / 'bin/mpirun') \
-			if (Path(mpilib).parent.parent / 'bin/mpirun').exists() else None
-		mpiexec = str(Path(mpilib).parent.parent / 'bin/mpiexec') \
-			if (Path(mpilib).parent.parent / 'bin/mpiexec').exists() else None
-		orterun = str(Path(mpilib).parent.parent / 'bin/orterun') \
-			if (Path(mpilib).parent.parent / 'bin/orterun').exists() else None
+		mpilib = Path(self._dylib_reader())
+		mpibin = None
+		for i in range(1,len(mpilib.parts)):
+			if mpilib.parts[-i]=='lib':
+				mpibin = mpilib.parents[i-1] / 'bin' 
+				break
+		if mpibin is None:
+			mpibin = mpilib.parent.parent / 'bin'
+		mpirun = str(mpibin / 'mpirun') if (mpibin / 'mpirun').exists() else None
+		mpiexec = str(mpibin / 'mpiexec') if (mpibin / 'mpiexec').exists() else None
+		orterun = str(mpibin / 'orterun') if (mpibin / 'orterun').exists() else None
 		assert mpirun is not None or mpiexec is not None or orterun is not None
 		return mpirun, mpiexec, orterun
 

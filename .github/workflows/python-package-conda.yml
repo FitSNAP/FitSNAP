@@ -6,7 +6,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 5
+      max-parallel: 20
 
     steps:
     - uses: actions/checkout@v2
@@ -24,6 +24,7 @@ jobs:
         conda install pandas
         conda install tabulate
         conda install scipy
+        conda install psutil
     - name: Lint with flake8
       run: |
         conda install flake8
@@ -41,7 +42,7 @@ jobs:
         mkdir build
         cd build
         cmake -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
-        cmake --build .
+        cmake --build -j 20 .
         make install-python
         cd ../../../FitSNAP
     - name: Test with pytest

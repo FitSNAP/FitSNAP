@@ -64,7 +64,6 @@ jobs:
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
-        /bin/mpirun -np 3 /usr/share/miniconda/bin/python -c "from test_examples import test_fitsnap_mpi; test_fitsnap_mpi()"
         pytest test_examples.py::test_fitsnap_mpi
         cat failed_process
         pytest test_examples.py::test_fitsnap_quad

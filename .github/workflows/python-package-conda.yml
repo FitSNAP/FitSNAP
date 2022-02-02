@@ -35,4 +35,4 @@ jobs:
       run: |
         conda install pytest
         cd tests
-        pytest test_examples.py::test_fitsnap_stubs
+        pytest test_examples.py::test_stubs

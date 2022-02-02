@@ -41,7 +41,7 @@ jobs:
         mkdir build
         cd build
         cmake -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
-        cmake --build
+        cmake --build .
         make install-python
         cd ../../../FitSNAP
     - name: Test with pytest

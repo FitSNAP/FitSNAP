@@ -35,5 +35,8 @@ jobs:
     - name: Test with pytest
       run: |
         conda install pytest
-        cd tests
-        pytest test_examples.py::test_stubs
+        # cd tests
+        # pytest test_examples.py::test_stubs
+        pwd
+        ls
+        ls tests

@@ -1,5 +1,5 @@
 from mpi4py import MPI
-from subprocess import run
+from subprocess import run, PIPE
 
 
 comm = MPI.COMM_WORLD

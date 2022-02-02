@@ -124,7 +124,7 @@ class MPICheck:
 		if mpirun is None and mpiexec is None and orterun is None:
 			mpirun = check_output(['which', 'mpirun'], universal_newlines=True)
 		print(mpirun)
-		assert Path(mpirun).exists()
+		# assert Path(mpirun).exists()
 		assert mpirun is not None or mpiexec is not None or orterun is not None
 		return mpirun, mpiexec, orterun
 

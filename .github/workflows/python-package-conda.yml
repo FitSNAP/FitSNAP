@@ -64,6 +64,7 @@ jobs:
     - name: Test rest of tests
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH
+        which mpirun
         cd tests
         pytest test_examples.py::test_fitsnap_mpi
         cat failed_process

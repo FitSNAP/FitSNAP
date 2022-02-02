@@ -41,8 +41,8 @@ jobs:
         cd lammps/cmake
         mkdir build
         cd build
-        cmake -j 20 -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
-        cmake -j 20 --build .
+        cmake -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
+        cmake --build . -j 20
         make install-python
         cd ../../../FitSNAP
     - name: Test with pytest

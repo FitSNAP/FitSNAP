@@ -40,3 +40,6 @@ jobs:
         pwd
         ls
         ls tests
+        echo $PYTHONPATH
+        cd tests
+        cat test_examples.py

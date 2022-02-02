@@ -8,7 +8,7 @@ for the purpose of studying plasma material interactions in fusion reactors.
 
 To run this example, use the following command in this directory:
 
-python3 -m fitsnap3 --overwrite -v  WBe-example.in
+mpirun -n 4 python3 -m fitsnap3 WBe-example.in
 
 #### Files in this Directory
 
@@ -16,12 +16,6 @@ WBe-example.in
 
 Input file containing parameters to run FitSNAP and generate
 the W-Be potential
-
-grouplist.in
-
-File that lists all the training groups in the JSON directory, 
-the number of files in each group, and the energy, force, and virial training 
-weights on each group.
 
 JSON/
 
@@ -44,7 +38,7 @@ WBe_metrics.csv
 
 Contains a variety of error metrics for all the training groups for this fit.
 
-Note that the 19Nov19_Standard/ directory contains sample output for this example for comparison
+Note that the 20May21_Standard/ directory contains sample output for this example for comparison
 
 #### Important input parameters for this example
 

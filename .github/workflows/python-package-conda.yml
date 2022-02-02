@@ -10,10 +10,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python 3.7
+    - name: Set up Python
       uses: actions/setup-python@v2
-      with:
-        python-version: '3.7'
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
@@ -26,37 +24,37 @@ jobs:
         conda install tabulate
         conda install scipy
         conda install psutil
-    # - name: Lint with flake8
-    #   run: |
-    #     conda install flake8
-    #     # stop the build if there are Python syntax errors or undefined names
-    #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-    #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    # - name: Get latest CMake
-    #   uses: lukka/get-cmake@latest 
-    # - name: Install LAMMPS
-    #   run: |
-    #     cd ../
-    #     git clone https://github.com/lammps/lammps.git
-    #     cd lammps/cmake
-    #     mkdir build
-    #     cd build
-    #     cmake -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
-    #     make -j 20
-    #     make install-python
-    #     cd ../../../FitSNAP
-    # - name: Test stubs with pytest
-    #   run: |
-    #     conda install pytest
-    #     pwd
-    #     ls
-    #     ls tests
-    #     echo $PYTHONPATH
-    #     export PYTHONPATH=$(pwd):$PYTHONPATH
-    #     echo $PYTHONPATH
-    #     cd tests
-    #     pytest test_examples.py::test_stubs
+    - name: Lint with flake8
+      run: |
+        conda install flake8
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Get latest CMake
+      uses: lukka/get-cmake@latest 
+    - name: Install LAMMPS
+      run: |
+        cd ../
+        git clone https://github.com/lammps/lammps.git
+        cd lammps/cmake
+        mkdir build
+        cd build
+        cmake -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
+        make -j 20
+        make install-python
+        cd ../../../FitSNAP
+    - name: Test stubs with pytest
+      run: |
+        conda install pytest
+        pwd
+        ls
+        ls tests
+        echo $PYTHONPATH
+        export PYTHONPATH=$(pwd):$PYTHONPATH
+        echo $PYTHONPATH
+        cd tests
+        pytest test_examples.py::test_stubs
     - name: Get mpi4py 
       uses: mpi4py/setup-mpi@v1
     - name: Test rest of tests

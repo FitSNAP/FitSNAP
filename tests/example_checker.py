@@ -191,7 +191,8 @@ def mpi_run(nprocs, nnodes=None):
 				except CalledProcessError as error:
 					with open("failed_process", "w") as fp:
 						print(error, file=fp)
-					raise RuntimeError("Pytest Failed")
+					raise error
+					# raise RuntimeError("Pytest Failed")
 			else:
 				test_func(*args, **kwargs)
 

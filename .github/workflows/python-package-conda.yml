@@ -18,9 +18,9 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
-   #  - name: Install dependencies
-   #    run: |
-   #      which python
+    - name: Install dependencies
+      run: |
+        which python
    #      conda install numpy
    #      conda install pandas
    #      conda install tabulate
@@ -57,7 +57,8 @@ jobs:
     - name: Get mpi4py
       run: |
           mpirun -n 4 echo "Hello"
-          conda install mpi4py
+          conda install pip
+          pip install mpi4py
           mpirun -n 2 python test_mpi4py.py
    #  - name: Test rest of tests
    #    run: |

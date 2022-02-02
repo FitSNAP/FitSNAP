@@ -53,9 +53,10 @@ jobs:
    #      cd tests
    #      pytest test_examples.py::test_stubs
     - name: Get mpi4py 
+      uses: mpi4py/setup-mpi@v1
       run: |
           mpirun -n 4 echo "Hello"
-      # uses: mpi4py/setup-mpi@v1
+          mpirun -n 2 python test_mpi4py.py
    #  - name: Test rest of tests
    #    run: |
    #      export PYTHONPATH=$(pwd):$PYTHONPATH

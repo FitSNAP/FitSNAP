@@ -560,7 +560,7 @@ class ParallelTools:
             if path.is_dir():
                 paths.append(path)
         for package_dir in paths:
-            for (_, module_name, c) in iter_modules([package_dir]):
+            for (_, module_name, c) in iter_modules([str(package_dir)]):
                 if module_name != name[-1] and module_name != name[-2]:
                     temp_name = name[:-1]
                     the_path = str(package_dir).split("/")

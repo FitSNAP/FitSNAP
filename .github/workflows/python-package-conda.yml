@@ -34,8 +34,6 @@ jobs:
     - name: Test with pytest
       run: |
         conda install pytest
-        # cd tests
-        # pytest test_examples.py::test_stubs
         pwd
         ls
         ls tests
@@ -43,4 +41,5 @@ jobs:
         export PYTHONPATH=$(pwd):$PYTHONPATH
         echo $PYTHONPATH
         cd tests
-        cat test_examples.py
+        pytest test_examples.py::test_stubs
+        # cat test_examples.py

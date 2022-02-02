@@ -6,5 +6,5 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
-print(MPI.__file__i, "on rank", rank)
+print(MPI.__file__, "on rank", rank)
 print(sys.executable, "on rank", rank)

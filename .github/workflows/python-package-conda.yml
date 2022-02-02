@@ -65,6 +65,7 @@ jobs:
         export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
         pytest test_examples.py::test_fitsnap_mpi
+        cat failed_process
         pytest test_examples.py::test_fitsnap_quad
         pytest test_examples.py::test_fitsnap_eme
         pytest test_examples.py::test_fitsnap_xyz

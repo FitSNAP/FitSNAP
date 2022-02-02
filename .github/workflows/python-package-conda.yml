@@ -56,12 +56,8 @@ jobs:
       uses: mpi4py/setup-mpi@v1
     - name: Test rest of tests
       run: |
-        echo $PYTHONPATH
-        ls
-        pwd
+        export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
-        pwd
-        ls
         pytest test_examples.py::test_fitsnap_mpi
         pytest test_examples.py::test_fitsnap_quad
         pytest test_examples.py::test_fitsnap_eme

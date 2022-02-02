@@ -115,10 +115,11 @@ class MPICheck:
 		mpibin = None
 		for i in range(1,len(mpilib.parts)):
 			if mpilib.parts[-i]=='lib':
-				mpibin = mpilib.parents[i-2] / 'bin' 
+				mpibin = mpilib.parents[i-1] / 'bin' 
 				break
 		if mpibin is None:
 			mpibin = mpilib.parent.parent / 'bin'
+		print(mpibin)
 		mpirun = str(mpibin / 'mpirun') if (mpibin / 'mpirun').exists() else None
 		mpiexec = str(mpibin / 'mpiexec') if (mpibin / 'mpiexec').exists() else None
 		orterun = str(mpibin / 'orterun') if (mpibin / 'orterun').exists() else None

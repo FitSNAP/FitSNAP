@@ -191,7 +191,7 @@ def mpi_run(nprocs, nnodes=None):
 					output = process.stdout
 					print(process.stdout, process.stderr)
 					if process.returncode:
-						raise CalledProcessError(process.returncode, process.args)
+						raise CalledProcessError(process.returncode, process.args, process.stdout, process.stderr)
 					if 'Trouble reading input, exiting...' in output:
 						raise RuntimeError('Trouble reading input, exiting...')
 					with open("completed_process", "w") as fp:

@@ -176,7 +176,7 @@ def mpi_run(nprocs, nnodes=None):
 			if mpi.size == 1:
 				try:
 					the_func = get_pytest_input(test_func).split('::')[1]
-					output = check_output(
+					process = run(
 						[
 							mpi.get_mpi_executable(),
 							"-np",
@@ -186,9 +186,12 @@ def mpi_run(nprocs, nnodes=None):
 							"-c",
 							"from test_examples import {0}; {0}()".format(the_func)
 						],
-						
 						universal_newlines=True,
 					)
+					output = process.stdout
+					print(process.stdout, process.stderr)
+					if process.returncode:
+						raise CalledProcessError
 					if 'Trouble reading input, exiting...' in output:
 						raise RuntimeError('Trouble reading input, exiting...')
 					with open("completed_process", "w") as fp:

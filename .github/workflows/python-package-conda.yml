@@ -72,3 +72,4 @@ jobs:
     #     pytest test_examples.py::test_fitsnap_eme
     #     pytest test_examples.py::test_fitsnap_xyz
     #     pytest test_examples.py::test_fitsnap_neme
+

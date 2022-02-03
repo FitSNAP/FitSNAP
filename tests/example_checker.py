@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 import configparser
 import platform
-from subprocess import PIPE, CalledProcessError, run, check_output
+from subprocess import PIPE, CalledProcessError, run, check_output, list2cmdline
 import sys
 from functools import wraps
 import inspect
@@ -189,7 +189,7 @@ def mpi_run(nprocs, nnodes=None):
 						universal_newlines=True,
 					)
 					output = process.stdout
-					print(process.stdout, process.stderr)
+					print(process.stdout, process.stderr, list2cmdline(process.args))
 					if process.returncode:
 						raise CalledProcessError(process.returncode, process.args, process.stdout, process.stderr)
 					if 'Trouble reading input, exiting...' in output:

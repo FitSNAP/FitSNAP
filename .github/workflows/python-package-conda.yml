@@ -15,6 +15,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install mpi-default-bin mpi-default-dev ninja-build
         which mpirun
+        mpirun -n 4 echo "Hello"
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory

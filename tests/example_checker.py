@@ -113,17 +113,18 @@ class MPICheck:
 		""" Find mpirun, mpiexec, or orterun"""
 		mpilib = Path(self._dylib_reader())
 		mpibin = None
-		# for i in range(1,len(mpilib.parts)):
-		# 	if mpilib.parts[-i]=='lib':
-		# 		mpibin = mpilib.parents[i-1] / 'bin' 
-		# 		break
-		mpibin = mpilib.parent.parent / 'bin'
+		for i in range(1,len(mpilib.parts)):
+			if mpilib.parts[-i]=='lib':
+				mpibin = mpilib.parents[i-1] / 'bin' 
+				break
+		if mpibin is None:
+			mpibin = mpilib.parent.parent / 'bin'
 		mpirun = str(mpibin / 'mpirun') if (mpibin / 'mpirun').exists() else None
 		mpiexec = str(mpibin / 'mpiexec') if (mpibin / 'mpiexec').exists() else None
 		orterun = str(mpibin / 'orterun') if (mpibin / 'orterun').exists() else None
-		if mpirun is None and mpiexec is None and orterun is None:
-			mpirun = check_output(['which', 'mpirun'], universal_newlines=True).strip()
-		print(mpirun)
+		# if mpirun is None and mpiexec is None and orterun is None:
+		# 	mpirun = check_output(['which', 'mpirun'], universal_newlines=True).strip()
+		# print(mpirun)
 		# assert Path(mpirun).exists()
 		assert mpirun is not None or mpiexec is not None or orterun is not None
 		return mpirun, mpiexec, orterun
@@ -180,6 +181,7 @@ def mpi_run(nprocs, nnodes=None):
 							mpi.get_mpi_executable(),
 							"-np",
 							str(nprocs),
+							"-oversubscribe",
 							sys.executable,
 							"-c",
 							"from test_examples import {0}; {0}()".format(the_func)

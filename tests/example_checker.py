@@ -187,6 +187,7 @@ def mpi_run(nprocs, nnodes=None):
 							"from test_examples import {0}; {0}()".format(the_func)
 						],
 						universal_newlines=True,
+						capture_output=True
 					)
 					output = process.stdout
 					print(process.stdout, process.stderr, list2cmdline(process.args))

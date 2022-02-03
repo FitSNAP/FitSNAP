@@ -46,9 +46,9 @@ jobs:
     #     make -j 20
     #     make install-python
     #     cd ../../../FitSNAP
-    # - name: Test stubs with pytest
-    #   run: |
-    #     conda install pytest
+    - name: Test stubs with pytest
+      run: |
+        conda install pytest
     #     export PYTHONPATH=$(pwd):$PYTHONPATH
     #     cd tests
     #     pytest test_examples.py::test_stubs

@@ -92,7 +92,8 @@ class MPICheck:
 			self.number_of_nodes = 1
 
 	def finalize(self):
-		self._MPI.Finalize()
+		if not self.stubs:
+			self._MPI.Finalize()
 
 	@assert_mpi
 	def get_mpi_executable(self, exec_type="mpirun"):

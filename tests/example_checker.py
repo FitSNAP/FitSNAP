@@ -182,7 +182,7 @@ def mpi_run(nprocs, nnodes=None):
 					the_func = get_pytest_input(test_func).split('::')[1]
 					executable = mpi.get_mpi_executable()
 					mpi.finalize()
-					process = run(
+					output = check_output(
 						[
 							executable,
 							"-np",
@@ -193,12 +193,7 @@ def mpi_run(nprocs, nnodes=None):
 							"from test_examples import {0}; {0}()".format(the_func)
 						],
 						universal_newlines=True,
-						capture_output=True
 					)
-					output = process.stdout
-					print(process.stdout, process.stderr, list2cmdline(process.args))
-					if process.returncode:
-						raise CalledProcessError(process.returncode, process.args, process.stdout, process.stderr)
 					if 'Trouble reading input, exiting...' in output:
 						raise RuntimeError('Trouble reading input, exiting...')
 					with open("completed_process", "w") as fp:
@@ -206,7 +201,7 @@ def mpi_run(nprocs, nnodes=None):
 				except CalledProcessError as error:
 					with open("failed_process", "w") as fp:
 						print(error, file=fp)
-					raise RuntimeError("Pytest Failed", error, error.output, error.stderr)
+					raise RuntimeError("Pytest Failed", error)
 			else:
 				test_func(*args, **kwargs)
 

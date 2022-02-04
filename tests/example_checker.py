@@ -6,6 +6,7 @@ from subprocess import PIPE, CalledProcessError, run, check_output, list2cmdline
 import sys
 from functools import wraps
 import inspect
+from pytest_easyMPI import mpi_parallel
 
 
 class ExampleChecker:
@@ -89,6 +90,9 @@ class MPICheck:
 			self.sub_head_proc = 0
 			self.node_index = 0
 			self.number_of_nodes = 1
+
+	def finalize(self):
+		self._MPI.Finalize()
 
 	@assert_mpi
 	def get_mpi_executable(self, exec_type="mpirun"):
@@ -176,9 +180,11 @@ def mpi_run(nprocs, nnodes=None):
 			if mpi.size == 1:
 				try:
 					the_func = get_pytest_input(test_func).split('::')[1]
+					executable = mpi.get_mpi_executable()
+					mpi.finalize()
 					process = run(
 						[
-							mpi.get_mpi_executable(),
+							executable,
 							"-np",
 							str(nprocs),
 							"-oversubscribe",

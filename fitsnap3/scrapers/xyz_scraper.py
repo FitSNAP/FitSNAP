@@ -7,6 +7,7 @@ from random import shuffle
 from os import path, listdir
 from copy import copy
 import re
+from _collections import defaultdict
 
 pt = ParallelTools()
 

@@ -1,13 +1,14 @@
-from .scrape import Scraper
-from ..io.input import config
-from ..parallel_tools import pt
-from ..io.output import output
+from fitsnap3.scrapers.scrape import Scraper
+from fitsnap3.io.input import config
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.io.output import output
 import numpy as np
 from random import shuffle
 from os import path, listdir
 from copy import copy
 import re
-from _collections import defaultdict
+
+pt = ParallelTools()
 
 UNPROCESSED_KEYS = ['uid']
 

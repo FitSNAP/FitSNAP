@@ -48,6 +48,21 @@ except ModuleNotFoundError:
     stubs = 1
 
 
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if (
+                kwargs is not None
+                and "comm" in kwargs.keys()
+                and kwargs["comm"] is not None
+        ):
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
 def printf(*args, **kw):
     kw['flush'] = True
 
@@ -136,16 +151,13 @@ def print_lammps(method):
     return new_method
 
 
-class ParallelTools:
+class ParallelTools(metaclass=Singleton):
 
-    def __init__(self):
+    def __init__(self, comm=None):
         if stubs == 0:
-            try:
-                self._comm = MPI.ADDED_COMM
-            except NameError:
-                self._comm = MPI.COMM_WORLD
-            except AttributeError:
-                self._comm = MPI.COMM_WORLD
+            if comm is None:
+                comm = MPI.COMM_WORLD
+            self._comm = MPI.comm
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
         if stubs == 1:
@@ -427,7 +439,7 @@ class ParallelTools:
             raise IndexError("{} not found in shared objects".format(name))
 
     def slice_a(self, name='a'):
-        nof = len(pt.shared_arrays["number_of_atoms"].array)
+        nof = len(self.shared_arrays["number_of_atoms"].array)
         s = slice(self._sub_rank, nof, self._sub_size)
         if self._sub_rank != 0:
             # Wait for head proc on node to fill indices
@@ -464,12 +476,12 @@ class ParallelTools:
                 j += 1
             if self.fitsnap_dict["force"]:
                 f_temp.append(j)
-                j += 3 * pt.shared_arrays["number_of_atoms"].array[i]
+                j += 3 * self.shared_arrays["number_of_atoms"].array[i]
             if self.fitsnap_dict["stress"]:
                 s_temp.append(j)
                 j += 6
             indices.append(j)
-            atoms.append(pt.shared_arrays["number_of_atoms"].array[i])
+            atoms.append(self.shared_arrays["number_of_atoms"].array[i])
         if self.fitsnap_dict["energy"]:
             self.shared_arrays[name].group_energy_index.append(e_temp)
             self.shared_arrays[name].energy_index = \
@@ -515,10 +527,10 @@ class ParallelTools:
     def exception(self, err):
         self.killer.already_killed = True
 
-        if pt.logger is None and self._rank == 0:
+        if self.logger is None and self._rank == 0:
             raise err
 
-        pt.close_lammps()
+        self.close_lammps()
         if self._rank == 0:
             self.logger.exception(err)
 
@@ -665,25 +677,8 @@ class StubsArray:
         return self.array.nbytes
 
 
-class Output:
-
-    def __init__(self):
-        self.none = None
-
-    @staticmethod
-    def screen(*args, **kw):
-        pt.single_print(*args, **kw)
-
-    @staticmethod
-    def exception(err):
-        # There is almost never a reason to use this
-        pt.exception(err)
-
-
 if __name__.split(".")[-1] == "parallel_tools":
-    pt = ParallelTools()
     if stubs == 0:
         double_size = MPI.DOUBLE.Get_size()
     else:
         double_size = ctypes.sizeof(ctypes.c_double)
-    output = Output()

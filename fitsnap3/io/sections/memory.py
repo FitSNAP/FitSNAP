@@ -1,7 +1,10 @@
-from .sections import Section
+from fitsnap3.io.sections.sections import Section
 from os import sysconf
 from subprocess import check_output
-from ...parallel_tools import pt
+from fitsnap3.parallel_tools import ParallelTools
+
+
+pt = ParallelTools()
 
 
 class Memory(Section):

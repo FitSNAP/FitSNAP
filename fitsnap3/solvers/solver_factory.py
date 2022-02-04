@@ -1,5 +1,24 @@
-from .solver import Solver, pt
-pt.get_subclasses(__name__, __file__, Solver)
+from fitsnap3.solvers.solver import Solver
+from fitsnap3.parallel_tools import ParallelTools
+
+try:
+    from fitsnap3.solvers.ard import ARD
+except ImportError:
+    pass
+
+try:
+    from fitsnap3.solvers.lasso import LASSO
+except ImportError:
+    pass
+
+try:
+    from fitsnap3.solvers.scalapack import ScaLAPACK
+except ImportError:
+    pass
+
+
+pt = ParallelTools()
+# pt.get_subclasses(__name__, __file__, Solver)
 
 
 def solver(solver_name):

@@ -1,7 +1,12 @@
-from .solver import Solver
-from ..parallel_tools import pt
-from ..io.input import config
+from fitsnap3.solvers.solver import Solver
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.io.input import Config
 import numpy as np
+
+
+config = Config()
+pt = ParallelTools()
+
 
 try:
     from sklearn.linear_model import Lasso

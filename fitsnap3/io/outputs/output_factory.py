@@ -1,5 +1,10 @@
-from .outputs import Output, pt
-pt.get_subclasses(__name__, __file__, Output)
+from fitsnap3.io.outputs.outputs import Output
+from fitsnap3.parallel_tools import ParallelTools
+
+
+
+pt = ParallelTools()
+# pt.get_subclasses(__name__, __file__, Output)
 
 
 def output_factory(output_name):

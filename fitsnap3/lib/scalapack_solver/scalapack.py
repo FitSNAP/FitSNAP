@@ -1,6 +1,9 @@
 from scalapack_funcs import *
 import ctypes as ctypes
-from ...parallel_tools import pt
+from fitsnap3.parallel_tools import ParallelTools
+
+
+pt = ParallelTools()
 
 
 def find_work_space(myrow, mycol, nprow, npcol, m, mb_a, n):

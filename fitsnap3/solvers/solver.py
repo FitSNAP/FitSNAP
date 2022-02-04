@@ -1,7 +1,11 @@
-from ..io.input import config
-from ..parallel_tools import pt
+from fitsnap3.io.input import Config
+from fitsnap3.parallel_tools import ParallelTools
 import numpy as np
 from pandas import DataFrame
+
+
+config = Config()
+pt = ParallelTools()
 
 
 class Solver:

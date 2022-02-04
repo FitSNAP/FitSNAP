@@ -1,7 +1,12 @@
-from ...parallel_tools import output, pt
-from ..error import ExitFunc
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.parallel_output import Output
+from fitsnap3.io.error import ExitFunc
 from distutils.util import strtobool
 from os import getcwd
+
+
+pt = ParallelTools()
+output = Output()
 
 
 class Section:

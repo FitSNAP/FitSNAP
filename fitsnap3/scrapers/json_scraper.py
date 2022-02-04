@@ -1,10 +1,14 @@
-from .scrape import Scraper, convert
-from ..io.input import config
+from fitsnap3.scrapers.scrape import Scraper, convert
+from fitsnap3.io.input import Config
 from json import loads
-from ..parallel_tools import pt
-from ..io.output import output
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.io.output import output
 from copy import copy
 import numpy as np
+
+
+config = Config()
+pt = ParallelTools()
 
 
 class Json(Scraper):

@@ -2,9 +2,11 @@ import pickle
 import pathlib
 import numpy as np
 from scipy import special
-from ...parallel_tools import pt
+from fitsnap3.parallel_tools import ParallelTools
 from datetime import date
 
+
+pt = ParallelTools()
 # multiplicative factor for expansion coefficients (for conversion of units from native testing to LAMMPS ML-PACE)
 multfac = 1.
 cglib = False

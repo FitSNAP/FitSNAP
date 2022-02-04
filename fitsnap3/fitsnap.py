@@ -30,12 +30,16 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from .parallel_tools import pt
-from .scrapers.scraper_factory import scraper
-from .calculators.calculator_factory import calculator
-from .solvers.solver_factory import solver
-from .io.output import output
-from .io.input import config
+from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.scrapers.scraper_factory import scraper
+from fitsnap3.calculators.calculator_factory import calculator
+from fitsnap3.solvers.solver_factory import solver
+from fitsnap3.io.output import output
+from fitsnap3.io.input import Config
+
+
+pt = ParallelTools()
+config = Config()
 
 
 class FitSnap:

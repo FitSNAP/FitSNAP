@@ -61,8 +61,6 @@ jobs:
         cd mpi4py-3.1.3
         python setup.py build
         python setup.py install
-    # - name: Setup tmate session
-    #   uses: mxschmitt/action-tmate@v3
     - name: Test rest of tests
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH

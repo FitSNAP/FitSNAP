@@ -6,7 +6,6 @@ from subprocess import PIPE, CalledProcessError, run, check_output, list2cmdline
 import sys
 from functools import wraps
 import inspect
-from pytest_easyMPI import mpi_parallel
 
 
 class ExampleChecker:

@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 import configparser
 import platform
-from subprocess import PIPE, CalledProcessError, run, check_output
+from subprocess import PIPE, CalledProcessError, run, check_output, list2cmdline
 import sys
 from functools import wraps
 import inspect
@@ -90,6 +90,10 @@ class MPICheck:
 			self.node_index = 0
 			self.number_of_nodes = 1
 
+	def finalize(self):
+		if not self.stubs:
+			self._MPI.Finalize()
+
 	@assert_mpi
 	def get_mpi_executable(self, exec_type="mpirun"):
 		""" Getter for MPI executable default to mpirun """
@@ -111,13 +115,21 @@ class MPICheck:
 	@assert_mpi
 	def _find_mpirun(self):
 		""" Find mpirun, mpiexec, or orterun"""
-		mpilib = self._dylib_reader()
-		mpirun = str(Path(mpilib).parent.parent / 'bin/mpirun') \
-			if (Path(mpilib).parent.parent / 'bin/mpirun').exists() else None
-		mpiexec = str(Path(mpilib).parent.parent / 'bin/mpiexec') \
-			if (Path(mpilib).parent.parent / 'bin/mpiexec').exists() else None
-		orterun = str(Path(mpilib).parent.parent / 'bin/orterun') \
-			if (Path(mpilib).parent.parent / 'bin/orterun').exists() else None
+		mpilib = Path(self._dylib_reader())
+		mpibin = None
+	#	for i in range(1,len(mpilib.parts)):
+	#		if mpilib.parts[-i]=='lib':
+	#			mpibin = mpilib.parents[i-1] / 'bin' 
+	#			break
+		if mpibin is None:
+			mpibin = mpilib.parent.parent / 'bin'
+		mpirun = str(mpibin / 'mpirun') if (mpibin / 'mpirun').exists() else None
+		mpiexec = str(mpibin / 'mpiexec') if (mpibin / 'mpiexec').exists() else None
+		orterun = str(mpibin / 'orterun') if (mpibin / 'orterun').exists() else None
+		if mpirun is None and mpiexec is None and orterun is None:
+			mpirun = check_output(['which', 'mpirun'], universal_newlines=True).strip()
+		print(mpirun)
+		# assert Path(mpirun).exists()
 		assert mpirun is not None or mpiexec is not None or orterun is not None
 		return mpirun, mpiexec, orterun
 
@@ -168,16 +180,18 @@ def mpi_run(nprocs, nnodes=None):
 			if mpi.size == 1:
 				try:
 					the_func = get_pytest_input(test_func).split('::')[1]
+					executable = mpi.get_mpi_executable()
+					mpi.finalize()
 					output = check_output(
 						[
-							mpi.get_mpi_executable(),
+							executable,
 							"-np",
 							str(nprocs),
+							"-oversubscribe",
 							sys.executable,
 							"-c",
 							"from test_examples import {0}; {0}()".format(the_func)
 						],
-						
 						universal_newlines=True,
 					)
 					if 'Trouble reading input, exiting...' in output:
@@ -187,7 +201,7 @@ def mpi_run(nprocs, nnodes=None):
 				except CalledProcessError as error:
 					with open("failed_process", "w") as fp:
 						print(error, file=fp)
-					raise RuntimeError("Pytest Failed")
+					raise RuntimeError("Pytest Failed", error)
 			else:
 				test_func(*args, **kwargs)
 

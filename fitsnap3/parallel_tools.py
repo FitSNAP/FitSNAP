@@ -168,6 +168,8 @@ class ParallelTools:
         self.shared_arrays = {}
         self.fitsnap_dict = {}
         self.logger = None
+        self.pytest = False
+        self._fp = None
 
     @stub_check
     def _comm_split(self):
@@ -217,14 +219,24 @@ class ParallelTools:
 
     @_rank_zero
     def single_print(self, *args, **kw):
-        printf(" ".join(map(str, args)), **kw)
+        printf(*args, file=self._fp)
 
     @_sub_rank_zero
     def sub_print(self, *args, **kw):
-        printf(" ".join(map(str, args)), **kw)
+        printf("Node", self._node_index, ":", *args, file=self._fp)
 
     def all_print(self, *args, **kw):
-        printf("Rank", self._rank, ":", " ".join(map(str, args)), **kw)
+        printf("Rank", self._rank, ":", *args, file=self._fp)
+
+    def set_output(self, output_file, ns=False, ps=False):
+        if ps:
+            self._fp = open(output_file+'_{}'.format(self._rank), 'w')
+        elif ns:
+            if self._sub_rank == 0:
+                self._fp = open(output_file + '_{}'.format(self._sub_rank), 'w')
+        else:
+            if self._rank == 0:
+                self._fp = open(output_file, 'w')
 
     @_rank_zero_decorator
     def single_timeit(self, method):
@@ -235,6 +247,9 @@ class ParallelTools:
             if 'log_time' in kw:
                 name = kw.get('log_name', method.__name__.upper())
                 kw['log_time'][name] = int((te - ts) * 1000)
+            elif self._fp is not None:
+                printf("'{0}' took {1:.2f} ms on rank {2}".format(
+                    method.__name__, (te - ts) * 1000, self._rank), file=self._fp)
             else:
                 printf("'{0}' took {1:.2f} ms on rank {2}".format(
                     method.__name__, (te - ts) * 1000, self._rank))
@@ -509,6 +524,9 @@ class ParallelTools:
     def set_logger(self, logger):
         self.logger = logger
 
+    def pytest_is_true(self):
+        self.pytest = True
+
     def abort(self):
         self._comm.Abort()
 
@@ -521,6 +539,8 @@ class ParallelTools:
         pt.close_lammps()
         if self._rank == 0:
             self.logger.exception(err)
+            if pt.pytest:
+                raise err
 
         sleep(5)
         if self._comm is not None:
@@ -540,7 +560,7 @@ class ParallelTools:
             if path.is_dir():
                 paths.append(path)
         for package_dir in paths:
-            for (_, module_name, c) in iter_modules([package_dir]):
+            for (_, module_name, c) in iter_modules([str(package_dir)]):
                 if module_name != name[-1] and module_name != name[-2]:
                     temp_name = name[:-1]
                     the_path = str(package_dir).split("/")

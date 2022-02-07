@@ -14,6 +14,12 @@ class Output:
         self._pscreen = config.args.pscreen
         self._nscreen = config.args.nscreen
         self._logfile = config.args.log
+        self._s2f = config.args.screen2file
+        if self._s2f is not None:
+            pt.set_output(self._s2f, ns=self._nscreen, ps=self._nscreen)
+        self.logger = None
+        if not logging.getLogger().hasHandlers():
+            pt.pytest_is_true()
         if self._logfile is None:
             logging.basicConfig(level=logging.DEBUG)
         else:
@@ -23,7 +29,7 @@ class Output:
 
     def screen(self, *args, **kw):
         if self._pscreen:
-            print(*args, flush=True)
+            pt.all_print(*args, **kw)
         elif self._nscreen:
             pt.sub_print(*args, **kw)
         elif self._screen:

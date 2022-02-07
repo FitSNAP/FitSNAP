@@ -1,12 +1,13 @@
 from ...parallel_tools import output, pt
 from ..error import ExitFunc
 from distutils.util import strtobool
-from os import getcwd
+from os import getcwd, path
 
 
 class Section:
     parameters = []
-    relative_directory = None
+    _infile_directory = None
+    _outfile_directory = None
 
     def __init__(self, name, config, args=None):
         self.name = name
@@ -62,6 +63,16 @@ class Section:
             return None
         return self._config.items(section)
 
+    def check_path(self, name):
+        name = path.join(Section.get_outfile_directory(self), name)
+        if self._args.overwrite is None:
+            return name
+        names = [name, name + '.snapparam', name + '.snapcoeff']
+        for element in names:
+            if not self._args.overwrite and path.exists(element):
+                raise FileExistsError(f"File {element} already exists.")
+        return name
+
     def _check_if_used(self, from_sec, sec_type, default, name=None):
         if not name:
             name = self.__class__.__name__
@@ -73,16 +84,37 @@ class Section:
         cls.parameters.append([section, key, fallback, interpreter])
 
     @classmethod
-    def _get_relative_directory(cls, self):
-        if cls.relative_directory is None:
-            cls._set_relative_directory(self)
-        return cls.relative_directory
+    def get_infile_directory(cls, self):
+        if cls._infile_directory is None:
+            cls._set_infile_directory(self)
+        return cls._infile_directory
 
     @classmethod
-    def _set_relative_directory(cls, self):
-        paths = getcwd().split('/') + self._args.infile.split('/')[:-1]
-        relative_directory = ''
-        for directory in paths[:-1]:
-            relative_directory += directory + '/'
-        relative_directory += paths[-1]
-        cls.relative_directory = relative_directory
+    def get_outfile_directory(cls, self):
+        if cls._outfile_directory is None:
+            cls._set_outfile_directory(self)
+        return cls._outfile_directory
+
+    @classmethod
+    def _set_infile_directory(cls, self):
+        """ Set path to input file directory """
+        cwd = getcwd().split('/')
+        path_to_file = self._args.infile.split('/')[:-1]
+        if not path_to_file:
+            cls._infile_directory = ''
+        elif not path.isabs(self._args.infile):
+            cls._infile_directory = '/'.join(path_to_file)
+        else:
+            count = 0
+            while path_to_file[count] == cwd[count]:
+                count += 1
+            cwd = (['..'] * (len(cwd)-count)) + path_to_file[count:]
+            cls._infile_directory = '/'.join(cwd)
+
+    @classmethod
+    def _set_outfile_directory(cls, self):
+        """ Set current working directory, if args.relative == True: cwd = input file directory else: cwd = cd ./ """
+        if self._args.relative:
+            cls._outfile_directory = cls.get_infile_directory(self)
+        else:
+            cls._outfile_directory = getcwd()

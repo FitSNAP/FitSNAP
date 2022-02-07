@@ -32,7 +32,7 @@ print("  / /_   / // __/\__ \ /  |/ // /| |  / /_/ /")
 print(" / __/  / // /_ ___/ // /|  // ___ | / ____/ ")
 print("/_/    /_/ \__//____//_/ |_//_/  |_|/_/      ")
 print("")
-print("-----------")
+print("------7Jul20------")
 try:
     import numpy as np
     print("numpy version: ",np.__version__)

@@ -1,5 +1,7 @@
 from fitsnap3.solvers.solver import Solver
 from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.solvers.svd import SVD
+from fitsnap3.solvers.tensorflowsvd import TensorflowSVD
 
 try:
     from fitsnap3.solvers.ard import ARD

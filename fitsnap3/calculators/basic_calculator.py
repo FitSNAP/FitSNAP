@@ -1,7 +1,11 @@
-from ..calculators.calculator import Calculator
-from ..io.input import config
-from ..parallel_tools import pt
+from fitsnap3.calculators.calculator import Calculator
+from fitsnap3.io.input import Config
+from fitsnap3.parallel_tools import ParallelTools
 import numpy as np
+
+
+config = Config()
+pt = ParallelTools()
 
 
 class Basic(Calculator):

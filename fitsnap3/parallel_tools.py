@@ -157,7 +157,7 @@ class ParallelTools(metaclass=Singleton):
         if stubs == 0:
             if comm is None:
                 comm = MPI.COMM_WORLD
-            self._comm = MPI.comm
+            self._comm = comm
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
         if stubs == 1:

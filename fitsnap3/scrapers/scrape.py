@@ -29,7 +29,7 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from fitsnap3.io.input import config
+from fitsnap3.io.input import Config
 from os import path, listdir, stat
 import numpy as np
 from random import shuffle
@@ -40,6 +40,7 @@ from copy import copy
 # from natsort import natsorted
 
 
+config = Config()
 pt = ParallelTools()
 
 

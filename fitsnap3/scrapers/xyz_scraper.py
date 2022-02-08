@@ -1,5 +1,5 @@
 from fitsnap3.scrapers.scrape import Scraper
-from fitsnap3.io.input import config
+from fitsnap3.io.input import Config
 from fitsnap3.parallel_tools import ParallelTools
 from fitsnap3.io.output import output
 import numpy as np
@@ -9,6 +9,8 @@ from copy import copy
 import re
 from _collections import defaultdict
 
+
+config = Config()
 pt = ParallelTools()
 
 UNPROCESSED_KEYS = ['uid']

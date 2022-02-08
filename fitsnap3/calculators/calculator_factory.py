@@ -1,5 +1,8 @@
-from fitsnap3.calculators import Calculator
+from fitsnap3.calculators.calculator import Calculator
 from fitsnap3.parallel_tools import ParallelTools
+from fitsnap3.calculators.lammps_snap import LammpsSnap
+from fitsnap3.calculators.lammps_pace import LammpsPace
+from fitsnap3.calculators.basic_calculator import Basic
 
 pt = ParallelTools()
 # pt.get_subclasses(__name__, __file__, Calculator)

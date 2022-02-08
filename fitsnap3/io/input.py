@@ -1,7 +1,7 @@
 import configparser
 import argparse
 from pickle import HIGHEST_PROTOCOL
-from fitsnap3.io.sections.sections import Section
+from fitsnap3.io.sections.section_factory import new_section
 from fitsnap3.parallel_tools import ParallelTools
 from fitsnap3.parallel_output import Output
 from pathlib import Path
@@ -105,7 +105,3 @@ class Config(metaclass=Singleton):
             if section == "BASIC_CALCULATOR":
                 section = "BASIC"
             self.sections[section] = new_section(section, tmp_config, self.args)
-
-
-if __name__.split(".")[-1] == "input":
-    config = Config()

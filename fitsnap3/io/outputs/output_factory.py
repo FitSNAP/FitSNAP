@@ -1,6 +1,7 @@
 from fitsnap3.io.outputs.outputs import Output
 from fitsnap3.parallel_tools import ParallelTools
-
+from fitsnap3.io.outputs.snap import Snap
+from fitsnap3.io.outputs.pace import Pace
 
 
 pt = ParallelTools()

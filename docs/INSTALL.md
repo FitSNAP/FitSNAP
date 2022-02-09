@@ -3,7 +3,7 @@ Instructions for installing FitSNAP
 FitSNAP3 requires two things:
 
 1. LAMMPS
-2. A whole bunch of standard Python modules
+2. Several standard Python packages
 
 * For information on building the LAMMPS shared library, see docs/LAMMPS.md
 

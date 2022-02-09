@@ -1,0 +1,32 @@
+
+    ______ _  __  _____  _   __ ___     ____  
+   / ____/(_)/ /_/ ___/ / | / //   |   / __ \ 
+  / /_   / // __/\__ \ /  |/ // /| |  / /_/ /
+ / __/  / // /_ ___/ // /|  // ___ | / ____/ 
+/_/    /_/ \__//____//_/ |_//_/  |_|/_/      
+
+-----20May21------
+Reading input...
+Finished reading input
+------------------
+mpi4py version:  3.0.3
+numpy version:  1.19.5
+scipy version:  1.5.4
+pandas version:  1.1.5
+LAMMPS (29 Sep 2021)
+  using 1 OpenMP thread(s) per MPI task
+-----------
+MD-bcc_Te300K : Detected  40  fitting on  40  testing on  0
+EOS_100 : Detected  403  fitting on  403  testing on  0
+BCC-HCP-transition : Detected  168  fitting on  168  testing on  0
+liquid_mag_old : Detected  10  fitting on  10  testing on  0
+point_def : Detected  8  fitting on  8  testing on  0
+CCMC-bcc-hcp-elastic_Jun2020 : Detected  1358  fitting on  1358  testing on  0
+liquid_nonmag : Detected  51  fitting on  51  testing on  0
+'scrape_configs' took 1894.87 ms on rank 0
+>>> Matrix of descriptors takes up  0.0223 % of the total memory: 135.0954 GB
+'process_configs' took 20868.60 ms on rank 0
+'perform_fit' took 2102.16 ms on rank 0
+'write_output' took 25.27 ms on rank 0
+'main' took 24894.23 ms on rank 0
+Total wall time: 0:00:25

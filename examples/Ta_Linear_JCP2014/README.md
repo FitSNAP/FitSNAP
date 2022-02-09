@@ -8,7 +8,7 @@ of the tantalum potential uses the linear version of SNAP.
 
 To run this example, use the following command in this directory:
 
-python3 -m fitsnap3 --overwrite -v Ta-example.in
+python3 -m fitsnap3 Ta-example.in
 
 #### Files in this Directory
 
@@ -16,12 +16,6 @@ Ta-example.in
 
 Input file containing parameters to run FitSNAP and generate
 the tantalum potential
-
-grouplist.in
-
-File that lists all the training groups in the JSON directory, 
-the number of files in each group, and the energy, force, and virial training 
-weights on each group.
 
 JSON/
 
@@ -44,7 +38,7 @@ Ta_metrics.csv
 
 Contains a variety of error metrics for all the training groups for this fit.
 
-Note that the 19Nov19_Standard/ directory contains sample output for this example
+Note that the 20May21_Standard/ directory contains sample output for this example
 
 
 #### Important input parameters for this example

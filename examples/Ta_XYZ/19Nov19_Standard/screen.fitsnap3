@@ -1,0 +1,36 @@
+
+    ______ _  __  _____  _   __ ___     ____  
+   / ____/(_)/ /_/ ___/ / | / //   |   / __ \ 
+  / /_   / // __/\__ \ /  |/ // /| |  / /_/ /
+ / __/  / // /_ ___/ // /|  // ___ | / ____/ 
+/_/    /_/ \__//____//_/ |_//_/  |_|/_/      
+
+-----20May21------
+Reading input...
+Finished reading input
+------------------
+mpi4py version:  3.0.3
+numpy version:  1.18.1
+scipy version:  1.4.1
+pandas version:  1.0.3
+LAMMPS (30 Jun 2020)
+-----------
+Displaced_A15 : Detected  9  fitting on  9  testing on  0
+Displaced_BCC : Detected  9  fitting on  9  testing on  0
+Displaced_FCC : Detected  9  fitting on  9  testing on  0
+Elastic_BCC : Detected  100  fitting on  100  testing on  0
+Elastic_FCC : Detected  100  fitting on  100  testing on  0
+GSF_110 : Detected  22  fitting on  22  testing on  0
+GSF_112 : Detected  22  fitting on  22  testing on  0
+Liquid : Detected  3  fitting on  3  testing on  0
+Surface : Detected  7  fitting on  7  testing on  0
+Volume_A15 : Detected  30  fitting on  30  testing on  0
+Volume_BCC : Detected  21  fitting on  21  testing on  0
+Volume_FCC : Detected  31  fitting on  31  testing on  0
+'scrape_configs' took 230.17 ms on rank 0
+>>> Matrix of descriptors takes up  0.0110 % of the total memory: 34.3597 GB
+'process_configs' took 1362.03 ms on rank 0
+'perform_fit' took 192.48 ms on rank 0
+'write_output' took 17.78 ms on rank 0
+'main' took 1804.32 ms on rank 0
+Total wall time: 0:00:01

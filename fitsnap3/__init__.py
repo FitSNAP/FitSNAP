@@ -2,7 +2,10 @@
 # ## FitSNAP3
 # A Python Package For Training SNAP Interatomic Potentials for use in the LAMMPS molecular dynamics package
 #
-# _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
+# _Copyright (2016) Sandia Corporation.
+# Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+# the U.S. Government retains certain rights in this software.
+# This software is distributed under the GNU General Public License_
 # ##
 #
 # #### Original author:
@@ -25,61 +28,72 @@
 #     Laura Swiler (Sandia National Labs)
 #
 # <!-----------------END-HEADER------------------------------------->
-print("")
-print("    ______ _  __  _____  _   __ ___     ____  ")
-print("   / ____/(_)/ /_/ ___/ / | / //   |   / __ \ ")
-print("  / /_   / // __/\__ \ /  |/ // /| |  / /_/ /")
-print(" / __/  / // /_ ___/ // /|  // ___ | / ____/ ")
-print("/_/    /_/ \__//____//_/ |_//_/  |_|/_/      ")
-print("")
-print("------7Jul20------")
+
+
+try:
+    import mpi4py as mpi4py
+    from .parallel_tools import pt
+
+except ModuleNotFoundError:
+    from .parallel_tools import pt
+
+except Exception as e:
+    print("Trouble importing mpi4py package, exiting...")
+    raise e
+
+pt.single_print("")
+pt.single_print("    ______ _  __  _____  _   __ ___     ____  ")
+pt.single_print("   / ____/(_)/ /_/ ___/ / | / //   |   / __ \ ")
+pt.single_print("  / /_   / // __/\__ \ /  |/ // /| |  / /_/ /")
+pt.single_print(" / __/  / // /_ ___/ // /|  // ___ | / ____/ ")
+pt.single_print("/_/    /_/ \__//____//_/ |_//_/  |_|/_/      ")
+pt.single_print("")
+pt.single_print("-----7Feb22------")
+
+try:
+    pt.single_print("Reading input...")
+    pt.all_barrier()
+    from .io.input import config
+    pt.single_print("Finished reading input")
+    pt.single_print("------------------")
+
+    from .io.output import output
+except Exception as e:
+    pt.single_print("Trouble reading input, exiting...")
+    pt.exception(e)
+
+try:
+    output.screen("mpi4py version: ", mpi4py.__version__)
+
+except NameError:
+    print("No mpi4py detected, using fitsnap stubs...")
+
 try:
     import numpy as np
-    print("numpy version: ",np.__version__)
+    output.screen("numpy version: ", np.__version__)
 except Exception as e:
-    print("Trouble importing numpy package, exiting...")
-    raise e
-
-try:
-    import pandas as pd
-    print("pandas version: ",pd.__version__)
-except Exception as e:
-    print("Trouble importing pandas package, exiting...")
-    raise e
-
-try:
-    import sklearn as skl
-    print("scikit-learn version: ",skl.__version__)
-except Exception as e:
-    print("Trouble importing scikit-learn package, exiting...")
-    raise e
+    output.screen("Trouble importing numpy package, exiting...")
+    output.exception(e)
 
 try:
     import scipy as sp
-    print("scipy version: ",sp.__version__)
+    output.screen("scipy version: ", sp.__version__)
 except Exception as e:
-    print("Trouble importing scipy package, exiting...")
-    raise e
+    output.screen("Trouble importing scipy package, exiting...")
+    output.exception(e)
 
 try:
-    import tqdm
-    print("tqdm version: ",tqdm.__version__)
+    import pandas as pd
+    output.screen("pandas version: ", pd.__version__)
 except Exception as e:
-    print("Trouble importing tqdm package, exiting...")
-    raise e
+    output.screen("Trouble importing pandas package, exiting...")
+    output.exception(e)
 
 try:
-    import natsort
-    print("natsort version: ",natsort.__version__)
+    import lammps
+    lmp = lammps.lammps()
+#     print("LAMMPS version: ",lammps.version())
 except Exception as e:
-    print("Trouble importing natsort package, exiting...")
+    print("Trouble importing LAMMPS library, exiting...")
     raise e
-#try:
-#    import lammps
-#    print("LAMMPS version: ",lammps.version())
-#except Exception as e:
-#    print("Trouble importing LAMMPS library, exiting...")
-#    raise e
-print("-----------")
-
-from . import bispecopt, deploy, geometry, linearfit, runlammps, scrape, serialize
+output.screen("-----------")

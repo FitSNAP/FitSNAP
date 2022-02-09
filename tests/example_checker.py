@@ -34,6 +34,9 @@ class ExampleChecker:
 		testing_coeffs = self._snap_parser(str(self._example_path / self._outfile))
 		standard_coeffs = self._snap_parser(standard_outfile)
 		assert np.max(testing_coeffs - standard_coeffs) < 1e-6
+		with open("test_output", "w") as fp:
+			print("Average coeff diff is ", np.average(testing_coeffs - standard_coeffs), file=fp)
+
 
 	@staticmethod
 	def _snap_parser(coeff_file):
@@ -44,8 +47,6 @@ class ExampleChecker:
 			ndescs = int(lines[2].split()[-1])
 			for descind in range(ndescs):
 				line = lines[4 + descind].split()
-				# l = line.split()
-				# descnew.append(line.split('#')[-1])
 				coeffs.append(float(line[0]))
 		return np.array(coeffs)
 
@@ -117,10 +118,6 @@ class MPICheck:
 		""" Find mpirun, mpiexec, or orterun"""
 		mpilib = Path(self._dylib_reader())
 		mpibin = None
-	#	for i in range(1,len(mpilib.parts)):
-	#		if mpilib.parts[-i]=='lib':
-	#			mpibin = mpilib.parents[i-1] / 'bin' 
-	#			break
 		if mpibin is None:
 			mpibin = mpilib.parent.parent / 'bin'
 		mpirun = str(mpibin / 'mpirun') if (mpibin / 'mpirun').exists() else None
@@ -128,8 +125,6 @@ class MPICheck:
 		orterun = str(mpibin / 'orterun') if (mpibin / 'orterun').exists() else None
 		if mpirun is None and mpiexec is None and orterun is None:
 			mpirun = check_output(['which', 'mpirun'], universal_newlines=True).strip()
-		print(mpirun)
-		# assert Path(mpirun).exists()
 		assert mpirun is not None or mpiexec is not None or orterun is not None
 		return mpirun, mpiexec, orterun
 
@@ -198,6 +193,9 @@ def mpi_run(nprocs, nnodes=None):
 						raise RuntimeError('Trouble reading input, exiting...')
 					with open("completed_process", "w") as fp:
 						print(output, file=fp)
+					with open("test_output", "r") as fp:
+						lines = fp.readlines()
+						print("\n", lines[0])
 				except CalledProcessError as error:
 					with open("failed_process", "w") as fp:
 						print(error, file=fp)

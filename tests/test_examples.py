@@ -32,6 +32,7 @@ ta_quadratic_example_file = example_path / 'Ta_Quadratic_JCP2018' / 'Ta-example.
 ta_xyz_example_file = example_path / 'Ta_XYZ' / 'Ta-example.in'
 wbe_linear_example_file = example_path / 'WBe_PRB2019' / 'WBe-example.in'
 inp_eme_example_file = example_path / 'InP_JPCA2020' / 'InP-example.in'
+fe_spin_example_file = example_path / 'Fe_Linear_NPJ2021' / 'Fe-example.in'
 
 
 def pytest_configure(config):
@@ -118,6 +119,16 @@ def test_fitsnap_xyz():
 @example_checker.mpi_run(8)
 def test_fitsnap_neme():
     """Test FitSNAP multi element non-explicit WBe Linear Example"""
+    mpi = example_checker.MPICheck()
+    assert mpi.stubs == 0
+    assert mpi.size >= 1
+    mpi.set_added_comm()
+    snap_test(wbe_linear_example_file, mpi.comm)
+
+
+@example_checker.mpi_run(8)
+def test_fitsnap_spin():
+    """Test FitSNAP Fe Linear Spin Example"""
     mpi = example_checker.MPICheck()
     assert mpi.stubs == 0
     assert mpi.size >= 1

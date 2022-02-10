@@ -42,7 +42,7 @@ jobs:
         cd lammps/cmake
         mkdir build
         cd build
-        cmake -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
+        cmake -D PKG_ML-SNAP=yes -D PKG_SPIN=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
         make -j 20
         make install-python
         cd ../../../FitSNAP
@@ -65,6 +65,7 @@ jobs:
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
+        pytest -s test_examples.py::test_fitsnap_spin
         pytest -s test_examples.py::test_fitsnap_mpi
         pytest -s test_examples.py::test_fitsnap_quad
         pytest -s test_examples.py::test_fitsnap_eme

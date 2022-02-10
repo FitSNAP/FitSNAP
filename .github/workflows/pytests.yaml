@@ -3,7 +3,7 @@ name: FitSNAP Pytests
 on: [push]
 
 jobs:
-  fitsnap-pytests:
+  build:
     strategy:
       matrix:
         test: [mpi, quad, eme, xyz, neme, spin]

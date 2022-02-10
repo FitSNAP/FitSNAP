@@ -4,12 +4,12 @@ on: [push]
 
 jobs:
   fitsnap-pytests:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         test: [mpi, quad, eme, xyz, neme, spin]
         os: [macos-latest, ubuntu-latest]
       max-parallel: 20
-    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2

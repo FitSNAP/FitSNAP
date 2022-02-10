@@ -13,16 +13,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Get mpi mac
-      run: |
-        if: ${{ matrix.os == macos-latest }} 
-        brew install openmpi
-        brew install cmake
-    - name: Get mpi linux
-      run: |
-        if: ${{ matrix.os == ubuntu-latest }} 
-        sudo apt-get update
-        sudo apt-get install mpi-default-bin mpi-default-dev ninja-build
+    - name: Get mpi
+      -if: matrix.os == 'macos-latest'
+        run: |
+          brew install openmpi
+          brew install cmake
+      -if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install mpi-default-bin mpi-default-dev ninja-build
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory

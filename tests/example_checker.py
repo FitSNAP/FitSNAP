@@ -35,7 +35,7 @@ class ExampleChecker:
 		standard_coeffs = self._snap_parser(standard_outfile)
 		assert np.max(testing_coeffs - standard_coeffs) < 1e-6
 		with open("test_output", "w") as fp:
-			print("Average coeff diff is ", np.average(testing_coeffs - standard_coeffs), file=fp)
+			print("Average coeff diff is ", np.average(np.abs(testing_coeffs - standard_coeffs)), file=fp)
 
 
 	@staticmethod

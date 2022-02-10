@@ -13,11 +13,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Get mpi
+    - name: Load Mac Env
       if: matrix.os == 'macos-latest'
       run: |
         brew install openmpi
         brew install cmake
+    - name: Load Ubuntu Env
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update

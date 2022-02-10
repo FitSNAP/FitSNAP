@@ -14,9 +14,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Get mpi 
       run: |
-        sudo apt-get update
-        # sudo apt install -y -q openmpi-bin libopenmpi-dev
-        sudo apt-get install mpi-default-bin mpi-default-dev ninja-build
+        brew install openmpi
+        brew install cmake
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory

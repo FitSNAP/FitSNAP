@@ -3,19 +3,25 @@ name: Python Package using Conda
 on: [push]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  fitsnap-pytests:
     strategy:
       matrix:
         test: [mpi, quad, eme, xyz, neme, spin]
+        os: [macos-latest, ubuntu-latest]
       max-parallel: 20
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2
-    - name: Get mpi 
+    - name: Get mpi mac
       run: |
+        if ${{ matrix.os == "macos-latest" }} 
+        brew install openmpi
+        brew install cmake
+    - name: Get mpi linux
+      run: |
+        if ${{ matrix.os == "ubuntu-latest" }} 
         sudo apt-get update
-        # sudo apt install -y -q openmpi-bin libopenmpi-dev
         sudo apt-get install mpi-default-bin mpi-default-dev ninja-build
     - name: Add conda to system path
       run: |
@@ -67,5 +73,5 @@ jobs:
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
-        pytest -s test_examples.py::test_fitsnap_${{ matrix.test }}
+        pytest -s test_examples.py::test_fitsnap_${{ matrix.test}}
 

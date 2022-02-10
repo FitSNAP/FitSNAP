@@ -46,7 +46,7 @@ jobs:
       shell: bash
       run: |
         which python
-        conda activate base
+        # conda activate base
         cd ../
         git clone https://github.com/lammps/lammps.git
         cd lammps/cmake

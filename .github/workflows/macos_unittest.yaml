@@ -7,7 +7,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        tests = [mpi, quad, eme, xyz, neme, spin]
+        test: [mpi, quad, eme, xyz, neme, spin]
       max-parallel: 20
 
     steps:

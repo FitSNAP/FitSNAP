@@ -6,6 +6,8 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     strategy:
+      matrix:
+        test: [mpi, quad, eme, xyz, neme, spin]
       max-parallel: 20
 
     steps:
@@ -65,10 +67,5 @@ jobs:
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
-        pytest -s test_examples.py::test_fitsnap_spin
-        pytest -s test_examples.py::test_fitsnap_mpi
-        pytest -s test_examples.py::test_fitsnap_quad
-        pytest -s test_examples.py::test_fitsnap_eme
-        pytest -s test_examples.py::test_fitsnap_xyz
-        pytest -s test_examples.py::test_fitsnap_neme
+        pytest -s test_examples.py::${{ matrix.test }}
 

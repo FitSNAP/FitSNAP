@@ -86,7 +86,7 @@ def test_fitsnap_mpi():
     snap_test(ta_linear_example_file, mpi.comm)
 
 
-@example_checker.mpi_run(4)
+@example_checker.mpi_run(2)
 def test_fitsnap_quad():
     """Test FitSNAP 4 proc is working on Ta Quadratic Example"""
     mpi = example_checker.MPICheck()
@@ -96,7 +96,7 @@ def test_fitsnap_quad():
     snap_test(ta_quadratic_example_file, mpi.comm)
 
 
-@example_checker.mpi_run(8)
+@example_checker.mpi_run(2)
 def test_fitsnap_eme():
     """Test FitSNAP 8 proc is working on InP EME Example"""
     mpi = example_checker.MPICheck()
@@ -106,7 +106,7 @@ def test_fitsnap_eme():
     snap_test(inp_eme_example_file, mpi.comm)
 
 
-@example_checker.mpi_run(4)
+@example_checker.mpi_run(2)
 def test_fitsnap_xyz():
     """Test FitSNAP 4 proc XYZ scraper on Ta Linear Example"""
     mpi = example_checker.MPICheck()
@@ -116,7 +116,7 @@ def test_fitsnap_xyz():
     snap_test(ta_xyz_example_file, mpi.comm)
 
 
-@example_checker.mpi_run(8)
+@example_checker.mpi_run(2)
 def test_fitsnap_neme():
     """Test FitSNAP multi element non-explicit WBe Linear Example"""
     mpi = example_checker.MPICheck()
@@ -126,7 +126,7 @@ def test_fitsnap_neme():
     snap_test(wbe_linear_example_file, mpi.comm)
 
 
-@example_checker.mpi_run(8)
+@example_checker.mpi_run(2)
 def test_fitsnap_spin():
     """Test FitSNAP Fe Linear Spin Example"""
     mpi = example_checker.MPICheck()

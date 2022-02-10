@@ -1,15 +1,16 @@
-name: Python Package using Conda
+name: FitSNAP Pytests
 
 on: [push]
 
 jobs:
   fitsnap-pytests:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         test: [mpi, quad, eme, xyz, neme, spin]
-        os: [macos-latest, ubuntu-latest]
+        # os: [macos-latest, ubuntu-latest]
       max-parallel: 20
+    # runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2

@@ -34,7 +34,7 @@ class Ace(Section):
 
         self.bzeroflag = self.get_value("ACE", "bzeroflag", "0", "bool")
         self.wigner_flag = self.get_value("ACE", "wigner_flag", "1", "bool")
-        self.acefile = self.get_value("ACE", "acefile", "coupling_coefficients.ace")
+        self.acefile = self.check_path(self.get_value("ACE", "acefile", "coupling_coefficients.ace"))
         self.dorder = self.get_value("ACE", "dorder", "1", "bool")
         self.ranked_nus = [GenerateNL(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), self.dorder) for ind, rnk in
                            enumerate(self.ranks)]

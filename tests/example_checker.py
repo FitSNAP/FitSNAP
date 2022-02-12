@@ -60,6 +60,7 @@ class ExampleChecker:
 		assert np.max(testing_coeffs - standard_coeffs) < 1e-6
 		with open("test_output", "w") as fp:
 			print("Average coeff diff is ", np.average(np.abs(testing_coeffs - standard_coeffs)), file=fp)
+			print("Max coeff diff is ", np.max(np.abs(testing_coeffs - standard_coeffs)), file=fp)
 
 	def pacecoeff_diff(self):
 		""" Check if current PACE output differs too much from standardized output"""

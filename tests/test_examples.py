@@ -89,7 +89,7 @@ def test_fitsnap_quad():
     ec.snapcoeff_diff()
 
 
-@example_checker.mpi_run(8)
+@example_checker.mpi_run(2)
 def test_fitsnap_eme():
     """Test FitSNAP 2 proc is working on InP EME Example"""
     ec = example_checker.ExampleChecker(inp_eme_example_file)

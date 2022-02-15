@@ -66,8 +66,8 @@ jobs:
         export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
         pytest -s test_examples.py::test_fitsnap_mpi
-        pytest test_examples.py::test_fitsnap_quad
-        pytest test_examples.py::test_fitsnap_eme
-        pytest test_examples.py::test_fitsnap_xyz
-        pytest test_examples.py::test_fitsnap_neme
+        pytest -s test_examples.py::test_fitsnap_quad
+        pytest -s test_examples.py::test_fitsnap_eme
+        pytest -s test_examples.py::test_fitsnap_xyz
+        pytest -s test_examples.py::test_fitsnap_neme
 

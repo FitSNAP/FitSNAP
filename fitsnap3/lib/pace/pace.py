@@ -48,7 +48,7 @@ class CouplingCoeffs:
 
         # write a coupling coefficient file that is compatible with py_ACE
         import json
-        with open('ccs.json', 'w') as writejson:
+        with open('{}/ccs.json'.format(self.lib_path), 'w') as writejson:
             json.dump(self.coupling, writejson, indent=2)
 
     def find_cg(self):

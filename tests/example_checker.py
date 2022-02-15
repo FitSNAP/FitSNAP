@@ -6,6 +6,8 @@ from subprocess import PIPE, CalledProcessError, run, check_output, list2cmdline
 import sys
 from functools import wraps
 import inspect
+import importlib.util
+from runpy import run_module
 
 
 class ExampleChecker:
@@ -19,6 +21,7 @@ class ExampleChecker:
 		self._config.read(str(input_file))
 		self._outfile = self._config.get("OUTFILE", "potential", fallback="fitsnap_potential")
 		self._standard_path = self._check_for_standard()
+		self._mpi = MPICheck()
 
 	def _check_for_standard(self):
 		""" Determine directory that contains the output standard """
@@ -27,8 +30,29 @@ class ExampleChecker:
 			if possibility.is_dir():
 				return possibility
 
+	def assert_not_stubs(self):
+		assert self._mpi.stubs == 0
+
+	def assert_mpi(self):
+		self.assert_not_stubs()
+		assert self._mpi.size >= 1
+		self._mpi.set_added_comm()
+
+	def assert_stubs(self):
+		assert self._mpi.stubs == 1
+
+	def run_fitsnap(self):
+		assert importlib.util.find_spec("fitsnap3") is not None
+		original_arguments = sys.argv
+		new_arguments = ['fitsnap3', str(self._input_file), '--overwrite', '-r']
+		sys.argv = new_arguments
+		run_module(sys.argv[0], run_name='__main__', alter_sys=True)
+		sys.argv = original_arguments
+
 	def snapcoeff_diff(self):
-		""" Check if current output differs too much from standardized output"""
+		""" Check if current SNAP output differs too much from standardized output"""
+		if self._mpi.rank != 0:
+			return
 		self._outfile += ".snapcoeff"
 		standard_outfile = str(self._standard_path / Path(self._outfile).name)
 		testing_coeffs = self._snap_parser(str(self._example_path / self._outfile))
@@ -36,11 +60,36 @@ class ExampleChecker:
 		assert np.max(testing_coeffs - standard_coeffs) < 1e-6
 		with open("test_output", "w") as fp:
 			print("Average coeff diff is ", np.average(np.abs(testing_coeffs - standard_coeffs)), file=fp)
+			print("Max coeff diff is ", np.max(np.abs(testing_coeffs - standard_coeffs)), file=fp)
 
+	def pacecoeff_diff(self):
+		""" Check if current PACE output differs too much from standardized output"""
+		if self._mpi.rank != 0:
+			return
+		self._outfile += ".acecoeff"
+		standard_outfile = str(self._standard_path / Path(self._outfile).name)
+		testing_coeffs = self._pace_parser(str(self._example_path / self._outfile))
+		standard_coeffs = self._pace_parser(standard_outfile)
+		assert np.max(np.abs(testing_coeffs - standard_coeffs)) < 5e-3
+		with open("test_output", "w") as fp:
+			print("Average coeff diff is ", np.average(np.abs(testing_coeffs - standard_coeffs)), file=fp)
+			print("Max coeff diff is ", np.max(np.abs(testing_coeffs - standard_coeffs)), file=fp)
 
 	@staticmethod
 	def _snap_parser(coeff_file):
 		""" Parse SNAP coeff files """
+		coeffs = []
+		with open(coeff_file, 'r') as readin:
+			lines = readin.readlines()
+			ndescs = int(lines[2].split()[-1])
+			for descind in range(ndescs):
+				line = lines[4 + descind].split()
+				coeffs.append(float(line[0]))
+		return np.array(coeffs)
+
+	@staticmethod
+	def _pace_parser(coeff_file):
+		""" Parse PACE coeff files """
 		coeffs = []
 		with open(coeff_file, 'r') as readin:
 			lines = readin.readlines()
@@ -195,10 +244,12 @@ def mpi_run(nprocs, nnodes=None):
 						print(output, file=fp)
 					with open("test_output", "r") as fp:
 						lines = fp.readlines()
-						print("\n", lines[0])
+						print("\n"+lines[0].strip())
+						print(lines[1].strip())
 				except CalledProcessError as error:
 					with open("failed_process", "w") as fp:
 						print(error, file=fp)
+						print(error.stdout, file=fp)
 					raise RuntimeError("Pytest Failed", error)
 			else:
 				test_func(*args, **kwargs)

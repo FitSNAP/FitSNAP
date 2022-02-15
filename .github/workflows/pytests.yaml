@@ -1,19 +1,29 @@
-name: Python Package using Conda
+name: FitSNAP Pytests
 
-on: [push]
+on:
+  push:
+    branches: [master]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build:
     strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        test: [mpi, quad, eme, xyz, neme, spin, pace]
       max-parallel: 20
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2
-    - name: Get mpi 
+    - name: Load Mac Env
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install openmpi
+        brew install cmake
+    - name: Load Ubuntu Env
+      if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        # sudo apt install -y -q openmpi-bin libopenmpi-dev
         sudo apt-get install mpi-default-bin mpi-default-dev ninja-build
     - name: Add conda to system path
       run: |
@@ -37,12 +47,14 @@ jobs:
     - name: Install LAMMPS
       shell: bash
       run: |
+        which python
+        # conda activate base
         cd ../
         git clone https://github.com/lammps/lammps.git
         cd lammps/cmake
         mkdir build
         cd build
-        cmake -D PKG_ML-SNAP=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes ../
+        cmake -D PKG_ML-SNAP=yes -D PKG_SPIN=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes -D Python_FIND_FRAMEWORK=LAST ../
         make -j 20
         make install-python
         cd ../../../FitSNAP
@@ -65,9 +77,5 @@ jobs:
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
-        pytest -s test_examples.py::test_fitsnap_mpi
-        pytest -s test_examples.py::test_fitsnap_quad
-        pytest -s test_examples.py::test_fitsnap_eme
-        pytest -s test_examples.py::test_fitsnap_xyz
-        pytest -s test_examples.py::test_fitsnap_neme
+        pytest -s test_examples.py::test_fitsnap_${{ matrix.test}}
 

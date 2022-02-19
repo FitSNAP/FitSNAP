@@ -8,12 +8,16 @@ class Outfile(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.allowedkeys = ['output_style', 'metrics', 'potential', 'detailed_errors']
+        self.allowedkeys = ['output_style',
+                            'metrics',
+                            'metrics_style',
+                            'potential',
+                            'detailed_errors']
         self._check_section()
 
         self._outfile()
         self.output_style = self.get_value("OUTFILE", "output_style", "SNAP")
-        self.metric_style = self.get_value("OUTFILE", "metric_style", "MD")
+        self.metrics_style = self.get_value("OUTFILE", "metrics_style", "MD")
         self.delete()
 
     def _outfile(self):

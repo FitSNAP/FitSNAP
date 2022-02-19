@@ -58,20 +58,33 @@ class Output:
 
     @pt.rank_zero
     def write_errors(self, errors):
-        with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
-            if config.sections["OUTFILE"].metric_style == "MD":
-                errors.to_markdown(file+'.md')
-            elif config.sections["OUTFILE"].metric_style == "CSV":
-                errors.to_csv(file+'.csv', sep=',', float_format="%.8f")
-            elif config.sections["OUTFILE"].metric_style == "SSV":
-                errors.to_csv(file, sep=' ', float_format="%.8f")
-            elif config.sections["OUTFILE"].metric_style == "JSON":
-                errors.to_json(file+'.json')
-            elif config.sections["OUTFILE"].metric_style == "DF":
-                errors.to_pickle(file+'.db')
-            else:
-                raise NotImplementedError("Metric style {} not implemented".format(
-                    config.sections["OUTFILE"].metric_style))
+        fname = config.sections["OUTFILE"].metric_file
+        arguments = {}
+        write_type = 'wt'
+        if config.sections["OUTFILE"].metrics_style == "MD":
+            # fname += '.md'
+            function = errors.to_markdown
+        elif config.sections["OUTFILE"].metrics_style == "CSV":
+            # fname += '.csv'
+            arguments['sep'] = ','
+            arguments['float_format'] = "%.8f"
+            function = errors.to_csv
+        elif config.sections["OUTFILE"].metrics_style == "SSV":
+            arguments['sep'] = ' '
+            arguments['float_format'] = "%.8f"
+            function = errors.to_csv
+        elif config.sections["OUTFILE"].metrics_style == "JSON":
+            # fname += '.json'
+            function = errors.to_json
+        elif config.sections["OUTFILE"].metrics_style == "DF":
+            # fname += '.db'
+            function = errors.to_pickle
+            write_type = 'wb'
+        else:
+            raise NotImplementedError("Metric style {} not implemented".format(
+                config.sections["OUTFILE"].metrics_style))
+        with optional_open(fname, write_type) as file:
+            function(file, **arguments)
 
 
 @contextmanager

@@ -143,6 +143,7 @@ class LammpsSnap(Calculator):
                 "chem": "chemflag",
                 "bnormflag": "bnormflag",
                 "wselfallflag": "wselfallflag",
+                "bikflag": "bikflag",
             }.items()
             if v in config.sections["BISPECTRUM"].__dict__
         }

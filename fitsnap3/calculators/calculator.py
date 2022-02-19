@@ -1,6 +1,8 @@
 from ..parallel_tools import pt, double_size
 from ..io.input import config
 from ..io.output import output
+from ..solvers.solver import make_abw
+import numpy as np
 
 
 class Calculator:
@@ -59,3 +61,35 @@ class Calculator:
 
     def process_configs(self, data, i):
         pass
+
+    @pt.rank_zero
+    def extras(self):
+        length, width = 0, np.shape(pt.shared_arrays['a'].array)[1]
+        if config.sections["CALCULATOR"].energy:
+            a_e, b_e, w_e = make_abw(pt.shared_arrays['a'].energy_index, 1)
+        else:
+            a_e, b_e, w_e = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
+        if config.sections["CALCULATOR"].force:
+            num_forces = np.array(pt.shared_arrays['a'].num_atoms) * 3
+            a_f, b_f, w_f = make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
+        else:
+            a_f, b_f, w_f = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
+        if config.sections["CALCULATOR"].stress:
+            a_s, b_s, w_s = make_abw(pt.shared_arrays['a'].stress_index, 6)
+        else:
+            a_s, b_s, w_s = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
+        if not config.sections["SOLVER"].detailed_errors:
+            print(
+                ">>>Enable [SOLVER], detailed_errors = 1 to characterize the training/testing split of your output *.npy matricies")
+        if config.sections["EXTRAS"].dump_a:
+            # if config.sections["EXTRAS"].apply_transpose:
+            #     np.save('Descriptors_Compact.npy', (np.concatenate((a_e,a_f,a_s),axis=0) @ np.concatenate((a_e,a_f,a_s),axis=0).T))
+            # else:
+            np.save(config.sections['EXTRAS'].descriptor_file,
+                    np.concatenate([x for x in (a_e, a_f, a_s) if x.size > 0], axis=0))
+        if config.sections["EXTRAS"].dump_b:
+            np.save(config.sections['EXTRAS'].truth_file,
+                    np.concatenate([x for x in (b_e, b_f, b_s) if x.size > 0], axis=0))
+        if config.sections["EXTRAS"].dump_w:
+            np.save(config.sections['EXTRAS'].weights_file,
+                    np.concatenate([x for x in (w_e, w_f, w_s) if x.size > 0], axis=0))

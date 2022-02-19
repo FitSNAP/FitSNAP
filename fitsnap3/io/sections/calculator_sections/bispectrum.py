@@ -35,11 +35,15 @@ class Bispectrum(Section):
         for i, atom_type in enumerate(self.types):
             self.type_mapping[atom_type] = i+1
 
+        # chemflag true enables the EME model
         self.chemflag = self.get_value("BISPECTRUM", "chemflag", "0", "bool")
         self.bnormflag = self.get_value("BISPECTRUM", "bnormflag", "0", "bool")
         self.wselfallflag = self.get_value("BISPECTRUM", "wselfallflag", "0", "bool")
         self.bzeroflag = self.get_value("BISPECTRUM", "bzeroflag", "0", "bool")
+        # quadraticflag true enables the quadratic model
         self.quadraticflag = self.get_value("BISPECTRUM", "quadraticflag", "0", "bool")
+        # bikflag true enables computing of bispectrum per atom instead of sum
+        self.bikflag = self.get_value("BISPECTRUM", "bikflag", "0", "bool")
 
         self._generate_b_list()
         self._reset_chemflag()

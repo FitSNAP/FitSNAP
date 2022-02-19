@@ -26,37 +26,6 @@ class Solver:
         # self.all_fits = pt.allgather(self.fit)
         pass
 
-    @pt.rank_zero
-    def extras(self):
-        length,width = 0,np.shape(pt.shared_arrays['a'].array)[1]
-        if config.sections["CALCULATOR"].energy:
-            a_e, b_e, w_e = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
-        else:
-            a_e, b_e, w_e = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
-        if config.sections["CALCULATOR"].force:
-            num_forces = np.array(pt.shared_arrays['a'].num_atoms)*3
-            a_f, b_f, w_f = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
-        else:
-            a_f, b_f, w_f = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
-        if config.sections["CALCULATOR"].stress:
-            a_s, b_s, w_s = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
-        else:
-            a_s, b_s, w_s = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
-        if not config.sections["SOLVER"].detailed_errors:
-            print(">>>Enable [SOLVER], detailed_errors = 1 to characterize the training/testing split of your output *.npy matricies")
-        if config.sections["EXTRAS"].dump_a:
-            # if config.sections["EXTRAS"].apply_transpose:
-            #     np.save('Descriptors_Compact.npy', (np.concatenate((a_e,a_f,a_s),axis=0) @ np.concatenate((a_e,a_f,a_s),axis=0).T))
-            # else:
-            np.save(config.sections['EXTRAS'].descriptor_file,
-                    np.concatenate([x for x in (a_e, a_f, a_s) if x.size > 0], axis=0))
-        if config.sections["EXTRAS"].dump_b:
-            np.save(config.sections['EXTRAS'].truth_file,
-                    np.concatenate([x for x in (b_e, b_f, b_s) if x.size > 0], axis=0))
-        if config.sections["EXTRAS"].dump_w:
-            np.save(config.sections['EXTRAS'].weights_file,
-                    np.concatenate([x for x in (w_e, w_f, w_s) if x.size > 0], axis=0))
-
     def _offset(self):
         num_types = config.sections["BISPECTRUM"].numtypes
         if num_types > 1:
@@ -102,7 +71,7 @@ class Solver:
     def _energy(self):
         if config.sections["CALCULATOR"].energy:
             testing = -1 * pt.shared_arrays['configs_per_group'].testing
-            a, b, w = self._make_abw(pt.shared_arrays['a'].energy_index, 1)
+            a, b, w = make_abw(pt.shared_arrays['a'].energy_index, 1)
             config_indicies, energy_list, force_list, stress_list = self._config_error()
             self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
             if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
@@ -126,7 +95,7 @@ class Solver:
             else:
                 testing = 0
 
-            a, b, w = self._make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
+            a, b, w = make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
             config_indicies, energy_list, force_list, stress_list = self._config_error()
             if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
                 from csv import writer
@@ -149,7 +118,7 @@ class Solver:
     def _stress(self):
         if config.sections["CALCULATOR"].stress:
             testing = -6 * pt.shared_arrays['configs_per_group'].testing
-            a, b, w = self._make_abw(pt.shared_arrays['a'].stress_index, 6)
+            a, b, w = make_abw(pt.shared_arrays['a'].stress_index, 6)
             config_indicies, energy_list, force_list, stress_list = self._config_error()
             if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
                 from csv import writer
@@ -169,28 +138,6 @@ class Solver:
         self._errors([[0, pt.shared_arrays["configs_per_group"].testing_elements]], ["*ALL"], "Combined")
         if pt.shared_arrays["configs_per_group"].testing_elements != 0:
             self._errors([[pt.shared_arrays["configs_per_group"].testing_elements, 0]], ['*ALL'], "Combined_testing")
-
-    @staticmethod
-    def _make_abw(type_index, buffer):
-        if isinstance(buffer, list):
-            length = sum(buffer)
-        else:
-            length = len(type_index) * buffer
-        width = np.shape(pt.shared_arrays['a'].array)[1]
-        a = np.zeros((length, width))
-        b = np.zeros((length,))
-        w = np.zeros((length,))
-        i = 0
-        for j, value in enumerate(type_index):
-            if isinstance(buffer, list):
-                spacing = buffer[j]
-            else:
-                spacing = buffer
-            a[i:i+spacing] = pt.shared_arrays['a'].array[value:value+spacing]
-            b[i:i+spacing] = pt.shared_arrays['b'].array[value:value+spacing]
-            w[i:i+spacing] = pt.shared_arrays['w'].array[value:value+spacing]
-            i += spacing
-        return a, b, w
 
     def _group_error(self):
         groups = []
@@ -228,7 +175,7 @@ class Solver:
         group_index = pt.shared_arrays['a'].group_index
         for i in range(len(group_index) - 1):
             index.append([group_index[i], group_index[i+1]])
-        #self._errors(index, groups, "Combined")
+        # self._errors(index, groups, "Combined")
 
     @staticmethod
     def _make_group_abw(group_index, length, buffer):
@@ -386,3 +333,24 @@ class Solver:
     def _template_error(self):
         pass
 
+
+def make_abw(type_index, buffer):
+    if isinstance(buffer, list):
+        length = sum(buffer)
+    else:
+        length = len(type_index) * buffer
+    width = np.shape(pt.shared_arrays['a'].array)[1]
+    a = np.zeros((length, width))
+    b = np.zeros((length,))
+    w = np.zeros((length,))
+    i = 0
+    for j, value in enumerate(type_index):
+        if isinstance(buffer, list):
+            spacing = buffer[j]
+        else:
+            spacing = buffer
+        a[i:i+spacing] = pt.shared_arrays['a'].array[value:value+spacing]
+        b[i:i+spacing] = pt.shared_arrays['b'].array[value:value+spacing]
+        w[i:i+spacing] = pt.shared_arrays['w'].array[value:value+spacing]
+        i += spacing
+    return a, b, w

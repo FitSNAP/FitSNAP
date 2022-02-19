@@ -13,9 +13,10 @@ class Outfile(Section):
 
         self._outfile()
         self.output_style = self.get_value("OUTFILE", "output_style", "SNAP")
+        self.metric_style = self.get_value("OUTFILE", "metric_style", "MD")
         self.delete()
 
     def _outfile(self):
-        self.metric_file = self.check_path(self.get_value("OUTFILE", "metrics", "fitsnap_metrics.md"))
+        self.metric_file = self.check_path(self.get_value("OUTFILE", "metrics", "fitsnap_metrics"))
         self.potential_name = self.check_path(self.get_value("OUTFILE", "potential", "fitsnap_potential"))
         return

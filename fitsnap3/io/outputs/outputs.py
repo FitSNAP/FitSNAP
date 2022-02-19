@@ -56,6 +56,23 @@ class Output:
     def output(self, *args):
         pass
 
+    @pt.rank_zero
+    def write_errors(self, errors):
+        with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
+            if config.sections["OUTFILE"].metric_style == "MD":
+                errors.to_markdown(file+'.md')
+            elif config.sections["OUTFILE"].metric_style == "CSV":
+                errors.to_csv(file+'.csv', sep=',', float_format="%.8f")
+            elif config.sections["OUTFILE"].metric_style == "SSV":
+                errors.to_csv(file, sep=' ', float_format="%.8f")
+            elif config.sections["OUTFILE"].metric_style == "JSON":
+                errors.to_json(file+'.json')
+            elif config.sections["OUTFILE"].metric_style == "DF":
+                errors.to_pickle(file+'.db')
+            else:
+                raise NotImplementedError("Metric style {} not implemented".format(
+                    config.sections["OUTFILE"].metric_style))
+
 
 @contextmanager
 def optional_open(file, mode, *args, openfn=None, **kwargs):

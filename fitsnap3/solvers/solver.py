@@ -43,7 +43,7 @@ class Solver:
             self._all_error()
             self._group_error()
             if config.sections["SOLVER"].detailed_errors:
-                config_indicies,energy_list,force_list,stress_list = self._config_error()
+                config_indicies, energy_list, force_list, stress_list = self._config_error()
 #                from csv import writer
 #                with open('detailed_config_list.dat', 'w') as f:
 #                    writer = writer(f, delimiter=' ')

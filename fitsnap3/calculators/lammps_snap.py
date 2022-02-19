@@ -149,6 +149,8 @@ class LammpsSnap(Calculator):
         }
         if kw_options["chem"] == 0:
             kw_options.pop("chem")
+        if kw_options["bikflag"] == 0:
+            kw_options.pop("bikflag")
         kw_options["rmin0"] = config.sections["BISPECTRUM"].rmin0
         kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
         kwargs = " ".join(kw_substrings)

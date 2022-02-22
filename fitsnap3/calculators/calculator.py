@@ -26,7 +26,10 @@ class Calculator:
         if testing > 0:
             for i in range(testing):
                 if config.sections["CALCULATOR"].energy:
-                    elements += 1
+                    energy_rows = 1
+                    if config.sections["CALCULATOR"].per_atom_energy:
+                        energy_rows = pt.shared_arrays["number_of_atoms"].array[-testing+i]
+                    elements += energy_rows
                 if config.sections["CALCULATOR"].force:
                     elements += 3 * pt.shared_arrays["number_of_atoms"].array[-testing+i]
                 if config.sections["CALCULATOR"].stress:
@@ -35,7 +38,10 @@ class Calculator:
 
         a_len = 0
         if config.sections["CALCULATOR"].energy:
-            a_len += self.number_of_files_per_node
+            energy_rows = self.number_of_files_per_node
+            if config.sections["CALCULATOR"].per_atom_energy:
+                energy_rows = self.number_of_atoms
+            a_len += energy_rows
         if config.sections["CALCULATOR"].force:
             a_len += 3 * self.number_of_atoms
         if config.sections["CALCULATOR"].stress:
@@ -64,9 +70,12 @@ class Calculator:
 
     @pt.rank_zero
     def extras(self):
-        length, width = 0, np.shape(pt.shared_arrays['a'].array)[1]
+        length, width = np.shape(pt.shared_arrays['a'].array)
         if config.sections["CALCULATOR"].energy:
-            a_e, b_e, w_e = make_abw(pt.shared_arrays['a'].energy_index, 1)
+            num_energy = 1
+            if config.sections["CALCULATOR"].per_atom_energy:
+                num_energy = np.array(pt.shared_arrays['a'].num_atoms)
+            a_e, b_e, w_e = make_abw(pt.shared_arrays['a'].energy_index, num_energy.tolist())
         else:
             a_e, b_e, w_e = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
         if config.sections["CALCULATOR"].force:

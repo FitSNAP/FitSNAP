@@ -476,7 +476,10 @@ class ParallelTools:
                     s_temp = []
             if self.fitsnap_dict["energy"]:
                 e_temp.append(j)
-                j += 1
+                descriptor_rows = 1
+                if self.fitsnap_dict["per_atom_energy"]:
+                    descriptor_rows = pt.shared_arrays["number_of_atoms"].array[i]
+                j += descriptor_rows
             if self.fitsnap_dict["force"]:
                 f_temp.append(j)
                 j += 3 * pt.shared_arrays["number_of_atoms"].array[i]

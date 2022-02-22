@@ -8,9 +8,12 @@ class Section:
     parameters = []
     _infile_directory = None
     _outfile_directory = None
+    sections = {}
+    dependencies = {}
 
     def __init__(self, name, config, args=None):
         self.name = name
+        Section.sections[name] = self
         self._config = config
         self._args = args
         self.allowedkeys = None
@@ -25,6 +28,7 @@ class Section:
             raise ExitFunc
 
     def delete(self):
+        self._check_dependencies()
         del self._config
         del self._args
 
@@ -54,9 +58,11 @@ class Section:
             raise ValueError("{} is not an implemented interpreter.")
 
         if section not in self._config:
-            return convert(fallback)
+            value = convert(fallback)
         else:
-            return convert(self._config.get(section, key, fallback=fallback))
+            value = convert(self._config.get(section, key, fallback=fallback))
+
+        return value
 
     def get_section(self, section):
         if section not in self._config:
@@ -78,6 +84,38 @@ class Section:
             name = self.__class__.__name__
         if self.get_value(from_sec, sec_type, default).upper() != name.upper():
             raise UserWarning("{0} {1} section is in input, but not set as {1}".format(name, sec_type))
+
+    def _check_dependencies(self):
+        """
+        Run at end of section creation to check if any dependencies fail assertion
+        """
+        if self.name in Section.dependencies:
+            for attribute in Section.sections[self.name].__dict__.keys():
+                if attribute in Section.dependencies[self.name]:
+                    for dependency in Section.dependencies[self.name][attribute]:
+                        og_section, og_attribute, dependent_value = dependency
+                        og_section._assert_dependency(og_attribute, self.name, attribute, dependent_value)
+                    del Section.dependencies[self.name][attribute]
+
+    def _assert_dependency(self, this, dependent_section, dependent_attribute, dependent_value=True):
+        """
+        Add dependency onto section attribute from separate section
+        """
+        if dependent_section not in Section.sections:
+            if dependent_section not in Section.dependencies:
+                Section.dependencies[dependent_section] = {}
+                if dependent_attribute not in Section.dependencies[dependent_section]:
+                    Section.dependencies[dependent_section][dependent_attribute] = []
+            Section.dependencies[dependent_section][dependent_attribute].append([self, this, dependent_value])
+            return
+        try:
+            assert Section.sections[dependent_section].__dict__[dependent_attribute] == dependent_value
+        except AssertionError:
+            raise AssertionError('config[{}].{} depends on config[{}].{} being equal to {}'.format(self.name,
+                                                                                                   this,
+                                                                                                   dependent_section,
+                                                                                                   dependent_attribute,
+                                                                                                   dependent_value))
 
     @classmethod
     def add_parameter(cls, section, key, fallback, interpreter):

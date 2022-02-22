@@ -9,7 +9,7 @@ class Bispectrum(Section):
         super().__init__(name, config, args)
 
         self.allowedkeys = ['numTypes', 'twojmax', 'rcutfac', 'rfac0', 'rmin0', 'wj', 'radelem', 'type',
-                            'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag']
+                            'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag', 'bikflag']
         self._check_section()
 
         self._check_if_used("CALCULATOR", "calculator", "LAMMPSSNAP", "LAMMPSSNAP")
@@ -44,7 +44,7 @@ class Bispectrum(Section):
         self.quadraticflag = self.get_value("BISPECTRUM", "quadraticflag", "0", "bool")
         # bikflag true enables computing of bispectrum per atom instead of sum
         self.bikflag = self.get_value("BISPECTRUM", "bikflag", "0", "bool")
-
+        self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
         self._generate_b_list()
         self._reset_chemflag()
         self.delete()

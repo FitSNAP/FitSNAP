@@ -182,7 +182,10 @@ class LammpsSnap(Calculator):
 
         # Extract SNAP data, including reference potential data
 
-        nrows_energy = 1
+        bik_rows = 1
+        if config.sections['BISPECTRUM'].bikflag:
+            bik_rows = num_atoms
+        nrows_energy = bik_rows
         ndim_force = 3
         nrows_force = ndim_force * num_atoms
         ndim_virial = 6

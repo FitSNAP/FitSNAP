@@ -6,7 +6,7 @@ from pandas import DataFrame
 
 class Solver:
 
-    def __init__(self, name):
+    def __init__(self, name, linear=True):
         self.name = name
         self.configs = None
         self.fit = None
@@ -18,6 +18,8 @@ class Solver:
         self.a = None
         self.b = None
         self.w = None
+        self.linear = linear
+        self._checks()
 
     def perform_fit(self):
         pass
@@ -35,6 +37,9 @@ class Solver:
             self.fit = self.fit.reshape((-1, 1))
         else:
             self.fit = np.insert(self.fit, 0, 0)
+
+    def _checks(self):
+        assert not (self.linear and config.sections['CALCULATOR'].per_atom_energy and config.args.perform_fit)
 
     @pt.rank_zero
     def error_analysis(self):

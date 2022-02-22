@@ -44,7 +44,8 @@ class Bispectrum(Section):
         self.quadraticflag = self.get_value("BISPECTRUM", "quadraticflag", "0", "bool")
         # bikflag true enables computing of bispectrum per atom instead of sum
         self.bikflag = self.get_value("BISPECTRUM", "bikflag", "0", "bool")
-        self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
+        if self.bikflag:
+            self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
         self._generate_b_list()
         self._reset_chemflag()
         self.delete()

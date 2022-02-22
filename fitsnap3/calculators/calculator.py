@@ -74,8 +74,8 @@ class Calculator:
         if config.sections["CALCULATOR"].energy:
             num_energy = 1
             if config.sections["CALCULATOR"].per_atom_energy:
-                num_energy = np.array(pt.shared_arrays['a'].num_atoms)
-            a_e, b_e, w_e = make_abw(pt.shared_arrays['a'].energy_index, num_energy.tolist())
+                num_energy = np.array(pt.shared_arrays['a'].num_atoms).tolist()
+            a_e, b_e, w_e = make_abw(pt.shared_arrays['a'].energy_index, num_energy)
         else:
             a_e, b_e, w_e = np.zeros((length, width)), np.zeros((length,)), np.zeros((length,))
         if config.sections["CALCULATOR"].force:

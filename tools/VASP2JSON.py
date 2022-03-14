@@ -11,14 +11,21 @@ OUTCAR_file = sys.argv[1]
 POSCAR_file = sys.argv[2]
 JSON_file = str(sys.argv[3])
 
-# Define a function to take all the data that will be needed and send that to a
-# json.dump command which then takes that data and puts it into json format.
-# The input for this function (data) is a dictionary that holds all the values from
-# the OUTCAR file that will be parsed through (such as atom positions, forces, lattice
-# vectors, etc.) which will be put into all Data with key 'Data'.  allDataHeader holds
-# all of the units as well as 'Data'.  This is then encompassed by myDataSet which then gets
-# fed into the json.dump command.  Most of this is just getting everything into the right format
+
 def write_json(data, jsonfilename):
+    """
+    Define a function to take all the data that will be needed and send that to a
+    json.dump command which then takes that data and puts it into json format. 
+    The input for this function (data) is a dictionary that holds all the values from
+    the OUTCAR file that will be parsed through (such as atom positions, forces, lattice
+    vectors, etc.) which will be put into all Data with key 'Data'.  allDataHeader holds
+    all of the units as well as 'Data'.  This is then encompassed by myDataSet which then gets
+    fed into the json.dump command.  Most of this is just getting everything into the right format
+    
+    :param data: dict, parsed output of POSCAR and OUTCAR files
+    :param jsonfilename: str, filename of .json file to be written 
+    """
+
     jsonfile = open(jsonfilename, "w")
     # print >>jsonfile, "# Header\n"
     # print("# Header", file=jsonfilename)
@@ -39,16 +46,19 @@ def write_json(data, jsonfilename):
     return
 
 
-# print_num_atoms_per_type takes the POSCAR specified by the user and parses it
-# for the  number of each atom types, which is assumed to be
-# in lines 7 of the POSCAR file (so if that's not the case this will need
-# to be modified in atomTypeLine and numberAtomsLine).  This function then returns
-# a the number of the atom type for each indvidual atoms for each configuration.
-# Line 6 is the POSCAR is not actually used by VASP, and the ordering of the
-# atom types is determined by the POTCAR file, and listed in the OUTCAR file.
-
-
 def print_num_atoms_per_type(myPOSCARFile):
+    """
+    print_num_atoms_per_type takes the POSCAR specified by the user and parses it
+    for the number of each atom types, which is assumed to be
+    in lines 7 of the POSCAR file (so if that's not the case this will need
+    to be modified in numberAtomsLine). This function then returns
+    a the number of the atom type for each indvidual atoms for each configuration.
+    Line 6 in the POSCAR is not actually used by VASP, and the ordering of the
+    atom types is determined by the POTCAR file, and listed in the OUTCAR file.
+
+    :param myPOSCARFile: str, filename of POSTCAR
+    :return: number of atoms of each type/ List[Int]
+    """
     with open(myPOSCARFile, "rt") as f1:
         lines = f1.readlines()
     numberAtomsLine = lines[6]

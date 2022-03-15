@@ -11,21 +11,14 @@ OUTCAR_file = sys.argv[1]
 POSCAR_file = sys.argv[2]
 JSON_file = str(sys.argv[3])
 
-
+# Define a function to take all the data that will be needed and send that to a
+# json.dump command which then takes that data and puts it into json format.
+# The input for this function (data) is a dictionary that holds all the values from
+# the OUTCAR file that will be parsed through (such as atom positions, forces, lattice
+# vectors, etc.) which will be put into all Data with key 'Data'.  allDataHeader holds
+# all of the units as well as 'Data'.  This is then encompassed by myDataSet which then gets
+# fed into the json.dump command.  Most of this is just getting everything into the right format
 def write_json(data, jsonfilename):
-    """
-    Define a function to take all the data that will be needed and send that to a
-    json.dump command which then takes that data and puts it into json format. 
-    The input for this function (data) is a dictionary that holds all the values from
-    the OUTCAR file that will be parsed through (such as atom positions, forces, lattice
-    vectors, etc.) which will be put into all Data with key 'Data'.  allDataHeader holds
-    all of the units as well as 'Data'.  This is then encompassed by myDataSet which then gets
-    fed into the json.dump command.  Most of this is just getting everything into the right format
-    
-    :param data: dict, parsed output of POSCAR and OUTCAR files
-    :param jsonfilename: str, filename of .json file to be written 
-    """
-
     jsonfile = open(jsonfilename, "w")
     # print >>jsonfile, "# Header\n"
     # print("# Header", file=jsonfilename)
@@ -46,19 +39,16 @@ def write_json(data, jsonfilename):
     return
 
 
-def print_num_atoms_per_type(myPOSCARFile):
-    """
-    print_num_atoms_per_type takes the POSCAR specified by the user and parses it
-    for the number of each atom types, which is assumed to be
-    in lines 7 of the POSCAR file (so if that's not the case this will need
-    to be modified in numberAtomsLine). This function then returns
-    a the number of the atom type for each indvidual atoms for each configuration.
-    Line 6 in the POSCAR is not actually used by VASP, and the ordering of the
-    atom types is determined by the POTCAR file, and listed in the OUTCAR file.
+# print_num_atoms_per_type takes the POSCAR specified by the user and parses it
+# for the  number of each atom types, which is assumed to be
+# in lines 7 of the POSCAR file (so if that's not the case this will need
+# to be modified in atomTypeLine and numberAtomsLine).  This function then returns
+# a the number of the atom type for each indvidual atoms for each configuration.
+# Line 6 is the POSCAR is not actually used by VASP, and the ordering of the
+# atom types is determined by the POTCAR file, and listed in the OUTCAR file.
 
-    :param myPOSCARFile: str, filename of POSTCAR
-    :return: number of atoms of each type/ List[Int]
-    """
+
+def print_num_atoms_per_type(myPOSCARFile):
     with open(myPOSCARFile, "rt") as f1:
         lines = f1.readlines()
     numberAtomsLine = lines[6]
@@ -79,8 +69,7 @@ with open(OUTCAR_file, "rt") as f2:
     lines = f2.readlines()
 outcar_config_number = 1
 
-for i in range(0, len(lines)):
-    line = lines[i]
+for i, line in enumerate(lines):
     # Look for the ordering of the atom types
     # can grab atom labels from VRHFIN lines at top of OUTCAR
     # (These will only show up once for each element at in the OUTCAR)
@@ -98,38 +87,17 @@ for i in range(0, len(lines)):
         natoms = int(columns[11])
     # Look for lattice vectors for configuration
     if "direct lattice vectors" in line:
-        line = lines[i + 1]
-        columns = line.split()
-        x1 = float(columns[0])
-        x2 = float(columns[1])
-        x3 = float(columns[2])
-        line = lines[i + 2]
-        columns = line.split()
-        y1 = float(columns[0])
-        y2 = float(columns[1])
-        y3 = float(columns[2])
-        line = lines[i + 3]
-        columns = line.split()
-        z1 = float(columns[0])
-        z2 = float(columns[1])
-        z3 = float(columns[2])
-
-        lattice_x = [x1, x2, x3]
-        lattice_y = [y1, y2, y3]
-        lattice_z = [z1, z2, z3]
+        lattice_x = [float(x) for x in lines[i + 1].split()[0:3]]
+        lattice_y = [float(y) for y in lines[i + 2].split()[0:3]]
+        lattice_z = [float(z) for z in lines[i + 3].split()[0:3]]
 
         all_lattice = [lattice_x, lattice_y, lattice_z]
     # Look for stresses for configuration.  Assumes total stress is 14 lines down
     # from where FORCE on cell is found
     if "FORCE on cell" in line:
-        line = lines[i + 14]
-        columns = line.split()
-        stress_xx = float(columns[2])
-        stress_yy = float(columns[3])
-        stress_zz = float(columns[4])
-        stress_xy = float(columns[5])
-        stress_yz = float(columns[6])
-        stress_zx = float(columns[7])
+        stress_xx, stress_yy, stress_zz, stress_xy, stress_yz, stress_zx = [
+            float(s) for s in lines[i + 14].split()[2:8]
+        ]
         stress_allx = [stress_xx, stress_xy, stress_zx]
         stress_ally = [stress_xy, stress_yy, stress_yz]
         stress_allz = [stress_zx, stress_yz, stress_zz]
@@ -139,16 +107,10 @@ for i in range(0, len(lines)):
 
         atom_cords = []
         atom_force = []
-        line = lines[i + 2]
-        count = 0
-        for count in range(1, natoms + 1):
-            columns = line.split()
-            x_cord = float(columns[0])
-            y_cord = float(columns[1])
-            z_cord = float(columns[2])
-            f_x = float(columns[3])
-            f_y = float(columns[4])
-            f_z = float(columns[5])
+        for count in range(0, natoms):
+            x_cord, y_cord, z_cord, f_x, f_y, f_z = [
+                float(val) for val in lines[i + 2 + count].split()[0:6]
+            ]
 
             coordinates = [x_cord, y_cord, z_cord]
             forces = [f_x, f_y, f_z]
@@ -156,15 +118,12 @@ for i in range(0, len(lines)):
             atom_cords.append(coordinates)
             atom_force.append(forces)
 
-            line = lines[i + 2 + count]
     # Look for total energy of configuration.  Assumes that value is four
     # lines past where FREE ENERGIE OF THE ION-ELECTRON SYSTEM is found
 
     if "FREE ENERGIE OF THE ION-ELECTRON SYSTEM" in line:
         data = {}
-        line = lines[i + 4]
-        columns = line.split()
-        totalEnergy = float(columns[3])
+        totalEnergy = float(lines[i + 4].split()[3])
 
         # Here is where all the data is put together since the energy value is the last
         # one listed in each configuration.  After this, all these values will be overwritten

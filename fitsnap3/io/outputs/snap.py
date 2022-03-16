@@ -28,9 +28,7 @@ class Snap(Output):
         with optional_open(config.sections["OUTFILE"].potential_name and
                            config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
             file.write(_to_param_string())
-        with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:
-            # errors.to_csv(file,sep=' ',float_format="%.8f")
-            errors.to_markdown(file)
+        self.write_errors(errors)
 
     @pt.sub_rank_zero
     def read_fit(self):

@@ -143,11 +143,14 @@ class LammpsSnap(Calculator):
                 "chem": "chemflag",
                 "bnormflag": "bnormflag",
                 "wselfallflag": "wselfallflag",
+                "bikflag": "bikflag",
             }.items()
             if v in config.sections["BISPECTRUM"].__dict__
         }
         if kw_options["chem"] == 0:
             kw_options.pop("chem")
+        if kw_options["bikflag"] == 0:
+            kw_options.pop("bikflag")
         kw_options["rmin0"] = config.sections["BISPECTRUM"].rmin0
         kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
         kwargs = " ".join(kw_substrings)
@@ -179,7 +182,10 @@ class LammpsSnap(Calculator):
 
         # Extract SNAP data, including reference potential data
 
-        nrows_energy = 1
+        bik_rows = 1
+        if config.sections['BISPECTRUM'].bikflag:
+            bik_rows = num_atoms
+        nrows_energy = bik_rows
         ndim_force = 3
         nrows_force = ndim_force * num_atoms
         ndim_virial = 6

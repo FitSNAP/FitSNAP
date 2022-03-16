@@ -9,7 +9,7 @@ class Bispectrum(Section):
         super().__init__(name, config, args)
 
         self.allowedkeys = ['numTypes', 'twojmax', 'rcutfac', 'rfac0', 'rmin0', 'wj', 'radelem', 'type',
-                            'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag']
+                            'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag', 'bikflag']
         self._check_section()
 
         self._check_if_used("CALCULATOR", "calculator", "LAMMPSSNAP", "LAMMPSSNAP")
@@ -35,12 +35,17 @@ class Bispectrum(Section):
         for i, atom_type in enumerate(self.types):
             self.type_mapping[atom_type] = i+1
 
+        # chemflag true enables the EME model
         self.chemflag = self.get_value("BISPECTRUM", "chemflag", "0", "bool")
         self.bnormflag = self.get_value("BISPECTRUM", "bnormflag", "0", "bool")
         self.wselfallflag = self.get_value("BISPECTRUM", "wselfallflag", "0", "bool")
         self.bzeroflag = self.get_value("BISPECTRUM", "bzeroflag", "0", "bool")
+        # quadraticflag true enables the quadratic model
         self.quadraticflag = self.get_value("BISPECTRUM", "quadraticflag", "0", "bool")
-
+        # bikflag true enables computing of bispectrum per atom instead of sum
+        self.bikflag = self.get_value("BISPECTRUM", "bikflag", "0", "bool")
+        if self.bikflag:
+            self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
         self._generate_b_list()
         self._reset_chemflag()
         self.delete()

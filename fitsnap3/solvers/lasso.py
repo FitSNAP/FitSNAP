@@ -14,12 +14,9 @@ try:
 
         @pt.sub_rank_zero
         def perform_fit(self):
-            if pt.shared_arrays['configs_per_group'].testing_elements != 0:
-                testing = -1 * pt.shared_arrays['configs_per_group'].testing_elements
-            else:
-                testing = len(pt.shared_arrays['w'].array)
-            w = pt.shared_arrays['w'].array[:testing]
-            aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[:testing], w * pt.shared_arrays['b'].array[:testing]
+            training = [not elem for elem in pt.fitsnap_dict['Testing']]
+            w = pt.shared_arrays['w'].array[training]
+            aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
             if config.sections['EXTRAS'].apply_transpose:
                 bw = aw.T @ bw
                 aw = aw.T @ aw

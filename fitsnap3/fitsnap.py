@@ -62,6 +62,7 @@ class FitSnap:
         for i, configuration in enumerate(self.data):
             self.calculator.process_configs(configuration, i)
         del self.data
+        self.calculator.collect_distributed_lists()
         self.calculator.extras()
 
     @pt.single_timeit

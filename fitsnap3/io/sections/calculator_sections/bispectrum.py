@@ -48,6 +48,7 @@ class Bispectrum(Section):
             self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
         self._generate_b_list()
         self._reset_chemflag()
+        Section.num_desc = len(self.blist)
         self.delete()
 
     def _generate_b_list(self):

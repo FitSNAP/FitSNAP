@@ -18,6 +18,7 @@ class Solver:
         self.a = None
         self.b = None
         self.w = None
+        self.df = None
         self.linear = linear
         self._checks()
 
@@ -25,7 +26,7 @@ class Solver:
         pass
 
     def fit_gather(self):
-        # self.all_fits = pt.allgather(self.fit)
+        # self.all_fits = pt.gather_to_head_node(self.fit)
         pass
 
     def _offset(self):
@@ -43,17 +44,22 @@ class Solver:
 
     @pt.rank_zero
     def error_analysis(self):
+        if not self.linear:
+            pt.single_print("No Error Analysis for non-linear potentials")
+            return
+        self.df = DataFrame(pt.shared_arrays['a'].array)
+        self.df['truths'] = pt.shared_arrays['b'].array.tolist()
+        self.df['preds'] = pt.shared_arrays['a'].array @ self.fit
+        self.df['weights'] = pt.shared_arrays['w'].array.tolist()
+        for key in pt.fitsnap_dict.keys():
+            if isinstance(pt.fitsnap_dict[key], list) and len(pt.fitsnap_dict[key]) == len(self.df.index):
+                self.df[key] = pt.fitsnap_dict[key]
         for option in ["Unweighted", "Weighted"]:
             self.weighted = option
             self._all_error()
             self._group_error()
             if config.sections["SOLVER"].detailed_errors:
-                config_indicies, energy_list, force_list, stress_list = self._config_error()
-#                from csv import writer
-#                with open('detailed_config_list.dat', 'w') as f:
-#                    writer = writer(f, delimiter=' ')
-#                    writer.writerow(['FileID Usage N_Atoms FileName'])
-#                    writer.writerows(config_indicies)
+                self._config_error()
 
         if self.template_error is True:
             self._template_error()
@@ -66,296 +72,63 @@ class Solver:
 
     def _all_error(self):
         if config.sections["CALCULATOR"].energy:
-            self._energy()
+            self._errors("*ALL", "Energy", (self.df['Row_Type'] == 'Energy'))
         if config.sections["CALCULATOR"].force:
-            self._force()
+            self._errors("*ALL", "Force", (self.df['Row_Type'] == 'Force'))
         if config.sections["CALCULATOR"].stress:
-            self._stress()
-        #self._combined()
-
-    def _energy(self):
-        if config.sections["CALCULATOR"].energy:
-            testing = -1 * pt.shared_arrays['configs_per_group'].testing
-            a, b, w = make_abw(pt.shared_arrays['a'].energy_index, 1)
-            config_indicies, energy_list, force_list, stress_list = self._config_error()
-            self._errors([[0, testing]], ['*ALL'], "Energy", a, b, w)
-            if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
-                from csv import writer
-                true, pred = b, a @ self.fit
-                ConfigType = ['Training'] * (np.shape(true)[0]-pt.shared_arrays['configs_per_group'].testing) + \
-                                             ['Testing'] * (pt.shared_arrays['configs_per_group'].testing)
-                with open(config.sections['CALCULATOR'].dee, 'w') as f:
-                    writer = writer(f, delimiter=' ')
-                    writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
-                    writer.writerows(zip(energy_list, ConfigType, true, pred, pred-true))
-
-            if testing != 0:
-                self._errors([[testing, 0]], ['*ALL'], "Energy_testing", a, b, w)
-
-    def _force(self):
-        if config.sections["CALCULATOR"].force:
-            num_forces = np.array(pt.shared_arrays['a'].num_atoms)*3
-            if pt.shared_arrays['configs_per_group'].testing:
-                testing = -1 * np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:])
-            else:
-                testing = 0
-
-            a, b, w = make_abw(pt.shared_arrays['a'].force_index, num_forces.tolist())
-            config_indicies, energy_list, force_list, stress_list = self._config_error()
-            if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
-                from csv import writer
-                true, pred = b, a @ self.fit
-                if pt.shared_arrays['configs_per_group'].testing:
-                    ConfigType = ['Training'] * (
-                                np.shape(true)[0] - np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:])) + \
-                                 ['Testing'] * (np.sum(num_forces[-pt.shared_arrays['configs_per_group'].testing:]))
-                else:
-                    ConfigType = ['Training'] * np.shape(true)[0]
-                with open(config.sections['CALCULATOR'].dfe, 'w') as f:
-                    writer = writer(f, delimiter=' ')
-                    writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
-                    writer.writerows(zip(force_list, ConfigType, true, pred, pred-true))
-
-            self._errors([[0, testing]], ['*ALL'], "Force", a, b, w)
-            if testing != 0:
-                self._errors([[testing, 0]], ['*ALL'], "Force_testing", a, b, w)
-
-    def _stress(self):
-        if config.sections["CALCULATOR"].stress:
-            testing = -6 * pt.shared_arrays['configs_per_group'].testing
-            a, b, w = make_abw(pt.shared_arrays['a'].stress_index, 6)
-            config_indicies, energy_list, force_list, stress_list = self._config_error()
-            if config.sections["SOLVER"].detailed_errors and self.weighted == "Unweighted":
-                from csv import writer
-                true, pred = b, a @ self.fit
-                ConfigType = ['Training'] * (np.shape(true)[0] - 6 * pt.shared_arrays['configs_per_group'].testing) + \
-                                             ['Testing'] * (6 * pt.shared_arrays['configs_per_group'].testing)
-                with open(config.sections['CALCULATOR'].dse, 'w') as f:
-                    writer = writer(f, delimiter=' ')
-                    writer.writerow(['FileName Type True-Ref Predicted-Ref Difference(Pred-True)'])
-                    writer.writerows(zip(stress_list, ConfigType, true, pred, pred-true))
-
-            self._errors([[0, testing]], ['*ALL'], "Stress", a, b, w)
-            if testing != 0:
-                self._errors([[testing, 0]], ['*ALL'], "Stress_testing", a, b, w)
-
-    def _combined(self):
-        self._errors([[0, pt.shared_arrays["configs_per_group"].testing_elements]], ["*ALL"], "Combined")
-        if pt.shared_arrays["configs_per_group"].testing_elements != 0:
-            self._errors([[pt.shared_arrays["configs_per_group"].testing_elements, 0]], ['*ALL'], "Combined_testing")
+            self._errors("*ALL", "Stress", (self.df['Row_Type'] == 'Stress'))
 
     def _group_error(self):
-        groups = []
-        for group in pt.shared_arrays['configs_per_group'].list:
-            group = group.split('/')[-1]
-            groups.append(group)
-        if config.sections["CALCULATOR"].energy:
-            self._group_energy(groups)
-        if config.sections["CALCULATOR"].force:
-            self._group_force(groups)
-        if config.sections["CALCULATOR"].stress:
-            self._group_stress(groups)
-#        self._group_combined(groups)
-
-    def _group_energy(self, groups):
-        group_index = pt.shared_arrays['a'].group_energy_index
-        length = pt.shared_arrays['a'].group_energy_length
-        index, a, b, w = self._make_group_abw(group_index, length, 1)
-        self._errors(index, groups, "Energy", a, b, w)
-
-    def _group_force(self, groups):
-        group_index = pt.shared_arrays['a'].group_force_index
-        length = pt.shared_arrays['a'].group_force_length
-        index, a, b, w = self._make_group_abw(group_index, length, pt.shared_arrays['a'].num_atoms)
-        self._errors(index, groups, "Force", a, b, w)
-
-    def _group_stress(self, groups):
-        group_index = pt.shared_arrays['a'].group_stress_index
-        length = pt.shared_arrays['a'].group_stress_length*6
-        index, a, b, w = self._make_group_abw(group_index, length, 6)
-        self._errors(index, groups, "Stress", a, b, w)
-
-    def _group_combined(self, groups):
-        index = []
-        group_index = pt.shared_arrays['a'].group_index
-        for i in range(len(group_index) - 1):
-            index.append([group_index[i], group_index[i+1]])
-        # self._errors(index, groups, "Combined")
-
-    @staticmethod
-    def _make_group_abw(group_index, length, buffer):
-        index = []
-        width = np.shape(pt.shared_arrays['a'].array)[1]
-        if isinstance(buffer, list):
-            length = 3 * sum(buffer)
-        a = np.zeros((length, width))
-        b = np.zeros((length,))
-        w = np.zeros((length,))
-        i = 0
-        j = 0
-        for group in group_index:
-            temp = [i]
-            for value in group:
-                if isinstance(buffer, list):
-                    spacing = buffer[j]
-                    j += 1
-                    spacing *= 3
-                else:
-                    spacing = buffer
-                a[i:i+spacing] = pt.shared_arrays['a'].array[value:value+spacing]
-                b[i:i+spacing] = pt.shared_arrays['b'].array[value:value+spacing]
-                w[i:i+spacing] = pt.shared_arrays['w'].array[value:value+spacing]
-                i += spacing
-            temp.append(i)
-            index.append(temp)
-        return index, a, b, w
+        groups = set(pt.fitsnap_dict["Groups"])
+        for group in groups:
+            if config.sections["CALCULATOR"].energy:
+                self._errors(group, "Energy", (self.df['Groups'] == group) & (self.df['Row_Type'] == 'Energy'))
+            if config.sections["CALCULATOR"].force:
+                self._errors(group, "Force", (self.df['Groups'] == group) & (self.df['Row_Type'] == 'Force'))
+            if config.sections["CALCULATOR"].stress:
+                self._errors(group, "Stress", (self.df['Groups'] == group) & (self.df['Row_Type'] == 'Stress'))
 
     def _config_error(self):
-        config_index = 0
-        current_index = 0
-        detailed_config_list = []
-        energy_list = []
-        force_list = []
-        stress_list = []
-        for i, num_atoms in enumerate(pt.shared_arrays['a'].num_atoms):
-            this_config = pt.shared_arrays['number_of_atoms'].configs[i]
-            if isinstance(this_config, str):
-                this_config = this_config.split('/')[-2] + ':' + this_config.split('/')[-1]
-                this_config = [this_config]
-            elif isinstance(this_config, list):
-                this_config = [this_config[-1].split('/')[-1] + ':' + str(this_config[0])]
+        # TODO: return normal functionality to detailed errors
+        configs = set(pt.fitsnap_dict["Configs"])
+        for this_config in configs:
             if config.sections["CALCULATOR"].energy:
-                # current index is the index of the top of energy
-                self._config_energy(this_config, current_index)
-                current_index += 1
-                energy_list += [this_config[0]]
+                indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Energy')
+                # self._errors(this_config, "Energy", indices)
             if config.sections["CALCULATOR"].force:
-                # current index is the index of the top of force
-                self._config_force(this_config, current_index, 3*num_atoms)
-                current_index += 3*num_atoms
-                force_list += 3*num_atoms*[this_config[0]]
+                indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Force')
+                # self._errors(this_config, "Force", indices)
             if config.sections["CALCULATOR"].stress:
-                self._config_stress(this_config, current_index)
-                current_index += 6
-                stress_list += 6*[this_config[0]]
-            self._config_combined(this_config, config_index, current_index)
-            config_index = current_index
-            if pt.shared_arrays['configs_per_group'].testing > 0 and \
-                    i < (np.shape(pt.shared_arrays['a'].array)[0] - pt.shared_arrays['configs_per_group'].testing):
-                ConfigType = 'Training'
-            elif pt.shared_arrays['configs_per_group'].testing > 0 and \
-                    i >= (np.shape(pt.shared_arrays['a'].array)[0] - pt.shared_arrays['configs_per_group'].testing):
-                ConfigType = 'Testing'
-            else:
-                ConfigType = 'Training'
+                indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Stress')
+                # self._errors(this_config, "Stress", indices)
 
-            detailed_config_list.append([i, ConfigType, num_atoms, this_config[0]])
-        return detailed_config_list,energy_list,force_list,stress_list
+    def _errors(self, group, rtype, indices):
+        this_true, this_pred = self.df['truths'][indices], self.df['preds'][indices]
+        if self.weighted == 'Weighted':
+            w = pt.shared_arrays['w'].array[indices]
+            this_true, this_pred = w * this_true, w * this_pred
+            nconfig = np.count_nonzero(w)
+        else:
+            nconfig = len(this_pred)
+        res = this_true - this_pred
+        mae = np.sum(np.abs(res) / nconfig)
+        ssr = np.square(res).sum()
+        mse = ssr / nconfig
+        rmse = np.sqrt(mse)
+        rsq = 1 - ssr / np.sum(np.square(this_true - (this_true / nconfig).sum()))
+        error_record = {
+            "Group": group,
+            "Weighting": self.weighted,
+            "Subsystem": rtype,
+            "ncount": nconfig,
+            "mae": mae,
+            "rmse": rmse,
+            "rsq": rsq
+        }
 
-    def _config_energy(self, this_config, current_index):
-        index, a, b, w = self._make_config_abw(current_index, 1)
-        #self._errors(index, this_config, "Energy", a, b, w)
-
-    def _config_force(self, this_config, current_index, length):
-        index, a, b, w = self._make_config_abw(current_index, length)
-        #self._errors(index, this_config, "Force", a, b, w)
-
-    def _config_stress(self, this_config, current_index):
-        index, a, b, w = self._make_config_abw(current_index, 6)
-        #self._errors(index, this_config, "Stress", a, b, w)
-
-    def _config_combined(self, this_config, config_index, current_index):
-        index, a, b, w = self._make_config_abw(config_index, current_index-config_index)
-        #self._errors(index, this_config, "Combined", a, b, w)
-
-    @staticmethod
-    def _make_config_abw(i, buffer):
-        index = None
-        width = np.shape(pt.shared_arrays['a'].array)[1]
-        a = np.zeros((buffer, width))
-        b = np.zeros((buffer,))
-        w = np.zeros((buffer,))
-        a[:] = pt.shared_arrays['a'].array[i:i + buffer]
-        b[:] = pt.shared_arrays['b'].array[i:i + buffer]
-        w[:] = pt.shared_arrays['w'].array[i:i + buffer]
-
-        return index, a, b, w
-
-    def _errors(self, index, category, gtype, a=None, b=None, w=None):
-        if a is None:
-            a = pt.shared_arrays['a'].array
-        if b is None:
-            b = pt.shared_arrays['b'].array
-        if w is None:
-            w = pt.shared_arrays['w'].array
-        for i, group in enumerate(category):
-#            print(i,group,gtype)
-            if index is None:
-                a_err = a
-                b_err = b
-                w_err = w
-            elif index[i][1] != 0:
-                a_err = a[index[i][0]:index[i][1]]
-                b_err = b[index[i][0]:index[i][1]]
-                w_err = w[index[i][0]:index[i][1]]
-            else:
-                a_err = a[index[i][0]:]
-                b_err = b[index[i][0]:]
-                w_err = w[index[i][0]:]
-            true, pred = b_err, a_err @ self.fit
-            if self.weighted == 'Weighted':
-                true, pred = w_err * true, w_err * pred
-                nconfig = np.count_nonzero(w_err)
-            else:
-                nconfig = len(pred)
-            res = true - pred
-            mae = np.sum(np.abs(res) / nconfig)
-            # relative mae
-            rres = ((true+1)-pred)/(true+1)
-            rel_mae = np.sum(np.abs(rres) / nconfig)
-            mean_dev = np.sum(np.abs(true - np.median(true)) / nconfig)
-            ssr = np.square(res).sum()
-            mse = ssr / nconfig
-            rmse = np.sqrt(mse)
-            rsq = 1 - ssr / np.sum(np.square(true - (true / nconfig).sum()))
-            error_record = {
-                "Group": group,
-                "Weighting": self.weighted,
-                "Subsystem": gtype,
-                "ncount": nconfig,
-                "mae": mae,
-                "rmse": rmse,
-                "rsq": rsq
-            }
-#                "rmae": mae / mean_dev,
-#                "rrmse": rmse / np.std(true),
-#                "ssr": ssr,
-
-            if self.residuals is not None:
-                error_record["residual"] = res
-            self.errors.append(error_record)
+        if self.residuals is not None:
+            error_record["residual"] = res
+        self.errors.append(error_record)
 
     def _template_error(self):
         pass
-
-
-def make_abw(type_index, buffer):
-    if isinstance(buffer, list):
-        length = sum(buffer)
-    else:
-        length = len(type_index) * buffer
-    width = np.shape(pt.shared_arrays['a'].array)[1]
-    a = np.zeros((length, width))
-    b = np.zeros((length,))
-    w = np.zeros((length,))
-    i = 0
-    for j, value in enumerate(type_index):
-        if isinstance(buffer, list):
-            spacing = buffer[j]
-        else:
-            spacing = buffer
-        a[i:i+spacing] = pt.shared_arrays['a'].array[value:value+spacing]
-        b[i:i+spacing] = pt.shared_arrays['b'].array[value:value+spacing]
-        w[i:i+spacing] = pt.shared_arrays['w'].array[value:value+spacing]
-        i += spacing
-    return a, b, w

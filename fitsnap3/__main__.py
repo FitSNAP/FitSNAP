@@ -31,11 +31,13 @@
 from .fitsnap import FitSnap
 from .parallel_tools import pt
 from .io.output import output
+from .initialize import initialize_fitsnap_run
 
 
 @pt.single_timeit
 def main():
     try:
+        initialize_fitsnap_run()
         snap = FitSnap()
         snap.scrape_configs()
         snap.process_configs()

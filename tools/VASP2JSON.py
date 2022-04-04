@@ -1,15 +1,14 @@
 #! /usr/bin/env/ python
 
 # This script will parse through a single OUTCAR file from VASP, which may include one or more configurations, and will print out
-# a JSON file(s) that can then be read into fitSNAP.  To run this script, you will need to specify an OUTCAR file, a POSCAR file, and
-# the name of the JSON file that will be output in  the command line  --->  python VASP2JSON.py myOUTCARfile myPOSCARfile myJSONfile
+# a JSON file(s) that can then be read into fitSNAP.  To run this script, you will need to specify an OUTCAR file, and
+# the name of the JSON file(s) that will be output in the command line  --->  python VASP2JSON.py myOUTCARfile myJSONfile
 
 import sys, os
 import json
 
 OUTCAR_file = sys.argv[1]
-POSCAR_file = sys.argv[2]
-JSON_file = str(sys.argv[3])
+JSON_file = str(sys.argv[2])
 
 
 def write_json(data, jsonfilename):
@@ -45,29 +44,6 @@ def write_json(data, jsonfilename):
     return
 
 
-def print_num_atoms_per_type(myPOSCARFile):
-    """
-    print_num_atoms_per_type takes the POSCAR specified by the user and parses it
-    for the number of each atom types, which is assumed to be
-    in lines 7 of the POSCAR file (so if that's not the case this will need
-    to be modified in numberAtomsLine). This function then returns
-    a the number of the atom type for each indvidual atoms for each configuration.
-    Line 6 in the POSCAR is not actually used by VASP, and the ordering of the
-    atom types is determined by the POTCAR file, and listed in the OUTCAR file.
-
-    :param myPOSCARFile: str, filename of POSTCAR
-    :return: number of atoms of each type/ List[Int]
-    """
-    with open(myPOSCARFile, "rt") as f1:
-        lines = f1.readlines()
-    numberAtomsLine = lines[6]
-    columnsNumberAtom = numberAtomsLine.split()
-    num_atoms_per_type = [int(num) for num in columnsNumberAtom]
-    return num_atoms_per_type
-
-
-num_atoms_per_type = print_num_atoms_per_type(POSCAR_file)
-num_atom_types = len(num_atoms_per_type)
 order_atom_types = []
 listAtomTypes = []
 
@@ -84,23 +60,31 @@ for i, line in enumerate(lines):
     # (These will only show up once for each element at in the OUTCAR)
     if "VRHFIN" in line:
         order_atom_types.append(line.split()[1][1:].strip(" :"))
-        if len(order_atom_types) == num_atom_types:
-            for atom_type in range(0, num_atom_types):
-                totalAtoms = int(num_atoms_per_type[atom_type])
-                atomType = str(order_atom_types[atom_type])
-                for n in range(0, totalAtoms):
-                    listAtomTypes.append(atomType)
     # Look for number of atoms in configuration
     if "number of ions" in line:
         columns = line.split()
         natoms = int(columns[11])
+    # Look for the number of atoms of each element type in configuration
+    if "ions per type =" in line:
+        num_atoms_per_type = [int(num) for num in line.split()[4:]]
+        num_atom_types = len(num_atoms_per_type)
+        assert (
+            len(order_atom_types) == num_atom_types
+        ), "number of element types and length of element list disagree"
+        # make the atom_types list for the json file
+        for atom_type in range(0, num_atom_types):
+            totalAtoms = int(num_atoms_per_type[atom_type])
+            atomType = str(order_atom_types[atom_type])
+            for n in range(0, totalAtoms):
+                listAtomTypes.append(atomType)
+
     # Look for lattice vectors for configuration
     if "direct lattice vectors" in line:
         lattice_x = [float(x) for x in lines[i + 1].split()[0:3]]
         lattice_y = [float(y) for y in lines[i + 2].split()[0:3]]
         lattice_z = [float(z) for z in lines[i + 3].split()[0:3]]
-
         all_lattice = [lattice_x, lattice_y, lattice_z]
+
     # Look for stresses for configuration.  Assumes total stress is 14 lines down
     # from where FORCE on cell is found
     if "FORCE on cell" in line:

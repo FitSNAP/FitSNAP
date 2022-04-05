@@ -69,7 +69,7 @@ class Calculator:
         for key in pt.fitsnap_dict.keys():
             if isinstance(pt.fitsnap_dict[key], DistributedList):
                 pt.gather_fitsnap(key)
-                if pt.fitsnap_dict[key] is not None and stubs != 0:
+                if pt.fitsnap_dict[key] is not None and stubs != 1:
                     pt.fitsnap_dict[key] = [item for sublist in pt.fitsnap_dict[key] for item in sublist]
                 elif pt.fitsnap_dict[key] is not None:
                     pt.fitsnap_dict[key] = pt.fitsnap_dict[key].get_list()

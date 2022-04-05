@@ -80,27 +80,35 @@ class Solver:
 
     def _group_error(self):
         groups = set(pt.fitsnap_dict["Groups"])
+        if config.sections["CALCULATOR"].energy:
+            energy_filter = self.df['Row_Type'] == 'Energy'
+        if config.sections["CALCULATOR"].force:
+            force_filter = self.df['Row_Type'] == 'Force'
+        if config.sections["CALCULATOR"].stress:
+            stress_filter = self.df['Row_Type'] == 'Stress'
         for group in groups:
+            group_filter = self.df['Groups'] == group
             if config.sections["CALCULATOR"].energy:
-                self._errors(group, "Energy", (self.df['Groups'] == group) & (self.df['Row_Type'] == 'Energy'))
+                self._errors(group, "Energy", group_filter & energy_filter)
             if config.sections["CALCULATOR"].force:
-                self._errors(group, "Force", (self.df['Groups'] == group) & (self.df['Row_Type'] == 'Force'))
+                self._errors(group, "Force", group_filter & force_filter)
             if config.sections["CALCULATOR"].stress:
-                self._errors(group, "Stress", (self.df['Groups'] == group) & (self.df['Row_Type'] == 'Stress'))
+                self._errors(group, "Stress", group_filter & stress_filter)
 
     def _config_error(self):
         # TODO: return normal functionality to detailed errors
-        configs = set(pt.fitsnap_dict["Configs"])
-        for this_config in configs:
-            if config.sections["CALCULATOR"].energy:
-                indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Energy')
-                # self._errors(this_config, "Energy", indices)
-            if config.sections["CALCULATOR"].force:
-                indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Force')
-                # self._errors(this_config, "Force", indices)
-            if config.sections["CALCULATOR"].stress:
-                indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Stress')
-                # self._errors(this_config, "Stress", indices)
+        # configs = set(pt.fitsnap_dict["Configs"])
+        # for this_config in configs:
+        #     if config.sections["CALCULATOR"].energy:
+        #         indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Energy')
+        #         # self._errors(this_config, "Energy", indices)
+        #     if config.sections["CALCULATOR"].force:
+        #         indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Force')
+        #         # self._errors(this_config, "Force", indices)
+        #     if config.sections["CALCULATOR"].stress:
+        #         indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Stress')
+        #         # self._errors(this_config, "Stress", indices)
+        pass
 
     def _errors(self, group, rtype, indices):
         this_true, this_pred = self.df['truths'][indices], self.df['preds'][indices]

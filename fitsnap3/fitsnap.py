@@ -78,4 +78,6 @@ class FitSnap:
 
     @pt.single_timeit
     def write_output(self):
+        if not config.args.perform_fit:
+            return
         output.output(self.solver.fit, self.solver.errors)

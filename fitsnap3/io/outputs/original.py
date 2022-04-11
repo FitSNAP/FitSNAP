@@ -31,7 +31,7 @@ class Original(Output):
                     nsam = coeffs_sam.shape[0]
                     for isam in range(nsam):
                         with optional_open(config.sections["OUTFILE"].potential_name and
-                                           config.sections["OUTFILE"].potential_name + '_'+str(isam).zfill(len(str(nsam)))+'.snapcoeff', 'wt') as file:
+                                           config.sections["OUTFILE"].potential_name + '_'+str(isam).zfill(4)+'.snapcoeff', 'wt') as file:
                             file.write(_to_coeff_string(coeffs_sam[isam, :]))
 
         with optional_open(config.sections["OUTFILE"].metric_file, 'wt') as file:

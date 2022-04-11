@@ -426,6 +426,7 @@ class Solver:
                 import matplotlib.pyplot as plt
                 import logging
                 logging.getLogger('matplotlib').setLevel(logging.ERROR)
+                logging.getLogger('matplotlib.font_manager').disabled = True
                 mpl.rc('axes', linewidth=2, grid=True, labelsize=16)
                 mpl.rc('figure', max_open_warning=500)
 

@@ -11,13 +11,17 @@ solver = ANL
 # MCMC sampling, currently assuming constant noise size, but unlike the ANL case, there is flexibility if one plays with the log-post function
 solver = MCMC
 
+# Model error embedding approach
+solver = MERR
+
+
 # Fitting with Bayesian compressive sensing, need to learn how to prune bispectrum bases in order for this to be useful. Not working properly yet.
 solver = BCS
 
-# if solver==ANL or solver==MCMC, this is the number of fits requested
+# if solver==ANL or solver==MCMC or solver==MERR, this is the number of fits requested
 nsam = 133
 
-# if solver==ANL, this is the small number to be added to inverse covariance for better conditioning
+# if solver==ANL, or solver==MERR this is the small number to be added to inverse covariance for better conditioning
 cov_nugget = 1.e-10
 
 # if solver==MCMC, this is the number of total MCMC steps requested

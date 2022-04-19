@@ -34,7 +34,7 @@ class MERR(Solver):
         cov_nugget = config.sections["SOLVER"].cov_nugget
         invptp = np.linalg.inv(np.dot(aw.T, aw)+cov_nugget*np.diag(np.ones((nbas,))))
         cf = np.dot(invptp, np.dot(aw.T, bw))
-        bp = np.dot(bw, bw - np.dot(aw, cf))/2.
+        bp = np.dot(bw - np.dot(aw, cf), bw - np.dot(aw, cf))/2.
         ap = (npt - nbas)/2.
         sigmahat = bp/(ap-1.)
         # print("Datanoise stdev : ", np.sqrt(sigmahat))

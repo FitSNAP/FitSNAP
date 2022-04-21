@@ -37,8 +37,8 @@ class ANL(Solver):
         self.fit = np.dot(invptp, np.dot(aw.T, bw))
 
 
-
-        bp = np.dot(bw, bw - np.dot(aw, self.fit))/2.
+        res = bw - np.dot(aw, self.fit)
+        bp = np.dot(res, res)/2.
         ap = (npt - nbas)/2.
 
         sigmahat = bp/(ap-1.)

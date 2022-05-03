@@ -62,6 +62,7 @@ class FitSnap:
         for i, configuration in enumerate(self.data):
             self.calculator.process_configs(configuration, i)
         del self.data
+        self.calculator.collect_distributed_lists()
         self.calculator.extras()
 
     @pt.single_timeit
@@ -77,4 +78,6 @@ class FitSnap:
 
     @pt.single_timeit
     def write_output(self):
+        if not config.args.perform_fit:
+            return
         output.output(self.solver.fit, self.solver.errors)

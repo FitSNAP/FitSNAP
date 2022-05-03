@@ -14,20 +14,17 @@ try:
 
         @pt.sub_rank_zero
         def perform_fit(self):
-            if pt.shared_arrays['configs_per_group'].testing_elements != 0:
-                testing = -1*pt.shared_arrays['configs_per_group'].testing_elements
-            else:
-                testing = len(pt.shared_arrays['w'].array)
-            w = pt.shared_arrays['w'].array[:testing]
-            aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[:testing], w * pt.shared_arrays['b'].array[:testing]
+            training = [not elem for elem in pt.fitsnap_dict['Testing']]
+            w = pt.shared_arrays['w'].array[training]
+            aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
             if config.sections['EXTRAS'].apply_transpose:
                 bw = aw.T@bw
                 aw = aw.T@aw
-            # alval_small = config.sections['SOLVER'].alphasmall
-            alval_big = config.sections['SOLVER'].alphabig
-            lmbval_small = config.sections['SOLVER'].lambdasmall
-            # lmbval_big = config.sections['SOLVER'].lambdabig
-            thresh = config.sections['SOLVER'].threshold_lambda
+            # alval_small = config.sections['ARD'].alphasmall
+            alval_big = config.sections['ARD'].alphabig
+            lmbval_small = config.sections['ARD'].lambdasmall
+            # lmbval_big = config.sections['ARD'].lambdabig
+            thresh = config.sections['ARD'].threshold_lambda
             reg = ARDRegression(n_iter=300, tol=0.001, threshold_lambda=thresh, alpha_1=alval_big, alpha_2=alval_big,
                                 lambda_1=lmbval_small, lambda_2=lmbval_small, fit_intercept=False)
             reg.fit(aw, bw)

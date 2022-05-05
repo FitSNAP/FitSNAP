@@ -33,10 +33,12 @@ class ANL(Solver):
 
         cov_nugget = config.sections["SOLVER"].cov_nugget
         invptp = np.linalg.inv(np.dot(aw.T, aw)+cov_nugget*np.diag(np.ones((nbas,))))
+        invptp = invptp*0.5 + invptp.T*0.5  #forcing symmetry; can get numerically significant errors when A is ill-conditioned
         np.savetxt('invptp', invptp)
         self.fit = np.dot(invptp, np.dot(aw.T, bw))
 
 
+        #bp = np.dot(bw, bw - np.dot(aw, self.fit))/2. #numerically unstable when A is ill-conditioned
         res = bw - np.dot(aw, self.fit)
         bp = np.dot(res, res)/2.
         ap = (npt - nbas)/2.
@@ -52,7 +54,7 @@ class ANL(Solver):
         nsam = config.sections["SOLVER"].nsam
         self.fit_sam = np.random.multivariate_normal(self.fit, self.cov, size=(nsam,))
         # self.fit_sam = self.fit + np.sqrt(np.diag(self.cov))*np.random.randn(nsam,nbas)
-
+        np.save('covariance.npy', self.cov)
 
 
 

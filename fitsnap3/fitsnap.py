@@ -82,5 +82,4 @@ class FitSnap:
             return
         # Prevent Output from trying to process non-existing solver.fit when using PyTorch.
         if (config.sections["SOLVER"].solver != "PYTORCH"):
-            print("------------")
             output.output(self.solver.fit, self.solver.errors)

@@ -54,6 +54,8 @@ class Solver:
         for key in pt.fitsnap_dict.keys():
             if isinstance(pt.fitsnap_dict[key], list) and len(pt.fitsnap_dict[key]) == len(self.df.index):
                 self.df[key] = pt.fitsnap_dict[key]
+        if config.sections["EXTRAS"].dump_dataframe:
+            self.df.to_pickle(config.sections['EXTRAS'].dataframe_file)
         for option in ["Unweighted", "Weighted"]:
             self.weighted = option
             self._all_error()

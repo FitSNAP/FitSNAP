@@ -161,3 +161,13 @@ except ModuleNotFoundError:
         def __init__(self, name):
             super().__init__(name)
             raise ModuleNotFoundError("No module named 'Pytorch'")
+
+except NameError:
+
+    class Pytorch(Solver):
+        """
+        Dummy class for factory to read if MLIAP error is occuring.
+        """
+        def __init__(self, name):
+            super().__init__(name)
+            raise NameError("MLIAP error.")

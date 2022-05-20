@@ -8,9 +8,9 @@ from time import time
 import pickle
 
 try:
+    from ..lib.neural_networks.pytorch import create_torch_network, FitTorch
     from ..lib.neural_networks.jax import jnp, loss, accuracy, mae, jit, grad, adam, apply_updates
     from ..tools.dataloaders import InRAMDatasetJAX, DataLoader, jax_collate
-
 
     class JAX(Solver):
 
@@ -109,7 +109,7 @@ try:
                     pickle.dump(self.opt_state, fp)
 
         def create_pytorch(self):
-            from ..lib.neural_networks.pytorch import create_torch_network, FitTorch
+            #from ..lib.neural_networks.pytorch import create_torch_network, FitTorch
 
             pytorch_network = create_torch_network(config.sections["JAX"].layer_sizes)
             pytorch_model = FitTorch(pytorch_network, config.sections["CALCULATOR"].num_desc)
@@ -120,7 +120,7 @@ try:
             pytorch_model.write_lammps_torch(config.sections["JAX"].output_file)
 
         def load_pytorch(self):
-            from ..lib.neural_networks.pytorch import create_torch_network, FitTorch
+            #from ..lib.neural_networks.pytorch import create_torch_network, FitTorch
 
             pytorch_network = create_torch_network(config.sections["JAX"].layer_sizes)
             pytorch_model = FitTorch(pytorch_network, config.sections["CALCULATOR"].num_desc)
@@ -142,3 +142,13 @@ except ModuleNotFoundError:
         def __init__(self, name):
             super().__init__(name)
             raise ModuleNotFoundError("No module named 'JAX'")
+
+except NameError:
+
+    class JAX(Solver):
+        """
+        Dummy class for factory to read if MLIAP error is occuring.
+        """
+        def __init__(self, name):
+            super().__init__(name)
+            raise NameError("MLIAP error.")

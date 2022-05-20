@@ -145,6 +145,9 @@ class LammpsSnap(Calculator):
                 "bnormflag": "bnormflag",
                 "wselfallflag": "wselfallflag",
                 "bikflag": "bikflag",
+                "switchinnerflag": "switchinnerflag",
+                "sinner": "sinner",
+                "dinner": "dinner",
             }.items()
             if v in config.sections["BISPECTRUM"].__dict__
         }

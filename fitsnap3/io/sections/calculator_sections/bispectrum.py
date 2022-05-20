@@ -9,7 +9,8 @@ class Bispectrum(Section):
         super().__init__(name, config, args)
 
         self.allowedkeys = ['numTypes', 'twojmax', 'rcutfac', 'rfac0', 'rmin0', 'wj', 'radelem', 'type',
-                            'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag', 'bikflag']
+                            'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag', 'bikflag',
+                            'switchinnerflag', 'sinner', 'dinner']
         self._check_section()
 
         self._check_if_used("CALCULATOR", "calculator", "LAMMPSSNAP", "LAMMPSSNAP")
@@ -49,6 +50,15 @@ class Bispectrum(Section):
         self._generate_b_list()
         self._reset_chemflag()
         Section.num_desc = len(self.blist)
+        # switchinnerflag true enables inner cutoff function
+        self.switchinnerflag = self.get_value("BISPECTRUM", "switchinnerflag", "0", "bool")
+        if (self.switchinnerflag):
+            default_sinner = self.numtypes*"0.9 "
+            default_dinner = self.numtypes*"0.1 "
+            self.sinner = self.get_value("BISPECTRUM", "sinner", default_sinner[:-1], "str")
+            self.dinner = self.get_value("BISPECTRUM", "dinner", default_dinner[:-1], "str")
+            if ( (len(self.sinner.split()) != self.numtypes) or (len(self.dinner.split()) != self.numtypes)):
+                raise ValueError("Number of sinner/dinner args must be number of types.")
         self.delete()
 
     def _generate_b_list(self):

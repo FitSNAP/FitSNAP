@@ -64,6 +64,9 @@ class Scraper:
         size_type = None
         testing_size_type = None
 
+        if config.sections["GROUPS"].random_sampling:
+            output.screen(f"Random sampling of groups toggled on. Seed: {pt.get_seed()}")
+
         for key in self.group_table:
             bc_bool = False
             training_size = None

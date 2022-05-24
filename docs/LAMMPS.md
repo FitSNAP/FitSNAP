@@ -3,12 +3,15 @@ Instructions for running FitSNAP with the LAMMPS library interface
 QUICK FIX
 ------------
 
-Prerequisites:
+Prerequisites for LAMMPS built with 'make' method:
 1. LAMMPS compiled as a shared library with exception handling
-2. <lammpsdir> is the full path name for a directory 
+2. <lammpsdir> is the full path name for a directory
    containing dirs src and python
-3. <fitsnapdir> is the full path name for directory 
+3. <fitsnapdir> is the full path name for directory
    containing dirs fitsnap3 and examples
+Note: if LAMMPS was built with cmake method, change 'src' to 'build' and add
+appropriate compile flags in step B below (for more instructions refer to the
+LAMMPS manual part 3.1)
 
 # create a new directory
 

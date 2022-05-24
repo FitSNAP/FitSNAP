@@ -38,7 +38,6 @@ from ..io.output import output
 from ..units.units import convert
 from copy import copy
 # from natsort import natsorted
-from random import random
 
 
 class Scraper:

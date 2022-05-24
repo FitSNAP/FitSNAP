@@ -37,8 +37,8 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 * For the most recent bug fixes/code changes:
     * Clone this repository and add it to your PYTHONPATH environment variable. Periodically `git pull` for code updates.
 * A minimal working environment can be achieved with the following;
-*   `conda create -n fitsnap python=3.9
-     conda activate fitsnap
+*   `conda create -n fitsnap python=3.9 ;
+     conda activate fitsnap ;
      conda install lammps psutil pandas tabulate mpi4py`
      
 * See docs/INSTALL.md for more information.

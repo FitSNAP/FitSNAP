@@ -38,6 +38,7 @@ from ..io.output import output
 from ..units.units import convert
 from copy import copy
 # from natsort import natsorted
+from random import random
 
 
 class Scraper:
@@ -63,6 +64,9 @@ class Scraper:
         self.group_table = config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
+
+        if config.sections["GROUPS"].random_sampling:
+            output.screen(f"Random sampling of groups toggled on. Seed: {pt.get_seed()}")
 
         for key in self.group_table:
             bc_bool = False

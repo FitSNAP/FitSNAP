@@ -68,16 +68,18 @@ class Scraper:
         if config.sections["GROUPS"].random_sampling:
             output.screen(f"Random sampling of groups toggled on.")
             if not user_set_random_seed:
-                output.screen(f"FitSNAP-generated seed for random sampling: {pt.get_seed()}")
-                seed(pt.get_seed())
+                sampling_seed = pt.get_seed()
+                seed_txt = f"FitSNAP-generated seed for random sampling: {pt.get_seed()}"
             else:
                 ## groups.py casts random_seed to float, just in case user
                 ## uses continuous variable. if user input was originally
                 ## an integer, this casts it to int (less confusing for user)
                 if user_set_random_seed.is_integer():
-                    user_set_random_seed = int(user_set_random_seed)
-                output.screen(f"User-set seed for random sampling: {user_set_random_seed}")
-                seed(user_set_random_seed)
+                    sampling_seed = int(user_set_random_seed)
+                seed_txt = f"User-set seed for random sampling: {sampling_seed}"
+            output.screen(seed_txt)
+            seed(sampling_seed)
+            self._write_seed_file(seed_txt)
 
         for key in self.group_table:
             bc_bool = False
@@ -320,6 +322,11 @@ class Scraper:
 
             if config.sections["CALCULATOR"].stress:
                 self.data['fweight'] /= 6
+
+    @pt.rank_zero
+    def _write_seed_file(self, txt):
+        with open("RandomSamplingSeed.txt", 'w') as f:
+            f.write(txt+'\n')
 
     # def check_coords(self, cell, pos1, pos2):
     #     """Compares position 1 and position 2 with respect to periodic boundaries defined by cell"""

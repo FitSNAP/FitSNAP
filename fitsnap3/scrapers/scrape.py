@@ -69,8 +69,15 @@ class Scraper:
             output.screen(f"Random sampling of groups toggled on.")
             if not user_set_random_seed:
                 output.screen(f"FitSNAP-generated seed for random sampling: {pt.get_seed()}")
+                seed(pt.get_seed())
             else:
+                ## groups.py casts random_seed to float, just in case user
+                ## uses continuous variable. if user input was originally
+                ## an integer, this casts it to int (less confusing for user)
+                if user_set_random_seed.is_integer():
+                    user_set_random_seed = int(user_set_random_seed)
                 output.screen(f"User-set seed for random sampling: {user_set_random_seed}")
+                seed(user_set_random_seed)
 
         for key in self.group_table:
             bc_bool = False
@@ -99,16 +106,13 @@ class Scraper:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
             if config.sections["GROUPS"].random_sampling:
-                print("\tDEBUG pre-shuffled, first 2 and last 2 files :")
-                for f in self.files[folder][:2] + self.files[folder][-2:]:
+                db_nf = 3
+                print(f"\tDEBUG pre-shuffled, first {db_nf} and last {db_nf} files :")
+                for f in self.files[folder][:db_nf] + self.files[folder][-db_nf:]:
                     print("\t",f)
-                if not user_set_random_seed:
-                    shuffle(self.files[folder], pt.get_seed)
-                else:
-                    seed(user_set_random_seed)
-                    shuffle(self.files[folder], random)
-                print("\tDEBUG post-shuffled, first 2 and last 2 files :")
-                for f in self.files[folder][:2] + self.files[folder][-2:]:
+                shuffle(self.files[folder], random)
+                print(f"\tDEBUG post-shuffled, first {db_nf} and last {db_nf} files :")
+                for f in self.files[folder][:db_nf] + self.files[folder][-db_nf:]:
                     print(f"\t",f)
                 exit()
             nfiles = len(folder_files)

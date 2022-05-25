@@ -63,7 +63,7 @@ class Scraper:
         self.group_table = config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
-        user_set_random_seed = config.sections["GROUPS"].random_seed
+        user_set_random_seed = config.sections["GROUPS"].random_seed ## default is 0
 
         if config.sections["GROUPS"].random_sampling:
             output.screen(f"Random sampling of groups toggled on.")
@@ -106,15 +106,7 @@ class Scraper:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
             if config.sections["GROUPS"].random_sampling:
-                db_nf = 3
-                print(f"\tDEBUG pre-shuffled, first {db_nf} and last {db_nf} files :")
-                for f in self.files[folder][:db_nf] + self.files[folder][-db_nf:]:
-                    print("\t",f)
                 shuffle(self.files[folder], random)
-                print(f"\tDEBUG post-shuffled, first {db_nf} and last {db_nf} files :")
-                for f in self.files[folder][:db_nf] + self.files[folder][-db_nf:]:
-                    print(f"\t",f)
-                exit()
             nfiles = len(folder_files)
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:

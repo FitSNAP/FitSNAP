@@ -32,7 +32,7 @@
 from ..io.input import config
 from os import path, listdir, stat
 import numpy as np
-from random import shuffle
+from random import seed, random, shuffle
 from ..parallel_tools import pt
 from ..io.output import output
 from ..units.units import convert
@@ -63,9 +63,14 @@ class Scraper:
         self.group_table = config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
+        user_set_random_seed = config.sections["GROUPS"].random_seed
 
         if config.sections["GROUPS"].random_sampling:
-            output.screen(f"Random sampling of groups toggled on. Seed: {pt.get_seed()}")
+            output.screen(f"Random sampling of groups toggled on.")
+            if not user_set_random_seed:
+                output.screen(f"FitSNAP-generated seed for random sampling: {pt.get_seed()}")
+            else:
+                output.screen(f"User-set seed for random sampling: {user_set_random_seed}")
 
         for key in self.group_table:
             bc_bool = False
@@ -94,7 +99,18 @@ class Scraper:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
             if config.sections["GROUPS"].random_sampling:
-                shuffle(self.files[folder], pt.get_seed)
+                print("\tDEBUG pre-shuffled, first 2 and last 2 files :")
+                for f in self.files[folder][:2] + self.files[folder][-2:]:
+                    print("\t",f)
+                if not user_set_random_seed:
+                    shuffle(self.files[folder], pt.get_seed)
+                else:
+                    seed(user_set_random_seed)
+                    shuffle(self.files[folder], random)
+                print("\tDEBUG post-shuffled, first 2 and last 2 files :")
+                for f in self.files[folder][:2] + self.files[folder][-2:]:
+                    print(f"\t",f)
+                exit()
             nfiles = len(folder_files)
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:

@@ -30,7 +30,7 @@ class Groups(Section):
         self.group_types = self.get_value("GROUPS", "group_types", "str float float float float").split()
         self.smartweights = self.get_value("GROUPS", "smartweights", "0", "bool")
         self.random_sampling = self.get_value("GROUPS", "random_sampling", "0", "bool")
-        self.random_seed = self.get_value("GROUPS", "random_seed", "0", "bool")
+        self.random_seed = self.get_value("GROUPS", "random_seed", "0", "float")
         self.boltz = self.get_value("BISPECTRUM", "BOLTZ", "0", "float")
         _str_2_fun(self.group_types)
         self.group_table = None

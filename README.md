@@ -36,12 +36,12 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 #### Installing:
 * For the most recent bug fixes/code changes:
     * Clone this repository and add it to your PYTHONPATH environment variable. Periodically `git pull` for code updates.
-
-* For stable, self-contained copy of this code:
-    * Set up a Conda environment, then `pip install fitsnap3`. Less complications using mpi4py this way.
-
+* A minimal working environment can be achieved with the following;
+   `conda create -n fitsnap python=3.9 ;
+     conda activate fitsnap ;
+     conda install lammps psutil pandas tabulate mpi4py`
+* NOTE : Conda lammps installation does NOT include ACE descriptor set or SPIN package needed for these corresponding examples.
 * See docs/INSTALL.md for more information.
-* We recommend always using an up-to-date LAMMPS version as this is the preferred decriptor calculator.
 
 #### Running:
 * `(mpirun -np #) python -m fitsnap3 [options] infile` (optional)

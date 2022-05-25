@@ -1,5 +1,5 @@
 from ..io.outputs.outputs import optional_open
-from ..io.outputs.original import _to_coeff_string
+from ..io.outputs.snap import _to_coeff_string
 from .solver import Solver
 from ..parallel_tools import pt
 from ..io.input import config

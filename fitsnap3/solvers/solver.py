@@ -190,19 +190,19 @@ class Solver:
             plt.figure(figsize=(8,8))
 
             if config.sections["EXTRAS"].plot == 1:
-                plt.plot(true, pred, 'ro', markersize=11, markeredgecolor='w')
+                plt.plot(this_true, this_pred, 'ro', markersize=11, markeredgecolor='w')
             elif config.sections["EXTRAS"].plot > 1:
-                plt.errorbar(true, pred, yerr=pf_std, fmt = 'ro', ecolor='r', elinewidth=2, markersize=11, markeredgecolor='w')
+                plt.errorbar(this_true, this_pred, yerr=pf_std, fmt = 'ro', ecolor='r', elinewidth=2, markersize=11, markeredgecolor='w')
 
-            xmin, xmax = min(np.min(true),np.min(pred)), max(np.max(true),np.max(pred))
+            xmin, xmax = min(np.min(this_true),np.min(this_pred)), max(np.max(this_true),np.max(this_pred))
             plt.plot([xmin, xmax], [xmin, xmax], 'k--', linewidth=1)
             #plt.xlim([xmin, xmax])
             #plt.ylim([xmin, xmax])
             plt.xlabel('DFT')
             plt.ylabel('SNAP')
-            plt.title(group+'; '+gtype+'; '+self.weighted)
+            plt.title(group+'; '+rtype+'; '+self.weighted)
             plt.gcf().tight_layout()
-            plt.savefig('dm_'+group+'_'+gtype+'_'+self.weighted+'.png')
+            plt.savefig('dm_'+group+'_'+rtype+'_'+self.weighted+'.png')
             plt.clf()
 
     def _template_error(self):

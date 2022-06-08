@@ -457,6 +457,8 @@ class ParallelTools:
     def new_slice_a(self):
         """ create array to show which sub a matrix indices belong to which proc """
         nof = len(self.shared_arrays["number_of_atoms"].array)
+        print(f"--- nof: {nof} in parallel_tools.py")
+        #print(self.fitsnap_dict["nonlinear"])
         if self._sub_rank != 0:
             # Wait for head proc on node to fill indices
             self._bcast_fitsnap("sub_a_size")
@@ -467,14 +469,21 @@ class ParallelTools:
         sub_a_sizes = np.zeros((self._sub_size, ), dtype=np.int)
 
         for i in range(nof):
+            #print(i)
+            #print(self._sub_size)
             proc_number = i % self._sub_size
+            #print(proc_number)
+            print(self.shared_arrays["number_of_atoms"].array[i])
             if self.fitsnap_dict["energy"]:
                 descriptor_rows = 1
                 if self.fitsnap_dict["per_atom_energy"]:
                     descriptor_rows = self.shared_arrays["number_of_atoms"].array[i]
                 sub_a_sizes[proc_number] += descriptor_rows
-            if self.fitsnap_dict["force"]:
+            if (self.fitsnap_dict["force"] and not self.fitsnap_dict["nonlinear"]):
+                print("test")
                 sub_a_sizes[proc_number] += 3 * self.shared_arrays["number_of_atoms"].array[i]
+            if (self.fitsnap_dict["force"] and self.fitsnap_dict["nonlinear"]):
+                sub_a_sizes[proc_number] += self.shared_arrays["number_of_dbirjrows"].array[i]
             if self.fitsnap_dict["stress"]:
                 sub_a_sizes[proc_number] += 6
         assert sum(sub_a_sizes) == len(self.shared_arrays['a'].array)

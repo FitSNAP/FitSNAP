@@ -6,7 +6,7 @@ class Calculator(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.allowedkeys = ['calculator', 'energy', 'per_atom_energy', 'force', 'stress']
+        self.allowedkeys = ['calculator', 'energy', 'per_atom_energy', 'force', 'stress', 'nonlinear']
         self._check_section()
 
         self.calculator = self.get_value("CALCULATOR", "calculator", "LAMMPSSNAP")
@@ -22,4 +22,6 @@ class Calculator(Section):
         self.stress = self.get_value("CALCULATOR", "stress", "True", "bool")
         self.dse = self.check_path(self.get_value("CALCULATOR", "dee", "detailed_stress_errors.dat"))
         pt.add_2_fitsnap("stress", self.stress)
+        self.nonlinear = self.get_value("CALCULATOR", "nonlinear", "False", "bool")
+        pt.add_2_fitsnap("nonlinear", self.nonlinear)
         self.delete()

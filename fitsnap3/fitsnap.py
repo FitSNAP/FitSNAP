@@ -58,6 +58,13 @@ class FitSnap:
 
     @pt.single_timeit
     def process_configs(self):
+        # Preprocess the configs (maybe do this only if nonlinear)
+        print("len(data):")
+        print(len(self.data))
+        self.calculator.preprocess_allocate(len(self.data))
+        for i, configuration in enumerate(self.data):
+            self.calculator.preprocess_configs(configuration, i)
+        # Proceed like usual
         self.calculator.create_a()
         for i, configuration in enumerate(self.data):
             self.calculator.process_configs(configuration, i)

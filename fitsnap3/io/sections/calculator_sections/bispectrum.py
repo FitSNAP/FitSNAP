@@ -10,7 +10,7 @@ class Bispectrum(Section):
 
         self.allowedkeys = ['numTypes', 'twojmax', 'rcutfac', 'rfac0', 'rmin0', 'wj', 'radelem', 'type',
                             'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag', 'bikflag',
-                            'switchinnerflag', 'sinner', 'dinner']
+                            'switchinnerflag', 'sinner', 'dinner', 'dbirjflag']
         self._check_section()
 
         self._check_if_used("CALCULATOR", "calculator", "LAMMPSSNAP", "LAMMPSSNAP")
@@ -59,6 +59,8 @@ class Bispectrum(Section):
             self.dinner = self.get_value("BISPECTRUM", "dinner", default_dinner[:-1], "str")
             if ( (len(self.sinner.split()) != self.numtypes) or (len(self.dinner.split()) != self.numtypes)):
                 raise ValueError("Number of sinner/dinner args must be number of types.")
+        # dbirjflag true enables per-neighbor descriptor derivatives for nonlinear force Fitting
+        self.dbirjflag = self.get_value("BISPECTRUM", "dbirjflag", "0", "bool")
         self.delete()
 
     def _generate_b_list(self):
@@ -94,6 +96,9 @@ class Bispectrum(Section):
                     if all(ind <= int(self.twojmax[atype]) for ind in quadIndex):
                         prefac = 1.0
                     self.blank2J.append([prefac])
+        #print("----- io/sections/calculator_sections/bispectrum.py")
+        #print("----- ----- self.blist:")
+        #print(self.blist)
         if self.chemflag:
             self.blist *= self.numtypes ** 3
             self.blist = np.array(self.blist).tolist()

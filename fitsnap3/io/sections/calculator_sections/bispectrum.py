@@ -64,7 +64,6 @@ class Bispectrum(Section):
     def _generate_b_list(self):
         self.blist = []
         self.blank2J = []
-        i = 0
 # Save for when LAMMPS will accept multiple 2J
 #        for atype in range(self.numtypes):
 #            for j1 in range(int(self.twojmax[atype]) + 1):
@@ -74,6 +73,7 @@ class Bispectrum(Section):
 #                            i += 1
 #                            self.blist.append([i, j1, j2, j])
         for atype in range(self.numtypes):
+            i = 0
             for j1 in range(int(max(self.twojmax)) + 1):
                 for j2 in range(j1 + 1):
                     for j in range(abs(j1 - j2), min(int(max(self.twojmax)), j1 + j2) + 1, 2):

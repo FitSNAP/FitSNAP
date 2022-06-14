@@ -1,6 +1,8 @@
 name: FitSNAP Pytests
 
 on:
+  pull:
+    branches: [master]
   push:
     branches: [master]
 

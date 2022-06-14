@@ -97,21 +97,38 @@ try:
             training = [not elem for elem in pt.fitsnap_dict['Testing']]
 
             #print(training)
+            #print(pt.shared_arrays['a'].array[0:100,:])
+            #print(pt.shared_arrays['b'].array)
+            #print("len:")
+            #print(len(pt.shared_arrays['a'].array))
+            #print("asdf")
 
-            self.training_data = InRAMDatasetPyTorch(pt.shared_arrays['a'].array[training],
-                                                     pt.shared_arrays['b'].array)
-                                                     #pt.shared_arrays['b'].array[training])
+            #self.training_data = InRAMDatasetPyTorch(pt.shared_arrays['a'].array[training],
+            #                                         pt.shared_arrays['b'].array)
+            #print(pt.shared_arrays['number_of_atoms'].array)
+            self.training_data = InRAMDatasetPyTorch(pt.shared_arrays['a'].array,
+                                                     pt.shared_arrays['b'].array,
+                                                     pt.shared_arrays['c'].array,
+                                                     pt.shared_arrays['number_of_atoms'].array)
+
             self.training_loader = DataLoader(self.training_data,
                                               batch_size=config.sections["PYTORCH"].batch_size,
                                               shuffle=False,
                                               collate_fn=torch_collate,
                                               num_workers=0)
 
+            """
             for i, batch in enumerate(self.training_loader):
                 descriptors = batch['x']
+                #print(descriptors)
                 targets = batch['y']
+                print("descriptors size:")
                 print(descriptors.size())
-
+                print(descriptors)
+                print("targets size:")
+                print(targets.size())
+                print(targets)
+            """
             print("----- solvers/pytorch.py")
             print("----- ----- self.training_loader:")
             print(self.training_loader)
@@ -142,12 +159,22 @@ try:
                 for i, batch in enumerate(self.training_loader):
                     self.model.train()
                     descriptors = batch['x'].to(self.device).requires_grad_(True)
+                    #print(descriptors)
                     targets = batch['y'].to(self.device).requires_grad_(True)
-                    print(targets)
+                    target_forces = batch['y_forces'].to(self.device)
+                    #print(target_forces)
+                    #print(targets)
                     indices = batch['i'].to(self.device)
+                    #print(indices)
                     num_atoms = batch['noa'].to(self.device)
+                    #print(num_atoms)
                     energies = torch.reshape(self.model(descriptors, indices, num_atoms), (-1,)).to(self.device)
-                    loss = self.loss_function(energies/num_atoms, targets)
+                    #print("energies:")
+                    #print(energies)
+                    #print("targets:")
+                    #print(targets)
+                    loss = self.loss_function(energies, targets)
+                    #loss = self.loss_function(energies/num_atoms, targets)
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()

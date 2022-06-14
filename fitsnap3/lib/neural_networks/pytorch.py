@@ -60,8 +60,13 @@ class FitTorch(torch.nn.Module):
 
         """
 
+        #print(x)
         predicted_energy_total = torch.zeros(atoms_per_structure.size())
+        #print(predicted_energy_total)
+        #print(self.network_architecture(x).size())
+        #print(indices)
         predicted_energy_total.index_add_(0, indices, self.network_architecture(x).squeeze())
+        #print(predicted_energy_total)
         return predicted_energy_total
 
     def import_wb(self, weights, bias):

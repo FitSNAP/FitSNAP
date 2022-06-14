@@ -19,39 +19,44 @@ class Calculator:
 
     def create_a(self):
         # TODO : Any extra config pulls should be done before this
-        print("----- create_a in calculator.py")
+        #print("----- create_a in calculator.py")
         pt.sub_barrier()
-        self.number_of_atoms = pt.shared_arrays["number_of_atoms"].array.sum()
-        print(f"self.number_of_atoms: {self.number_of_atoms}")
+        self.number_of_atoms = pt.shared_arrays["number_of_atoms"].array.sum() # Total number of atoms in all configs
+        #print(f"self.number_of_atoms: {self.number_of_atoms}")
         #print(self.dbirjrows)
         #self.number_of_dbirjrows = pt.shared_arrays["number_"]
         #pt.create_shared_array('number_of_dbirjrows', len(pt.shared_arrays["number_of_atoms"]), tm=config.sections["SOLVER"].true_multinode)
-        pt.shared_arrays["number_of_dbirjrows"].array = self.dbirjrows
-        print(pt.shared_arrays["number_of_dbirjrows"].array)
-        self.number_of_dbirjrows = pt.shared_arrays["number_of_dbirjrows"].array.sum()
-        print(self.number_of_dbirjrows)
         self.number_of_files_per_node = len(pt.shared_arrays["number_of_atoms"].array)
 
         if (config.sections["SOLVER"].solver == "PYTORCH"):
             print("----- Creating nonlinear 'a' in calculator.py")
+            pt.shared_arrays["number_of_dbirjrows"].array = self.dbirjrows
+            self.number_of_dbirjrows = pt.shared_arrays["number_of_dbirjrows"].array.sum()
+            #print(pt.shared_arrays["number_of_dbirjrows"].array)
+            #print(f"number of dbirjrows: {self.number_of_dbirjrows}")
             a_len = 0
-            b_len = 0
+            b_len = 0 # 1D array of energies for each config
+            c_len = 0 # (nconfigs*natoms*3) array of forces for each config
+            dbirj_len = 0
             if config.sections["CALCULATOR"].energy:
                 energy_rows = self.number_of_files_per_node
                 if config.sections["CALCULATOR"].per_atom_energy:
-                    energy_rows = self.number_of_atoms
+                    energy_rows = self.number_of_atoms # Total number of atoms in all configs
                 a_len += energy_rows
-                b_len += energy_rows
+                b_len += self.number_of_files_per_node # Total number of configs
 
             if config.sections["CALCULATOR"].force:
-                a_len += self.number_of_dbirjrows
-                b_len += 3 * self.number_of_atoms
+                #a_len += self.number_of_dbirjrows
+                c_len += 3*self.number_of_atoms
+                dbirj_len += self.number_of_dbirjrows
+            #b_len += 3 * self.number_of_atoms
 
-            if config.sections["CALCULATOR"].stress:
-                a_len += self.number_of_files_per_node * 6
-                b_len += self.number_of_files_per_node * 6
+            # Stress fitting not supported yet.
+            #if config.sections["CALCULATOR"].stress:
+            #    a_len += self.number_of_files_per_node * 6
+            #    b_len += self.number_of_files_per_node * 6
 
-            print(f"----- a_len, b_len: {a_len} {b_len}")
+            #print(f"----- a_len, b_len: {a_len} {b_len}")
             a_width = self.get_width()
             print(f"----- a_width: {a_width}")
             assert isinstance(a_width, int)
@@ -68,11 +73,25 @@ class Calculator:
 
             pt.create_shared_array('a', a_len, a_width, tm=config.sections["SOLVER"].true_multinode)
             pt.create_shared_array('b', b_len, tm=config.sections["SOLVER"].true_multinode)
+            pt.create_shared_array('c', c_len, tm=config.sections["SOLVER"].true_multinode)
             pt.create_shared_array('w', b_len, tm=config.sections["SOLVER"].true_multinode)
-            pt.create_shared_array('ref', b_len, tm=config.sections["SOLVER"].true_multinode)
+
+            print("b shape:")
+            print(np.shape(pt.shared_arrays['b'].array))
+            print("c shape:")
+            print(np.shape(pt.shared_arrays['c'].array))
+
+            if config.sections["CALCULATOR"].force:
+                pt.create_shared_array('dbirj', dbirj_len, a_width, tm=config.sections["SOLVER"].true_multinode)
+                pt.create_shared_array('dbirj_indices', dbirj_len, 3, tm=config.sections["SOLVER"].true_multinode)
+
             pt.new_slice_a()
-            self.shared_index = pt.fitsnap_dict["sub_a_indices"][0]
+            self.shared_index = pt.fitsnap_dict["sub_a_indices"][0] # An index for which the 'a' array starts on a particular proc.
+            pt.new_slice_b()
+            self.shared_index_b = pt.fitsnap_dict["sub_b_indices"][0] # An index for which the 'b' array starts on a particular proc.
             # pt.slice_array('a')
+            pt.new_slice_c()
+            self.shared_index_c = pt.fitsnap_dict["sub_c_indices"][0] # An index for which the 'c' array starts on a particular proc.
 
             pt.add_2_fitsnap("Groups", DistributedList(pt.fitsnap_dict["sub_a_size"]))
             pt.add_2_fitsnap("Configs", DistributedList(pt.fitsnap_dict["sub_a_size"]))

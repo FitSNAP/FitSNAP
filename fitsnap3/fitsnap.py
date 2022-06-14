@@ -59,29 +59,37 @@ class FitSnap:
     @pt.single_timeit
     def process_configs(self):
         # Preprocess the configs (maybe do this only if nonlinear)
+        print(self.solver.linear)
         print("len(data):")
         print(len(self.data))
-        self.calculator.preprocess_allocate(len(self.data))
-        for i, configuration in enumerate(self.data):
-            self.calculator.preprocess_configs(configuration, i)
+        if (not self.solver.linear):
+            print("Nonlinear solver, preprocessing configs.")
+            self.calculator.preprocess_allocate(len(self.data))
+            for i, configuration in enumerate(self.data):
+                self.calculator.preprocess_configs(configuration, i)
         # Proceed like usual
         self.calculator.create_a()
-        for i, configuration in enumerate(self.data):
-            self.calculator.process_configs(configuration, i)
+        if (self.solver.linear):
+            for i, configuration in enumerate(self.data):
+                self.calculator.process_configs(configuration, i)
+        else:
+            for i, configuration in enumerate(self.data):
+                self.calculator.process_configs_nonlinear(configuration, i)
         del self.data
         self.calculator.collect_distributed_lists()
         self.calculator.extras()
 
     @pt.single_timeit
     def perform_fit(self):
+        #self.solver.create_datasets()
         if not config.args.perform_fit:
             return
         elif self.fit is None:
             self.solver.perform_fit()
         else:
             self.solver.fit = self.fit
-        self.solver.fit_gather()
-        self.solver.error_analysis()
+        #self.solver.fit_gather()
+        #self.solver.error_analysis()
 
     @pt.single_timeit
     def write_output(self):

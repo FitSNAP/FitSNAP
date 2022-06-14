@@ -48,7 +48,7 @@ def main():
         print("- perform_fit")
         snap.perform_fit()
         print("- write_output")
-        snap.write_output()
+        #snap.write_output()
     except Exception as e:
         output.exception(e)
 

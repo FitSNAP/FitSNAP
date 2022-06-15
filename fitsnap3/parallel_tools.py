@@ -581,6 +581,65 @@ class ParallelTools:
         #print(self._sub_rank)
         #print(indices[self._sub_rank])
 
+    def new_slice_dbirj(self):
+        """ create array to show which sub dbirj matrix indices belong to which proc """
+        nof = len(self.shared_arrays["number_of_atoms"].array)
+        print(f"--- nof: {nof} in parallel_tools.py new_slice_dbirj")
+        #print(self.fitsnap_dict["nonlinear"])
+        if self._sub_rank != 0:
+            # Wait for head proc on node to fill indices
+            # dbirj
+            self._bcast_fitsnap("sub_dbirj_size")
+            self.fitsnap_dict["sub_dbirj_size"] = int(self.fitsnap_dict["sub_dbirj_size"][self._sub_rank])
+            self._bcast_fitsnap("sub_dbirj_indices")
+            self.fitsnap_dict["sub_dbirj_indices"] = self.fitsnap_dict["sub_dbirj_indices"][self._sub_rank]
+
+            # dbdrindx
+            self._bcast_fitsnap("sub_dbdrindx_size")
+            self.fitsnap_dict["sub_dbdrindx_size"] = int(self.fitsnap_dict["sub_dbdrindx_size"][self._sub_rank])
+            self._bcast_fitsnap("sub_dbdrindx_indices")
+            self.fitsnap_dict["sub_dbdrindx_indices"] = self.fitsnap_dict["sub_dbdrindx_indices"][self._sub_rank]
+            return
+        sub_dbirj_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+        sub_dbdrindx_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+
+        for i in range(nof):
+            #print(i)
+            #print(self._sub_size)
+            proc_number = i % self._sub_size
+            #print(proc_number)
+            #print(self.shared_arrays["number_of_atoms"].array[i])
+            natoms = self.shared_arrays["number_of_atoms"].array[i]
+            sub_dbirj_sizes[proc_number] += pt.shared_arrays["number_of_dbirjrows"].array[i]
+            sub_dbdrindx_sizes[proc_number] += pt.shared_arrays["number_of_dbirjrows"].array[i]
+        assert sum(sub_dbirj_sizes) == len(self.shared_arrays['dbirj'].array)
+        assert sum(sub_dbdrindx_sizes) == len(self.shared_arrays['dbdrindx'].array)
+        # dbidrj
+        self.add_2_fitsnap("sub_dbirj_size", sub_dbirj_sizes)
+        self._bcast_fitsnap("sub_dbirj_size")
+        self.fitsnap_dict["sub_dbirj_size"] = sub_dbirj_sizes[self._sub_rank]
+        # dbdrindx
+        self.add_2_fitsnap("sub_dbdrindx_size", sub_dbirj_sizes)
+        self._bcast_fitsnap("sub_dbdrindx_size")
+        self.fitsnap_dict["sub_dbdrindx_size"] = sub_dbirj_sizes[self._sub_rank]
+
+        count = 0
+        indices = np.zeros((self._sub_size, 2), dtype=np.int)
+        for i, value in enumerate(sub_dbirj_sizes):
+            indices[i] = count, count+value-1
+            count += value
+        # dbidrj
+        self.add_2_fitsnap("sub_dbirj_indices", indices)
+        self._bcast_fitsnap("sub_dbirj_indices")
+        self.fitsnap_dict["sub_dbirj_indices"] = indices[self._sub_rank]
+        # dbdrindx
+        self.add_2_fitsnap("sub_dbdrindx_indices", indices)
+        self._bcast_fitsnap("sub_dbdrindx_indices")
+        self.fitsnap_dict["sub_dbdrindx_indices"] = indices[self._sub_rank]
+        #print(indices)
+        #print(self._sub_rank)
+        #print(indices[self._sub_rank])
+
     @stub_check
     def combine_coeffs(self, coeff):
         new_coeff = None

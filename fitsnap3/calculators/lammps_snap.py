@@ -269,6 +269,8 @@ class LammpsSnap(Calculator):
         dindex = self.distributed_index
         index_b = self.shared_index_b
         index_c = self.shared_index_c
+        index_dbirj = self.shared_index_dbirj
+        index_unique_j = self.shared_index_unique_j
         #print(f"index on proc {pt._sub_rank}: {index}")
 
         # Extract the useful parts of the snap array.
@@ -297,11 +299,46 @@ class LammpsSnap(Calculator):
         pt.shared_arrays['c'].array[index_c:(index_c + (3*num_atoms))] = self._data["Forces"].ravel() - ref_forces
         index_c += 3*num_atoms
 
+        # Populate the dbirj arrays 'dbirj' and 'dbdrindx'
+        pt.shared_arrays['dbirj'].array[index_dbirj:(index_dbirj+nrows_dbirj)] = dbirj
+        pt.shared_arrays['dbdrindx'].array[index_dbirj:(index_dbirj+nrows_dbirj)] = dbirj_indices
+        #index_dbirj += nrows_dbirj
+
+        # Populate the unique_j_indices array.
+        unique_j_indices = []
+        jold = dbirj_indices[0,1]
+        #print(jold)
+        #counter = index_unique_j
+        for jindx in range(0,nrows_dbirj):
+            jtmp = dbirj_indices[jindx,1]
+            if (jold==jtmp):
+                value = index_unique_j
+                unique_j_indices.append(value)
+                #print(f"{value} {jtmp}")
+                #pt.shared_arrays['unique_j_indices'].array[jindx] = jindx
+            else:
+                jold = jtmp
+                index_unique_j = index_unique_j + 1
+                value = index_unique_j
+                unique_j_indices.append(value)
+
+        unique_j_indices = np.array(unique_j_indices)
+        #print(unique_j_indices)
+        #print(f"{np.size(unique_j_indices)} {nrows_dbirj}")
+        assert(np.size(unique_j_indices) == nrows_dbirj)
+        pt.shared_arrays['unique_j_indices'].array[index_dbirj:(index_dbirj+nrows_dbirj)] = unique_j_indices
+
+
+        index_dbirj += nrows_dbirj
+        index_unique_j = index_unique_j + 1
+
         # Reset indices since we are stacking data in the shared arrays.
         self.shared_index = index
         self.distributed_index = dindex
         self.shared_index_b = index_b
         self.shared_index_c = index_c
+        self.shared_index_dbirj = index_dbirj
+        self.shared_index_unique_j = index_unique_j
 
 
     def _collect_lammps(self):

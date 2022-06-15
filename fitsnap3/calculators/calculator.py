@@ -83,7 +83,18 @@ class Calculator:
 
             if config.sections["CALCULATOR"].force:
                 pt.create_shared_array('dbirj', dbirj_len, a_width, tm=config.sections["SOLVER"].true_multinode)
-                pt.create_shared_array('dbirj_indices', dbirj_len, 3, tm=config.sections["SOLVER"].true_multinode)
+                pt.create_shared_array('dbdrindx', dbirj_len, 3, tm=config.sections["SOLVER"].true_multinode)
+                # Create a unique_j_indices array.
+                # This will house all unique indices (atoms j) in the dbdrindx array.
+                # So the size is (natoms*nconfigs,)
+                pt.create_shared_array('unique_j_indices', dbirj_len, tm=config.sections["SOLVER"].true_multinode)
+
+                print("dbirj shape:")
+                print(np.shape(pt.shared_arrays['dbirj'].array))
+                print("dbdrindx shape:")
+                print(np.shape(pt.shared_arrays['dbdrindx'].array))
+                print("unique_j_indices:")
+                print(np.shape(pt.shared_arrays['unique_j_indices'].array))
 
             pt.new_slice_a()
             self.shared_index = pt.fitsnap_dict["sub_a_indices"][0] # An index for which the 'a' array starts on a particular proc.
@@ -92,6 +103,10 @@ class Calculator:
             # pt.slice_array('a')
             pt.new_slice_c()
             self.shared_index_c = pt.fitsnap_dict["sub_c_indices"][0] # An index for which the 'c' array starts on a particular proc.
+            pt.new_slice_dbirj()
+            self.shared_index_dbirj = pt.fitsnap_dict["sub_dbirj_indices"][0] # An index for which the 'dbirj' array starts on a particular proc.
+            self.shared_index_dbdrindx = pt.fitsnap_dict["sub_dbdrindx_indices"][0] # An index for which the 'dbdrindx' array starts on a particular proc.
+            self.shared_index_unique_j = 0 # Index for which the 'unique_j_indices' array starts on a particular proc, need to add to fitsnap_dict later.
 
             pt.add_2_fitsnap("Groups", DistributedList(pt.fitsnap_dict["sub_a_size"]))
             pt.add_2_fitsnap("Configs", DistributedList(pt.fitsnap_dict["sub_a_size"]))

@@ -32,7 +32,7 @@
 from ..io.input import config
 from os import path, listdir, stat
 import numpy as np
-from random import shuffle
+from random import seed, random, shuffle
 from ..parallel_tools import pt
 from ..io.output import output
 from ..units.units import convert
@@ -63,9 +63,23 @@ class Scraper:
         self.group_table = config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
+        user_set_random_seed = config.sections["GROUPS"].random_seed ## default is 0
 
         if config.sections["GROUPS"].random_sampling:
-            output.screen(f"Random sampling of groups toggled on. Seed: {pt.get_seed()}")
+            output.screen(f"Random sampling of groups toggled on.")
+            if not user_set_random_seed:
+                sampling_seed = pt.get_seed()
+                seed_txt = f"FitSNAP-generated seed for random sampling: {pt.get_seed()}"
+            else:
+                ## groups.py casts random_seed to float, just in case user
+                ## uses continuous variable. if user input was originally
+                ## an integer, this casts it to int (less confusing for user)
+                if user_set_random_seed.is_integer():
+                    sampling_seed = int(user_set_random_seed)
+                seed_txt = f"User-set seed for random sampling: {sampling_seed}"
+            output.screen(seed_txt)
+            seed(sampling_seed)
+            self._write_seed_file(seed_txt)
 
         for key in self.group_table:
             bc_bool = False
@@ -94,7 +108,7 @@ class Scraper:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
             if config.sections["GROUPS"].random_sampling:
-                shuffle(self.files[folder], pt.get_seed)
+                shuffle(self.files[folder], random)
             nfiles = len(folder_files)
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:
@@ -308,6 +322,11 @@ class Scraper:
 
             if config.sections["CALCULATOR"].stress:
                 self.data['fweight'] /= 6
+
+    @pt.rank_zero
+    def _write_seed_file(self, txt):
+        with open("RandomSamplingSeed.txt", 'w') as f:
+            f.write(txt+'\n')
 
     # def check_coords(self, cell, pos1, pos2):
     #     """Compares position 1 and position 2 with respect to periodic boundaries defined by cell"""

@@ -32,7 +32,7 @@
 from time import time, sleep
 import numpy as np
 from lammps import lammps
-from random import random
+from random import randint
 from psutil import virtual_memory
 from itertools import chain
 import ctypes
@@ -190,7 +190,7 @@ class ParallelTools:
 
     def _set_seed(self):
         if self._rank == 0.0:
-            self._seed = random()
+            self._seed = randint(0,1e5)
         if stubs == 0:
             self._seed = self._comm.bcast(self._seed)
 

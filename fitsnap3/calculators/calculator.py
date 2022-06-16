@@ -1,9 +1,13 @@
 from ..parallel_tools import pt, double_size, DistributedList, stubs
 from ..io.input import config
 from ..io.output import output
+#from fitsnap3.parallel_tools import ParallelTools, double_size, DistributedList, stubs
+#from fitsnap3.io.input import Config
+#from fitsnap3.io.output import output
 import numpy as np
 import pandas as pd
-
+#config = Config()
+#pt = ParallelTools()
 
 class Calculator:
 

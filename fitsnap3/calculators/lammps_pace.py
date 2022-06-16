@@ -105,12 +105,15 @@ class LammpsPace(Calculator):
         self._lmp.command(f"create_box {config.sections['ACE'].numtypes} pybox")
 
     def _create_atoms(self):
-        for i, (a_t, (a_x, a_y, a_z)) in enumerate(zip(self._data["AtomTypes"], self._data["Positions"])):
-            a_t = config.sections["ACE"].type_mapping[a_t]
-            self._lmp.command(f"create_atoms {a_t} single {a_x:20.20g} {a_y:20.20g} {a_z:20.20g} remap yes")
+        number_of_atoms = len(self._data["AtomTypes"])
+        positions = self._data["Positions"].flatten()
+        elem_all = [config.sections["ACE"].type_mapping[a_t] for a_t in self._data["AtomTypes"]]
+        self._lmp.command(f"create_atoms 1 random {number_of_atoms} 12345 1")
+        self._lmp.scatter_atoms("x", 1, 3, (len(positions) * ctypes.c_double)(*positions))
+        self._lmp.scatter_atoms("type", 0, 1, (len(elem_all) * ctypes.c_int)(*elem_all))
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, f"Atom counts don't match when creating atoms: {i + 1}, {n_atoms}"
-
+        assert number_of_atoms == n_atoms, f"Atom counts don't match when creating atoms: {number_of_atoms}, {n_atoms}"
+        
     def _create_spins(self):
         for i, (s_mag, s_x, s_y, s_z) in enumerate(self._data["Spins"]):
             self._lmp.command(f"set atom {i + 1} spin {s_mag:20.20g} {s_x:20.20g} {s_y:20.20g} {s_z:20.20g} ")

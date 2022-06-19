@@ -14,6 +14,9 @@ chemflag = 0
 bzeroflag = 1
 quadraticflag = 0
 
+[ESHIFT]
+Fe = 0.0
+
 [CALCULATOR]
 calculator = LAMMPSSNAP
 energy = 1
@@ -47,8 +50,8 @@ CCMC-bcc-hcp-elastic_Jun2020    = 1.0 0.0 1.382681069  1.963203872 1.0E-12
 liquid_nonmag                   = 1.0 0.0 63.68593312  1.29692425 1.0E-12
 
 [OUTFILE]
-metrics = Fe_metrics.csv
-potential = Fe_pot_snappy
+metrics = Fe_metrics.md
+potential = Fe_pot
 
 [REFERENCE]
 units = metal
@@ -59,9 +62,9 @@ pair_coeff2 = * * zbl 26 26
 pair_coeff3 = * * spin/exchange/biquadratic biquadratic 5.0 0.2827 -4.747 0.7810 -0.03619 -2.973 0.5273 offset yes
 
 [EXTRAS]
-dump_descriptors = 1
-dump_truth = 1
-dump_weights = 1
+dump_descriptors = 0
+dump_truth = 0
+dump_weights = 0
 
 [MEMORY]
 override = 0

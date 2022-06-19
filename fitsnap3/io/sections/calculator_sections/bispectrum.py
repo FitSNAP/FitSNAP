@@ -1,20 +1,19 @@
-from .sections import Section
+from ..sections import Section
 from itertools import combinations_with_replacement
 import numpy as np
-from ...parallel_tools import pt
+
 
 class Bispectrum(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
 
-        allowedkeys = ['numTypes','twojmax','rcutfac','rfac0','rmin0','wj','radelem','type',
-                       'wselfallflag','chemflag','bzeroflag','quadraticflag','bnormflag']
-        for value_name in config['BISPECTRUM']:
-            if value_name in allowedkeys: continue
-            else:
-                raise RuntimeError(">>> Found unmatched variable in BISPECTRUM section of input: ",value_name)
-                #pt.single_print(">>> Found unmatched variable in BISPECTRUM section of input: ",value_name)
+        self.allowedkeys = ['numTypes', 'twojmax', 'rcutfac', 'rfac0', 'rmin0', 'wj', 'radelem', 'type',
+                            'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag', 'bikflag',
+                            'switchinnerflag', 'sinner', 'dinner']
+        self._check_section()
+
+        self._check_if_used("CALCULATOR", "calculator", "LAMMPSSNAP", "LAMMPSSNAP")
 
         self.numtypes = self.get_value("BISPECTRUM", "numTypes", "1", "int")
         self.twojmax = self.get_value("BISPECTRUM", "twojmax", "6").split()
@@ -37,14 +36,29 @@ class Bispectrum(Section):
         for i, atom_type in enumerate(self.types):
             self.type_mapping[atom_type] = i+1
 
+        # chemflag true enables the EME model
         self.chemflag = self.get_value("BISPECTRUM", "chemflag", "0", "bool")
         self.bnormflag = self.get_value("BISPECTRUM", "bnormflag", "0", "bool")
         self.wselfallflag = self.get_value("BISPECTRUM", "wselfallflag", "0", "bool")
         self.bzeroflag = self.get_value("BISPECTRUM", "bzeroflag", "0", "bool")
+        # quadraticflag true enables the quadratic model
         self.quadraticflag = self.get_value("BISPECTRUM", "quadraticflag", "0", "bool")
-
+        # bikflag true enables computing of bispectrum per atom instead of sum
+        self.bikflag = self.get_value("BISPECTRUM", "bikflag", "0", "bool")
+        if self.bikflag:
+            self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
         self._generate_b_list()
         self._reset_chemflag()
+        Section.num_desc = len(self.blist)
+        # switchinnerflag true enables inner cutoff function
+        self.switchinnerflag = self.get_value("BISPECTRUM", "switchinnerflag", "0", "bool")
+        if (self.switchinnerflag):
+            default_sinner = self.numtypes*"0.9 "
+            default_dinner = self.numtypes*"0.1 "
+            self.sinner = self.get_value("BISPECTRUM", "sinner", default_sinner[:-1], "str")
+            self.dinner = self.get_value("BISPECTRUM", "dinner", default_dinner[:-1], "str")
+            if ( (len(self.sinner.split()) != self.numtypes) or (len(self.dinner.split()) != self.numtypes)):
+                raise ValueError("Number of sinner/dinner args must be number of types.")
         self.delete()
 
     def _generate_b_list(self):
@@ -71,7 +85,10 @@ class Bispectrum(Section):
                             self.blist.append([i, j1, j2, j])
                             self.blank2J.append([prefac])
             if self.quadraticflag:
-                for i, (a, b) in enumerate(combinations_with_replacement(self.blist, r=2), start=len(self.blist)):
+                slice = int(len(self.blist)/(atype+1))
+                start = slice*atype
+                end = slice*(atype+1)
+                for i, (a, b) in enumerate(combinations_with_replacement(self.blist[start:end], r=2), start=slice):
                     prefac = 0.0
                     quadIndex = a[1:]+b[1:]
                     if all(ind <= int(self.twojmax[atype]) for ind in quadIndex):
@@ -86,8 +103,12 @@ class Bispectrum(Section):
             self.blank2J = np.array(self.blank2J).tolist()
         if self.quadraticflag:
             # Note, combinations_with_replacement precisely generates the upper-diagonal entries we want
-            self.blist += [[i, a, b] for i, (a, b) in
-                           enumerate(combinations_with_replacement(self.blist, r=2), start=len(self.blist))]
+            self.blist = np.reshape(self.blist, (self.numtypes, -1, 4)).tolist()
+            for atype in range(self.numtypes):
+                self.blist[atype] += [[i, a, b] for i, (a, b) in
+                                      enumerate(combinations_with_replacement(self.blist[atype], r=2),
+                                                start=len(self.blist[atype]))]
+            self.blist = [item for sublist in self.blist for item in sublist]
         self.ncoeff = int(len(self.blist)/self.numtypes)
         if not self.bzeroflag:
             self.blank2J = np.reshape(self.blank2J, (self.numtypes, int(len(self.blist)/self.numtypes)))
@@ -96,6 +117,7 @@ class Bispectrum(Section):
             self.blank2J = np.reshape(self.blank2J, (len(self.blist) + self.numtypes))
         else:
             self.blank2J = np.reshape(self.blank2J, len(self.blist))
+
     def _reset_chemflag(self):
         if self.chemflag != 0:
             chemflag = "{}".format(self.numtypes)

@@ -28,7 +28,7 @@
 insertsentinellines = False # only use for newly added files
 headerfilename = "./tools/HEADER"
 
-targetfilelist = ["./fitsnap3/*.py","./README.md", "./tools/*.py"]
+targetfilelist = ["./fitsnap3lib/*.py","./README.md", "./tools/*.py"]
 #targetfilelist = ["./foo.py"]
 
 import glob

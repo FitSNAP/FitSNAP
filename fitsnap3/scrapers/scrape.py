@@ -29,13 +29,13 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from ..io.input import config
+from fitsnap3.io.input import config
 from os import path, listdir, stat
 import numpy as np
 from random import seed, random, shuffle
-from ..parallel_tools import pt
-from ..io.output import output
-from ..units.units import convert
+from fitsnap3.parallel_tools import pt
+from fitsnap3.io.output import output
+from fitsnap3.units.units import convert
 from copy import copy
 # from natsort import natsorted
 

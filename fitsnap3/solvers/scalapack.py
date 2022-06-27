@@ -1,6 +1,6 @@
-from .solver import Solver
-from ..parallel_tools import pt
-from ..io.input import config
+from fitsnap3.solvers.solver import Solver
+from fitsnap3.parallel_tools import pt
+from fitsnap3.io.input import config
 import numpy as np
 
 try:

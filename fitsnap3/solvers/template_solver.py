@@ -1,5 +1,5 @@
-from .solver import Solver
-from ..parallel_tools import pt
+from fitsnap3.solvers.solver import Solver
+from fitsnap3.parallel_tools import pt
 """Methods you may or must override in new solvers"""
 
 

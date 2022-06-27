@@ -3,9 +3,9 @@ from os import path
 from copy import deepcopy
 from time import time
 
-from ..sections import Section
-from ....lib.pace.pace import CouplingCoeffs, intermediates
-from ....parallel_tools import pt
+from fitsnap3.io.sections.sections import Section
+from fitsnap3.lib.pace.pace import CouplingCoeffs, intermediates
+from fitsnap3.parallel_tools import pt
 
 
 class Ace(Section):

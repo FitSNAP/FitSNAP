@@ -1,6 +1,6 @@
-from .solver import Solver
-from ..parallel_tools import pt
-from ..io.input import config
+from fitsnap3.solvers.solver import Solver
+from fitsnap3.parallel_tools import pt
+from fitsnap3.io.input import config
 
 import numpy as np
 from functools import partial
@@ -8,9 +8,9 @@ from time import time
 import pickle
 
 try:
-    from ..lib.neural_networks.pytorch import create_torch_network, FitTorch
-    from ..lib.neural_networks.jax import jnp, loss, accuracy, mae, jit, grad, adam, apply_updates
-    from ..tools.dataloaders import InRAMDatasetJAX, DataLoader, jax_collate
+    from fitsnap3.lib.neural_networks.pytorch import create_torch_network, FitTorch
+    from fitsnap3.lib.neural_networks.jax import jnp, loss, accuracy, mae, jit, grad, adam, apply_updates
+    from fitsnap3.tools.dataloaders import InRAMDatasetJAX, DataLoader, jax_collate
 
     class JAX(Solver):
 

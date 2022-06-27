@@ -1,7 +1,7 @@
-from .outputs import Output, optional_open
-from ...parallel_tools import pt
+from fitsnap3.io.outputs.outputs import Output, optional_open
+from fitsnap3.parallel_tools import pt
 from datetime import datetime
-from ..input import config
+from fitsnap3.io.input import config
 import numpy as np
 
 

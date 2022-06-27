@@ -1,6 +1,6 @@
-from .sections import Section
+from fitsnap3.io.sections.sections import Section
 from os import path
-from ...parallel_tools import pt
+from fitsnap3.parallel_tools import pt
 
 
 class Path(Section):

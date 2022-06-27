@@ -1,7 +1,7 @@
 import ctypes
-from ..calculators.calculator import Calculator
-from ..parallel_tools import pt
-from ..io.input import config
+from fitsnap3.calculators.calculator import Calculator
+from fitsnap3.parallel_tools import pt
+from fitsnap3.io.input import config
 import numpy as np
 
 

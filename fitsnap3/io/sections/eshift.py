@@ -1,4 +1,4 @@
-from fitsnap3.io.sections import Section
+from fitsnap3lib.io.sections.sections import Section
 import numpy as np
 from fitsnap3.parallel_tools import pt
 

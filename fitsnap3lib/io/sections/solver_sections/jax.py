@@ -57,3 +57,11 @@ except ModuleNotFoundError:
         def __init__(self, name, config, args):
             super().__init__(name, config, args)
             raise ModuleNotFoundError("No module named 'JAX'")
+
+except RuntimeError:
+
+    class JAX(Section):
+
+        def __init__(self, name, config, args):
+            super().__init__(name, config, args)
+            raise RuntimeError("No module named 'JAX'")

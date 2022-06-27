@@ -49,3 +49,14 @@ except NameError:
         def __init__(self, name, config, args):
             super().__init__(name, config, args)
             raise NameError("MLIAP error.")
+
+except RuntimeError:
+
+    class PYTORCH(Section):
+        """
+        Dummy class for factory to read if MLIAP error is occuring.
+        """
+
+        def __init__(self, name, config, args):
+            super().__init__(name, config, args)
+            raise RuntimeError("MLIAP error.")

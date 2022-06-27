@@ -28,14 +28,14 @@ class Singleton(type):
 
 class Config(metaclass=Singleton):
 
-    def __init__(self):
+    def __init__(self, arguments_lst=None):
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
-        self.parse_cmdline()
+        self.parse_cmdline(arguments_lst=arguments_lst)
         self.sections = {}
         self.parse_config()
 
-    def parse_cmdline(self):
+    def parse_cmdline(self, arguments_lst=None):
         parser = argparse.ArgumentParser(prog="FitSNAP3")
 
         parser.add_argument("infile", action="store",
@@ -77,7 +77,7 @@ class Config(metaclass=Singleton):
         parser.add_argument("--screen2file", "-s2f", action="store", dest="screen2file",
                             default=None, help="Print screen to a file")
 
-        self.args = parser.parse_args()
+        self.args = parser.parse_args(arguments_lst)
 
     def parse_config(self):
 

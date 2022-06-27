@@ -154,7 +154,7 @@ try:
 
 except ModuleNotFoundError:
 
-    class Pytorch(Solver):
+    class PYTORCH(Solver):
         """
         Dummy class for factory to read if torch is not available for import.
         """
@@ -164,7 +164,7 @@ except ModuleNotFoundError:
 
 except NameError:
 
-    class Pytorch(Solver):
+    class PYTORCH(Solver):
         """
         Dummy class for factory to read if MLIAP error is occuring.
         """

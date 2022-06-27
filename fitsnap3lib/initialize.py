@@ -32,16 +32,15 @@
 def initialize_fitsnap_run():
     try:
         import mpi4py as mpi4py
-        from fitsnap3lib.parallel_tools import ParallelTools
+        from fitsnap3.parallel_tools import pt
 
     except ModuleNotFoundError:
-        from fitsnap3lib.parallel_tools import ParallelTools
+        from fitsnap3.parallel_tools import pt
 
     except Exception as e:
         print("Trouble importing mpi4py package, exiting...")
         raise e
 
-    pt = ParallelTools()
     pt.single_print("")
     pt.single_print("    ______ _  __  _____  _   __ ___     ____  ")
     pt.single_print("   / ____/(_)/ /_/ ___/ / | / //   |   / __ \ ")

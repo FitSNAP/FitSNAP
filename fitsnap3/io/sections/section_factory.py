@@ -1,6 +1,23 @@
 from fitsnap3.io.sections.sections import Section, pt
 from fitsnap3.io.error import ExitFunc
-pt.get_subclasses(__name__, __file__, Section)
+from fitsnap3.io.sections.calculator_sections.bispectrum import Bispectrum
+from fitsnap3.io.sections.calculator_sections.calculator import Calculator
+from fitsnap3.io.sections.calculator_sections.ace import Ace
+from fitsnap3.io.sections.calculator_sections.basic_calculator import Basic
+from fitsnap3.io.sections.eshift import Eshift
+from fitsnap3.io.sections.extras import Extras
+from fitsnap3.io.sections.groups import Groups
+from fitsnap3.io.sections.memory import Memory
+from fitsnap3.io.sections.outfile import Outfile
+from fitsnap3.io.sections.path import Path
+from fitsnap3.io.sections.reference import Reference
+from fitsnap3.io.sections.scraper import Scraper
+from fitsnap3.io.sections.solver_sections.solver import Solver
+from fitsnap3.io.sections.solver_sections.ard import Ard
+from fitsnap3.io.sections.solver_sections.lasso import Lasso
+from fitsnap3.io.sections.solver_sections.jax import JAX
+from fitsnap3.io.sections.solver_sections.pytorch import PYTORCH
+from fitsnap3.io.sections.template import Default
 
 
 def new_section(section, config, args):

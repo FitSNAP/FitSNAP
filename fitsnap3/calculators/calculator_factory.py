@@ -1,5 +1,7 @@
 from fitsnap3.calculators.calculator import Calculator, pt
-pt.get_subclasses(__name__, __file__, Calculator)
+from fitsnap3.calculators.lammps_pace import LammpsPace
+from fitsnap3.calculators.lammps_snap import LammpsSnap
+from fitsnap3.calculators.basic_calculator import Basic
 
 
 def calculator(calculator_name):

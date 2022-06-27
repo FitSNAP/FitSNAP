@@ -1,5 +1,6 @@
 from fitsnap3.io.outputs.outputs import Output, pt
-pt.get_subclasses(__name__, __file__, Output)
+from fitsnap3.io.outputs.pace import Pace
+from fitsnap3.io.outputs.snap import Snap
 
 
 def output_factory(output_name):

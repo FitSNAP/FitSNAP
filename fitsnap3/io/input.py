@@ -54,6 +54,8 @@ class Config:
                             help="Print each processors screen")
         parser.add_argument("--log", action="store", dest="log",
                             default=None, help="Write fitsnap log to this file")
+        parser.add_argument("--screen2file", "-s2f", action="store", dest="screen2file",
+                            default=None, help="Print screen to a file")
 
         self.args = parser.parse_args()
 
@@ -61,6 +63,8 @@ class Config:
 
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
+        if not Path(self.args.infile).is_file():
+            raise FileNotFoundError("Input file not found")
         tmp_config.read(self.args.infile)
         infile_folder = str(Path(self.args.infile).parent.absolute())
         file_name = self.args.infile.split('/')[-1]

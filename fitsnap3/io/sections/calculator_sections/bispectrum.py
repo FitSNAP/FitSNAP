@@ -9,7 +9,8 @@ class Bispectrum(Section):
         super().__init__(name, config, args)
 
         self.allowedkeys = ['numTypes', 'twojmax', 'rcutfac', 'rfac0', 'rmin0', 'wj', 'radelem', 'type',
-                            'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag']
+                            'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag', 'bikflag',
+                            'switchinnerflag', 'sinner', 'dinner']
         self._check_section()
 
         self._check_if_used("CALCULATOR", "calculator", "LAMMPSSNAP", "LAMMPSSNAP")
@@ -35,20 +36,34 @@ class Bispectrum(Section):
         for i, atom_type in enumerate(self.types):
             self.type_mapping[atom_type] = i+1
 
+        # chemflag true enables the EME model
         self.chemflag = self.get_value("BISPECTRUM", "chemflag", "0", "bool")
         self.bnormflag = self.get_value("BISPECTRUM", "bnormflag", "0", "bool")
         self.wselfallflag = self.get_value("BISPECTRUM", "wselfallflag", "0", "bool")
         self.bzeroflag = self.get_value("BISPECTRUM", "bzeroflag", "0", "bool")
+        # quadraticflag true enables the quadratic model
         self.quadraticflag = self.get_value("BISPECTRUM", "quadraticflag", "0", "bool")
-
+        # bikflag true enables computing of bispectrum per atom instead of sum
+        self.bikflag = self.get_value("BISPECTRUM", "bikflag", "0", "bool")
+        if self.bikflag:
+            self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
         self._generate_b_list()
         self._reset_chemflag()
+        Section.num_desc = len(self.blist)
+        # switchinnerflag true enables inner cutoff function
+        self.switchinnerflag = self.get_value("BISPECTRUM", "switchinnerflag", "0", "bool")
+        if (self.switchinnerflag):
+            default_sinner = self.numtypes*"0.9 "
+            default_dinner = self.numtypes*"0.1 "
+            self.sinner = self.get_value("BISPECTRUM", "sinner", default_sinner[:-1], "str")
+            self.dinner = self.get_value("BISPECTRUM", "dinner", default_dinner[:-1], "str")
+            if ( (len(self.sinner.split()) != self.numtypes) or (len(self.dinner.split()) != self.numtypes)):
+                raise ValueError("Number of sinner/dinner args must be number of types.")
         self.delete()
 
     def _generate_b_list(self):
         self.blist = []
         self.blank2J = []
-        i = 0
 # Save for when LAMMPS will accept multiple 2J
 #        for atype in range(self.numtypes):
 #            for j1 in range(int(self.twojmax[atype]) + 1):
@@ -58,6 +73,7 @@ class Bispectrum(Section):
 #                            i += 1
 #                            self.blist.append([i, j1, j2, j])
         for atype in range(self.numtypes):
+            i = 0
             for j1 in range(int(max(self.twojmax)) + 1):
                 for j2 in range(j1 + 1):
                     for j in range(abs(j1 - j2), min(int(max(self.twojmax)), j1 + j2) + 1, 2):

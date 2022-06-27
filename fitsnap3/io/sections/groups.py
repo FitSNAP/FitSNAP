@@ -20,7 +20,7 @@ class Groups(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'BOLTZ']
+        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'random_seed', 'BOLTZ']
 
         # for value_name in config['GROUPS']:
         #     if value_name in allowedkeys: continue
@@ -30,6 +30,7 @@ class Groups(Section):
         self.group_types = self.get_value("GROUPS", "group_types", "str float float float float").split()
         self.smartweights = self.get_value("GROUPS", "smartweights", "0", "bool")
         self.random_sampling = self.get_value("GROUPS", "random_sampling", "0", "bool")
+        self.random_seed = self.get_value("GROUPS", "random_seed", "0", "float")
         self.boltz = self.get_value("BISPECTRUM", "BOLTZ", "0", "float")
         _str_2_fun(self.group_types)
         self.group_table = None
@@ -54,9 +55,8 @@ class Groups(Section):
             self.group_table[k] = {self.group_sections[i+1]: self.group_types[i+1](item) for i, item in enumerate(v)}
 
     def read_group_file(self):
-        relative_directory = self._get_relative_directory(self)
         group_types = {self.group_sections[i]: item for i, item in enumerate(self.group_types)}
-        group_table = read_csv(path.join(relative_directory, self.get_value("PATH", "groupFile", "grouplist.in")),
+        group_table = read_csv(path.join(Section.get_infile_directory(self), self.get_value("PATH", "groupFile", "grouplist.in")),
                                delim_whitespace=True,
                                comment='#',
                                skip_blank_lines=True,

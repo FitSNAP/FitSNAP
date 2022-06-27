@@ -7,19 +7,10 @@ from datetime import date
 
 # multiplicative factor for expansion coefficients (for conversion of units from native testing to LAMMPS ML-PACE)
 multfac = 1.
-cglib = False
 
 
 def intermediates(l1, l2):
     return range(abs(l1 - l2), l1 + l2 + 1)
-
-
-def clebsch_gordan(l1, m1, l2, m2, l3, m3):
-    # try to load c library for calculating cg coefficients
-    if cglib:
-        return lib.Clebsch_Gordan(l1, m1, l2, m2, l3, m3)
-    else:
-        return Clebsch_gordan(l1, m1, l2, m2, l3, m3)
 
 
 def wigner_3j(j1, m1, j2, m2, j3, m3):
@@ -57,7 +48,7 @@ class CouplingCoeffs:
 
         # write a coupling coefficient file that is compatible with py_ACE
         import json
-        with open('ccs.json', 'w') as writejson:
+        with open('{}/ccs.json'.format(self.lib_path), 'w') as writejson:
             json.dump(self.coupling, writejson, indent=2)
 
     def find_cg(self):
@@ -220,7 +211,7 @@ class CouplingCoeffs:
             writeout.write(rankplus)
 
                 
-def Clebsch_gordan(j1, m1, j2, m2, j3, m3):
+def clebsch_gordan(j1, m1, j2, m2, j3, m3):
     # Clebsch-gordan coefficient calculator based on eqs. 4-5 of:
     # https://hal.inria.fr/hal-01851097/document
     # and christoph ortner's julia code ACE.jl

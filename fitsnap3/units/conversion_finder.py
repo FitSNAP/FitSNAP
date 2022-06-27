@@ -13,7 +13,7 @@ name = __name__.split('.')
 unit_dir = Path(__file__).resolve().parent
 unit_type_dict = {}
 
-for (_, unit_type, c) in iter_modules([unit_dir]):
+for (_, unit_type, c) in iter_modules([str(unit_dir)]):
     if unit_type != "conversion_finder":
         unit_type_dict[unit_type] = import_module(f"{'.'.join(name[:-1])}.{unit_type}")
 

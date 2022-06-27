@@ -1,6 +1,8 @@
-from ..parallel_tools import pt, double_size
+from ..parallel_tools import pt, double_size, DistributedList, stubs
 from ..io.input import config
 from ..io.output import output
+import numpy as np
+import pandas as pd
 
 
 class Calculator:
@@ -9,6 +11,8 @@ class Calculator:
         self.name = name
         self.number_of_atoms = None
         self.number_of_files_per_node = None
+        self.shared_index = None
+        self.distributed_index = 0
 
     def get_width(self):
         pass
@@ -19,21 +23,12 @@ class Calculator:
         self.number_of_atoms = pt.shared_arrays["number_of_atoms"].array.sum()
         self.number_of_files_per_node = len(pt.shared_arrays["number_of_atoms"].array)
 
-        elements = 0
-        testing = pt.shared_arrays["configs_per_group"].testing
-        if testing > 0:
-            for i in range(testing):
-                if config.sections["CALCULATOR"].energy:
-                    elements += 1
-                if config.sections["CALCULATOR"].force:
-                    elements += 3 * pt.shared_arrays["number_of_atoms"].array[-testing+i]
-                if config.sections["CALCULATOR"].stress:
-                    elements += 6
-        pt.shared_arrays["configs_per_group"].testing_elements = elements
-
         a_len = 0
         if config.sections["CALCULATOR"].energy:
-            a_len += self.number_of_files_per_node
+            energy_rows = self.number_of_files_per_node
+            if config.sections["CALCULATOR"].per_atom_energy:
+                energy_rows = self.number_of_atoms
+            a_len += energy_rows
         if config.sections["CALCULATOR"].force:
             a_len += 3 * self.number_of_atoms
         if config.sections["CALCULATOR"].stress:
@@ -55,7 +50,48 @@ class Calculator:
         pt.create_shared_array('a', a_len, a_width, tm=config.sections["SOLVER"].true_multinode)
         pt.create_shared_array('b', a_len, tm=config.sections["SOLVER"].true_multinode)
         pt.create_shared_array('w', a_len, tm=config.sections["SOLVER"].true_multinode)
-        pt.slice_array('a')
+        pt.create_shared_array('ref', a_len, tm=config.sections["SOLVER"].true_multinode)
+        pt.new_slice_a()
+        self.shared_index = pt.fitsnap_dict["sub_a_indices"][0]
+        # pt.slice_array('a')
+
+        pt.add_2_fitsnap("Groups", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+        pt.add_2_fitsnap("Configs", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+        pt.add_2_fitsnap("Row_Type", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+        pt.add_2_fitsnap("Atom_I", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+        pt.add_2_fitsnap("Testing", DistributedList(pt.fitsnap_dict["sub_a_size"]))
 
     def process_configs(self, data, i):
         pass
+
+    @staticmethod
+    def collect_distributed_lists():
+        for key in pt.fitsnap_dict.keys():
+            if isinstance(pt.fitsnap_dict[key], DistributedList):
+                pt.gather_fitsnap(key)
+                if pt.fitsnap_dict[key] is not None and stubs != 1:
+                    pt.fitsnap_dict[key] = [item for sublist in pt.fitsnap_dict[key] for item in sublist]
+                elif pt.fitsnap_dict[key] is not None:
+                    pt.fitsnap_dict[key] = pt.fitsnap_dict[key].get_list()
+
+    @pt.rank_zero
+    def extras(self):
+        if config.sections["EXTRAS"].dump_a:
+            np.save(config.sections['EXTRAS'].descriptor_file, pt.shared_arrays['a'].array)
+        if config.sections["EXTRAS"].dump_b:
+            np.save(config.sections['EXTRAS'].truth_file, pt.shared_arrays['b'].array)
+        if config.sections["EXTRAS"].dump_w:
+            np.save(config.sections['EXTRAS'].weights_file, pt.shared_arrays['w'].array)
+        if config.sections["EXTRAS"].dump_dataframe:
+            df = pd.DataFrame(pt.shared_arrays['a'].array)
+            df['truths'] = pt.shared_arrays['b'].array.tolist()
+            df['weights'] = pt.shared_arrays['w'].array.tolist()
+            for key in pt.fitsnap_dict.keys():
+                if isinstance(pt.fitsnap_dict[key], list) and len(pt.fitsnap_dict[key]) == len(df.index):
+                    df[key] = pt.fitsnap_dict[key]
+            df.to_pickle(config.sections['EXTRAS'].dataframe_file)
+            del df
+
+        # if not config.sections["SOLVER"].detailed_errors:
+        #     print(
+        #         ">>>Enable [SOLVER], detailed_errors = 1 to characterize the training/testing split of your output *.npy matricies")

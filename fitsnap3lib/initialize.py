@@ -32,13 +32,12 @@
 def initialize_fitsnap_run():
     try:
         import mpi4py as mpi4py
-        #from fitsnap3.parallel_tools import pt
         from fitsnap3lib.parallel_tools import ParallelTools
         pt = ParallelTools()
 
     except ModuleNotFoundError:
-        #from fitsnap3.parallel_tools import pt
         from fitsnap3lib.parallel_tools import ParallelTools
+        pt = ParallelTools()
 
     except Exception as e:
         print("Trouble importing mpi4py package, exiting...")
@@ -56,12 +55,11 @@ def initialize_fitsnap_run():
     try:
         pt.single_print("Reading input...")
         pt.all_barrier()
-        #from .io.input import config
         from fitsnap3lib.io.input import Config
+        config = Config()
         pt.single_print("Finished reading input")
         pt.single_print("------------------")
 
-        #from .io.output import output
         from fitsnap3lib.io.input import output
     except Exception as e:
         pt.single_print("Trouble reading input, exiting...")

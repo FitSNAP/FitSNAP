@@ -12,7 +12,7 @@ chemflag = 0
 bzeroflag = 1
 quadraticflag = 0
 bikflag = 1
-dbirjflag = 1
+dgradflag = 1
 
 [CALCULATOR]
 calculator = LAMMPSSNAP

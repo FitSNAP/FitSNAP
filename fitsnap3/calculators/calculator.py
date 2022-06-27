@@ -27,21 +27,21 @@ class Calculator:
         pt.sub_barrier()
         self.number_of_atoms = pt.shared_arrays["number_of_atoms"].array.sum() # Total number of atoms in all configs
         #print(f"self.number_of_atoms: {self.number_of_atoms}")
-        #print(self.dbirjrows)
-        #self.number_of_dbirjrows = pt.shared_arrays["number_"]
-        #pt.create_shared_array('number_of_dbirjrows', len(pt.shared_arrays["number_of_atoms"]), tm=config.sections["SOLVER"].true_multinode)
+        #print(self.dgradrows)
+        #self.number_of_dgradrows = pt.shared_arrays["number_"]
+        #pt.create_shared_array('number_of_dgradrows', len(pt.shared_arrays["number_of_atoms"]), tm=config.sections["SOLVER"].true_multinode)
         self.number_of_files_per_node = len(pt.shared_arrays["number_of_atoms"].array)
 
         if (config.sections["SOLVER"].solver == "PYTORCH"):
             print("----- Creating nonlinear 'a' in calculator.py")
-            pt.shared_arrays["number_of_dbirjrows"].array = self.dbirjrows
-            self.number_of_dbirjrows = pt.shared_arrays["number_of_dbirjrows"].array.sum()
-            #print(pt.shared_arrays["number_of_dbirjrows"].array)
-            #print(f"number of dbirjrows: {self.number_of_dbirjrows}")
+            pt.shared_arrays["number_of_dgradrows"].array = self.dgradrows
+            self.number_of_dgradrows = pt.shared_arrays["number_of_dgradrows"].array.sum()
+            #print(pt.shared_arrays["number_of_dgradrows"].array)
+            #print(f"number of dgradrows: {self.number_of_dgradrows}")
             a_len = 0
             b_len = 0 # 1D array of energies for each config
             c_len = 0 # (nconfigs*natoms*3) array of forces for each config
-            dbirj_len = 0
+            dgrad_len = 0
             if config.sections["CALCULATOR"].energy:
                 energy_rows = self.number_of_files_per_node
                 if config.sections["CALCULATOR"].per_atom_energy:
@@ -50,9 +50,9 @@ class Calculator:
                 b_len += self.number_of_files_per_node # Total number of configs
 
             if config.sections["CALCULATOR"].force:
-                #a_len += self.number_of_dbirjrows
+                #a_len += self.number_of_dgradrows
                 c_len += 3*self.number_of_atoms
-                dbirj_len += self.number_of_dbirjrows
+                dgrad_len += self.number_of_dgradrows
             #b_len += 3 * self.number_of_atoms
 
             # Stress fitting not supported yet.
@@ -86,15 +86,15 @@ class Calculator:
             print(np.shape(pt.shared_arrays['c'].array))
 
             if config.sections["CALCULATOR"].force:
-                pt.create_shared_array('dbirj', dbirj_len, a_width, tm=config.sections["SOLVER"].true_multinode)
-                pt.create_shared_array('dbdrindx', dbirj_len, 3, tm=config.sections["SOLVER"].true_multinode)
+                pt.create_shared_array('dgrad', dgrad_len, a_width, tm=config.sections["SOLVER"].true_multinode)
+                pt.create_shared_array('dbdrindx', dgrad_len, 3, tm=config.sections["SOLVER"].true_multinode)
                 # Create a unique_j_indices array.
                 # This will house all unique indices (atoms j) in the dbdrindx array.
                 # So the size is (natoms*nconfigs,)
-                pt.create_shared_array('unique_j_indices', dbirj_len, tm=config.sections["SOLVER"].true_multinode)
+                pt.create_shared_array('unique_j_indices', dgrad_len, tm=config.sections["SOLVER"].true_multinode)
 
-                print("dbirj shape:")
-                print(np.shape(pt.shared_arrays['dbirj'].array))
+                print("dgrad shape:")
+                print(np.shape(pt.shared_arrays['dgrad'].array))
                 print("dbdrindx shape:")
                 print(np.shape(pt.shared_arrays['dbdrindx'].array))
                 print("unique_j_indices:")
@@ -107,8 +107,8 @@ class Calculator:
             # pt.slice_array('a')
             pt.new_slice_c()
             self.shared_index_c = pt.fitsnap_dict["sub_c_indices"][0] # An index for which the 'c' array starts on a particular proc.
-            pt.new_slice_dbirj()
-            self.shared_index_dbirj = pt.fitsnap_dict["sub_dbirj_indices"][0] # An index for which the 'dbirj' array starts on a particular proc.
+            pt.new_slice_dgrad()
+            self.shared_index_dgrad = pt.fitsnap_dict["sub_dgrad_indices"][0] # An index for which the 'dgrad' array starts on a particular proc.
             self.shared_index_dbdrindx = pt.fitsnap_dict["sub_dbdrindx_indices"][0] # An index for which the 'dbdrindx' array starts on a particular proc.
             self.shared_index_unique_j = 0 # Index for which the 'unique_j_indices' array starts on a particular proc, need to add to fitsnap_dict later.
 

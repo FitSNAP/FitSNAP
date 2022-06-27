@@ -7,17 +7,17 @@ import numpy as np
 class InRAMDataset(torch.utils.data.Dataset):
     """Load A matrix Dataset from RAM"""
 
-    def __init__(self, a_matrix, b, c, dbirj, natoms_per_config, dbdrindx, number_of_dbirj_rows, unique_j_indices, indices=None):
+    def __init__(self, a_matrix, b, c, dgrad, natoms_per_config, dbdrindx, number_of_dgrad_rows, unique_j_indices, indices=None):
         """
         Args:
             a_matrix (numpy array): Matrix of descriptors with shape (Features, Descriptors)
             b (numpy array): Array of feature truth values with shape (Features, )
             c (numpy array): Array of force truth values with shape (nconfigs*natoms*3, )
-            dbirj (numpy array): Array of dBi/dRj values organized as documented in compute snap
+            dgrad (numpy array): Array of dBi/dRj values organized as documented in compute snap
             natoms_per_config: Array of natoms for each config
-            dbdrindx: array of indices corresponding to dbirj as documented in compute snap
-            number_of_dbirj_rows: number of dbirj rows per config
-            unique_j_indices: unique indices of dbirj componenents, will be used for force contraction.
+            dbdrindx: array of indices corresponding to dgrad as documented in compute snap
+            number_of_dgrad_rows: number of dgrad rows per config
+            unique_j_indices: unique indices of dgrad componenents, will be used for force contraction.
             indices (numpy array): Array of indices that represent which atoms belong to which configs
         """
 
@@ -37,10 +37,10 @@ class InRAMDataset(torch.utils.data.Dataset):
         self.descriptors = a_matrix
         self.targets = b
         self.target_forces = c
-        self.dbirj = dbirj
+        self.dgrad = dgrad
         self.natoms_per_config = natoms_per_config
         self.dbdrindx = dbdrindx
-        self.number_of_dbirj_rows = number_of_dbirj_rows
+        self.number_of_dgrad_rows = number_of_dgrad_rows
         self.unique_j_indices = unique_j_indices
         self.indices = indices
         self._length = None
@@ -48,10 +48,10 @@ class InRAMDataset(torch.utils.data.Dataset):
             self._find_indices()
         #print(self.indices)
         #print(np.shape(self.descriptors))
-        print(np.shape(self.dbirj))
+        print(np.shape(self.dgrad))
         print(np.shape(self.dbdrindx))
-        print(np.shape(self.number_of_dbirj_rows))
-        print(self.number_of_dbirj_rows)
+        print(np.shape(self.number_of_dgrad_rows))
+        print(self.number_of_dgrad_rows)
 
 
     def __len__(self):
@@ -105,15 +105,15 @@ class InRAMDataset(torch.utils.data.Dataset):
         self.indices_target_forces = np.array(self.indices_target_forces).astype(np.int32)
         #print(self.indices_target_forces[0:163])
 
-        # Create indices for dbirj and dbdrindx and unique_j_indices
-        self.indices_dbirj = []
+        # Create indices for dgrad and dbdrindx and unique_j_indices
+        self.indices_dgrad = []
         config_indx = 0
-        for ndbdr in self.number_of_dbirj_rows:
+        for ndbdr in self.number_of_dgrad_rows:
             for i in range(0,ndbdr):
-                self.indices_dbirj.append(config_indx)
+                self.indices_dgrad.append(config_indx)
             config_indx = config_indx + 1
-        self.indices_dbirj = np.array(self.indices_dbirj).astype(np.int32)
-        #print(self.indices_dbirj[0:3301])
+        self.indices_dgrad = np.array(self.indices_dgrad).astype(np.int32)
+        #print(self.indices_dgrad[0:3301])
 
 
         i = -1
@@ -137,8 +137,8 @@ class InRAMDatasetPyTorch(InRAMDataset):
         config_descriptors = torch.tensor(self.descriptors[self.indices == idx]).float()
         target = torch.tensor(np.sum(self.targets[self.indices == idx])).float()
         number_of_atoms = torch.tensor(config_descriptors.size(0)).int()
-        dbirj = torch.tensor of dbirj values
-        dbdrindx = array of ints, indices corresponding to dbirj
+        dgrad = torch.tensor of dgrad values
+        dbdrindx = array of ints, indices corresponding to dgrad
         unique_j_indices = unique indices of j in dbdrindx, used for force contraction
         indices = torch.tensor([idx] * number_of_atoms)
         """
@@ -149,9 +149,9 @@ class InRAMDatasetPyTorch(InRAMDataset):
         #print(target.size())
         number_of_atoms = torch.tensor(self.natoms_per_config[idx])
         assert self.natoms_per_config[idx] == config_descriptors.size(0)
-        dbirj = torch.tensor(self.dbirj[self.indices_dbirj == idx]).float()
-        dbdrindx = torch.tensor(self.dbdrindx[self.indices_dbirj == idx]).long()
-        unique_j_indices = torch.tensor(self.unique_j_indices[self.indices_dbirj == idx]).long()
+        dgrad = torch.tensor(self.dgrad[self.indices_dgrad == idx]).float()
+        dbdrindx = torch.tensor(self.dbdrindx[self.indices_dgrad == idx]).long()
+        unique_j_indices = torch.tensor(self.unique_j_indices[self.indices_dgrad == idx]).long()
         #print(unique_j_indices)
         indices = torch.tensor([idx] * number_of_atoms)
         configuration = {'x': config_descriptors,
@@ -159,7 +159,7 @@ class InRAMDatasetPyTorch(InRAMDataset):
                          'y_forces': target_forces,
                          'noa': number_of_atoms.reshape(-1), #number_of_atoms.reshape(-1),
                          'i': indices,
-                         'dbirj': dbirj,
+                         'dgrad': dgrad,
                          'dbdrindx': dbdrindx,
                          'unique_j': unique_j_indices}
         return configuration
@@ -175,7 +175,7 @@ def torch_collate(batch):
     #print([conf['noa'] for conf in batch])
     number_of_atoms = torch.cat([conf['noa'] for conf in batch], dim=0)
     indices = torch.cat([conf['i'] for conf in batch], dim=0) % len(batch)
-    batch_of_dbirj = torch.cat([conf['dbirj'] for conf in batch], dim=0)
+    batch_of_dgrad = torch.cat([conf['dgrad'] for conf in batch], dim=0)
     batch_of_dbdrindx = torch.cat([conf['dbdrindx'] for conf in batch], dim=0)
     batch_of_unique_j = torch.cat([conf['unique_j'] for conf in batch], dim=0)
     # Subtract first index of batch of unique j so that we can contract properly on this batch
@@ -187,7 +187,7 @@ def torch_collate(batch):
                       'y_forces': batch_of_target_forces,
                       'noa': number_of_atoms,
                       'i': indices,
-                      'dbirj': batch_of_dbirj,
+                      'dgrad': batch_of_dgrad,
                       'dbdrindx': batch_of_dbdrindx,
                       'unique_j': batch_of_unique_j}
 

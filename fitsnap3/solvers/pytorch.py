@@ -109,10 +109,10 @@ try:
             self.training_data = InRAMDatasetPyTorch(pt.shared_arrays['a'].array,
                                                      pt.shared_arrays['b'].array,
                                                      pt.shared_arrays['c'].array,
-                                                     pt.shared_arrays['dbirj'].array,
+                                                     pt.shared_arrays['dgrad'].array,
                                                      pt.shared_arrays['number_of_atoms'].array,
                                                      pt.shared_arrays['dbdrindx'].array,
-                                                     pt.shared_arrays["number_of_dbirjrows"].array,
+                                                     pt.shared_arrays["number_of_dgradrows"].array,
                                                      pt.shared_arrays["unique_j_indices"].array)
 
             self.training_loader = DataLoader(self.training_data,
@@ -156,6 +156,8 @@ try:
             target_force_plot = []
             model_force_plot = []
             train_losses_epochs = []
+            target_energy_plot = []
+            model_energy_plot = []
             for epoch in range(config.sections["PYTORCH"].num_epochs):
                 print(f"----- epoch: {epoch}")
                 start = time()
@@ -175,13 +177,13 @@ try:
                     #print(indices)
                     num_atoms = batch['noa'].to(self.device)
                     #print(num_atoms)
-                    dbirj = batch['dbirj'].to(self.device).requires_grad_(True)
+                    dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                     dbdrindx = batch['dbdrindx'].to(self.device)
                     unique_j = batch['unique_j'].to(self.device)
-                    #print(dbirj.size())
+                    #print(dgrad.size())
                     #print(dbdrindx[0::3])
-                    #energies = torch.reshape(self.model(descriptors, dbirj, indices, num_atoms, dbdrindx, unique_j), (-1,)).to(self.device)
-                    (energies,forces) = self.model(descriptors, dbirj, indices, num_atoms, dbdrindx, unique_j) #.to(self.device)
+                    #energies = torch.reshape(self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j), (-1,)).to(self.device)
+                    (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j) #.to(self.device)
                     energies = energies.to(self.device)
                     forces = forces.to(self.device)
 
@@ -194,6 +196,8 @@ try:
                         #print("force loss:")
                         target_force_plot.append(target_forces.detach().numpy())
                         model_force_plot.append(forces.detach().numpy())
+                        target_energy_plot.append(targets.detach().numpy())
+                        model_energy_plot.append(energies.detach().numpy())
 
                     # Check that force dimensions match
                     assert target_forces.size() == forces.size()
@@ -201,8 +205,8 @@ try:
                     #print(forces)
                     #print("target forces:")
                     #print(target_forces)
-                    #loss = 0.01*self.loss_function(energies, targets) + 0.99*self.loss_function(forces, target_forces)
-                    loss = self.loss_function(forces, target_forces)
+                    loss = 0.03*self.loss_function(energies, targets) + 0.97*self.loss_function(forces, target_forces)
+                    #loss = self.loss_function(forces, target_forces)
                     #loss = self.loss_function(energies, targets)
                     #loss = self.loss_function(energies/num_atoms, targets)
                     #for param in self.model.parameters():
@@ -231,6 +235,13 @@ try:
             model_force_plot = np.array([model_force_plot]).T
             dat = np.concatenate((model_force_plot, target_force_plot), axis=1)
             np.savetxt("force_comparison.dat", dat)
+            # Print target and model energies
+            target_energy_plot = np.concatenate(target_energy_plot)
+            model_energy_plot = np.concatenate(model_energy_plot)
+            target_energy_plot = np.array([target_energy_plot]).T
+            model_energy_plot = np.array([model_energy_plot]).T
+            dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
+            np.savetxt("energy_comparison.dat", dat)
 
             # Print training loss vs. epoch data
             epochs = np.arange(config.sections["PYTORCH"].num_epochs)

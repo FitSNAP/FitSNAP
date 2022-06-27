@@ -104,7 +104,7 @@ class FitTorch(torch.nn.Module):
         fx_components = torch.zeros(atoms_per_structure.sum(),nd) #.double() #.requires_grad_(True)
         fy_components = torch.zeros(atoms_per_structure.sum(),nd) #.double() #.requires_grad_(True)
         fz_components = torch.zeros(atoms_per_structure.sum(),nd) #.double() #.requires_grad_(True)
-        # Contract over every 3rd value of unique j indices, which has same number of rows as dbirj.
+        # Contract over every 3rd value of unique j indices, which has same number of rows as dgrad.
         contracted_x = fx_components.index_add_(0,unique_j[0::3],elementwise_x) #.requires_grad_(True)
         contracted_y = fy_components.index_add_(0,unique_j[1::3],elementwise_y) #.requires_grad_(True)
         contracted_z = fz_components.index_add_(0,unique_j[2::3],elementwise_z) #.requires_grad_(True)

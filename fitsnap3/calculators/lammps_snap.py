@@ -13,7 +13,7 @@ class LammpsSnap(Calculator):
         self._i = 0
         self._lmp = None
         self._row_index = 0
-        self.dbirjrows = None
+        self.dgradrows = None
         pt.check_lammps()
 
     def get_width(self):
@@ -31,8 +31,8 @@ class LammpsSnap(Calculator):
 
     def preprocess_allocate(self, nconfigs):
         #print("----- preprocess_allcoate in lammps_snap.py")
-        self.dbirjrows = np.zeros(nconfigs).astype(int)
-        pt.create_shared_array('number_of_dbirjrows', nconfigs, tm=config.sections["SOLVER"].true_multinode)
+        self.dgradrows = np.zeros(nconfigs).astype(int)
+        pt.create_shared_array('number_of_dgradrows', nconfigs, tm=config.sections["SOLVER"].true_multinode)
 
     def preprocess_configs(self, data, i):
         #print("----- preprocess_configs in lammps_snap.py")
@@ -202,7 +202,7 @@ class LammpsSnap(Calculator):
 #                "switchinnerflag": "switchinnerflag",
 #                "sinner": "sinner",
 #                "dinner": "dinner",
-                "dbirjflag": "dbirjflag",
+                "dgradflag": "dgradflag",
             }.items()
             if v in config.sections["BISPECTRUM"].__dict__
         }
@@ -210,8 +210,8 @@ class LammpsSnap(Calculator):
             kw_options.pop("chem")
         if kw_options["bikflag"] == 0:
             kw_options.pop("bikflag")
-        if kw_options["dbirjflag"] == 0:
-            kw_options.pop("dbirjflag")
+        if kw_options["dgradflag"] == 0:
+            kw_options.pop("dgradflag")
         kw_options["rmin0"] = config.sections["BISPECTRUM"].rmin0
         kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
         kwargs = " ".join(kw_substrings)
@@ -256,33 +256,40 @@ class LammpsSnap(Calculator):
         ncols_bispectrum = n_coeff
         ncols_snap = n_coeff + 3 # Number of columns in the snap array, add 3 to include indices and Cartesian components.
         ncols_reference = 0
-        nrows_dbirj = np.shape(lmp_snap)[0]-nrows_energy-6
-        nrows_snap = nrows_energy + nrows_dbirj + nrows_virial
+        nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-1 #-6
+        nrows_snap = nrows_energy + nrows_dgrad + 1 #nrows_virial
+        #print(f"nrows_snap: {nrows_snap}")
+        #print(f"lmp snap shape: {np.shape(lmp_snap)[0]}")
         assert nrows_snap == np.shape(lmp_snap)[0]
         #print(f"nrows_snap: {nrows_snap}")
         index = self.shared_index # Index telling where to start in the shared arrays on this proc.
                                   # Currently this is an index for the 'a' array (natoms*nconfigs rows).
                                   # Need to also make an index for:
                                   # - the 'b' array (3*natoms+1)*nconfigs rows.
-                                  # - the 'dbirj' array (natoms+1)*nneigh*3*nconfigs rows.
-                                  # - the 'dbirj_indices' array which has same number of rows as 'dbirj'
+                                  # - the 'dgrad' array (natoms+1)*nneigh*3*nconfigs rows.
+                                  # - the 'dgrad_indices' array which has same number of rows as 'dgrad'
         dindex = self.distributed_index
         index_b = self.shared_index_b
         index_c = self.shared_index_c
-        index_dbirj = self.shared_index_dbirj
+        index_dgrad = self.shared_index_dgrad
         index_unique_j = self.shared_index_unique_j
         #print(f"index on proc {pt._sub_rank}: {index}")
 
         # Extract the useful parts of the snap array.
-        bispectrum_components = lmp_snap[0:bik_rows, 0:n_coeff]
+        #bispectrum_components = lmp_snap[0:bik_rows, 0:n_coeff]
+        bispectrum_components = lmp_snap[0:bik_rows, 3:n_coeff+3]
         #print(bispectrum_components)
-        ref_forces = lmp_snap[0:bik_rows, -3:].flatten()
+        #ref_forces = lmp_snap[0:bik_rows, -3:].flatten()
+        ref_forces = lmp_snap[0:bik_rows, 0:3].flatten()
         #print(ref_forces)
-        dbirj = lmp_snap[bik_rows:(bik_rows+nrows_dbirj), 0:n_coeff]
-        #print(np.shape(dbirj))
-        dbirj_indices = lmp_snap[bik_rows:(bik_rows+nrows_dbirj), -3:].astype(np.int32)
-        #print(dbirj_indices)
-        ref_energy = lmp_snap[-6,0]
+        #dgrad = lmp_snap[bik_rows:(bik_rows+nrows_dgrad), 0:n_coeff]
+        dgrad = lmp_snap[bik_rows:(bik_rows+nrows_dgrad), 3:n_coeff+3]
+        #print(np.shape(dgrad))
+        #dgrad_indices = lmp_snap[bik_rows:(bik_rows+nrows_dgrad), -3:].astype(np.int32)
+        dgrad_indices = lmp_snap[bik_rows:(bik_rows+nrows_dgrad), 0:3].astype(np.int32)
+        #print(dgrad_indices)
+        #ref_energy = lmp_snap[-6,0]
+        ref_energy = lmp_snap[-1, 0]
         #print(ref_energy)
 
         # Populate the bispectrum array 'a'
@@ -299,18 +306,18 @@ class LammpsSnap(Calculator):
         pt.shared_arrays['c'].array[index_c:(index_c + (3*num_atoms))] = self._data["Forces"].ravel() - ref_forces
         index_c += 3*num_atoms
 
-        # Populate the dbirj arrays 'dbirj' and 'dbdrindx'
-        pt.shared_arrays['dbirj'].array[index_dbirj:(index_dbirj+nrows_dbirj)] = dbirj
-        pt.shared_arrays['dbdrindx'].array[index_dbirj:(index_dbirj+nrows_dbirj)] = dbirj_indices
-        #index_dbirj += nrows_dbirj
+        # Populate the dgrad arrays 'dgrad' and 'dbdrindx'
+        pt.shared_arrays['dgrad'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad
+        pt.shared_arrays['dbdrindx'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad_indices
+        #index_dgrad += nrows_dgrad
 
         # Populate the unique_j_indices array.
         unique_j_indices = []
-        jold = dbirj_indices[0,1]
+        jold = dgrad_indices[0,1]
         #print(jold)
         #counter = index_unique_j
-        for jindx in range(0,nrows_dbirj):
-            jtmp = dbirj_indices[jindx,1]
+        for jindx in range(0,nrows_dgrad):
+            jtmp = dgrad_indices[jindx,1]
             if (jold==jtmp):
                 value = index_unique_j
                 unique_j_indices.append(value)
@@ -324,12 +331,12 @@ class LammpsSnap(Calculator):
 
         unique_j_indices = np.array(unique_j_indices)
         #print(unique_j_indices)
-        #print(f"{np.size(unique_j_indices)} {nrows_dbirj}")
-        assert(np.size(unique_j_indices) == nrows_dbirj)
-        pt.shared_arrays['unique_j_indices'].array[index_dbirj:(index_dbirj+nrows_dbirj)] = unique_j_indices
+        #print(f"{np.size(unique_j_indices)} {nrows_dgrad}")
+        assert(np.size(unique_j_indices) == nrows_dgrad)
+        pt.shared_arrays['unique_j_indices'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = unique_j_indices
 
 
-        index_dbirj += nrows_dbirj
+        index_dgrad += nrows_dgrad
         index_unique_j = index_unique_j + 1
 
         # Reset indices since we are stacking data in the shared arrays.
@@ -337,7 +344,7 @@ class LammpsSnap(Calculator):
         self.distributed_index = dindex
         self.shared_index_b = index_b
         self.shared_index_c = index_c
-        self.shared_index_dbirj = index_dbirj
+        self.shared_index_dgrad = index_dgrad
         self.shared_index_unique_j = index_unique_j
 
 
@@ -367,7 +374,7 @@ class LammpsSnap(Calculator):
         ndim_virial = 6
         nrows_virial = ndim_virial
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, None)
-        if not config.sections['BISPECTRUM'].dbirjflag:
+        if not config.sections['BISPECTRUM'].dgradflag:
             ncols_bispectrum = n_coeff * num_types
             ncols_reference = 1
             nrows_force = ndim_force * num_atoms
@@ -376,10 +383,10 @@ class LammpsSnap(Calculator):
             ncols_bispectrum = n_coeff + 3
             ncols_reference = 0
             nrows_force = ndim_force * num_atoms
-            nrows_dbirj = np.shape(lmp_snap)[0]-nrows_energy-6
-            nrows_snap = nrows_energy + nrows_dbirj + nrows_virial
+            nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-6
+            nrows_snap = nrows_energy + nrows_dgrad + nrows_virial
         #print(f"----- nrows_snap: {nrows_snap}")
-        #print(f"----- nrows_dbirj: {nrows_dbirj}")
+        #print(f"----- nrows_dgrad: {nrows_dgrad}")
         ncols_snap = ncols_bispectrum + ncols_reference
         #print(f"ncols_snap: {ncols_snap}")
         # index = pt.fitsnap_dict['a_indices'][self._i]
@@ -400,7 +407,7 @@ class LammpsSnap(Calculator):
             bik_rows = num_atoms
         icolref = ncols_bispectrum
         if config.sections["CALCULATOR"].energy:
-            if not config.sections['BISPECTRUM'].dbirjflag:
+            if not config.sections['BISPECTRUM'].dgradflag:
                 b_sum_temp = lmp_snap[irow:irow+bik_rows, :ncols_bispectrum] / num_atoms
             else:
                 b_sum_temp = lmp_snap[irow:irow+bik_rows, :(ncols_bispectrum)]
@@ -411,7 +418,7 @@ class LammpsSnap(Calculator):
             # these strictly increase with total neighbor count
             # minimum value depends on SNAP variant
 
-            if not config.sections['BISPECTRUM'].dbirjflag:
+            if not config.sections['BISPECTRUM'].dgradflag:
                 EPS = 1.0e-10
                 b000sum0 = 0.0
                 nstride = n_coeff
@@ -459,7 +466,7 @@ class LammpsSnap(Calculator):
         irow += nrows_energy
 
         if config.sections["CALCULATOR"].force:
-            if not config.sections['BISPECTRUM'].dbirjflag:
+            if not config.sections['BISPECTRUM'].dgradflag:
                 db_atom_temp = lmp_snap[irow:irow + nrows_force, :ncols_bispectrum]
                 db_atom_temp.shape = (num_atoms * ndim_force, n_coeff * num_types)
                 if not config.sections["BISPECTRUM"].bzeroflag:
@@ -483,13 +490,13 @@ class LammpsSnap(Calculator):
                 dindex += nrows_force
             else:
                 print("----- Preparing descriptor derivatives.")
-                db_atom_temp = lmp_snap[irow:irow + nrows_dbirj, :ncols_bispectrum]
+                db_atom_temp = lmp_snap[irow:irow + nrows_dgrad, :ncols_bispectrum]
                 print(f"index: {index}")
-                print(f"nrows_dbirj: {nrows_dbirj}")
-                print(f"index+nrows_dbirj: {index+nrows_dbirj}")
+                print(f"nrows_dgrad: {nrows_dgrad}")
+                print(f"index+nrows_dgrad: {index+nrows_dgrad}")
                 print(np.shape(db_atom_temp))
-                print(np.shape(pt.shared_arrays['a'].array[index:index+nrows_dbirj]))
-                pt.shared_arrays['a'].array[index:(index+nrows_dbirj)] = \
+                print(np.shape(pt.shared_arrays['a'].array[index:index+nrows_dgrad]))
+                pt.shared_arrays['a'].array[index:(index+nrows_dgrad)] = \
                     db_atom_temp
                 #print(np.diag(config.sections["BISPECTRUM"].blank2J))
                 #print(np.shape(pt.shared_arrays['a'].array[index:index+nrows_force]))
@@ -502,7 +509,7 @@ class LammpsSnap(Calculator):
                 #    self._data["fweight"]
                 pt.fitsnap_dict['Row_Type'][dindex:dindex + nrows_force] = ['Force'] * nrows_force
                 pt.fitsnap_dict['Atom_I'][dindex:dindex + nrows_force] = [int(np.floor(i/3)) for i in range(nrows_force)]
-                index += nrows_dbirj
+                index += nrows_dgrad
                 dindex += nrows_force
         irow += nrows_force
 
@@ -559,16 +566,16 @@ class LammpsSnap(Calculator):
         ndim_virial = 6
         nrows_virial = ndim_virial
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, None)
-        if not config.sections['BISPECTRUM'].dbirjflag:
+        if not config.sections['BISPECTRUM'].dgradflag:
             ncols_bispectrum = n_coeff * num_types
             ncols_reference = 1
             nrows_force = ndim_force * num_atoms
         else:
             ncols_bispectrum = n_coeff + 3
             ncols_reference = 0
-            nrows_force = np.shape(lmp_snap)[0]-nrows_energy-6
+            nrows_force = np.shape(lmp_snap)[0]-nrows_energy-1 #6
         #print(f"nrows_force: {nrows_force}")
-        self.dbirjrows[self._i] = nrows_force
+        self.dgradrows[self._i] = nrows_force
 
 # this is super clean when there is only one value per key, needs reworking
 def _lammps_variables(bispec_options):

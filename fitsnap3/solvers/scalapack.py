@@ -4,7 +4,7 @@ from fitsnap3.io.input import config
 import numpy as np
 
 try:
-    from ..lib.scalapack_solver.scalapack import lstsq, dummy_lstsq
+    from fitsnap3.lib.scalapack_solver.scalapack import lstsq, dummy_lstsq
 
     class ScaLAPACK(Solver):
 

@@ -6,8 +6,8 @@ from time import time
 import numpy as np
 
 try:
-    from ..lib.neural_networks.pytorch import FitTorch
-    from ..tools.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
+    from fitsnap3.lib.neural_networks.pytorch import FitTorch
+    from fitsnap3.tools.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
     import torch
 
 

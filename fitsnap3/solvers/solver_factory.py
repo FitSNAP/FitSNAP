@@ -1,5 +1,11 @@
 from fitsnap3.solvers.solver import Solver, pt
-pt.get_subclasses(__name__, __file__, Solver)
+from fitsnap3.solvers.ard import ARD
+from fitsnap3.solvers.jax import JAX
+from fitsnap3.solvers.lasso import LASSO
+from fitsnap3.solvers.pytorch import PYTORCH
+from fitsnap3.solvers.scalapack import ScaLAPACK
+from fitsnap3.solvers.svd import SVD
+from fitsnap3.solvers.tensorflowsvd import TensorflowSVD
 
 
 def solver(solver_name):

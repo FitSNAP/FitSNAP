@@ -42,9 +42,9 @@ class ExampleChecker:
 		assert self._mpi.stubs == 1
 
 	def run_fitsnap(self):
-		assert importlib.util.find_spec("fitsnap3") is not None
+		assert importlib.util.find_spec("fitsnap3lib") is not None
 		original_arguments = sys.argv
-		new_arguments = ['fitsnap3', str(self._input_file), '--overwrite', '-r']
+		new_arguments = ['fitsnap3lib', str(self._input_file), '--overwrite', '-r']
 		sys.argv = new_arguments
 		run_module(sys.argv[0], run_name='__main__', alter_sys=True)
 		sys.argv = original_arguments

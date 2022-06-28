@@ -13,12 +13,12 @@ try:
 except KeyError:
     python_paths = [str(parent_path)]
 for path in python_paths:
-    if os.path.isdir(path+'/fitsnap3'):
+    if os.path.isdir(path+'/fitsnap3lib'):
         if path != str(parent_path) and path != str(parent_path) + '/':
             raise RuntimeError("PythonPath Path {} comes before Path being tested on {}".format(path, str(parent_path)))
         else:
             break
-assert importlib.util.find_spec("fitsnap3") is not None
+assert importlib.util.find_spec("fitsnap3lib") is not None
 spec = importlib.util.spec_from_file_location("module.name", str(parent_path / "tests/example_checker.py"))
 example_checker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(example_checker)

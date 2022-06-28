@@ -1,6 +1,6 @@
-from .solver import Solver
-from ..parallel_tools import pt
-from ..io.input import config
+from fitsnap3.solvers.solver import Solver
+from fitsnap3.parallel_tools import pt
+from fitsnap3.io.input import config
 from scipy.linalg import lstsq
 import numpy as np
 from sys import float_info as fi

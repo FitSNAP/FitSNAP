@@ -1,8 +1,8 @@
 import configparser
 import argparse
 from pickle import HIGHEST_PROTOCOL
-from .sections.section_factory import new_section
-from ..parallel_tools import pt, output
+from fitsnap3.io.sections.section_factory import new_section
+from fitsnap3.parallel_tools import pt, output
 from pathlib import Path
 
 

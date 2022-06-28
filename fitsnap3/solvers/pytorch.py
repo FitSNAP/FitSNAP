@@ -1,13 +1,13 @@
 
-from .solver import Solver
-from ..parallel_tools import pt
-from ..io.input import config
+from fitsnap3.solvers.solver import Solver
+from fitsnap3.parallel_tools import pt
+from fitsnap3.io.input import config
 from time import time
 import numpy as np
 
 try:
-    from ..lib.neural_networks.pytorch import FitTorch
-    from ..tools.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
+    from fitsnap3.lib.neural_networks.pytorch import FitTorch
+    from fitsnap3.tools.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
     import torch
 
 
@@ -154,7 +154,7 @@ try:
 
 except ModuleNotFoundError:
 
-    class Pytorch(Solver):
+    class PYTORCH(Solver):
         """
         Dummy class for factory to read if torch is not available for import.
         """
@@ -164,7 +164,7 @@ except ModuleNotFoundError:
 
 except NameError:
 
-    class Pytorch(Solver):
+    class PYTORCH(Solver):
         """
         Dummy class for factory to read if MLIAP error is occuring.
         """

@@ -28,10 +28,10 @@
 #     Laura Swiler (Sandia National Labs)
 # <!-----------------END-HEADER------------------------------------->
 
-from .fitsnap import FitSnap
-from .parallel_tools import pt
-from .io.output import output
-from .initialize import initialize_fitsnap_run
+from fitsnap3.fitsnap import FitSnap
+from fitsnap3.parallel_tools import pt
+from fitsnap3.io.output import output
+from fitsnap3.initialize import initialize_fitsnap_run
 
 
 @pt.single_timeit

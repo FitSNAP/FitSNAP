@@ -1,5 +1,5 @@
-from .sections import Section, pt
-from ..error import ExitFunc
+from fitsnap3.io.sections.sections import Section, pt
+from fitsnap3.io.error import ExitFunc
 pt.get_subclasses(__name__, __file__, Section)
 
 

@@ -1,9 +1,9 @@
-from ..sections import Section
+from fitsnap3.io.sections.sections import Section
 
 
 try:
     import torch
-    from ....lib.neural_networks.pytorch import create_torch_network
+    from fitsnap3.lib.neural_networks.pytorch import create_torch_network
 
 
     class PYTORCH(Section):

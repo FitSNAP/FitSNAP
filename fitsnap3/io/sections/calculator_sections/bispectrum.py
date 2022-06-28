@@ -1,4 +1,4 @@
-from ..sections import Section
+from fitsnap3.io.sections.sections import Section
 from itertools import combinations_with_replacement
 import numpy as np
 

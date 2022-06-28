@@ -1,4 +1,4 @@
-from .conversion_finder import create_conversion
+from fitsnap3.units.conversion_finder import create_conversion
 
 conversions = {}
 

@@ -1,4 +1,4 @@
-from ..calculators.calculator import Calculator
+from fitsnap3.calculators.calculator import Calculator
 """Methods you may or must override in new calculators"""
 
 

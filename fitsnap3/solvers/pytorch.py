@@ -1,9 +1,13 @@
 
-from fitsnap3.solvers.solver import Solver
-from fitsnap3.parallel_tools import pt
-from fitsnap3.io.input import config
+from fitsnap3lib.solvers.solver import Solver
+from fitsnap3lib.parallel_tools import ParallelTools
+from fitsnap3lib.io.input import Config
 from time import time
 import numpy as np
+
+
+config = Config()
+pt = ParallelTools()
 
 try:
     from fitsnap3.lib.neural_networks.pytorch import FitTorch

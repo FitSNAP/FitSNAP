@@ -114,5 +114,5 @@ potentials. Journal of Computational Physics, 285, 316-330
 
 The hyperparameters and ACE potential form will be published soon.
 
-**Note to Developers: Make sure this example still reproduces the same results when modifying code**
+**Note to Developers: All ACE examples will need to be redone with new ACE library**
 

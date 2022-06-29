@@ -1,0 +1,61 @@
+[ACE]
+numTypes = 1
+ranks = 1 2 3 4
+lmax =  0 2 2 2
+nmax =  16 2 2 2
+nmaxbase = 16
+rcutfac = 5.304077096
+lambda = 3.663645815
+type = Cu
+bzeroflag = 0
+RPI_heuristic = root_SO3_span
+
+[CALCULATOR]
+calculator = LAMMPSPACE
+energy = 1
+force = 1
+stress = 0
+
+[ESHIFT]
+Cu = 0.0
+
+[SOLVER]
+solver = SVD
+compute_testerrs = 1
+detailed_errors = 0
+
+[SCRAPER]
+scraper = JSON
+
+[PATH]
+dataPath = Cu_JSON
+
+[OUTFILE]
+output_style = PACE
+metrics = Cu_metrics.md
+potential = Cu_pot
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = zero 5.956115644
+pair_coeff = * *
+
+[GROUPS]
+# name size eweight fweight vweight
+group_sections = name training_size testing_size eweight fweight vweight
+group_types = str float float float float float
+smartweights = 0
+random_sampling = 0
+AIMD          =  0.9    0.1      81.52255555           1.20158298           1.0E-8
+Elastic       =  0.9    0.1      33.26362519        0.7342187955        1.0E-8
+Surface       =  0.9    0.1      27.60869877        0.3896504449        1.0E-8
+Vacancy       =  0.9    0.1      12.6992513        1.110559613        1.0E-8
+
+[EXTRAS]
+dump_descriptors = 0
+dump_truth = 0
+dump_weights = 0
+
+[MEMORY]
+override = 0

@@ -112,9 +112,15 @@ class LammpsPace(Calculator):
         number_of_atoms = len(self._data["AtomTypes"])
         positions = self._data["Positions"].flatten()
         elem_all = [config.sections["ACE"].type_mapping[a_t] for a_t in self._data["AtomTypes"]]
-        self._lmp.command(f"create_atoms 1 random {number_of_atoms} 12345 1")
-        self._lmp.scatter_atoms("x", 1, 3, (len(positions) * ctypes.c_double)(*positions))
-        self._lmp.scatter_atoms("type", 0, 1, (len(elem_all) * ctypes.c_int)(*elem_all))
+        self._lmp.create_atoms(
+            n=number_of_atoms,
+            id=None,
+            type=(len(elem_all) * ctypes.c_int)(*elem_all),
+            x=(len(positions) * ctypes.c_double)(*positions),
+            v=None,
+            image=None,
+            shrinkexceed=False
+        )
         n_atoms = int(self._lmp.get_natoms())
         assert number_of_atoms == n_atoms, f"Atom counts don't match when creating atoms: {number_of_atoms}, {n_atoms}"
         

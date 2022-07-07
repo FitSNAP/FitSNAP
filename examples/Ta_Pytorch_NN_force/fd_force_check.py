@@ -146,7 +146,7 @@ class FitTorch(torch.nn.Module):
         predicted_fy = torch.reshape(predicted_fy, (natoms,1))
         predicted_fz = torch.reshape(predicted_fz, (natoms,1))
         # Concatenate along the columns
-        predicted_forces = torch.cat((predicted_fx,predicted_fy,predicted_fz), dim=1)
+        predicted_forces = -1.0*torch.cat((predicted_fx,predicted_fy,predicted_fz), dim=1)
         #print(predicted_forces.size())
         #print(x)
         #print(dEdD)
@@ -236,6 +236,15 @@ def calc_model_forces(x0, seed):
     dDdR = lmp_snap[natoms:(natoms+dDdR_length), 3:(nd+3)]
     #force_indices = lmp_snap[natoms:(natoms+dDdR_length), nd:(nd+3)].astype(np.int32)
     force_indices = lmp_snap[natoms:(natoms+dDdR_length), 0:3].astype(np.int32)
+    # strip rows with all zero descriptor gradients to save memory
+
+    nonzero_rows = lmp_snap[natoms:(natoms+dDdR_length),3:(nd+3)] != 0.0
+    nonzero_rows = np.any(nonzero_rows, axis=1)
+    dDdR = dDdR[nonzero_rows, :]
+    force_indices = force_indices[nonzero_rows,:]
+    dDdR_length = np.shape(dDdR)[0]
+
+
     descriptors = torch.from_numpy(descriptors).double().requires_grad_()
     dDdR = torch.from_numpy(dDdR).double().requires_grad_()
     #print(descriptors)
@@ -290,6 +299,15 @@ def calc_fd_forces(x0, seed):
             dDdR = lmp_snap[natoms:(natoms+dDdR_length), 3:(nd+3)]
             #force_indices = lmp_snap[natoms:(natoms+dDdR_length), nd:(nd+3)].astype(np.int32)
             force_indices = lmp_snap[natoms:(natoms+dDdR_length), 0:3].astype(np.int32)
+            # strip rows with all zero descriptor gradients to save memory
+
+            nonzero_rows = lmp_snap[natoms:(natoms+dDdR_length),3:(nd+3)] != 0.0
+            nonzero_rows = np.any(nonzero_rows, axis=1)
+            dDdR = dDdR[nonzero_rows, :]
+            force_indices = force_indices[nonzero_rows,:]
+            dDdR_length = np.shape(dDdR)[0]
+
+
             descriptors = torch.from_numpy(descriptors).double().requires_grad_()
             dDdR = torch.from_numpy(dDdR).double().requires_grad_()
             #print(descriptors)
@@ -331,6 +349,15 @@ def calc_fd_forces(x0, seed):
             dDdR = lmp_snap[natoms:(natoms+dDdR_length), 3:(nd+3)]
             #force_indices = lmp_snap[natoms:(natoms+dDdR_length), nd:(nd+3)].astype(np.int32)
             force_indices = lmp_snap[natoms:(natoms+dDdR_length), 0:3].astype(np.int32)
+            # strip rows with all zero descriptor gradients to save memory
+
+            nonzero_rows = lmp_snap[natoms:(natoms+dDdR_length),3:(nd+3)] != 0.0
+            nonzero_rows = np.any(nonzero_rows, axis=1)
+            dDdR = dDdR[nonzero_rows, :]
+            force_indices = force_indices[nonzero_rows,:]
+            dDdR_length = np.shape(dDdR)[0]
+
+
             descriptors = torch.from_numpy(descriptors).double().requires_grad_()
             dDdR = torch.from_numpy(dDdR).double().requires_grad_()
             (energies, force_junk) = model(descriptors, dDdR, indices, num_atoms, force_indices)
@@ -419,6 +446,15 @@ x0 = lmp.numpy.extract_atom("x").flatten()
 descriptors = lmp_snap[:natoms, 3:(nd+3)]
 #force_indices = lmp_snap[natoms:(natoms+dDdR_length), nd:(nd+3)].astype(np.int32)
 force_indices = lmp_snap[natoms:(natoms+dDdR_length), 0:3].astype(np.int32)
+# strip rows with all zero descriptor gradients to save memory
+
+nonzero_rows = lmp_snap[natoms:(natoms+dDdR_length),3:(nd+3)] != 0.0
+nonzero_rows = np.any(nonzero_rows, axis=1)
+dDdR = dDdR[nonzero_rows, :]
+force_indices = force_indices[nonzero_rows,:]
+dDdR_length = np.shape(dDdR)[0]
+
+
 x_indices = force_indices[0::3]
 y_indices = force_indices[1::3]
 z_indices = force_indices[2::3]

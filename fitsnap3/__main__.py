@@ -36,17 +36,29 @@ from fitsnap3lib.initialize import initialize_fitsnap_run
 
 pt = ParallelTools()
 
+#from fitsnap3.fitsnap import FitSnap
+#from fitsnap3.parallel_tools import ParallelTools
+#from fitsnap3.io.output import output
+#from fitsnap3.initialize import initialize_fitsnap_run
+
+#pt = ParallelTools()
+
 
 @pt.single_timeit
 def main():
     try:
         initialize_fitsnap_run()
         snap = FitSnap()
+        print("- scrape_configs")
         snap.scrape_configs()
+        print("- process_configs")
         snap.process_configs()
+        print("- pt.all_barrier")
         pt.all_barrier()
+        print("- perform_fit")
         snap.perform_fit()
-        snap.write_output()
+        print("- write_output")
+        #snap.write_output()
     except Exception as e:
         output.exception(e)
 

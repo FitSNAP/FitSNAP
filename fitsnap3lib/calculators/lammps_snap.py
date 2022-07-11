@@ -265,16 +265,12 @@ class LammpsSnap(Calculator):
         ndim_virial = 6
         nrows_virial = ndim_virial
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, None)
-        #print(np.shape(lmp_snap))
         ncols_bispectrum = n_coeff
         ncols_snap = n_coeff + 3 # Number of columns in the snap array, add 3 to include indices and Cartesian components.
         ncols_reference = 0
         nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-1 #-6
         nrows_snap = nrows_energy + nrows_dgrad + 1 #nrows_virial
-        #print(f"nrows_snap: {nrows_snap}")
-        #print(f"lmp snap shape: {np.shape(lmp_snap)[0]}")
         assert nrows_snap == np.shape(lmp_snap)[0]
-        #print(f"nrows_snap: {nrows_snap}")
         index = self.shared_index # Index telling where to start in the shared arrays on this proc.
                                   # Currently this is an index for the 'a' array (natoms*nconfigs rows).
                                   # Need to also make an index for:
@@ -286,7 +282,6 @@ class LammpsSnap(Calculator):
         index_c = self.shared_index_c
         index_dgrad = self.shared_index_dgrad
         index_unique_j = self.shared_index_unique_j
-        #print(f"index on proc {pt._sub_rank}: {index}")
 
         # Extract the useful parts of the snap array.
         #bispectrum_components = lmp_snap[0:bik_rows, 0:n_coeff]
@@ -424,8 +419,6 @@ class LammpsSnap(Calculator):
                 b_sum_temp = lmp_snap[irow:irow+bik_rows, :ncols_bispectrum] / num_atoms
             else:
                 b_sum_temp = lmp_snap[irow:irow+bik_rows, :(ncols_bispectrum)]
-            #print("----- b_sum_temp:")
-            #print(b_sum_temp)
 
             # Check for no neighbors using B[0,0,0] components
             # these strictly increase with total neighbor count

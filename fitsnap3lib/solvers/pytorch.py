@@ -66,9 +66,15 @@ try:
 
             """
             super().__init__(name, linear=False)
+
+            self.energy_weight = config.sections['PYTORCH'].energy_weight
+            self.force_weight = config.sections['PYTORCH'].force_weight
+
             self.optimizer = None
             self.model = FitTorch(config.sections["PYTORCH"].network_architecture,
-                                  config.sections["CALCULATOR"].num_desc)
+                                  config.sections["CALCULATOR"].num_desc,
+                                  self.energy_weight,
+                                  self.force_weight)
             self.loss_function = torch.nn.MSELoss()
             self.learning_rate = config.sections["PYTORCH"].learning_rate
             if config.sections['PYTORCH'].save_state_input is not None:
@@ -189,8 +195,11 @@ try:
                     #print(dbdrindx[0::3])
                     #energies = torch.reshape(self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j), (-1,)).to(self.device)
                     (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j) #.to(self.device)
-                    energies = energies.to(self.device)
-                    forces = forces.to(self.device)
+
+                    if (self.energy_weight != 0):
+                        energies = energies.to(self.device)
+                    if (self.force_weight != 0):
+                        forces = forces.to(self.device)
 
                     if (epoch == config.sections["PYTORCH"].num_epochs-1):
                         #print("-----")
@@ -199,18 +208,28 @@ try:
                         #print("model forces:")
                         #print(forces.detach().numpy())
                         #print("force loss:")
-                        target_force_plot.append(target_forces.detach().numpy())
-                        model_force_plot.append(forces.detach().numpy())
-                        target_energy_plot.append(targets.detach().numpy())
-                        model_energy_plot.append(energies.detach().numpy())
 
-                    # Check that force dimensions match
-                    assert target_forces.size() == forces.size()
+                        if (self.force_weight !=0):
+                            target_force_plot.append(target_forces.detach().numpy())
+                            model_force_plot.append(forces.detach().numpy())
+                        if (self.energy_weight !=0):
+                            target_energy_plot.append(targets.detach().numpy())
+                            model_energy_plot.append(energies.detach().numpy())
+
+                    # Check that model and target force dimensions match
+                    if (self.force_weight !=0):
+                        assert target_forces.size() == forces.size()
                     #print("model forces:")
                     #print(forces)
                     #print("target forces:")
                     #print(target_forces)
-                    loss = 0.0*self.loss_function(energies, targets) + 1.0*self.loss_function(forces, target_forces)
+                    #loss = 0.0*self.loss_function(energies, targets) + 1.0*self.loss_function(forces, target_forces)
+                    if (self.energy_weight==0.0):
+                        loss = self.force_weight*self.loss_function(forces, target_forces)
+                    elif (self.force_weight==0.0):
+                        loss = self.energy_weight*self.loss_function(energies, targets)
+                    else:
+                        loss = self.energy_weight*self.loss_function(energies, targets) + force_weight*self.loss_function(forces, target_forces)
                     #loss = self.loss_function(forces, target_forces)
                     #loss = self.loss_function(energies, targets)
                     #loss = self.loss_function(energies/num_atoms, targets)
@@ -233,20 +252,22 @@ try:
                     )
 
 
-            # Print target and model forces
-            target_force_plot = np.concatenate(target_force_plot)
-            model_force_plot = np.concatenate(model_force_plot)
-            target_force_plot = np.array([target_force_plot]).T
-            model_force_plot = np.array([model_force_plot]).T
-            dat = np.concatenate((model_force_plot, target_force_plot), axis=1)
-            np.savetxt("force_comparison.dat", dat)
-            # Print target and model energies
-            target_energy_plot = np.concatenate(target_energy_plot)
-            model_energy_plot = np.concatenate(model_energy_plot)
-            target_energy_plot = np.array([target_energy_plot]).T
-            model_energy_plot = np.array([model_energy_plot]).T
-            dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
-            np.savetxt("energy_comparison.dat", dat)
+            if (self.force_weight != 0.0):
+                # Print target and model forces
+                target_force_plot = np.concatenate(target_force_plot)
+                model_force_plot = np.concatenate(model_force_plot)
+                target_force_plot = np.array([target_force_plot]).T
+                model_force_plot = np.array([model_force_plot]).T
+                dat = np.concatenate((model_force_plot, target_force_plot), axis=1)
+                np.savetxt("force_comparison.dat", dat)
+            if (self.energy_weight != 0.0):
+                # Print target and model energies
+                target_energy_plot = np.concatenate(target_energy_plot)
+                model_energy_plot = np.concatenate(model_energy_plot)
+                target_energy_plot = np.array([target_energy_plot]).T
+                model_energy_plot = np.array([model_energy_plot]).T
+                dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
+                np.savetxt("energy_comparison.dat", dat)
 
             # Print training loss vs. epoch data
             epochs = np.arange(config.sections["PYTORCH"].num_epochs)
@@ -256,26 +277,17 @@ try:
             print(np.shape(epochs))
             print(np.shape(train_losses_epochs))
             np.savetxt("training_losses.dat", loss_dat)
-            """
-            print("-----")
-            print("target forces:")
-            print(target_forces.detach().numpy())
-            print("model forces:")
-            print(forces.detach().numpy())
-            print("force loss:")
-            print(self.loss_function(forces, target_forces))
-            """
 
-            """
-            print("target energies:")
-            print(targets)
-            print("model energies:")
-            print(energies)
-            print("energy loss:")
-            print(self.loss_function(energies, targets))
+            #print("-----")
+            #print("target forces:")
+            #print(target_forces.detach().numpy())
+            #print("model forces:")
+            #print(forces.detach().numpy())
+            #print("force loss:")
+            #print(self.loss_function(forces, target_forces))
 
             pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
-            """
+
             self.model.write_lammps_torch(config.sections["PYTORCH"].output_file)
             self.fit = None
 

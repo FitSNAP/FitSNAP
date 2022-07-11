@@ -32,6 +32,8 @@ num_epochs = 300
 batch_size = 4 #4 #363
 save_state_output = Ta_Pytorch.pt
 # save_state_input = Ta_Pytorch.pt
+energy_weight = 0.0
+force_weight = 1.0
 
 [SOLVER]
 solver = PYTORCH

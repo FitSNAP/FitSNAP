@@ -36,13 +36,6 @@ from fitsnap3lib.initialize import initialize_fitsnap_run
 
 pt = ParallelTools()
 
-#from fitsnap3.fitsnap import FitSnap
-#from fitsnap3.parallel_tools import ParallelTools
-#from fitsnap3.io.output import output
-#from fitsnap3.initialize import initialize_fitsnap_run
-
-#pt = ParallelTools()
-
 
 @pt.single_timeit
 def main():

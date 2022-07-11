@@ -622,8 +622,8 @@ class ParallelTools(metaclass=Singleton):
             #print(proc_number)
             #print(self.shared_arrays["number_of_atoms"].array[i])
             natoms = self.shared_arrays["number_of_atoms"].array[i]
-            sub_dgrad_sizes[proc_number] += pt.shared_arrays["number_of_dgradrows"].array[i]
-            sub_dbdrindx_sizes[proc_number] += pt.shared_arrays["number_of_dgradrows"].array[i]
+            sub_dgrad_sizes[proc_number] += self.shared_arrays["number_of_dgradrows"].array[i]
+            sub_dbdrindx_sizes[proc_number] += self.shared_arrays["number_of_dgradrows"].array[i]
         assert sum(sub_dgrad_sizes) == len(self.shared_arrays['dgrad'].array)
         assert sum(sub_dbdrindx_sizes) == len(self.shared_arrays['dbdrindx'].array)
         # dbidrj

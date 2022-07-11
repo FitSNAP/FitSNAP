@@ -586,9 +586,14 @@ class LammpsSnap(Calculator):
         else:
             ncols_bispectrum = n_coeff + 3
             ncols_reference = 0
-            nrows_force = np.shape(lmp_snap)[0]-nrows_energy-1 #6
+            nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-1 #6
+            dgrad = lmp_snap[num_atoms:(num_atoms+nrows_dgrad), 3:(n_coeff+3)]
+            # take out nonzero dgrad fx_components
+            #nonzero_rows = lmp_snap[natoms:(natoms+nrows_force),3:(nd+3)] != 0.0
+            #nonzero_rows = np.any(nonzero_rows, axis=1)
+            #dgrad = dDdR[nonzero_rows, :]
         #print(f"nrows_force: {nrows_force}")
-        self.dgradrows[self._i] = nrows_force
+        self.dgradrows[self._i] = nrows_dgrad
 
 # this is super clean when there is only one value per key, needs reworking
 def _lammps_variables(bispec_options):

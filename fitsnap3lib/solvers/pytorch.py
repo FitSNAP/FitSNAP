@@ -210,8 +210,8 @@ try:
                     #print(forces)
                     #print("target forces:")
                     #print(target_forces)
-                    loss = 0.03*self.loss_function(energies, targets) + 0.97*self.loss_function(forces, target_forces)
-                    #loss = self.loss_function(forces, target_forces)
+                    #loss = 0.03*self.loss_function(energies, targets) + 0.97*self.loss_function(forces, target_forces)
+                    loss = self.loss_function(forces, target_forces)
                     #loss = self.loss_function(energies, targets)
                     #loss = self.loss_function(energies/num_atoms, targets)
                     #for param in self.model.parameters():

@@ -20,6 +20,18 @@ class LammpsSnap(Calculator):
         self.dgradrows = None
         pt.check_lammps()
 
+        # check lammps version for compute snap settings
+        """
+        if (config.sections["BISPECTRUM"].__dict__["switchinnerflag"]):
+            if (pt.lammps_version < 20220623)
+        print("-----------------------------------")
+        print(f"LAMMPS version: {pt.lammps_version}")
+        print(f"LAMMPS version: {type(pt.lammps_version)}")
+        print("-----------------------------------")
+        print(config.sections["BISPECTRUM"].__dict__["switchinnerflag"])
+        print(config.sections["BISPECTRUM"].__dict__["dgradflag"])
+        """
+
     def get_width(self):
         if (config.sections["SOLVER"].solver == "PYTORCH"):
             a_width = config.sections["BISPECTRUM"].ncoeff #+ 3
@@ -103,10 +115,8 @@ class LammpsSnap(Calculator):
 
     def _initialize_lammps(self, printlammps=0):
         self._lmp = pt.initialize_lammps(config.args.lammpslog, printlammps)
-        #print("----- Initialized LAMMPS.")
 
     def _prepare_lammps(self):
-        #print("----- Preparing lammps.")
         self._lmp.command("clear")
         self._lmp.command("units " + config.sections["REFERENCE"].units)
         self._lmp.command("atom_style " + config.sections["REFERENCE"].atom_style)
@@ -129,7 +139,8 @@ class LammpsSnap(Calculator):
         # this is super clean when there is only one value per key, needs reworking
 #        self._set_variables(**_lammps_variables(config.sections["BISPECTRUM"].__dict__))
 
-        #Needs reworking when lammps will accept variable 2J
+        # needs reworking when lammps will accept variable 2J
+
         self._lmp.command(f"variable twojmax equal {max(config.sections['BISPECTRUM'].twojmax)}")
         self._lmp.command(f"variable rcutfac equal {config.sections['BISPECTRUM'].rcutfac}")
         self._lmp.command(f"variable rfac0 equal {config.sections['BISPECTRUM'].rfac0}")
@@ -212,17 +223,22 @@ class LammpsSnap(Calculator):
                 "bnormflag": "bnormflag",
                 "wselfallflag": "wselfallflag",
                 "bikflag": "bikflag",
-#                "switchinnerflag": "switchinnerflag",
-#                "sinner": "sinner",
-#                "dinner": "dinner",
+                "switchinnerflag": "switchinnerflag",
+                "sinner": "sinner",
+                "dinner": "dinner",
                 "dgradflag": "dgradflag",
             }.items()
             if v in config.sections["BISPECTRUM"].__dict__
         }
+
+        # remove input dictionary keywords if they are not used, to avoid version problems
+
         if kw_options["chem"] == 0:
             kw_options.pop("chem")
         if kw_options["bikflag"] == 0:
             kw_options.pop("bikflag")
+        if kw_options["switchinnerflag"] == 0:
+            kw_options.pop("switchinnerflag")
         if kw_options["dgradflag"] == 0:
             kw_options.pop("dgradflag")
         kw_options["rmin0"] = config.sections["BISPECTRUM"].rmin0

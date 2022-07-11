@@ -62,7 +62,7 @@ class FitSnap:
 
     @pt.single_timeit
     def process_configs(self):
-        # Preprocess the configs (maybe do this only if nonlinear)
+        # Preprocess the configs (only if nonlinear)
         print(self.solver.linear)
         print("len(data):")
         print(len(self.data))

@@ -95,7 +95,8 @@ def initialize_fitsnap_run():
     try:
         import lammps
         lmp = lammps.lammps()
-    #     print("LAMMPS version: ",lammps.version())
+        #print("LAMMPS version: ",lammps.__version__)
+        pt.lammps_version = lammps.__version__
     except Exception as e:
         print("Trouble importing LAMMPS library, exiting...")
         raise e

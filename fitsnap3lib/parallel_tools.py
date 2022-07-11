@@ -93,6 +93,13 @@ class GracefulKiller:
             signal.signal(signal.SIGINT, self.exit_gracefully)
             signal.signal(signal.SIGTERM, self.exit_gracefully)
 
+        #import lammps as lammps_get_version
+        #self.lammps_version = lammps_get_version.__version__
+        #print("--------------")
+        #print(f"LAMMPS version: {self.lammps_version}")
+        #print("--------------")
+        self.lammps_version = None
+
     def exit_gracefully(self, signum, frame):
         if self._rank == 0:
             printf("attempting to exit gracefully")

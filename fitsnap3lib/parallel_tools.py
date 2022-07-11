@@ -93,11 +93,6 @@ class GracefulKiller:
             signal.signal(signal.SIGINT, self.exit_gracefully)
             signal.signal(signal.SIGTERM, self.exit_gracefully)
 
-        #import lammps as lammps_get_version
-        #self.lammps_version = lammps_get_version.__version__
-        #print("--------------")
-        #print(f"LAMMPS version: {self.lammps_version}")
-        #print("--------------")
         self.lammps_version = None
 
     def exit_gracefully(self, signum, frame):
@@ -476,34 +471,34 @@ class ParallelTools(metaclass=Singleton):
     def new_slice_a(self):
         """ create array to show which sub a matrix indices belong to which proc """
         nof = len(self.shared_arrays["number_of_atoms"].array)
-        print(f"--- nof: {nof} in parallel_tools.py")
-        #print(self.fitsnap_dict["nonlinear"])
+        #print(f"--- nof: {nof} in parallel_tools.py")
         if self._sub_rank != 0:
-            # Wait for head proc on node to fill indices
+            # wait for head proc on node to fill indices
             self._bcast_fitsnap("sub_a_size")
             self.fitsnap_dict["sub_a_size"] = int(self.fitsnap_dict["sub_a_size"][self._sub_rank])
             self._bcast_fitsnap("sub_a_indices")
             self.fitsnap_dict["sub_a_indices"] = self.fitsnap_dict["sub_a_indices"][self._sub_rank]
             return
         sub_a_sizes = np.zeros((self._sub_size, ), dtype=np.int)
-        #print(self._sub_size)
 
         for i in range(nof):
-            #print(i)
-            #print(self._sub_size)
             proc_number = i % self._sub_size
-            #print(proc_number)
-            #print(self.shared_arrays["number_of_atoms"].array[i])
             if self.fitsnap_dict["energy"]:
                 descriptor_rows = 1
                 if self.fitsnap_dict["per_atom_energy"]:
                     descriptor_rows = self.shared_arrays["number_of_atoms"].array[i]
                 sub_a_sizes[proc_number] += descriptor_rows
+
+            # force rows go into A matrix if we are not doing nonlinear fitting
+
             if (self.fitsnap_dict["force"] and not self.fitsnap_dict["nonlinear"]):
-                #print("test")
                 sub_a_sizes[proc_number] += 3 * self.shared_arrays["number_of_atoms"].array[i]
+
+            # likewise for virial rows
+
             if (self.fitsnap_dict["stress"] and not self.fitsnap_dict["nonlinear"]):
                 sub_a_sizes[proc_number] += 6
+
         assert sum(sub_a_sizes) == len(self.shared_arrays['a'].array)
         self.add_2_fitsnap("sub_a_size", sub_a_sizes)
         self._bcast_fitsnap("sub_a_size")
@@ -517,31 +512,22 @@ class ParallelTools(metaclass=Singleton):
         self.add_2_fitsnap("sub_a_indices", indices)
         self._bcast_fitsnap("sub_a_indices")
         self.fitsnap_dict["sub_a_indices"] = indices[self._sub_rank]
-        #print(indices)
-        #print(self._sub_rank)
-        #print(indices[self._sub_rank])
 
     def new_slice_b(self):
         """ create array to show which sub b matrix indices belong to which proc """
         nof = len(self.shared_arrays["number_of_atoms"].array)
-        print(f"--- nof: {nof} in parallel_tools.py new_slice_b")
-        #print(self.fitsnap_dict["nonlinear"])
+        #print(f"--- nof: {nof} in parallel_tools.py new_slice_b")
         if self._sub_rank != 0:
-            # Wait for head proc on node to fill indices
+            # wait for head proc on node to fill indices
             self._bcast_fitsnap("sub_b_size")
             self.fitsnap_dict["sub_b_size"] = int(self.fitsnap_dict["sub_b_size"][self._sub_rank])
             self._bcast_fitsnap("sub_b_indices")
             self.fitsnap_dict["sub_b_indices"] = self.fitsnap_dict["sub_b_indices"][self._sub_rank]
             return
         sub_b_sizes = np.zeros((self._sub_size, ), dtype=np.int)
-        #print(self._sub_size)
 
         for i in range(nof):
-            #print(i)
-            #print(self._sub_size)
             proc_number = i % self._sub_size
-            #print(proc_number)
-            #print(self.shared_arrays["number_of_atoms"].array[i])
             natoms = self.shared_arrays["number_of_atoms"].array[i]
             sub_b_sizes[proc_number] += 1 #3*natoms +1
         assert sum(sub_b_sizes) == len(self.shared_arrays['b'].array)
@@ -557,17 +543,13 @@ class ParallelTools(metaclass=Singleton):
         self.add_2_fitsnap("sub_b_indices", indices)
         self._bcast_fitsnap("sub_b_indices")
         self.fitsnap_dict["sub_b_indices"] = indices[self._sub_rank]
-        #print(indices)
-        #print(self._sub_rank)
-        #print(indices[self._sub_rank])
 
     def new_slice_c(self):
         """ create array to show which sub c matrix indices belong to which proc """
         nof = len(self.shared_arrays["number_of_atoms"].array)
-        print(f"--- nof: {nof} in parallel_tools.py new_slice_c")
-        #print(self.fitsnap_dict["nonlinear"])
+        #print(f"--- nof: {nof} in parallel_tools.py new_slice_c")
         if self._sub_rank != 0:
-            # Wait for head proc on node to fill indices
+            # wait for head proc on node to fill indices
             self._bcast_fitsnap("sub_c_size")
             self.fitsnap_dict["sub_c_size"] = int(self.fitsnap_dict["sub_c_size"][self._sub_rank])
             self._bcast_fitsnap("sub_c_indices")
@@ -576,11 +558,7 @@ class ParallelTools(metaclass=Singleton):
         sub_c_sizes = np.zeros((self._sub_size, ), dtype=np.int)
 
         for i in range(nof):
-            #print(i)
-            #print(self._sub_size)
             proc_number = i % self._sub_size
-            #print(proc_number)
-            #print(self.shared_arrays["number_of_atoms"].array[i])
             natoms = self.shared_arrays["number_of_atoms"].array[i]
             sub_c_sizes[proc_number] += 3*natoms
         assert sum(sub_c_sizes) == len(self.shared_arrays['c'].array)
@@ -596,18 +574,13 @@ class ParallelTools(metaclass=Singleton):
         self.add_2_fitsnap("sub_c_indices", indices)
         self._bcast_fitsnap("sub_c_indices")
         self.fitsnap_dict["sub_c_indices"] = indices[self._sub_rank]
-        #print(indices)
-        #print(self._sub_rank)
-        #print(indices[self._sub_rank])
 
     def new_slice_dgrad(self):
         """ create array to show which sub dgrad matrix indices belong to which proc """
         nof = len(self.shared_arrays["number_of_atoms"].array)
-        print(f"--- nof: {nof} in parallel_tools.py new_slice_dgrad")
-        #print(self.fitsnap_dict["nonlinear"])
+        #print(f"--- nof: {nof} in parallel_tools.py new_slice_dgrad")
         if self._sub_rank != 0:
-            # Wait for head proc on node to fill indices
-            # dgrad
+            # wait for head proc on node to fill indices
             self._bcast_fitsnap("sub_dgrad_size")
             self.fitsnap_dict["sub_dgrad_size"] = int(self.fitsnap_dict["sub_dgrad_size"][self._sub_rank])
             self._bcast_fitsnap("sub_dgrad_indices")
@@ -623,11 +596,7 @@ class ParallelTools(metaclass=Singleton):
         sub_dbdrindx_sizes = np.zeros((self._sub_size, ), dtype=np.int)
 
         for i in range(nof):
-            #print(i)
-            #print(self._sub_size)
             proc_number = i % self._sub_size
-            #print(proc_number)
-            #print(self.shared_arrays["number_of_atoms"].array[i])
             natoms = self.shared_arrays["number_of_atoms"].array[i]
             sub_dgrad_sizes[proc_number] += self.shared_arrays["number_of_dgradrows"].array[i]
             sub_dbdrindx_sizes[proc_number] += self.shared_arrays["number_of_dgradrows"].array[i]
@@ -655,9 +624,6 @@ class ParallelTools(metaclass=Singleton):
         self.add_2_fitsnap("sub_dbdrindx_indices", indices)
         self._bcast_fitsnap("sub_dbdrindx_indices")
         self.fitsnap_dict["sub_dbdrindx_indices"] = indices[self._sub_rank]
-        #print(indices)
-        #print(self._sub_rank)
-        #print(indices[self._sub_rank])
 
     @stub_check
     def combine_coeffs(self, coeff):

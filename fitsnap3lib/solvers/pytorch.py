@@ -107,16 +107,8 @@ try:
 
             training = [not elem for elem in pt.fitsnap_dict['Testing']]
 
-            #print(training)
-            #print(pt.shared_arrays['a'].array[0:100,:])
-            #print(pt.shared_arrays['b'].array)
-            #print("len:")
-            #print(len(pt.shared_arrays['a'].array))
-            #print("asdf")
+            # TODO: when only fitting to energy, we don't need all this extra data
 
-            #self.training_data = InRAMDatasetPyTorch(pt.shared_arrays['a'].array[training],
-            #                                         pt.shared_arrays['b'].array)
-            #print(pt.shared_arrays['number_of_atoms'].array)
             self.training_data = InRAMDatasetPyTorch(pt.shared_arrays['a'].array,
                                                      pt.shared_arrays['b'].array,
                                                      pt.shared_arrays['c'].array,
@@ -132,22 +124,6 @@ try:
                                               collate_fn=torch_collate,
                                               num_workers=0)
 
-            """
-            for i, batch in enumerate(self.training_loader):
-                descriptors = batch['x']
-                #print(descriptors)
-                targets = batch['y']
-                print("descriptors size:")
-                print(descriptors.size())
-                print(descriptors)
-                print("targets size:")
-                print(targets.size())
-                print(targets)
-            """
-            print("----- solvers/pytorch.py")
-            print("----- ----- self.training_loader:")
-            print(self.training_loader)
-
         @pt.sub_rank_zero
         def perform_fit(self):
             """
@@ -155,7 +131,9 @@ try:
             """
             self.create_datasets()
             if config.sections['PYTORCH'].save_state_input is None:
+
                 # standardization
+
                 inv_std = 1/np.std(pt.shared_arrays['a'].array, axis=0)
                 mean_inv_std = np.mean(pt.shared_arrays['a'].array, axis=0) * inv_std
                 state_dict = self.model.state_dict()
@@ -172,29 +150,20 @@ try:
             for epoch in range(config.sections["PYTORCH"].num_epochs):
                 print(f"----- epoch: {epoch}")
                 start = time()
-                # need to get take sub(A) which is of length num_configs*num_atoms_per_config
 
                 train_losses_step = []
                 loss = None
                 for i, batch in enumerate(self.training_loader):
                     self.model.train()
                     descriptors = batch['x'].to(self.device).requires_grad_(True)
-                    #print(descriptors)
                     targets = batch['y'].to(self.device).requires_grad_(True)
                     target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
-                    #print(target_forces.size())
-                    #print(targets)
                     indices = batch['i'].to(self.device)
-                    #print(indices)
                     num_atoms = batch['noa'].to(self.device)
-                    #print(num_atoms)
                     dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                     dbdrindx = batch['dbdrindx'].to(self.device)
                     unique_j = batch['unique_j'].to(self.device)
-                    #print(dgrad.size())
-                    #print(dbdrindx[0::3])
-                    #energies = torch.reshape(self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j), (-1,)).to(self.device)
-                    (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j) #.to(self.device)
+                    (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j)
 
                     if (self.energy_weight != 0):
                         energies = energies.to(self.device)
@@ -202,12 +171,6 @@ try:
                         forces = forces.to(self.device)
 
                     if (epoch == config.sections["PYTORCH"].num_epochs-1):
-                        #print("-----")
-                        #print("target forces:")
-                        #print(target_forces.detach().numpy())
-                        #print("model forces:")
-                        #print(forces.detach().numpy())
-                        #print("force loss:")
 
                         if (self.force_weight !=0):
                             target_force_plot.append(target_forces.detach().numpy())
@@ -216,25 +179,17 @@ try:
                             target_energy_plot.append(targets.detach().numpy())
                             model_energy_plot.append(energies.detach().numpy())
 
-                    # Check that model and target force dimensions match
+                    # assert that model and target force dimensions match
+
                     if (self.force_weight !=0):
                         assert target_forces.size() == forces.size()
-                    #print("model forces:")
-                    #print(forces)
-                    #print("target forces:")
-                    #print(target_forces)
-                    #loss = 0.0*self.loss_function(energies, targets) + 1.0*self.loss_function(forces, target_forces)
+
                     if (self.energy_weight==0.0):
                         loss = self.force_weight*self.loss_function(forces, target_forces)
                     elif (self.force_weight==0.0):
                         loss = self.energy_weight*self.loss_function(energies, targets)
                     else:
                         loss = self.energy_weight*self.loss_function(energies, targets) + force_weight*self.loss_function(forces, target_forces)
-                    #loss = self.loss_function(forces, target_forces)
-                    #loss = self.loss_function(energies, targets)
-                    #loss = self.loss_function(energies/num_atoms, targets)
-                    #for param in self.model.parameters():
-                    #    print(param.grad)
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
@@ -253,7 +208,9 @@ try:
 
 
             if (self.force_weight != 0.0):
-                # Print target and model forces
+
+                # print target and model forces
+
                 target_force_plot = np.concatenate(target_force_plot)
                 model_force_plot = np.concatenate(model_force_plot)
                 target_force_plot = np.array([target_force_plot]).T
@@ -261,7 +218,9 @@ try:
                 dat = np.concatenate((model_force_plot, target_force_plot), axis=1)
                 np.savetxt("force_comparison.dat", dat)
             if (self.energy_weight != 0.0):
-                # Print target and model energies
+
+                # print target and model energies
+
                 target_energy_plot = np.concatenate(target_energy_plot)
                 model_energy_plot = np.concatenate(model_energy_plot)
                 target_energy_plot = np.array([target_energy_plot]).T
@@ -269,22 +228,13 @@ try:
                 dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
                 np.savetxt("energy_comparison.dat", dat)
 
-            # Print training loss vs. epoch data
+            # print training loss vs. epoch data
+
             epochs = np.arange(config.sections["PYTORCH"].num_epochs)
             epochs = np.array([epochs]).T
             train_losses_epochs = np.array([train_losses_epochs]).T
             loss_dat = np.concatenate((epochs,train_losses_epochs),axis=1)
-            print(np.shape(epochs))
-            print(np.shape(train_losses_epochs))
             np.savetxt("training_losses.dat", loss_dat)
-
-            #print("-----")
-            #print("target forces:")
-            #print(target_forces.detach().numpy())
-            #print("model forces:")
-            #print(forces.detach().numpy())
-            #print("force loss:")
-            #print(self.loss_function(forces, target_forces))
 
             pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
 

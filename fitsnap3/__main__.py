@@ -42,15 +42,10 @@ def main():
     try:
         initialize_fitsnap_run()
         snap = FitSnap()
-        print("- scrape_configs")
         snap.scrape_configs()
-        print("- process_configs")
         snap.process_configs()
-        print("- pt.all_barrier")
         pt.all_barrier()
-        print("- perform_fit")
         snap.perform_fit()
-        print("- write_output")
         #snap.write_output()
     except Exception as e:
         output.exception(e)

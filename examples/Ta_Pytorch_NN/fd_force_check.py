@@ -497,6 +497,8 @@ start = 1
 #end = start+1
 end = 101
 
+print(f"Calculating forces for {end-1} random configs...")
+
 errors = []
 for seed in range(start,end):
     print(seed)

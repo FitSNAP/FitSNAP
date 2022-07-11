@@ -1,7 +1,8 @@
 import torch
 from torch import from_numpy
 from torch.nn import Parameter
-from lammps.mliap.pytorch import IgnoreElems, TorchWrapper
+# don't import mliap package, see bug: https://github.com/lammps/lammps/issues/3204
+#from lammps.mliap.pytorch import IgnoreElems, TorchWrapper
 
 
 def create_torch_network(layer_sizes):
@@ -160,11 +161,16 @@ class FitTorch(torch.nn.Module):
                 filename (str): Filename for lammps usable pytorch model
 
         """
+
+        print("WARNING: Not writing LAMMPS torch file due to ML-IAP bug: https://github.com/lammps/lammps/issues/3204")
+
+        """
         model = self.network_architecture
         if self.n_elem == 1:
             model = IgnoreElems(self.network_architecture)
         linked_model = TorchWrapper(model, n_descriptors=self.desc_len, n_elements=self.n_elem)
         torch.save(linked_model, filename)
+        """
 
     def load_lammps_torch(self, filename="FitTorch.pt"):
         """

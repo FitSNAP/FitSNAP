@@ -356,40 +356,31 @@ class LammpsSnap(Calculator):
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
         assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
 
-        # extract positions
-
+        # Extract positions
         lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
-
-        # extract types
-
+        # Extract types
         lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
         lmp_volume = self._lmp.get_thermo("vol")
 
-        # extract SNAP data, including reference potential data
+        # Extract SNAP data, including reference potential data
 
         bik_rows = 1
         if config.sections['BISPECTRUM'].bikflag:
             bik_rows = num_atoms
         nrows_energy = bik_rows
         ndim_force = 3
+        nrows_force = ndim_force * num_atoms
         ndim_virial = 6
         nrows_virial = ndim_virial
-        lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, None)
-        if not config.sections['BISPECTRUM'].dgradflag:
-            ncols_bispectrum = n_coeff * num_types
-            ncols_reference = 1
-            nrows_force = ndim_force * num_atoms
-            nrows_snap = nrows_energy + nrows_force + nrows_virial
-        else:
-            ncols_bispectrum = n_coeff + 3
-            ncols_reference = 0
-            nrows_force = ndim_force * num_atoms
-            nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-6
-            nrows_snap = nrows_energy + nrows_dgrad + nrows_virial
+        nrows_snap = nrows_energy + nrows_force + nrows_virial
+        ncols_bispectrum = n_coeff * num_types
+        ncols_reference = 1
         ncols_snap = ncols_bispectrum + ncols_reference
         # index = pt.fitsnap_dict['a_indices'][self._i]
         index = self.shared_index
         dindex = self.distributed_index
+
+        lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
 
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
             raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
@@ -400,12 +391,9 @@ class LammpsSnap(Calculator):
             bik_rows = num_atoms
         icolref = ncols_bispectrum
         if config.sections["CALCULATOR"].energy:
-            if not config.sections['BISPECTRUM'].dgradflag:
-                b_sum_temp = lmp_snap[irow:irow+bik_rows, :ncols_bispectrum] / num_atoms
-            else:
-                b_sum_temp = lmp_snap[irow:irow+bik_rows, :(ncols_bispectrum)]
+            b_sum_temp = lmp_snap[irow:irow+bik_rows, :ncols_bispectrum] / num_atoms
 
-            # check for no neighbors using B[0,0,0] components
+            # Check for no neighbors using B[0,0,0] components
             # these strictly increase with total neighbor count
             # minimum value depends on SNAP variant
 
@@ -437,17 +425,14 @@ class LammpsSnap(Calculator):
             pt.shared_arrays['a'].array[index:index+bik_rows] = \
                 b_sum_temp * config.sections["BISPECTRUM"].blank2J[np.newaxis, :]
             ref_energy = lmp_snap[irow, icolref]
-
+            pt.shared_arrays['b'].array[index:index+bik_rows] = 0.0
             pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
+            pt.shared_arrays['w'].array[index] = self._data["eweight"]
             pt.fitsnap_dict['Row_Type'][dindex:dindex + bik_rows] = ['Energy'] * nrows_energy
             pt.fitsnap_dict['Atom_I'][dindex:dindex + bik_rows] = [int(i) for i in range(nrows_energy)]
             index += nrows_energy
             dindex += nrows_energy
         irow += nrows_energy
-        
-        print("----- a matrix:")
-        print(pt.shared_arrays['a'].array[index:index+bik_rows])
-        print("-----")
 
         if config.sections["CALCULATOR"].force:
             db_atom_temp = lmp_snap[irow:irow + nrows_force, :ncols_bispectrum]
@@ -468,7 +453,6 @@ class LammpsSnap(Calculator):
             pt.fitsnap_dict['Atom_I'][dindex:dindex + nrows_force] = [int(np.floor(i/3)) for i in range(nrows_force)]
             index += nrows_force
             dindex += nrows_force
-
         irow += nrows_force
 
         if config.sections["CALCULATOR"].stress:

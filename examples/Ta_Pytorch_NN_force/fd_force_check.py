@@ -145,10 +145,7 @@ class FitTorch(torch.nn.Module):
 
         # concatenate along the columns
 
-        #predicted_forces = -1.0*torch.cat((predicted_fx,predicted_fy,predicted_fz), dim=1)
-        # no need to multiply by -1 since compute snap already does this for us
-
-        predicted_forces = torch.cat((predicted_fx,predicted_fy,predicted_fz), dim=1)
+        predicted_forces = -1.0*torch.cat((predicted_fx,predicted_fy,predicted_fz), dim=1)
 
         return (predicted_energy_total, predicted_forces)
 
@@ -176,10 +173,8 @@ class FitTorch(torch.nn.Module):
             state_dict[key] = torch.tensor(combined[i])
         self.load_state_dict(state_dict)
 
+# LAMMPS setup commands
 def prepare_lammps(seed):
-    """
-    LAMMPS setup commands. Prepares LAMMPS to do a calculation.
-    """
 
     lmp.command("clear")
     lmp.command("units metal")
@@ -190,19 +185,18 @@ def prepare_lammps(seed):
     lmp.command(f"create_box	{ntypes} box")
     lmp.command(f"create_atoms	{ntypes} box")
     lmp.command("mass 		* 180.88")
+    #lmp.command("displace_atoms 	all random 0.1 0.1 0.1 123456")
     lmp.command(f"displace_atoms 	all random 0.1 0.1 0.1 {seed}")
     lmp.command(f"pair_style zero 7.0")
     lmp.command(f"pair_coeff 	* *")
+    #lmp.command(f"compute 	snap all snap {snap_options}")
     lmp.command(f"compute 	snap all snap {snap_options}")
+    #lmp.command(f"compute snapneigh all snapneigh {snap_options}")
     lmp.command(f"thermo 		100")
 
 
 # Get model force
 def calc_model_forces(x0, seed):
-    """
-    Calculate model forces using the NN expression for forces, and descriptor
-    gradients extracted from LAMMPS.
-    """
     natoms = int(np.shape(x0)[0]/3)
     prepare_lammps(seed)
     x0 = lmp.numpy.extract_atom("x").flatten()
@@ -210,14 +204,20 @@ def calc_model_forces(x0, seed):
         x[indx]=x0[indx]
     lmp.scatter_atoms("x",1,3,x)
     lmp.command(f"run 0")
-
+    #blah = lmp.numpy.extract_atom("x").flatten()
+    #print(blah)
     lmp_snap = lmp.numpy.extract_compute("snap",0, 2)
-
+    #force_indices = lmp.numpy.extract_compute("snapneigh", 0, 2).astype(np.int32)
+    #print(lmp_snap[16:,:])
+    #print(force_indices)
+    # Calculate energy
+    #descriptors = lmp_snap[:natoms, 0:nd]
     descriptors = lmp_snap[:natoms, 3:(nd+3)]
-    dDdR_length = np.shape(lmp_snap)[0]-natoms-1
+    dDdR_length = np.shape(lmp_snap)[0]-natoms-1 #6
+    #dDdR = lmp_snap[natoms:(natoms+dDdR_length), 0:nd]
     dDdR = lmp_snap[natoms:(natoms+dDdR_length), 3:(nd+3)]
+    #force_indices = lmp_snap[natoms:(natoms+dDdR_length), nd:(nd+3)].astype(np.int32)
     force_indices = lmp_snap[natoms:(natoms+dDdR_length), 0:3].astype(np.int32)
-
     # strip rows with all zero descriptor gradients to save memory
 
     nonzero_rows = lmp_snap[natoms:(natoms+dDdR_length),3:(nd+3)] != 0.0
@@ -226,55 +226,61 @@ def calc_model_forces(x0, seed):
     force_indices = force_indices[nonzero_rows,:]
     dDdR_length = np.shape(dDdR)[0]
 
+
     descriptors = torch.from_numpy(descriptors).double().requires_grad_()
     dDdR = torch.from_numpy(dDdR).double().requires_grad_()
-
+    #print(descriptors)
+    #print(np.shape(descriptors))
+    #print(np.shape(dDdR))
     (energies, forces) = model(descriptors, dDdR, indices, num_atoms, force_indices)
-
+    #print(energies)
+    #e1 = energies.detach().numpy()[0]
     forces = forces.detach().numpy()
     return forces
 
+# Get finite difference force
 def calc_fd_forces(x0, seed):
-    """
-    Calculate finite difference force.
-    We take finite differences between +h and -h on all atoms, using the PyTorch
-    model to calculated energy.
-    """
 
     natoms = int(np.shape(x0)[0]/3)
 
     a = 0
-    forces = np.zeros((natoms,3)) # only x direction for now.
+    forces = np.zeros((natoms,3)) # Only x direction for now.
     for i in range(0,natoms):
         for a in range(0,3):
 
             atomindx = 3*i + a
 
             # +h
-
             prepare_lammps(seed)
             x0 = lmp.numpy.extract_atom("x").flatten()
-
+            #print(x0)
+            #xtmp = x0
             for indx in range(0,3*natoms):
                 x[indx]=x0[indx]
             x[atomindx] += h
             x1 = x0
             x1[atomindx] += h
-
+            #if (i==7):
+            #    print(x[atomindx])
             lmp.scatter_atoms("x",1,3,x)
             lmp.command(f"run 0")
-
+            #blah = lmp.numpy.extract_atom("x").flatten()
+            #print(blah)
             lmp_snap = lmp.numpy.extract_compute("snap",0, 2)
             lmp_snap1 = lmp_snap
-
-            # calculate energy
-
+            #print(lmp_snap[16:,:])
+            #print(force_indices)
+            # Calculate energy
+            #descriptors = lmp_snap[:natoms, 0:nd]
             descriptors = lmp_snap[:natoms, 3:(nd+3)]
             d1 = descriptors
-            dDdR_length = np.shape(lmp_snap)[0]-natoms-1
+            #if (i==7):
+            #    print(descriptors)
+            dDdR_length = np.shape(lmp_snap)[0]-natoms-1 #6
+            #dDdR = lmp_snap[natoms:(natoms+dDdR_length), 0:nd]
             dDdR = lmp_snap[natoms:(natoms+dDdR_length), 3:(nd+3)]
+            #force_indices = lmp_snap[natoms:(natoms+dDdR_length), nd:(nd+3)].astype(np.int32)
             force_indices = lmp_snap[natoms:(natoms+dDdR_length), 0:3].astype(np.int32)
-
             # strip rows with all zero descriptor gradients to save memory
 
             nonzero_rows = lmp_snap[natoms:(natoms+dDdR_length),3:(nd+3)] != 0.0
@@ -283,13 +289,15 @@ def calc_fd_forces(x0, seed):
             force_indices = force_indices[nonzero_rows,:]
             dDdR_length = np.shape(dDdR)[0]
 
+
             descriptors = torch.from_numpy(descriptors).double().requires_grad_()
             dDdR = torch.from_numpy(dDdR).double().requires_grad_()
+            #print(descriptors)
             (energies, force_junk) = model(descriptors, dDdR, indices, num_atoms, force_indices)
+            #print(energies)
             e1 = energies.detach().numpy()[0]
 
             # -h
-
             prepare_lammps(seed)
             x0 = lmp.numpy.extract_atom("x").flatten()
             for indx in range(0,3*natoms):
@@ -297,23 +305,32 @@ def calc_fd_forces(x0, seed):
             x[atomindx] -= h
             x2 = x0
             x2[atomindx] -= h
-
+            #if (i==7):
+            #    print(x[atomindx])
             lmp.scatter_atoms("x",1,3,x)
             lmp.command(f"run 0")
-
+            #blah = lmp.numpy.extract_atom("x").flatten()
+            #print(blah)
             lmp_snap = lmp.numpy.extract_compute("snap",0, 2)
             lmp_snap2 = lmp_snap
-
-            # calculate energy
-
+            #print(lmp_snap[16:,:])
+            #print(force_indices)
+            # Calculate energy
+            #descriptors = lmp_snap[:natoms, 0:nd]
             descriptors = lmp_snap[:natoms, 3:(nd+3)]
             d2 = descriptors
+            #if ((i==7) and (a==2)):
+            #    #print(descriptors)
+            #    d_diff = np.abs(d1-d2)
+            #    print(d1)
+            #    print(d2)
+            #    print(d_diff)
+            #print(descriptors)
             dDdR_length = np.shape(lmp_snap)[0]-natoms-1 #6
             #dDdR = lmp_snap[natoms:(natoms+dDdR_length), 0:nd]
             dDdR = lmp_snap[natoms:(natoms+dDdR_length), 3:(nd+3)]
             #force_indices = lmp_snap[natoms:(natoms+dDdR_length), nd:(nd+3)].astype(np.int32)
             force_indices = lmp_snap[natoms:(natoms+dDdR_length), 0:3].astype(np.int32)
-
             # strip rows with all zero descriptor gradients to save memory
 
             nonzero_rows = lmp_snap[natoms:(natoms+dDdR_length),3:(nd+3)] != 0.0
@@ -328,19 +345,17 @@ def calc_fd_forces(x0, seed):
             (energies, force_junk) = model(descriptors, dDdR, indices, num_atoms, force_indices)
             e2 = energies.detach().numpy()[0]
 
-            # multiply by -1 since negative gradient
-
-            force = -1.0*((e1-e2)/(2*h))
+            force = (e1-e2)/(2*h)
             forces[i,a]=force
 
     return forces
 
-# finite difference parameters
+# Finite difference parameters
 h = 1e-4
-nconfigs=1 # because we do 1 config at a time
+# Other parameters
+nconfigs=1
 
-# simulation parameters
-
+# Simulation parameters
 nsteps=0
 nrep=2
 latparam=2.0
@@ -348,9 +363,7 @@ nx=nrep
 ny=nrep
 nz=nrep
 ntypes=2
-
 # SNAP options
-
 twojmax=6
 m = (twojmax/2)+1
 K = int(m*(m+1)*(2*m+1)/6)
@@ -368,25 +381,32 @@ bzero=0
 switch=1
 bikflag=1
 dgradflag=1
+#snap_options=f'{rcutfac} {rfac0} {twojmax} {radelem1} {radelem2} {wj1} {wj2} rmin0 {rmin0} quadraticflag {quadratic} bzeroflag {bzero} switchflag {switch}'
 snap_options=f'{rcutfac} {rfac0} {twojmax} {radelem1} {radelem2} {wj1} {wj2} rmin0 {rmin0} quadraticflag {quadratic} bzeroflag {bzero} switchflag {switch} bikflag {bikflag} dgradflag {dgradflag}'
 
 lmp = lammps(cmdargs=["-log", "none", "-screen", "none"])
 
-# get positions, natoms, number descriptors, length of dgrad
-
+# Get positions, natoms, number descriptors, length of dgrad
 prepare_lammps(1)
 lmp.command(f"run 0")
-
-# these need to be run after run 0 otherwise you'll get a segfault since compute variables don't get initialized.
-
+# These need to be run after run 0 otherwise you'll get a segfault since compute variables don't get initialized.
 lmp_snap = lmp.numpy.extract_compute("snap",0, 2)
 natoms = lmp.get_natoms()
-dDdR_length = np.shape(lmp_snap)[0]-natoms-1
+dDdR_length = np.shape(lmp_snap)[0]-natoms-1 #6
+#dDdR = lmp_snap[natoms:(natoms+dDdR_length), :]
 dDdR = lmp_snap[natoms:(natoms+dDdR_length), 3:(nd+3)]
+#print(lmp_snap)
+#force_indices = lmp.numpy.extract_compute("snapneigh", 0, 2).astype(np.int32)
+#force_indices = lmp_snap[natoms:(natoms+dDdR_length), nd:(nd+3)].astype(np.int32)
+#print(lmp_snap[16:,:])
+#print(np.shape(force_indices))
+#print(force_indices[0:34,:])
 x0 = lmp.numpy.extract_atom("x").flatten()
+#natoms = lmp.get_natoms()
+#descriptors = lmp_snap[:natoms, :]
 descriptors = lmp_snap[:natoms, 3:(nd+3)]
+#force_indices = lmp_snap[natoms:(natoms+dDdR_length), nd:(nd+3)].astype(np.int32)
 force_indices = lmp_snap[natoms:(natoms+dDdR_length), 0:3].astype(np.int32)
-
 # strip rows with all zero descriptor gradients to save memory
 
 nonzero_rows = lmp_snap[natoms:(natoms+dDdR_length),3:(nd+3)] != 0.0
@@ -395,30 +415,29 @@ dDdR = dDdR[nonzero_rows, :]
 force_indices = force_indices[nonzero_rows,:]
 dDdR_length = np.shape(dDdR)[0]
 
+
 x_indices = force_indices[0::3]
 y_indices = force_indices[1::3]
 z_indices = force_indices[2::3]
-
-# define indices upon which to contract per-atom energies
-
+#nd = np.shape(descriptors)[1]
+#print(np.shape(dDdR)) # Should be same as force_indices
+#print(np.shape(force_indices))
+# Define indices upon which to contract per-atom energies
 indices = []
 for m in range(0,nconfigs):
     for i in range(0,natoms):
         indices.append(m)
 indices = torch.tensor(indices, dtype=torch.int64)
-
-# number of atoms per config is needed for future energy calculation.
-
+# Number of atoms per config is needed for future energy calculation.
 num_atoms = natoms*torch.ones(nconfigs,dtype=torch.int32)
 
-# define the network parameters based on number of descriptors
+#Define the network parameters based on number of descriptors
 #layer_sizes = ['num_desc', '10', '8', '6', '1'] # FitSNAP style
-
+#nd=K
 print(f"number descriptors: {nd}")
 layer_sizes = [nd, nd, nd, 1]
 
-# build the model
-
+# Build the model
 network_architecture = create_torch_network(layer_sizes)
 """
 for name, param in network_architecture.named_parameters():
@@ -428,52 +447,61 @@ for name, param in network_architecture.named_parameters():
 """
 model = FitTorch(network_architecture, nd).double()
 
+#i = 0
+#a = 0
+#atomindx = 3*i+a
 n3 = 3*natoms
-
-# allocate c array for positions.
-
+# Allocate c array for positions.
 x = (n3*c_double)()
 
 start = 1
-end = 101
+#end = start+1
+end = 31
 
 print(f"Calculating forces for {end-1} random configs...")
 
 errors = []
 for seed in range(start,end):
     print(seed)
-
-    # get model forces
-
+    # Get model forces
     model_forces = calc_model_forces(x0, seed)
-
-    # gGet finite difference forces
-
+    #print(model_forces)
+    # Get finite difference forces
     fd_forces = calc_fd_forces(x0, seed)
-
-    # calc difference and error
-
+    #print(fd_forces)
+    # Calc difference
     diff = model_forces - fd_forces
+    #print(type(diff))
+    #print(type(fd_forces))
     percent_error = np.divide(diff, fd_forces)*100
+    #percent_error = torch.div(diff,fd_forces)*100
+    #print(percent_error)
     percent_error = percent_error.flatten()
+    #print(percent_error)
     errors.append(percent_error)
 
 errors = np.abs(np.array(errors))
 errors = errors.flatten()
-errors[errors == -np.inf] = 100.0
-errors[errors == np.inf] = 100.0
-errors[errors == 0] = 100.0
-errors[errors == 0] = 100.0
+errors[errors == -np.inf] = 0.1
+errors[errors == np.inf] = 0.1
+errors[errors == 0] = 0.1
+errors[errors == 0] = 0.1
+#print(errors)
 
 n_bins = 50
 
 # histogram on linear scale
-
+#plt.subplot(111)
 hist, bins, _ = plt.hist(errors, bins=n_bins)
 logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+#plt.hist(errors, bins=logbins)
+#plt.xscale('log')
+#plt.show()
 
 
 fig, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
+#logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+# We can set the number of bins with the *bins* keyword argument.
 axs.hist(errors, bins=logbins)
 axs.set_xscale('log')
 axs.set_xlabel("Force component percent error (%)")

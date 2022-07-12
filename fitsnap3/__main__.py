@@ -46,7 +46,7 @@ def main():
         snap.process_configs()
         pt.all_barrier()
         snap.perform_fit()
-        #snap.write_output()
+        snap.write_output()
     except Exception as e:
         output.exception(e)
 

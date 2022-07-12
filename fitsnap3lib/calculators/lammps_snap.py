@@ -496,6 +496,8 @@ class LammpsSnap(Calculator):
 
     def _collect_lammps_preprocess(self):
 
+        print("PREPROCESSING")
+
         num_atoms = self._data["NumAtoms"]
         num_types = config.sections['BISPECTRUM'].numtypes
         n_coeff = config.sections['BISPECTRUM'].ncoeff

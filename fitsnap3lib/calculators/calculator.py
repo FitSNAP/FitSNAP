@@ -3,8 +3,7 @@ from fitsnap3lib.io.input import Config
 from fitsnap3lib.io.output import output
 import numpy as np
 import pandas as pd
-#config = Config()
-#pt = ParallelTools()
+
 
 config = Config()
 pt = ParallelTools()

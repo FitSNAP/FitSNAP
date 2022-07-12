@@ -96,9 +96,7 @@ class Bispectrum(Section):
                     if all(ind <= int(self.twojmax[atype]) for ind in quadIndex):
                         prefac = 1.0
                     self.blank2J.append([prefac])
-        #print("----- io/sections/calculator_sections/bispectrum.py")
-        #print("----- ----- self.blist:")
-        #print(self.blist)
+
         if self.chemflag:
             self.blist *= self.numtypes ** 3
             self.blist = np.array(self.blist).tolist()

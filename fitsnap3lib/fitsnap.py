@@ -84,15 +84,14 @@ class FitSnap:
 
     @pt.single_timeit
     def perform_fit(self):
-        #self.solver.create_datasets()
         if not config.args.perform_fit:
             return
         elif self.fit is None:
             self.solver.perform_fit()
         else:
             self.solver.fit = self.fit
-        #self.solver.fit_gather()
-        #self.solver.error_analysis()
+        self.solver.fit_gather()
+        self.solver.error_analysis()
 
     @pt.single_timeit
     def write_output(self):

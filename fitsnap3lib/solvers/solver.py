@@ -128,7 +128,6 @@ class Solver:
         mae = np.sum(np.abs(res) / nconfig)
         ssr = np.square(res).sum()
         mse = ssr / nconfig
-        print(f"{ssr} {nconfig}")
         rmse = np.sqrt(mse)
         rsq = 1 - ssr / np.sum(np.square(this_true - (this_true / nconfig).sum()))
         error_record = {

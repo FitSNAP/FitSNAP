@@ -471,7 +471,7 @@ class ParallelTools(metaclass=Singleton):
     def new_slice_a(self):
         """ create array to show which sub a matrix indices belong to which proc """
         nof = len(self.shared_arrays["number_of_atoms"].array)
-        print(f"----- nof: {nof} in parallel_tools.py")
+        #print(f"----- nof: {nof} in parallel_tools.py")
         if self._sub_rank != 0:
             # wait for head proc on node to fill indices
             self._bcast_fitsnap("sub_a_size")

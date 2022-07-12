@@ -483,9 +483,6 @@ class LammpsSnap(Calculator):
         self.distributed_index = dindex
 
     def _collect_lammps_preprocess(self):
-
-        print("PREPROCESSING")
-
         num_atoms = self._data["NumAtoms"]
         num_types = config.sections['BISPECTRUM'].numtypes
         n_coeff = config.sections['BISPECTRUM'].ncoeff
@@ -514,6 +511,7 @@ class LammpsSnap(Calculator):
         nrows_virial = ndim_virial
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, None)
         if not config.sections['BISPECTRUM'].dgradflag:
+            print("----- asdfasdfasdfasdfasdfasdf")
             ncols_bispectrum = n_coeff * num_types
             ncols_reference = 1
             nrows_force = ndim_force * num_atoms

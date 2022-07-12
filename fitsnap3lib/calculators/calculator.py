@@ -119,6 +119,8 @@ class Calculator:
             if config.sections["CALCULATOR"].stress:
                 a_len += self.number_of_files_per_node * 6
 
+            print(f"----- a_len: {a_len}")
+            
             a_width = self.get_width()
             assert isinstance(a_width, int)
 

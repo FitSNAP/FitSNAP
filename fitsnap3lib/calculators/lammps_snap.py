@@ -444,6 +444,10 @@ class LammpsSnap(Calculator):
             index += nrows_energy
             dindex += nrows_energy
         irow += nrows_energy
+        
+        print("----- a matrix:")
+        print(pt.shared_arrays['a'].array[index:index+bik_rows])
+        print("-----")
 
         if config.sections["CALCULATOR"].force:
             db_atom_temp = lmp_snap[irow:irow + nrows_force, :ncols_bispectrum]

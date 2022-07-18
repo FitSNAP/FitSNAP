@@ -94,24 +94,52 @@ class FitTorch(torch.nn.Module):
             nd = x.size()[1] # number of descriptors
             natoms = atoms_per_structure.sum() # Total number of atoms in this batch
 
-            x_indices = xd_indx[0::3]
-            y_indices = xd_indx[1::3]
-            z_indices = xd_indx[2::3]
-            neigh_indices = xd_indx[0::3,0] # neighbors i of atoms j
+            #x_indices = xd_indx[0::3]
+            #y_indices = xd_indx[1::3]
+            #z_indices = xd_indx[2::3]
+    
+            # boolean indices used to properly index descriptor gradients
+
+            x_indices_bool = xd_indx[:,2]==0
+            y_indices_bool = xd_indx[:,2]==1
+            z_indices_bool = xd_indx[:,2]==2
+
+            # neighbors i of atom j
+
+            #neigh_indices_x = xd_indx[0::3,0]
+            #neigh_indices_y = xd_indx[1::3,0] 
+            #neigh_indices_z = xd_indx[2::3,0]
+
+            neigh_indices_x = xd_indx[x_indices_bool,0]
+            neigh_indices_y = xd_indx[y_indices_bool,0] 
+            neigh_indices_z = xd_indx[z_indices_bool,0]
+
             dEdD = torch.autograd.grad(self.network_architecture(x), x, grad_outputs=torch.ones_like(self.network_architecture(x)), create_graph=True)[0]
 
             # extract proper dE/dD values to align with neighbors i of atoms j
 
-            dEdD = dEdD[neigh_indices, :] #.requires_grad_(True)
-            dDdRx = xd[0::3] #.requires_grad_(True)
-            dDdRy = xd[1::3] #.requires_grad_(True)
-            dDdRz = xd[2::3] #.requires_grad_(True)
+            # these are true if no neighlist pruning (comment out the block with the "strip" comment in lammps_snap.py)
+            #assert(torch.all(xd_indx[x_indices_bool,0] == xd_indx[0::3,0]))
+            #assert(torch.all(xd_indx[y_indices_bool,0] == xd_indx[1::3,0]))      
+            #assert(torch.all(xd_indx[z_indices_bool,0] == xd_indx[2::3,0]))   
+            #assert(torch.all(xd[x_indices_bool,0] == xd[0::3,0]))
+            #assert(torch.all(xd[y_indices_bool,0] == xd[1::3,0]))      
+            #assert(torch.all(xd[z_indices_bool,0] == xd[2::3,0]))
+ 
+            #dEdD = dEdD[neigh_indices_x, :] #.requires_grad_(True)
+            dEdD_x = dEdD[neigh_indices_x, :]
+            dEdD_y = dEdD[neigh_indices_y, :]
+            dEdD_z = dEdD[neigh_indices_z, :]
+
+            dDdRx = xd[x_indices_bool] #.requires_grad_(True)
+            dDdRy = xd[y_indices_bool] #.requires_grad_(True)
+            dDdRz = xd[z_indices_bool] #.requires_grad_(True)   
 
             # elementwise multiplication of dDdR and dEdD
 
-            elementwise_x = torch.mul(dDdRx, dEdD) #.requires_grad_(True)
-            elementwise_y = torch.mul(dDdRy, dEdD) #.requires_grad_(True)
-            elementwise_z = torch.mul(dDdRz, dEdD) #.requires_grad_(True)
+            elementwise_x = torch.mul(dDdRx, dEdD_x) #.requires_grad_(True)
+            elementwise_y = torch.mul(dDdRy, dEdD_y) #.requires_grad_(True)
+            elementwise_z = torch.mul(dDdRz, dEdD_z) #.requires_grad_(True)
 
             # contract these elementwise components along rows with indices given by unique_j
 
@@ -119,11 +147,12 @@ class FitTorch(torch.nn.Module):
             fy_components = torch.zeros(atoms_per_structure.sum(),nd) #.double() #.requires_grad_(True)
             fz_components = torch.zeros(atoms_per_structure.sum(),nd) #.double() #.requires_grad_(True)
 
-            # contract over every 3rd value of unique j indices, which has same number of rows as dgrad
+            # contract over unique j indices, which has same number of rows as dgrad
+            # replace unique_j[a_indices_bool] with xd_indx[a_indices_bool, 1] and it's the same result for batch size of 1
 
-            contracted_x = fx_components.index_add_(0,unique_j[0::3],elementwise_x) #.requires_grad_(True)
-            contracted_y = fy_components.index_add_(0,unique_j[1::3],elementwise_y) #.requires_grad_(True)
-            contracted_z = fz_components.index_add_(0,unique_j[2::3],elementwise_z) #.requires_grad_(True)
+            contracted_x = fx_components.index_add_(0,unique_j[x_indices_bool],elementwise_x) #.requires_grad_(True)
+            contracted_y = fy_components.index_add_(0,unique_j[y_indices_bool],elementwise_y) #.requires_grad_(True)
+            contracted_z = fz_components.index_add_(0,unique_j[z_indices_bool],elementwise_z) #.requires_grad_(True)
 
             # sum along bispectrum components to get force on each atom
 

@@ -293,6 +293,22 @@ class LammpsSnap(Calculator):
         dgrad_indices = lmp_snap[bik_rows:(bik_rows+nrows_dgrad), 0:3].astype(np.int32)
         ref_energy = lmp_snap[-1, 0]
 
+        # strip zero dgrad components (equivalent to pruning neighborlist)
+         
+        nonzero_rows = lmp_snap[bik_rows:(bik_rows+nrows_dgrad),3:(n_coeff+3)] != 0.0
+        nonzero_rows = np.any(nonzero_rows, axis=1)
+        dgrad = dgrad[nonzero_rows, :]
+        nrows_dgrad = np.shape(dgrad)[0]
+        nrows_snap = np.shape(dgrad)[0] + nrows_energy + 1
+        dgrad_indices = dgrad_indices[nonzero_rows, :]
+        
+        # this case in Ta example shows how stripping zero rows does more than simply pruning the neighlist
+        # this is because some Cartesian indices of some neighbors may have zero valued gradients
+        #if (nrows_dgrad==191):
+        #    print(nrows_dgrad)
+        #    print(np.shape(dgrad_indices)[0])
+        #    print(dgrad_indices)
+
         # populate the bispectrum array 'a'
 
         pt.shared_arrays['a'].array[index:index+bik_rows] = bispectrum_components
@@ -314,6 +330,8 @@ class LammpsSnap(Calculator):
         pt.shared_arrays['dbdrindx'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad_indices
 
         # populate the unique_j_indices array
+        # this is like the 2nd column of dgrad_indices, but the indices keep adding onto themselves for an entire batch when we do fitting later
+        # for example, if natoms=64 and you have 3 configs in a batch, unique_j_indices will go up to 191
 
         unique_j_indices = []
         jold = dgrad_indices[0,1]
@@ -330,6 +348,10 @@ class LammpsSnap(Calculator):
 
         unique_j_indices = np.array(unique_j_indices)
         assert(np.size(unique_j_indices) == nrows_dgrad)
+        assert( np.all((unique_j_indices-unique_j_indices[0]) == dgrad_indices[:,1]) )
+        #if (nrows_dgrad==191):
+        #    print(unique_j_indices-3842)
+        #    print(dgrad_indices)
         pt.shared_arrays['unique_j_indices'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = unique_j_indices
 
 
@@ -510,21 +532,19 @@ class LammpsSnap(Calculator):
         ndim_virial = 6
         nrows_virial = ndim_virial
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, None)
-        if not config.sections['BISPECTRUM'].dgradflag:
-            print("----- asdfasdfasdfasdfasdfasdf")
-            ncols_bispectrum = n_coeff * num_types
-            ncols_reference = 1
-            nrows_force = ndim_force * num_atoms
-        else:
-            ncols_bispectrum = n_coeff + 3
-            ncols_reference = 0
-            nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-1 #6
-            dgrad = lmp_snap[num_atoms:(num_atoms+nrows_dgrad), 3:(n_coeff+3)]
-            # take out nonzero dgrad fx_components
-            #nonzero_rows = lmp_snap[natoms:(natoms+nrows_force),3:(nd+3)] != 0.0
-            #nonzero_rows = np.any(nonzero_rows, axis=1)
-            #dgrad = dDdR[nonzero_rows, :]
 
+        ncols_bispectrum = n_coeff + 3
+        ncols_reference = 0
+        nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-1 #6
+        dgrad = lmp_snap[num_atoms:(num_atoms+nrows_dgrad), 3:(n_coeff+3)]
+
+        # strip zero dgrad components (almost equivalent to pruning neighborlist)
+         
+        nonzero_rows = lmp_snap[num_atoms:(num_atoms+nrows_dgrad),3:(n_coeff+3)] != 0.0
+        nonzero_rows = np.any(nonzero_rows, axis=1)
+        dgrad = dgrad[nonzero_rows, :]
+        nrows_dgrad = np.shape(dgrad)[0]
+        
         self.dgradrows[self._i] = nrows_dgrad
 
 # this is super clean when there is only one value per key, needs reworking

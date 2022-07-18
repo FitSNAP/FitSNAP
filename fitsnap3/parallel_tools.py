@@ -40,6 +40,7 @@ import signal
 from inspect import isclass
 from pkgutil import iter_modules
 from importlib import import_module
+from copy import deepcopy
 try:
     # stubs = 0 MPI is active
     stubs = 0
@@ -49,7 +50,15 @@ except ModuleNotFoundError:
 
 
 def printf(*args, **kw):
-    print(*args, flush=True)
+    kw['flush'] = True
+
+    if 'overwrite' in kw:
+        del kw['overwrite']
+        kw['end'] = ''
+        print("\r", end='')
+        print(" ".join(map(str, args)), **kw)
+    else:
+        print(" ".join(map(str, args)), **kw)
 
 
 class GracefulError(BaseException):
@@ -132,7 +141,12 @@ class ParallelTools:
 
     def __init__(self):
         if stubs == 0:
-            self._comm = MPI.COMM_WORLD
+            try:
+                self._comm = MPI.ADDED_COMM
+            except NameError:
+                self._comm = MPI.COMM_WORLD
+            except AttributeError:
+                self._comm = MPI.COMM_WORLD
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
         if stubs == 1:
@@ -155,6 +169,8 @@ class ParallelTools:
         self.shared_arrays = {}
         self.fitsnap_dict = {}
         self.logger = None
+        self.pytest = False
+        self._fp = None
 
     @stub_check
     def _comm_split(self):
@@ -204,14 +220,24 @@ class ParallelTools:
 
     @_rank_zero
     def single_print(self, *args, **kw):
-        printf(*args)
+        printf(*args, file=self._fp)
 
     @_sub_rank_zero
     def sub_print(self, *args, **kw):
-        printf(*args)
+        printf("Node", self._node_index, ":", *args, file=self._fp)
 
     def all_print(self, *args, **kw):
-        printf("Rank", self._rank, ":", *args)
+        printf("Rank", self._rank, ":", *args, file=self._fp)
+
+    def set_output(self, output_file, ns=False, ps=False):
+        if ps:
+            self._fp = open(output_file+'_{}'.format(self._rank), 'w')
+        elif ns:
+            if self._sub_rank == 0:
+                self._fp = open(output_file + '_{}'.format(self._sub_rank), 'w')
+        else:
+            if self._rank == 0:
+                self._fp = open(output_file, 'w')
 
     @_rank_zero_decorator
     def single_timeit(self, method):
@@ -222,6 +248,9 @@ class ParallelTools:
             if 'log_time' in kw:
                 name = kw.get('log_name', method.__name__.upper())
                 kw['log_time'][name] = int((te - ts) * 1000)
+            elif self._fp is not None:
+                printf("'{0}' took {1:.2f} ms on rank {2}".format(
+                    method.__name__, (te - ts) * 1000, self._rank), file=self._fp)
             else:
                 printf("'{0}' took {1:.2f} ms on rank {2}".format(
                     method.__name__, (te - ts) * 1000, self._rank))
@@ -274,7 +303,7 @@ class ParallelTools:
         else:
             raise TypeError("name must be a string")
 
-    @_sub_rank_zero
+    # @stub_check
     def add_2_fitsnap(self, name, an_object):
 
         # TODO: Replace cluttered shared array hanging objects!
@@ -286,7 +315,7 @@ class ParallelTools:
             raise TypeError("name must be a string")
 
     @stub_check
-    def _comm_fitsnap(self, name):
+    def _bcast_fitsnap(self, name):
 
         if self._sub_rank == 0:
             if name not in self.fitsnap_dict:
@@ -297,9 +326,20 @@ class ParallelTools:
         self.fitsnap_dict[name] = self._sub_comm.bcast(self.fitsnap_dict[name])
 
     @stub_check
+    def gather_fitsnap(self, name):
+
+        if name not in self.fitsnap_dict:
+            raise NameError("Dictionary element not yet in fitsnap_dictionary")
+        self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
+
+    @stub_check
     @_sub_rank_zero
-    def allgather(self, array):
+    def gather_to_head_node(self, array):
         return self._head_group_comm.allgather(array)
+
+    @stub_check
+    def gather_distributed_list(self, dist_list):
+        gathered_list = self._sub_comm.allgather(dist_list)
 
     @stub_check
     def all_barrier(self):
@@ -383,14 +423,14 @@ class ParallelTools:
             cmds.append("none")
         if stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
-            if 'ML-IAP' in self._lmp.installed_packages:
-                from lammps.mliap import activate_mliappy
-                activate_mliappy(self._lmp)
+#            if 'ML-IAP' in self._lmp.installed_packages:
+#                from lammps.mliap import activate_mliappy
+#                activate_mliappy(self._lmp)
         else:
             self._lmp = lammps(cmdargs=cmds)
-            if 'ML-IAP' in self._lmp.installed_packages:
-                from lammps.mliap import activate_mliappy
-                activate_mliappy(self._lmp)
+#            if 'ML-IAP' in self._lmp.installed_packages:
+#                from lammps.mliap import activate_mliappy
+#                activate_mliappy(self._lmp)
 
         if printlammps == 1:
             self._lmp.command = print_lammps(self._lmp.command)
@@ -409,77 +449,47 @@ class ParallelTools:
                 s = slice(self._sub_rank, None, self._sub_size)
                 self.shared_arrays[name].sliced_array = self.shared_arrays[name].array[s][:]
             else:
-                self.slice_a()
+                raise NotImplementedError("Slice A using new_slice_a")
+                # self.slice_a()
         else:
             raise IndexError("{} not found in shared objects".format(name))
 
-    def slice_a(self, name='a'):
-        nof = len(pt.shared_arrays["number_of_atoms"].array)
-        s = slice(self._sub_rank, nof, self._sub_size)
+    def new_slice_a(self):
+        """ create array to show which sub a matrix indices belong to which proc """
+        nof = len(self.shared_arrays["number_of_atoms"].array)
         if self._sub_rank != 0:
             # Wait for head proc on node to fill indices
-            self._comm_fitsnap("a_indices")
-            self.fitsnap_dict["a_indices"] = self.fitsnap_dict["a_indices"][s]
+            self._bcast_fitsnap("sub_a_size")
+            self.fitsnap_dict["sub_a_size"] = int(self.fitsnap_dict["sub_a_size"][self._sub_rank])
+            self._bcast_fitsnap("sub_a_indices")
+            self.fitsnap_dict["sub_a_indices"] = self.fitsnap_dict["sub_a_indices"][self._sub_rank]
             return
-        indices = [0]
-        self.shared_arrays[name].group_index = []
-        self.shared_arrays[name].group_energy_index = []
-        self.shared_arrays[name].group_force_index = []
-        self.shared_arrays[name].group_stress_index = []
-        count = [0]
-        for i, value in enumerate(self.shared_arrays['configs_per_group'].array):
-            count.append(count[i]+value)
-        j = 0
-        e_temp = []
-        f_temp = []
-        s_temp = []
-        atoms = []
+        sub_a_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+
         for i in range(nof):
-            if i in count:
-                self.shared_arrays[name].group_index.append(j)
-                if self.fitsnap_dict["energy"] and i > 0:
-                    self.shared_arrays[name].group_energy_index.append(e_temp)
-                    e_temp = []
-                if self.fitsnap_dict["force"] and i > 0:
-                    self.shared_arrays[name].group_force_index.append(f_temp)
-                    f_temp = []
-                if self.fitsnap_dict["stress"] and i > 0:
-                    self.shared_arrays[name].group_stress_index.append(s_temp)
-                    s_temp = []
+            proc_number = i % self._sub_size
             if self.fitsnap_dict["energy"]:
-                e_temp.append(j)
-                j += 1
+                descriptor_rows = 1
+                if self.fitsnap_dict["per_atom_energy"]:
+                    descriptor_rows = self.shared_arrays["number_of_atoms"].array[i]
+                sub_a_sizes[proc_number] += descriptor_rows
             if self.fitsnap_dict["force"]:
-                f_temp.append(j)
-                j += 3 * pt.shared_arrays["number_of_atoms"].array[i]
+                sub_a_sizes[proc_number] += 3 * self.shared_arrays["number_of_atoms"].array[i]
             if self.fitsnap_dict["stress"]:
-                s_temp.append(j)
-                j += 6
-            indices.append(j)
-            atoms.append(pt.shared_arrays["number_of_atoms"].array[i])
-        if self.fitsnap_dict["energy"]:
-            self.shared_arrays[name].group_energy_index.append(e_temp)
-            self.shared_arrays[name].energy_index = \
-                list(chain.from_iterable(self.shared_arrays[name].group_energy_index))
-            self.shared_arrays[name].group_energy_length = \
-                sum(len(row) for row in self.shared_arrays[name].group_energy_index)
-        if self.fitsnap_dict["force"]:
-            self.shared_arrays[name].group_force_index.append(f_temp)
-            self.shared_arrays[name].force_index = \
-                list(chain.from_iterable(self.shared_arrays[name].group_force_index))
-            self.shared_arrays[name].group_force_length = \
-                sum(len(row) for row in self.shared_arrays[name].group_force_index)
-        if self.fitsnap_dict["stress"]:
-            self.shared_arrays[name].group_stress_index.append(s_temp)
-            self.shared_arrays[name].stress_index = \
-                list(chain.from_iterable(self.shared_arrays[name].group_stress_index))
-            self.shared_arrays[name].group_stress_length = \
-                sum(len(row) for row in self.shared_arrays[name].group_stress_index)
-        self.shared_arrays[name].group_index.append(j)
-        self.add_2_fitsnap("a_indices", indices)
-        self._comm_fitsnap("a_indices")
-        self.fitsnap_dict["a_indices"] = indices[s]
-        self.shared_arrays[name].num_atoms = atoms
+                sub_a_sizes[proc_number] += 6
+        assert sum(sub_a_sizes) == len(self.shared_arrays['a'].array)
+        self.add_2_fitsnap("sub_a_size", sub_a_sizes)
+        self._bcast_fitsnap("sub_a_size")
+        self.fitsnap_dict["sub_a_size"] = sub_a_sizes[self._sub_rank]
+
+        count = 0
+        indices = np.zeros((self._sub_size, 2), dtype=np.int)
+        for i, value in enumerate(sub_a_sizes):
+            indices[i] = count, count+value-1
+            count += value
+        self.add_2_fitsnap("sub_a_indices", indices)
+        self._bcast_fitsnap("sub_a_indices")
+        self.fitsnap_dict["sub_a_indices"] = indices[self._sub_rank]
 
     @stub_check
     def combine_coeffs(self, coeff):
@@ -496,6 +506,9 @@ class ParallelTools:
     def set_logger(self, logger):
         self.logger = logger
 
+    def pytest_is_true(self):
+        self.pytest = True
+
     def abort(self):
         self._comm.Abort()
 
@@ -508,6 +521,8 @@ class ParallelTools:
         pt.close_lammps()
         if self._rank == 0:
             self.logger.exception(err)
+            if pt.pytest:
+                raise err
 
         sleep(5)
         if self._comm is not None:
@@ -521,16 +536,84 @@ class ParallelTools:
         from pathlib import Path
 
         name = this_name.split('.')
-        package_dir = Path(this_file).resolve().parent
-        for (_, module_name, c) in iter_modules([package_dir]):
-            if module_name != name[-1] and module_name != name[-2]:
-                module = import_module(f"{'.'.join(name[:-1])}.{module_name}")
-                for attribute_name in dir(module):
-                    attribute = getattr(module, attribute_name)
+        main_dir = Path(this_file).resolve().parent
+        paths = [main_dir]
+        for path in main_dir.iterdir():
+            if path.is_dir():
+                paths.append(path)
+        for package_dir in paths:
+            for (_, module_name, c) in iter_modules([str(package_dir)]):
+                if module_name != name[-1] and module_name != name[-2]:
+                    temp_name = name[:-1]
+                    the_path = str(package_dir).split("/")
+                    index = the_path.index(name[-2])
+                    if index != len(the_path)-1:
+                        temp_name.extend(the_path[index+1:])
+                    module = import_module(f"{'.'.join(temp_name)}.{module_name}")
+                    for attribute_name in dir(module):
+                        attribute = getattr(module, attribute_name)
 
-                    if isclass(attribute) and issubclass(attribute, this_class) and attribute is not this_class:
-                        # Add the class to this package's variables
-                        globals()[attribute_name] = attribute
+                        if isclass(attribute) and issubclass(attribute, this_class) and attribute is not this_class:
+                            # Add the class to this package's variables
+                            globals()[attribute_name] = attribute
+
+
+class DistributedList:
+    """
+    A class to wrap python list to ensure size stays the same allowing collection at end.
+
+    ...
+
+    Attributes
+    ----------
+    _len : int
+        length of distributed list held by current proc
+
+    _list : list
+        local section of distributed list
+
+    Methods
+    ----------
+    get_list():
+        returns deepcopy of internal list
+
+    """
+
+    def __init__(self, proc_length):
+        self._len = proc_length
+        self._list = list(" ") * self._len
+
+    def __getitem__(self, item):
+        """ Return list element """
+        return self._list.__getitem__(item)
+
+    def __len__(self):
+        """ Return length of list held by proc """
+        return self._len
+
+    def __setitem__(self, key, value):
+        """ Set list element """
+        if isinstance(key, int):
+            assert len(value) == 1
+            assert key <= self.__len__()
+        elif isinstance(key, slice):
+            # value must be list
+            assert isinstance(value, list)
+            # length of value must equal length of slicing
+            assert len(value) == len(range(*key.indices(self.__len__())))
+            # slice ending must not exceed Distributed list bound
+            assert key.stop <= self.__len__()
+        else:
+            raise NotImplementedError("Indexing type {} for Distributed list is not impelemented".format(type(key)))
+        self._list.__setitem__(key, value)
+
+    def __repr__(self):
+        """ Print list """
+        return self._list.__repr__()
+
+    def get_list(self):
+        """ Return list """
+        return deepcopy(self._list)
 
 
 class SharedArray:

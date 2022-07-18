@@ -66,6 +66,7 @@ Volume_FCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
 dump_descriptors = 1
 dump_truth = 1
 dump_weights = 1
+dump_dataframe = 1
 
 [MEMORY]
 override = 0

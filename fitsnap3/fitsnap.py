@@ -62,17 +62,27 @@ class FitSnap:
         for i, configuration in enumerate(self.data):
             self.calculator.process_configs(configuration, i)
         del self.data
+        self.calculator.collect_distributed_lists()
+        self.calculator.extras()
 
     @pt.single_timeit
     def perform_fit(self):
-        if self.fit is None:
+        if not config.args.perform_fit:
+            return
+        elif self.fit is None:
             self.solver.perform_fit()
         else:
             self.solver.fit = self.fit
         self.solver.fit_gather()
         self.solver.error_analysis()
-        self.solver.extras()
 
     @pt.single_timeit
     def write_output(self):
-        output.output(self.solver.fit, self.solver.errors, coeffs_sam=self.solver.fit_sam)
+        if not config.args.perform_fit:
+            return
+        # Prevent Output class from trying to process non-existing solver.fit when using nonlinear solvers.
+        if self.solver.linear:
+            output.output(self.solver.fit, self.solver.errors, coeffs_sam=self.solver.fit_sam)
+        else:
+            print("WARNING: Nonlinear solvers do not output generic output - see PyTorch/JAX model files.")
+

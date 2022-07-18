@@ -5,6 +5,7 @@ pt.get_subclasses(__name__, __file__, Calculator)
 def calculator(calculator_name):
     """Calculator Factory"""
     instance = search(calculator_name)
+    pt.single_print("Using {} as FitSNAP calculator".format(calculator_name))
     instance.__init__(calculator_name)
     return instance
 

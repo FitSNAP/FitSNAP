@@ -1,6 +1,6 @@
 import ctypes
 from ..calculators.calculator import Calculator
-from ..parallel_tools import pt
+from ..parallel_tools import pt, DistributedList
 from ..io.input import config
 import numpy as np
 
@@ -12,6 +12,7 @@ class LammpsSnap(Calculator):
         self._data = {}
         self._i = 0
         self._lmp = None
+        self._row_index = 0
         pt.check_lammps()
 
     def get_width(self):
@@ -76,7 +77,7 @@ class LammpsSnap(Calculator):
         self._lmp.command(f"variable rfac0 equal {config.sections['BISPECTRUM'].rfac0}")
 #        self._lmp.command(f"variable rmin0 equal {config.sections['BISPECTRUM'].rmin0}")
 
-        for i,j in enumerate(config.sections["BISPECTRUM"].wj):
+        for i, j in enumerate(config.sections["BISPECTRUM"].wj):
             self._lmp.command(f"variable wj{i+1} equal {j}")
 
         for i,j in enumerate(config.sections["BISPECTRUM"].radelem):
@@ -143,11 +144,17 @@ class LammpsSnap(Calculator):
                 "chem": "chemflag",
                 "bnormflag": "bnormflag",
                 "wselfallflag": "wselfallflag",
+                "bikflag": "bikflag",
+#                "switchinnerflag": "switchinnerflag",
+#                "sinner": "sinner",
+#                "dinner": "dinner",
             }.items()
             if v in config.sections["BISPECTRUM"].__dict__
         }
         if kw_options["chem"] == 0:
             kw_options.pop("chem")
+        if kw_options["bikflag"] == 0:
+            kw_options.pop("bikflag")
         kw_options["rmin0"] = config.sections["BISPECTRUM"].rmin0
         kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
         kwargs = " ".join(kw_substrings)
@@ -179,7 +186,10 @@ class LammpsSnap(Calculator):
 
         # Extract SNAP data, including reference potential data
 
-        nrows_energy = 1
+        bik_rows = 1
+        if config.sections['BISPECTRUM'].bikflag:
+            bik_rows = num_atoms
+        nrows_energy = bik_rows
         ndim_force = 3
         nrows_force = ndim_force * num_atoms
         ndim_virial = 6
@@ -188,18 +198,22 @@ class LammpsSnap(Calculator):
         ncols_bispectrum = n_coeff * num_types
         ncols_reference = 1
         ncols_snap = ncols_bispectrum + ncols_reference
-        index = pt.fitsnap_dict['a_indices'][self._i]
+        # index = pt.fitsnap_dict['a_indices'][self._i]
+        index = self.shared_index
+        dindex = self.distributed_index
 
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
 
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
             raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
                                                                                   self._data["Group"]))
-
         irow = 0
+        bik_rows = 1
+        if config.sections['BISPECTRUM'].bikflag:
+            bik_rows = num_atoms
         icolref = ncols_bispectrum
         if config.sections["CALCULATOR"].energy:
-            b_sum_temp = lmp_snap[irow, :ncols_bispectrum] / num_atoms
+            b_sum_temp = lmp_snap[irow:irow+bik_rows, :ncols_bispectrum] / num_atoms
 
             # Check for no neighbors using B[0,0,0] components
             # these strictly increase with total neighbor count
@@ -208,16 +222,20 @@ class LammpsSnap(Calculator):
             EPS = 1.0e-10
             b000sum0 = 0.0
             nstride = n_coeff
-            if not config.sections["BISPECTRUM"].bzeroflag: b000sum0 = 1.0
-            if config.sections["BISPECTRUM"].chemflag:
-                nstride //= num_types*num_types*num_types
-                if config.sections["BISPECTRUM"].wselfallflag:
-                    b000sum0 *= num_types*num_types*num_types
-            b000sum = sum(b_sum_temp[::nstride])
-            if (abs(b000sum - b000sum0) < EPS): 
-                print("WARNING: Configuration has no SNAP neighbors")
+            if not config.sections['BISPECTRUM'].bikflag:
+                if not config.sections["BISPECTRUM"].bzeroflag:
+                    b000sum0 = 1.0
+                if config.sections["BISPECTRUM"].chemflag:
+                    nstride //= num_types*num_types*num_types
+                    if config.sections["BISPECTRUM"].wselfallflag:
+                        b000sum0 *= num_types*num_types*num_types
+                b000sum = sum(b_sum_temp[0, ::nstride])
+                if abs(b000sum - b000sum0) < EPS:
+                    print("WARNING: Configuration has no SNAP neighbors")
 
             if not config.sections["BISPECTRUM"].bzeroflag:
+                if config.sections['BISPECTRUM'].bikflag:
+                    raise NotImplementedError("per atom energy is not implemented without bzeroflag")
                 b_sum_temp.shape = (num_types, n_coeff)
                 onehot_atoms = np.zeros((num_types, 1))
                 for atom in self._data["AtomTypes"]:
@@ -226,12 +244,17 @@ class LammpsSnap(Calculator):
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
 
-            pt.shared_arrays['a'].array[index] = b_sum_temp * config.sections["BISPECTRUM"].blank2J
+            pt.shared_arrays['a'].array[index:index+bik_rows] = \
+                b_sum_temp * config.sections["BISPECTRUM"].blank2J[np.newaxis, :]
             ref_energy = lmp_snap[irow, icolref]
+            pt.shared_arrays['b'].array[index:index+bik_rows] = 0.0
             pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
             pt.shared_arrays['w'].array[index] = self._data["eweight"]
-            irow += nrows_energy
-            index += 1
+            pt.fitsnap_dict['Row_Type'][dindex:dindex + bik_rows] = ['Energy'] * nrows_energy
+            pt.fitsnap_dict['Atom_I'][dindex:dindex + bik_rows] = [int(i) for i in range(nrows_energy)]
+            index += nrows_energy
+            dindex += nrows_energy
+        irow += nrows_energy
 
         if config.sections["CALCULATOR"].force:
             db_atom_temp = lmp_snap[irow:irow + nrows_force, :ncols_bispectrum]
@@ -241,15 +264,18 @@ class LammpsSnap(Calculator):
                 onehot_atoms = np.zeros((np.shape(db_atom_temp)[0], num_types, 1))
                 db_atom_temp = np.concatenate([onehot_atoms, db_atom_temp], axis=2)
                 db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types * n_coeff + num_types)
-            pt.shared_arrays['a'].array[index:index+num_atoms * ndim_force] = \
+            pt.shared_arrays['a'].array[index:index+nrows_force] = \
                 np.matmul(db_atom_temp, np.diag(config.sections["BISPECTRUM"].blank2J))
             ref_forces = lmp_snap[irow:irow + nrows_force, icolref]
-            pt.shared_arrays['b'].array[index:index+num_atoms * ndim_force] = \
+            pt.shared_arrays['b'].array[index:index+nrows_force] = \
                 self._data["Forces"].ravel() - ref_forces
-            pt.shared_arrays['w'].array[index:index+num_atoms * ndim_force] = \
+            pt.shared_arrays['w'].array[index:index+nrows_force] = \
                 self._data["fweight"]
-            irow += nrows_force
-            index += num_atoms * ndim_force
+            pt.fitsnap_dict['Row_Type'][dindex:dindex + nrows_force] = ['Force'] * nrows_force
+            pt.fitsnap_dict['Atom_I'][dindex:dindex + nrows_force] = [int(np.floor(i/3)) for i in range(nrows_force)]
+            index += nrows_force
+            dindex += nrows_force
+        irow += nrows_force
 
         if config.sections["CALCULATOR"].stress:
             vb_sum_temp = 1.6021765e6*lmp_snap[irow:irow + nrows_virial, :ncols_bispectrum] / lmp_volume
@@ -266,7 +292,18 @@ class LammpsSnap(Calculator):
                 self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
             pt.shared_arrays['w'].array[index:index+ndim_virial] = \
                 self._data["vweight"]
+            pt.fitsnap_dict['Row_Type'][dindex:dindex + ndim_virial] = ['Stress'] * ndim_virial
+            pt.fitsnap_dict['Atom_I'][dindex:dindex + ndim_virial] = [int(0)] * ndim_virial
             index += ndim_virial
+            dindex += ndim_virial
+
+        length = dindex - self.distributed_index
+        pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = ['{}'.format(self._data['Group'])] * length
+        pt.fitsnap_dict['Configs'][self.distributed_index:dindex] = ['{}'.format(self._data['File'])] * length
+        pt.fitsnap_dict['Testing'][self.distributed_index:dindex] = [bool(self._data['test_bool'])] * length
+        self.shared_index = index
+        self.distributed_index = dindex
+
 
 # this is super clean when there is only one value per key, needs reworking
 def _lammps_variables(bispec_options):

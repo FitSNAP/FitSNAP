@@ -1,14 +1,16 @@
 from .sections import Section
 from ...parallel_tools import pt
 
+
 class Reference(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        allowedkeys = ['units','atom_style','pair_style','pair_coeff']
-        for value_name in config['REFERENCE']:
-            if value_name in allowedkeys: continue
-#            else: pt.single_print(">>> Found unmatched variable in REFERENCE section of input: ",value_name)
+        self.allowedkeys = ['units', 'atom_style', 'pair_style', 'pair_coeff']
+
+        # for value_name in config['REFERENCE']:
+        #     if value_name in allowedkeys: continue
+        #     else: pt.single_print(">>> Found unmatched variable in REFERENCE section of input: ",value_name)
 
         self.units = self.get_value("REFERENCE", "units", "metal").lower()
         self.atom_style = self.get_value("REFERENCE", "atom_style", "atomic").lower()

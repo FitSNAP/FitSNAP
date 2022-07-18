@@ -56,7 +56,7 @@ class Json(Scraper):
 
                 natoms = np.shape(self.data["Positions"])[0]
                 pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
-                self.data["QMLattice"] = self.data["Lattice"] * self.conversions["Lattice"]
+                self.data["QMLattice"] = (self.data["Lattice"] * self.conversions["Lattice"]).T
                 del self.data["Lattice"]  # We will populate this with the lammps-normalized lattice.
                 if "Label" in self.data:
                     del self.data["Label"]  # This comment line is not that useful to keep around.

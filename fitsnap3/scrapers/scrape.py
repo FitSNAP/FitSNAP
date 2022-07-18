@@ -35,7 +35,7 @@ import numpy as np
 from random import shuffle
 from ..parallel_tools import pt
 from ..io.output import output
-from ..units import convert
+from ..units.units import convert
 from copy import copy
 # from natsort import natsorted
 
@@ -63,6 +63,9 @@ class Scraper:
         self.group_table = config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
+
+        if config.sections["GROUPS"].random_sampling:
+            output.screen(f"Random sampling of groups toggled on. Seed: {pt.get_seed()}")
 
         for key in self.group_table:
             bc_bool = False
@@ -199,7 +202,7 @@ class Scraper:
     def _rotate_coords(self):
         # Transpose here because Lammps stores lattice vectors as columns,
         # QM stores lattice vectors as rows; After transposing lattice vectors are columns
-        in_cell = np.asarray(self.data["QMLattice"]).T
+        in_cell = np.asarray(self.data["QMLattice"])
         assert np.linalg.det(in_cell) > 0, "Input cell is not right-handed!"
 
         # Q matrix of QR decomposition is an orthogonal (rotation-like)

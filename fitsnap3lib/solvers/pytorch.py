@@ -189,7 +189,7 @@ try:
                     elif (self.force_weight==0.0):
                         loss = self.energy_weight*self.loss_function(energies, targets)
                     else:
-                        loss = self.energy_weight*self.loss_function(energies, targets) + force_weight*self.loss_function(forces, target_forces)
+                        loss = self.energy_weight*self.loss_function(energies, targets) + self.force_weight*self.loss_function(forces, target_forces)
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()

@@ -31,7 +31,7 @@ learning_rate = 1e-4
 num_epochs = 300
 batch_size = 4 #363 #4
 save_state_output = Ta_Pytorch.pt
-energy_weight = 0.0
+energy_weight = 0.0001
 force_weight = 1.0
 
 [SOLVER]

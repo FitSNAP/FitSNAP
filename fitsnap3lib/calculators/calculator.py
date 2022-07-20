@@ -13,8 +13,6 @@ class Calculator:
 
     def __init__(self, name):
         self.name = name
-        print("-----")
-        print(self.name)
         self.number_of_atoms = None
         self.number_of_files_per_node = None
         self.shared_index = None

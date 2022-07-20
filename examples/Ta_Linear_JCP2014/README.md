@@ -61,3 +61,6 @@ potentials. Journal of Computational Physics, 285, 316-330
 
 **Note to Developers: Make sure this example still reproduces the same results when modifying code**
 
+After running the example, use `python compare_snapcoeff.py` to calculate the max absolute difference in SNAP coefficients from the standard.
+The values should agree within a near zero amount (machine precision or close). 
+

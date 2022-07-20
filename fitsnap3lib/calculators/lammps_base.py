@@ -21,6 +21,30 @@ class LammpsBase(Calculator):
     def create_a(self):
         super().create_a()
 
+    def preprocess_allocate(self, nconfigs):
+        self.dgradrows = np.zeros(nconfigs).astype(int)
+        pt.create_shared_array('number_of_dgradrows', nconfigs, tm=config.sections["SOLVER"].true_multinode)
+
+    def preprocess_configs(self, data, i):
+        try:
+            self._data = data
+            self._i = i
+            self._initialize_lammps()
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps_preprocess()
+            self._lmp = pt.close_lammps()
+        except Exception as e:
+            if config.args.printlammps:
+                self._data = data
+                self._i = i
+                self._initialize_lammps(1)
+                self._prepare_lammps()
+                self._run_lammps()
+                self._collect_lammps_preprocess()
+                self._lmp = pt.close_lammps()
+            raise e
+
     def process_configs(self, data, i):
         try:
             self._data = data
@@ -38,6 +62,26 @@ class LammpsBase(Calculator):
                 self._prepare_lammps()
                 self._run_lammps()
                 self._collect_lammps()
+                self._lmp = pt.close_lammps()
+            raise e
+
+    def process_configs_nonlinear(self, data, i):
+        try:
+            self._data = data
+            self._i = i
+            self._initialize_lammps()
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps_nonlinear()
+            self._lmp = pt.close_lammps()
+        except Exception as e:
+            if config.args.printlammps:
+                self._data = data
+                self._i = i
+                self._initialize_lammps(1)
+                self._prepare_lammps()
+                self._run_lammps()
+                self._collect_lammps_nonlinear()
                 self._lmp = pt.close_lammps()
             raise e
 

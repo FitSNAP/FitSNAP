@@ -17,6 +17,7 @@ def calculator(calculator_name):
 
 def search(calculator_name):
     instance = None
+    print(Calculator.__subclasses__())
     for cls in Calculator.__subclasses__():
         if cls.__name__.lower() == calculator_name.lower():
             instance = Calculator.__new__(cls)

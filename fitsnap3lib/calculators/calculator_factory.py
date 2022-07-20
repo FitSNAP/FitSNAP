@@ -17,10 +17,16 @@ def calculator(calculator_name):
 
 def search(calculator_name):
     instance = None
-    print(Calculator.__subclasses__())
+
+    # loop over subclasses of Calculator
+
     for cls in Calculator.__subclasses__():
-        if cls.__name__.lower() == calculator_name.lower():
-            instance = Calculator.__new__(cls)
+
+        # loop over sublcasses of this subclass (e.g. LammpsBase has LammpsSnap and LammpsPace)
+
+        for cls2 in cls.__subclasses__():
+            if cls2.__name__.lower() == calculator_name.lower():
+                instance = Calculator.__new__(cls2)
 
     if instance is None:
         raise IndexError("{} was not found in fitsnap calculators".format(calculator_name))

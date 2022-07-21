@@ -409,6 +409,12 @@ class LammpsSnap(LammpsBase):
                 self._data["fweight"]
             pt.fitsnap_dict['Row_Type'][dindex:dindex + nrows_force] = ['Force'] * nrows_force
             pt.fitsnap_dict['Atom_I'][dindex:dindex + nrows_force] = [int(np.floor(i/3)) for i in range(nrows_force)]
+            # create a types list for the force rows
+            types_force = [] 
+            for typ in lmp_types:
+                for a in range(0,3):
+                    types_force.append(typ)
+            pt.fitsnap_dict['Atom_Type'][dindex:dindex + nrows_force] = types_force
             index += nrows_force
             dindex += nrows_force
         irow += nrows_force

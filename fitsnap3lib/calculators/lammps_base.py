@@ -21,6 +21,30 @@ class LammpsBase(Calculator):
     def create_a(self):
         super().create_a()
 
+    def preprocess_allocate(self, nconfigs):
+        self.dgradrows = np.zeros(nconfigs).astype(int)
+        pt.create_shared_array('number_of_dgradrows', nconfigs, tm=config.sections["SOLVER"].true_multinode)
+
+    def preprocess_configs(self, data, i):
+        try:
+            self._data = data
+            self._i = i
+            self._initialize_lammps()
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps_preprocess()
+            self._lmp = pt.close_lammps()
+        except Exception as e:
+            if config.args.printlammps:
+                self._data = data
+                self._i = i
+                self._initialize_lammps(1)
+                self._prepare_lammps()
+                self._run_lammps()
+                self._collect_lammps_preprocess()
+                self._lmp = pt.close_lammps()
+            raise e
+
     def process_configs(self, data, i):
         try:
             self._data = data
@@ -38,6 +62,26 @@ class LammpsBase(Calculator):
                 self._prepare_lammps()
                 self._run_lammps()
                 self._collect_lammps()
+                self._lmp = pt.close_lammps()
+            raise e
+
+    def process_configs_nonlinear(self, data, i):
+        try:
+            self._data = data
+            self._i = i
+            self._initialize_lammps()
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps_nonlinear()
+            self._lmp = pt.close_lammps()
+        except Exception as e:
+            if config.args.printlammps:
+                self._data = data
+                self._i = i
+                self._initialize_lammps(1)
+                self._prepare_lammps()
+                self._run_lammps()
+                self._collect_lammps_nonlinear()
                 self._lmp = pt.close_lammps()
             raise e
 
@@ -151,32 +195,34 @@ def _lammps_variables(bispec_options):
         })
     return d
 
-
-def _extract_compute_np(lmp, name, compute_style, result_type, array_shape):
+def _extract_compute_np(lmp, name, compute_style, result_type, array_shape=None):
     """
     Convert a lammps compute to a numpy array.
     Assumes the compute stores floating point numbers.
     Note that the result is a view into the original memory.
     If the result type is 0 (scalar) then conversion to numpy is
     skipped and a python float is returned.
-
     From LAMMPS/src/library.cpp:
     style = 0 for global data, 1 for per-atom data, 2 for local data
     type = 0 for scalar, 1 for vector, 2 for array
-
     """
-    ptr = lmp.extract_compute(name, compute_style, result_type)
-    if result_type == 0:
-        # No casting needed, lammps.py already works
-        return ptr
-    if result_type == 2:
-        ptr = ptr.contents
-    total_size = np.prod(array_shape)
-    buffer_ptr = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_double * total_size))
-    array_np = np.frombuffer(buffer_ptr.contents, dtype=float)
-    array_np.shape = array_shape
-    return array_np
 
+    if array_shape is None:
+        array_np = lmp.numpy.extract_compute(name,compute_style, result_type)
+    else:
+        ptr = lmp.extract_compute(name, compute_style, result_type)
+        if result_type == 0:
+
+            # no casting needed, lammps.py already works
+
+            return ptr
+        if result_type == 2:
+            ptr = ptr.contents
+        total_size = np.prod(array_shape)
+        buffer_ptr = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_double * total_size))
+        array_np = np.frombuffer(buffer_ptr.contents, dtype=float)
+        array_np.shape = array_shape
+    return array_np
 
 def _extract_commands(string):
     return [x for x in string.splitlines() if x.strip() != '']

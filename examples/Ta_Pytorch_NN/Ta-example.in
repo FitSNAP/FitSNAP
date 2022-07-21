@@ -12,24 +12,27 @@ chemflag = 0
 bzeroflag = 1
 quadraticflag = 0
 bikflag = 1
+dgradflag = 1
 
 [CALCULATOR]
 calculator = LAMMPSSNAP
 energy = 1
 per_atom_energy = 1
-force = 0
+force = 1
 stress = 0
+nonlinear = 1
 
 [ESHIFT]
 Ta = 0.0
 
 [PYTORCH]
 layer_sizes = num_desc 10 8 6 1
-learning_rate = 5e-3
-num_epochs = 800
-batch_size = 363
+learning_rate = 1e-4
+num_epochs = 300
+batch_size = 4 #363
 save_state_output = Ta_Pytorch.pt
-# save_state_input = Ta_Pytorch.pt
+energy_weight = 1e-4
+force_weight = 1.0
 
 [SOLVER]
 solver = PYTORCH
@@ -68,9 +71,9 @@ GSF_110       =  1.0    0.0      100             1               1.00E-08
 GSF_112       =  1.0    0.0      100             1               1.00E-08
 Liquid        =  1.0    0.0       4.67E+02        1               1.00E-08
 Surface       =  1.0    0.0       100             1               1.00E-08
-Volume_A15    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
-Volume_BCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
-Volume_FCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
+#Volume_A15    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
+#Volume_BCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
+#Volume_FCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
 
 [EXTRAS]
 dump_descriptors = 1

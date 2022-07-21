@@ -66,9 +66,15 @@ try:
 
             """
             super().__init__(name, linear=False)
+
+            self.energy_weight = config.sections['PYTORCH'].energy_weight
+            self.force_weight = config.sections['PYTORCH'].force_weight
+
             self.optimizer = None
             self.model = FitTorch(config.sections["PYTORCH"].network_architecture,
-                                  config.sections["CALCULATOR"].num_desc)
+                                  config.sections["CALCULATOR"].num_desc,
+                                  self.energy_weight,
+                                  self.force_weight)
             self.loss_function = torch.nn.MSELoss()
             self.learning_rate = config.sections["PYTORCH"].learning_rate
             if config.sections['PYTORCH'].save_state_input is not None:
@@ -101,8 +107,17 @@ try:
 
             training = [not elem for elem in pt.fitsnap_dict['Testing']]
 
-            self.training_data = InRAMDatasetPyTorch(pt.shared_arrays['a'].array[training],
-                                                     pt.shared_arrays['b'].array[training])
+            # TODO: when only fitting to energy, we don't need all this extra data
+
+            self.training_data = InRAMDatasetPyTorch(pt.shared_arrays['a'].array,
+                                                     pt.shared_arrays['b'].array,
+                                                     pt.shared_arrays['c'].array,
+                                                     pt.shared_arrays['dgrad'].array,
+                                                     pt.shared_arrays['number_of_atoms'].array,
+                                                     pt.shared_arrays['dbdrindx'].array,
+                                                     pt.shared_arrays["number_of_dgradrows"].array,
+                                                     pt.shared_arrays["unique_j_indices"].array)
+
             self.training_loader = DataLoader(self.training_data,
                                               batch_size=config.sections["PYTORCH"].batch_size,
                                               shuffle=False,
@@ -116,7 +131,9 @@ try:
             """
             self.create_datasets()
             if config.sections['PYTORCH'].save_state_input is None:
+
                 # standardization
+
                 inv_std = 1/np.std(pt.shared_arrays['a'].array, axis=0)
                 mean_inv_std = np.mean(pt.shared_arrays['a'].array, axis=0) * inv_std
                 state_dict = self.model.state_dict()
@@ -125,9 +142,14 @@ try:
                 state_dict[keys[1]] = torch.tensor(mean_inv_std)
                 self.model.load_state_dict(state_dict)
 
+            target_force_plot = []
+            model_force_plot = []
+            train_losses_epochs = []
+            target_energy_plot = []
+            model_energy_plot = []
             for epoch in range(config.sections["PYTORCH"].num_epochs):
+                print(f"----- epoch: {epoch}")
                 start = time()
-                # need to get take sub(A) which is of length num_configs*num_atoms_per_config
 
                 train_losses_step = []
                 loss = None
@@ -135,15 +157,45 @@ try:
                     self.model.train()
                     descriptors = batch['x'].to(self.device).requires_grad_(True)
                     targets = batch['y'].to(self.device).requires_grad_(True)
+                    target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                     indices = batch['i'].to(self.device)
                     num_atoms = batch['noa'].to(self.device)
-                    energies = torch.reshape(self.model(descriptors, indices, num_atoms), (-1,)).to(self.device)
-                    loss = self.loss_function(energies/num_atoms, targets)
+                    dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
+                    dbdrindx = batch['dbdrindx'].to(self.device)
+                    unique_j = batch['unique_j'].to(self.device)
+                    (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j)
+
+                    if (self.energy_weight != 0):
+                        energies = energies.to(self.device)
+                    if (self.force_weight != 0):
+                        forces = forces.to(self.device)
+
+                    if (epoch == config.sections["PYTORCH"].num_epochs-1):
+
+                        if (self.force_weight !=0):
+                            target_force_plot.append(target_forces.detach().numpy())
+                            model_force_plot.append(forces.detach().numpy())
+                        if (self.energy_weight !=0):
+                            target_energy_plot.append(targets.detach().numpy())
+                            model_energy_plot.append(energies.detach().numpy())
+
+                    # assert that model and target force dimensions match
+
+                    if (self.force_weight !=0):
+                        assert target_forces.size() == forces.size()
+
+                    if (self.energy_weight==0.0):
+                        loss = self.force_weight*self.loss_function(forces, target_forces)
+                    elif (self.force_weight==0.0):
+                        loss = self.energy_weight*self.loss_function(energies, targets)
+                    else:
+                        loss = self.energy_weight*self.loss_function(energies, targets) + self.force_weight*self.loss_function(forces, target_forces)
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
                     train_losses_step.append(loss.item())
                 pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
+                train_losses_epochs.append(np.mean(np.asarray(train_losses_step)))
                 pt.single_print("Epoch time", time()-start)
                 if epoch % config.sections['PYTORCH'].save_freq == 0:
                     torch.save({
@@ -153,6 +205,39 @@ try:
                         'loss': loss},
                         config.sections['PYTORCH'].save_state_output
                     )
+
+
+            if (self.force_weight != 0.0):
+
+                # print target and model forces
+
+                target_force_plot = np.concatenate(target_force_plot)
+                model_force_plot = np.concatenate(model_force_plot)
+                target_force_plot = np.array([target_force_plot]).T
+                model_force_plot = np.array([model_force_plot]).T
+                dat = np.concatenate((model_force_plot, target_force_plot), axis=1)
+                np.savetxt("force_comparison.dat", dat)
+            if (self.energy_weight != 0.0):
+
+                # print target and model energies
+
+                target_energy_plot = np.concatenate(target_energy_plot)
+                model_energy_plot = np.concatenate(model_energy_plot)
+                target_energy_plot = np.array([target_energy_plot]).T
+                model_energy_plot = np.array([model_energy_plot]).T
+                dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
+                np.savetxt("energy_comparison.dat", dat)
+
+            # print training loss vs. epoch data
+
+            epochs = np.arange(config.sections["PYTORCH"].num_epochs)
+            epochs = np.array([epochs]).T
+            train_losses_epochs = np.array([train_losses_epochs]).T
+            loss_dat = np.concatenate((epochs,train_losses_epochs),axis=1)
+            np.savetxt("training_losses.dat", loss_dat)
+
+            pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
+
             self.model.write_lammps_torch(config.sections["PYTORCH"].output_file)
             self.fit = None
 

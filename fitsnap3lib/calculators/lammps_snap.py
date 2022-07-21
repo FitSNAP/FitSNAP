@@ -388,6 +388,12 @@ class LammpsSnap(LammpsBase):
             pt.shared_arrays['w'].array[index] = self._data["eweight"]
             pt.fitsnap_dict['Row_Type'][dindex:dindex + bik_rows] = ['Energy'] * nrows_energy
             pt.fitsnap_dict['Atom_I'][dindex:dindex + bik_rows] = [int(i) for i in range(nrows_energy)]
+            # create an atom types list for the energy rows, if bikflag=1
+            if config.sections['BISPECTRUM'].bikflag:
+                pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = [int(i) for i in lmp_types]
+            else:
+                pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = [0]
+
             index += nrows_energy
             dindex += nrows_energy
         irow += nrows_energy
@@ -436,6 +442,7 @@ class LammpsSnap(LammpsBase):
                 self._data["vweight"]
             pt.fitsnap_dict['Row_Type'][dindex:dindex + ndim_virial] = ['Stress'] * ndim_virial
             pt.fitsnap_dict['Atom_I'][dindex:dindex + ndim_virial] = [int(0)] * ndim_virial
+            pt.fitsnap_dict['Atom_Type'][dindex:dindex + ndim_virial] = [int(0)] * ndim_virial
             index += ndim_virial
             dindex += ndim_virial
 

@@ -97,7 +97,9 @@ try:
 
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             pt.single_print("Pytorch device is set to", self.device)
+            self.total_data = None
             self.training_data = None
+            self.validation_data = None
             self.training_loader = None
 
         def create_datasets(self):
@@ -106,10 +108,11 @@ try:
             """
 
             training = [not elem for elem in pt.fitsnap_dict['Testing']]
+            print(len(training))
 
             # TODO: when only fitting to energy, we don't need all this extra data
 
-            self.training_data = InRAMDatasetPyTorch(pt.shared_arrays['a'].array,
+            self.total_data = InRAMDatasetPyTorch(pt.shared_arrays['a'].array,
                                                      pt.shared_arrays['b'].array,
                                                      pt.shared_arrays['c'].array,
                                                      pt.shared_arrays['dgrad'].array,
@@ -118,7 +121,24 @@ try:
                                                      pt.shared_arrays["number_of_dgradrows"].array,
                                                      pt.shared_arrays["unique_j_indices"].array)
 
-            self.training_loader = DataLoader(self.training_data,
+            print(pt.shared_arrays["unique_j_indices"].array)
+
+            #print(len(self.total_data))
+            #print(type(self.total_data))
+            self.train_size = int(0.8 * len(self.total_data))
+            self.test_size = len(self.total_data) - self.train_size
+            self.training_data, self.validation_data = torch.utils.data.random_split(self.total_data, [self.train_size, self.test_size])
+
+            #train_indices = [int(x) for x in range(0,1000)]
+            #print(train_indices)
+            #self.training_data = torch.utils.data.Subset(self.total_data, train_indices)
+
+            self.training_loader = DataLoader(self.total_data,
+                                              batch_size=config.sections["PYTORCH"].batch_size,
+                                              shuffle=False,
+                                              collate_fn=torch_collate,
+                                              num_workers=0)
+            self.validation_loader = DataLoader(self.validation_data,
                                               batch_size=config.sections["PYTORCH"].batch_size,
                                               shuffle=False,
                                               collate_fn=torch_collate,

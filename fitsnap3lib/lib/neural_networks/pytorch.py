@@ -80,6 +80,18 @@ class FitTorch(torch.nn.Module):
 
         """
 
+
+        """
+        print("----indices:")
+        print(indices)
+        print("----- natoms:")
+        print(atoms_per_structure)
+        print("----- xd_indx:")
+        print(xd_indx)
+        print("----- unique_j:")
+        print(unique_j)
+        """
+
         # calculate energies
 
         if (self.energy_bool):
@@ -115,6 +127,10 @@ class FitTorch(torch.nn.Module):
             neigh_indices_z = xd_indx[z_indices_bool,0]
 
             dEdD = torch.autograd.grad(self.network_architecture(x), x, grad_outputs=torch.ones_like(self.network_architecture(x)), create_graph=True)[0]
+
+            #print(dEdD.size())
+            #print(neigh_indices_x.max())
+            #print(neigh_indices_z.max())
 
             # extract proper dE/dD values to align with neighbors i of atoms j
 

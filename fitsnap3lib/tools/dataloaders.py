@@ -126,9 +126,14 @@ class InRAMDatasetPyTorch(InRAMDataset):
         target = torch.tensor(self.targets[self.indices_targets == idx]).float()
         target_forces = torch.tensor(self.target_forces[self.indices_target_forces == idx]).float()
         number_of_atoms = torch.tensor(self.natoms_per_config[idx])
+        number_of_dgrads = torch.tensor(self.number_of_dgrad_rows[idx])
         assert self.natoms_per_config[idx] == config_descriptors.size(0)
         dgrad = torch.tensor(self.dgrad[self.indices_dgrad == idx]).float()
         dbdrindx = torch.tensor(self.dbdrindx[self.indices_dgrad == idx]).long()
+        #print("----- number of dgrads:")
+        #print(number_of_dgrads)
+        #print(dbdrindx.size())
+        #print("-----")
         unique_j_indices = torch.tensor(self.unique_j_indices[self.indices_dgrad == idx]).long()
         indices = torch.tensor([idx] * number_of_atoms)
         configuration = {'x': config_descriptors,
@@ -138,6 +143,7 @@ class InRAMDatasetPyTorch(InRAMDataset):
                          'i': indices,
                          'dgrad': dgrad,
                          'dbdrindx': dbdrindx,
+                         'ndgrad': number_of_dgrads.reshape(-1),
                          'unique_j': unique_j_indices}
         return configuration
 
@@ -154,9 +160,53 @@ def torch_collate(batch):
     batch_of_dgrad = torch.cat([conf['dgrad'] for conf in batch], dim=0)
     batch_of_dbdrindx = torch.cat([conf['dbdrindx'] for conf in batch], dim=0)
     batch_of_unique_j = torch.cat([conf['unique_j'] for conf in batch], dim=0)
+    batch_of_ndgrad = torch.cat([conf['ndgrad'] for conf in batch], dim=0)
 
     # subtract first index of batch of unique j so that we can contract properly on this batch
+    """
+    print("----- number of atoms:")
+    print(number_of_atoms)
+    print("----- batch of unique j:")
+    print(batch_of_unique_j)
+    print(batch_of_unique_j.size())
+    junk, batch_of_unique_j = torch.unique(batch_of_unique_j, return_inverse=True)
+    print("----- unique:")
+    print(batch_of_unique_j)
+    print("----- batch of dbdrindx:")
+    print(batch_of_dbdrindx)
+    """
+    #batch_of_unique_j, sorted_indices = batch_of_unique_j.sort()
+    #print("----- batch_of_unique_j:")
+    #print(batch_of_unique_j)
 
+    #print("----- batch of dgrad:")
+    #print(batch_of_ndgrad)
+    #print(number_of_atoms)  
+    #print(batch_of_dbdrindx)
+    
+    # this (hopefully) fixes the neigh_indices bug for batch_size=2:
+    """ 
+    natoms_indx = number_of_atoms[0]
+    ndgrad_indx = batch_of_ndgrad[0]
+    #print(f"{natoms_indx} {ndgrad_indx}")
+    batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[1],0] += natoms_indx
+
+    natoms_indx = natoms_indx + number_of_atoms[1]
+    ndgrad_indx = ndgrad_indx + batch_of_ndgrad[1]
+    #print(f"{natoms_indx} {ndgrad_indx}")
+    batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[2],0] += natoms_indx
+
+    if (number_of_atoms.size()[0]==4):
+        natoms_indx = natoms_indx + number_of_atoms[2]
+        ndgrad_indx = ndgrad_indx + batch_of_ndgrad[2]
+        #print(f"{natoms_indx} {ndgrad_indx}")
+        batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[3],0] += natoms_indx
+
+    #print(batch_of_dbdrindx)
+    """
+    
+
+    # this messes up when using shuffle=True or train/validation splitting
     batch_of_unique_j = batch_of_unique_j - batch_of_unique_j[0]
 
     collated_batch = {'x': batch_of_descriptors,

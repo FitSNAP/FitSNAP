@@ -27,11 +27,11 @@ Ta = 0.0
 
 [PYTORCH]
 layer_sizes = num_desc 10 8 6 1
-learning_rate = 2e-5
-num_epochs = 600
+learning_rate = 1e-4 #5e-5 #2e-5 has been better?
+num_epochs = 300
 batch_size = 4 #363
 save_state_output = Ta_Pytorch.pt
-energy_weight = 1e-4
+energy_weight = 0.0
 force_weight = 1.0
 
 [SOLVER]
@@ -71,9 +71,9 @@ GSF_110       =  1.0    0.0      100             1               1.00E-08
 GSF_112       =  1.0    0.0      100             1               1.00E-08
 Liquid        =  1.0    0.0       4.67E+02        1               1.00E-08
 Surface       =  1.0    0.0       100             1               1.00E-08
-Volume_A15    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
-Volume_BCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
-Volume_FCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
+#Volume_A15    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
+#Volume_BCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
+#Volume_FCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
 
 [EXTRAS]
 dump_descriptors = 1

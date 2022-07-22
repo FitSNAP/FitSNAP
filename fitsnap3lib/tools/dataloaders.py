@@ -164,22 +164,70 @@ def torch_collate(batch):
 
     # subtract first index of batch of unique j so that we can contract properly on this batch
     
-    #print("----- number of atoms:")
-    #print(number_of_atoms)
-    #print("----- batch of unique j:")
-    #print(batch_of_unique_j)
-    #print(batch_of_unique_j.size())
+    l = batch_of_unique_j.tolist()
+    unique_l = set(l)
+    seen = []
+    tag = 0
+    unique_tags = [-1]*len(l)
+    #print(unique_tags)
+    for i,n in enumerate(l):
+        #print(f"{i} {n}")
+        if n not in seen:
+            tag = tag+1
+            seen.append(n)
+            unique_tags[i] = tag-1
+        else:
+            unique_tags[i] = tag-1
+    batch_of_unique_j = torch.tensor(unique_tags).long()
+
+    """ 
+    torch.set_printoptions(threshold=10_000)
+    if ( (number_of_atoms[0] == 4) and (number_of_atoms[1] ==2)):
+        print("----- number of atoms:")
+        print(number_of_atoms)
+        print("----- batch of dbdrindx:")
+        print(batch_of_dbdrindx) 
+        print("----- batch of unique j:")
+        print(batch_of_unique_j)
+    """
+
+
+    """
     #junk, batch_of_unique_j = torch.unique(batch_of_unique_j, return_inverse=True)
-    #print("----- unique:")
-    #print(batch_of_unique_j)
-    #print("----- batch of dbdrindx:")
-    #print(batch_of_dbdrindx) 
-    #batch_of_unique_j, sorted_indices = batch_of_unique_j.sort()
-    #print("----- batch_of_unique_j:")
-    #print(batch_of_unique_j)
+    batch_of_unique_j = batch_of_unique_j - batch_of_unique_j.min()
+    batch_of_unique_j, sorted_indices = batch_of_unique_j.sort() 
+    if ( (number_of_atoms[0] == 4) and (number_of_atoms[1] ==2)):
+        print("----- batch of unique j after processing:")
+        print(batch_of_unique_j)
+        l = batch_of_unique_j.tolist()
+        unique_l = set(l)
+        seen = []
+        tag = 0
+        unique_tags = [-1]*len(l)
+        print(unique_tags)
+        for i,n in enumerate(l):
+            print(f"{i} {n}")
+            if n not in seen:
+                tag = tag+1
+                seen.append(n)
+                unique_tags[i] = tag-1
+            else:
+                unique_tags[i] = tag-1
+        print("----- unique tags:")
+        print(unique_tags)
+        #indexes = [l.index(x) for x in set(l)]
+        #print(indexes)
+        #print("----- junk:")
+        #print(junk)
+        #print("----- sorted indices:")
+        #print(sorted_indices)
+    """
+
+
+    
 
     # this messes up when using shuffle=True or train/validation splitting
-    batch_of_unique_j = batch_of_unique_j - batch_of_unique_j[0]
+    #batch_of_unique_j = batch_of_unique_j - batch_of_unique_j[0]
 
     #print("----- batch of dgrad:")
     #print(batch_of_ndgrad)
@@ -201,12 +249,22 @@ def torch_collate(batch):
         #print(f"{natoms_indx} {ndgrad_indx}")
         batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[2],0] += natoms_indx
 
-    if (number_of_atoms.size()[0]==4):
+    if (number_of_atoms.size()[0] > 3):
         natoms_indx = natoms_indx + number_of_atoms[2]
         ndgrad_indx = ndgrad_indx + batch_of_ndgrad[2]
         #print(f"{natoms_indx} {ndgrad_indx}")
         batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[3],0] += natoms_indx
 
+    """
+    torch.set_printoptions(threshold=10_000)
+    if ( (number_of_atoms[0] == 4) and (number_of_atoms[1] ==2)):
+        print("----- number of atoms:")
+        print(number_of_atoms)
+        print("----- batch of dbdrindx:")
+        print(batch_of_dbdrindx) 
+        print("----- batch of unique j:")
+        print(batch_of_unique_j)
+    """
     #print(batch_of_dbdrindx)
 
     collated_batch = {'x': batch_of_descriptors,

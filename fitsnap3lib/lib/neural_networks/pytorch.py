@@ -1,6 +1,7 @@
 import torch
 from torch import from_numpy
 from torch.nn import Parameter
+
 """
 Don't import mliap package, see bug: https://github.com/lammps/lammps/issues/3204
 This will not be a problem for now, because we only use the following two MLIAP
@@ -80,8 +81,8 @@ class FitTorch(torch.nn.Module):
 
         """
 
-
-        """
+        """ 
+        torch.set_printoptions(threshold=10_000)
         print("----indices:")
         print(indices)
         print("----- natoms:")
@@ -91,6 +92,7 @@ class FitTorch(torch.nn.Module):
         print("----- unique_j:")
         print(unique_j)
         """
+        
 
         # calculate energies
 

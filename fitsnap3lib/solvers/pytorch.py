@@ -125,7 +125,7 @@ try:
 
             #print(len(self.total_data))
             #print(type(self.total_data))
-            self.train_size = int(0.95 * len(self.total_data))
+            self.train_size = int(0.8 * len(self.total_data))
             self.test_size = len(self.total_data) - self.train_size
             self.training_data, self.validation_data = torch.utils.data.random_split(self.total_data, [self.train_size, self.test_size])
 
@@ -133,7 +133,7 @@ try:
             #print(train_indices)
             #self.training_data = torch.utils.data.Subset(self.total_data, train_indices)
 
-            self.training_loader = DataLoader(self.total_data,
+            self.training_loader = DataLoader(self.training_data,
                                               batch_size=config.sections["PYTORCH"].batch_size,
                                               shuffle=False,
                                               collate_fn=torch_collate,
@@ -162,19 +162,29 @@ try:
                 state_dict[keys[1]] = torch.tensor(mean_inv_std)
                 self.model.load_state_dict(state_dict)
 
+            train_losses_epochs = []
+            val_losses_epochs = []
+            # list for storing training energies and forces
             target_force_plot = []
             model_force_plot = []
-            train_losses_epochs = []
             target_energy_plot = []
             model_energy_plot = []
+            # list for storing validation energies and forces
+            target_force_plot_val = []
+            model_force_plot_val = []
+            target_energy_plot_val = []
+            model_energy_plot_val = []
             for epoch in range(config.sections["PYTORCH"].num_epochs):
                 print(f"----- epoch: {epoch}")
                 start = time()
 
+                # loop over training set
+
                 train_losses_step = []
                 loss = None
+                self.model.train()
                 for i, batch in enumerate(self.training_loader):
-                    self.model.train()
+                    #self.model.train()
                     descriptors = batch['x'].to(self.device).requires_grad_(True)
                     targets = batch['y'].to(self.device).requires_grad_(True)
                     target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
@@ -214,6 +224,9 @@ try:
                     loss.backward()
                     self.optimizer.step()
                     train_losses_step.append(loss.item())
+
+                # average training losses across all batches
+                """
                 pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
                 train_losses_epochs.append(np.mean(np.asarray(train_losses_step)))
                 pt.single_print("Epoch time", time()-start)
@@ -225,18 +238,83 @@ try:
                         'loss': loss},
                         config.sections['PYTORCH'].save_state_output
                     )
+                """
+                # loop over validation data
 
+                val_losses_step = []
+                self.model.eval()
+                for i, batch in enumerate(self.validation_loader):
+                    descriptors = batch['x'].to(self.device).requires_grad_(True)
+                    targets = batch['y'].to(self.device).requires_grad_(True)
+                    target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
+                    indices = batch['i'].to(self.device)
+                    num_atoms = batch['noa'].to(self.device)
+                    dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
+                    dbdrindx = batch['dbdrindx'].to(self.device)
+                    unique_j = batch['unique_j'].to(self.device)
+                    (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j)
+                    if (self.energy_weight != 0):
+                        energies = energies.to(self.device)
+                    if (self.force_weight != 0):
+                        forces = forces.to(self.device)
+
+                    if (epoch == config.sections["PYTORCH"].num_epochs-1):
+
+                        if (self.force_weight !=0):
+                            target_force_plot_val.append(target_forces.detach().numpy())
+                            model_force_plot_val.append(forces.detach().numpy())
+                        if (self.energy_weight !=0):
+                            target_energy_plot_val.append(targets.detach().numpy())
+                            model_energy_plot_val.append(energies.detach().numpy())
+
+                    # assert that model and target force dimensions match
+
+                    if (self.force_weight !=0):
+                        assert target_forces.size() == forces.size()
+
+                    # calculate loss
+
+                    if (self.energy_weight==0.0):
+                        loss = self.force_weight*self.loss_function(forces, target_forces)
+                    elif (self.force_weight==0.0):
+                        loss = self.energy_weight*self.loss_function(energies, targets)
+                    else:
+                        loss = self.energy_weight*self.loss_function(energies, targets) + self.force_weight*self.loss_function(forces, target_forces)
+                    val_losses_step.append(loss.item())
+
+                # average training and validation losses across all batches
+
+                pt.single_print("Batch averaged train/val loss:", np.mean(np.asarray(train_losses_step)), np.mean(np.asarray(val_losses_step)))
+                train_losses_epochs.append(np.mean(np.asarray(train_losses_step)))
+                val_losses_epochs.append(np.mean(np.asarray(val_losses_step)))
+                pt.single_print("Epoch time", time()-start)
+                if epoch % config.sections['PYTORCH'].save_freq == 0:
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': self.model.state_dict(),
+                        'optimizer_state_dict': self.optimizer.state_dict(),
+                        'loss': loss},
+                        config.sections['PYTORCH'].save_state_output
+                    )
 
             if (self.force_weight != 0.0):
 
                 # print target and model forces
-
+                # training
                 target_force_plot = np.concatenate(target_force_plot)
                 model_force_plot = np.concatenate(model_force_plot)
                 target_force_plot = np.array([target_force_plot]).T
                 model_force_plot = np.array([model_force_plot]).T
+                # validation
+                target_force_plot_val = np.concatenate(target_force_plot_val)
+                model_force_plot_val = np.concatenate(model_force_plot_val)
+                target_force_plot_val = np.array([target_force_plot_val]).T
+                model_force_plot_val = np.array([model_force_plot_val]).T
+                # save plots
                 dat = np.concatenate((model_force_plot, target_force_plot), axis=1)
+                dat_val = np.concatenate((model_force_plot_val, target_force_plot_val), axis=1)
                 np.savetxt("force_comparison.dat", dat)
+                np.savetxt("force_comparison_val.dat", dat_val)
             if (self.energy_weight != 0.0):
 
                 # print target and model energies
@@ -253,8 +331,9 @@ try:
             epochs = np.arange(config.sections["PYTORCH"].num_epochs)
             epochs = np.array([epochs]).T
             train_losses_epochs = np.array([train_losses_epochs]).T
-            loss_dat = np.concatenate((epochs,train_losses_epochs),axis=1)
-            np.savetxt("training_losses.dat", loss_dat)
+            val_losses_epochs = np.array([val_losses_epochs]).T
+            loss_dat = np.concatenate((epochs,train_losses_epochs,val_losses_epochs),axis=1)
+            np.savetxt("loss_vs_epochs.dat", loss_dat)
 
             pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
 

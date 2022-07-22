@@ -390,7 +390,7 @@ class LammpsSnap(LammpsBase):
             pt.fitsnap_dict['Atom_I'][dindex:dindex + bik_rows] = [int(i) for i in range(nrows_energy)]
             # create an atom types list for the energy rows, if bikflag=1
             if config.sections['BISPECTRUM'].bikflag:
-                pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = [int(i) for i in lmp_types]
+                pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = lmp_types
             else:
                 pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = [0]
 

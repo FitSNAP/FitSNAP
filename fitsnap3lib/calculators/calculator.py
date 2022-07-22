@@ -175,9 +175,6 @@ class Calculator:
         if config.sections["EXTRAS"].dump_w:
             np.save(config.sections['EXTRAS'].weights_file, pt.shared_arrays['w'].array)
         if config.sections["EXTRAS"].dump_dataframe:
-            pass 
-            # don't need this, since we already dump the dataframe in solvers.py
-            """
             df = pd.DataFrame(pt.shared_arrays['a'].array)
             df['truths'] = pt.shared_arrays['b'].array.tolist()
             df['weights'] = pt.shared_arrays['w'].array.tolist()
@@ -186,7 +183,6 @@ class Calculator:
                     df[key] = pt.fitsnap_dict[key]
             df.to_pickle(config.sections['EXTRAS'].dataframe_file)
             del df
-            """
 
         # if not config.sections["SOLVER"].detailed_errors:
         #     print(

@@ -125,7 +125,7 @@ try:
 
             #print(len(self.total_data))
             #print(type(self.total_data))
-            self.train_size = int(0.8 * len(self.total_data))
+            self.train_size = int(0.95 * len(self.total_data))
             self.test_size = len(self.total_data) - self.train_size
             self.training_data, self.validation_data = torch.utils.data.random_split(self.total_data, [self.train_size, self.test_size])
 

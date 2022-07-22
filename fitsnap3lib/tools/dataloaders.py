@@ -163,38 +163,43 @@ def torch_collate(batch):
     batch_of_ndgrad = torch.cat([conf['ndgrad'] for conf in batch], dim=0)
 
     # subtract first index of batch of unique j so that we can contract properly on this batch
-    """
-    print("----- number of atoms:")
-    print(number_of_atoms)
-    print("----- batch of unique j:")
-    print(batch_of_unique_j)
-    print(batch_of_unique_j.size())
-    junk, batch_of_unique_j = torch.unique(batch_of_unique_j, return_inverse=True)
-    print("----- unique:")
-    print(batch_of_unique_j)
-    print("----- batch of dbdrindx:")
-    print(batch_of_dbdrindx)
-    """
+    
+    #print("----- number of atoms:")
+    #print(number_of_atoms)
+    #print("----- batch of unique j:")
+    #print(batch_of_unique_j)
+    #print(batch_of_unique_j.size())
+    #junk, batch_of_unique_j = torch.unique(batch_of_unique_j, return_inverse=True)
+    #print("----- unique:")
+    #print(batch_of_unique_j)
+    #print("----- batch of dbdrindx:")
+    #print(batch_of_dbdrindx) 
     #batch_of_unique_j, sorted_indices = batch_of_unique_j.sort()
     #print("----- batch_of_unique_j:")
     #print(batch_of_unique_j)
 
+    # this messes up when using shuffle=True or train/validation splitting
+    batch_of_unique_j = batch_of_unique_j - batch_of_unique_j[0]
+
     #print("----- batch of dgrad:")
     #print(batch_of_ndgrad)
     #print(number_of_atoms)  
+    #print(indices)
     #print(batch_of_dbdrindx)
     
     # this (hopefully) fixes the neigh_indices bug for batch_size=2:
-    """ 
-    natoms_indx = number_of_atoms[0]
-    ndgrad_indx = batch_of_ndgrad[0]
-    #print(f"{natoms_indx} {ndgrad_indx}")
-    batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[1],0] += natoms_indx
+   
+    if (number_of_atoms.size()[0] > 1):
+        natoms_indx = number_of_atoms[0]
+        ndgrad_indx = batch_of_ndgrad[0]
+        #print(f"{natoms_indx} {ndgrad_indx}")
+        batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[1],0] += natoms_indx
 
-    natoms_indx = natoms_indx + number_of_atoms[1]
-    ndgrad_indx = ndgrad_indx + batch_of_ndgrad[1]
-    #print(f"{natoms_indx} {ndgrad_indx}")
-    batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[2],0] += natoms_indx
+    if (number_of_atoms.size()[0] > 2):
+        natoms_indx = natoms_indx + number_of_atoms[1]
+        ndgrad_indx = ndgrad_indx + batch_of_ndgrad[1]
+        #print(f"{natoms_indx} {ndgrad_indx}")
+        batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[2],0] += natoms_indx
 
     if (number_of_atoms.size()[0]==4):
         natoms_indx = natoms_indx + number_of_atoms[2]
@@ -203,11 +208,6 @@ def torch_collate(batch):
         batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[3],0] += natoms_indx
 
     #print(batch_of_dbdrindx)
-    """
-    
-
-    # this messes up when using shuffle=True or train/validation splitting
-    batch_of_unique_j = batch_of_unique_j - batch_of_unique_j[0]
 
     collated_batch = {'x': batch_of_descriptors,
                       'y': batch_of_targets,

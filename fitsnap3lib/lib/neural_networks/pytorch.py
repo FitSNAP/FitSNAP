@@ -1,7 +1,6 @@
 import torch
 from torch import from_numpy
 from torch.nn import Parameter
-
 """
 Don't import mliap package, see bug: https://github.com/lammps/lammps/issues/3204
 This will not be a problem for now, because we only use the following two MLIAP
@@ -95,9 +94,13 @@ class FitTorch(torch.nn.Module):
             nd = x.size()[1] # number of descriptors
             natoms = atoms_per_structure.sum() # Total number of atoms in this batch
 
+            # this works if we don't ignore zero valued dgrad for some Cartesian directions
             #x_indices = xd_indx[0::3]
             #y_indices = xd_indx[1::3]
             #z_indices = xd_indx[2::3]
+            #neigh_indices_x = xd_indx[0::3,0]
+            #neigh_indices_y = xd_indx[1::3,0] 
+            #neigh_indices_z = xd_indx[2::3,0]
     
             # boolean indices used to properly index descriptor gradients
 
@@ -107,19 +110,11 @@ class FitTorch(torch.nn.Module):
 
             # neighbors i of atom j
 
-            #neigh_indices_x = xd_indx[0::3,0]
-            #neigh_indices_y = xd_indx[1::3,0] 
-            #neigh_indices_z = xd_indx[2::3,0]
-
             neigh_indices_x = xd_indx[x_indices_bool,0]
             neigh_indices_y = xd_indx[y_indices_bool,0] 
             neigh_indices_z = xd_indx[z_indices_bool,0]
 
             dEdD = torch.autograd.grad(self.network_architecture(x), x, grad_outputs=torch.ones_like(self.network_architecture(x)), create_graph=True)[0]
-
-            #print(dEdD.size())
-            #print(neigh_indices_x.max())
-            #print(neigh_indices_z.max())
 
             # extract proper dE/dD values to align with neighbors i of atoms j
 

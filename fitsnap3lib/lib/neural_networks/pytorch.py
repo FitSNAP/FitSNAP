@@ -65,7 +65,7 @@ class FitTorch(torch.nn.Module):
         if (force_weight==0.0):
             self.force_bool = False
 
-    def forward(self, x, xd, indices, atoms_per_structure, xd_indx, unique_j):
+    def forward(self, x, xd, indices, atoms_per_structure, xd_indx, unique_j, device):
         """
         Saves lammps ready pytorch model.
 
@@ -77,13 +77,15 @@ class FitTorch(torch.nn.Module):
                 xd_indx (tensor of int64, long ints): array of indices corresponding to descriptor derivatives
                 unique_j (tensor of int64, long ints): array of indices corresponding to unique atoms j in all batches of configs.
                                                        all forces in this batch will be contracted over these indices.
+                device: pytorch accelerator device object
 
         """
 
         # calculate energies
 
         if (self.energy_bool):
-            predicted_energy_total = torch.zeros(atoms_per_structure.size())
+            predicted_energy_total = torch.zeros(atoms_per_structure.size()).to(device)
+            #print(predicted_energy_total.device)
             predicted_energy_total.index_add_(0, indices, self.network_architecture(x).squeeze())
         else:
             predicted_energy_total = None
@@ -143,9 +145,9 @@ class FitTorch(torch.nn.Module):
 
             # contract these elementwise components along rows with indices given by unique_j
 
-            fx_components = torch.zeros(atoms_per_structure.sum(),nd) #.double() #.requires_grad_(True)
-            fy_components = torch.zeros(atoms_per_structure.sum(),nd) #.double() #.requires_grad_(True)
-            fz_components = torch.zeros(atoms_per_structure.sum(),nd) #.double() #.requires_grad_(True)
+            fx_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) #.double() #.requires_grad_(True)
+            fy_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) #.double() #.requires_grad_(True)
+            fz_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) #.double() #.requires_grad_(True)
 
             # contract over unique j indices, which has same number of rows as dgrad
             # replace unique_j[a_indices_bool] with xd_indx[a_indices_bool, 1] and it's the same result for batch size of 1

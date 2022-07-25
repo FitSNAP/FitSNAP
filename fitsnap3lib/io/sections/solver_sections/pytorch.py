@@ -11,7 +11,8 @@ try:
         def __init__(self, name, config, args):
             super().__init__(name, config, args)
             self.allowedkeys = ['layer_sizes', 'learning_rate', 'num_epochs', 'batch_size', 'save_state_output',
-                                'save_freq', 'save_state_input', 'output_file', 'energy_weight', 'force_weight']
+                                'save_freq', 'save_state_input', 'output_file', 'energy_weight', 'force_weight',
+                                'training_fraction']
             self._check_section()
 
             self._check_if_used("SOLVER", "solver", "SVD")
@@ -22,10 +23,11 @@ try:
             self.layer_sizes = [int(layer_size) for layer_size in self.layer_sizes]
             self.learning_rate = self.get_value("PYTORCH", "learning_rate", "1.0E-2", "float")
             self.num_epochs = self.get_value("PYTORCH", "num_epochs", "10", "int")
-            self.batch_size = self.get_value("PYTORCH", "batch_size", "10", "int")
+            self.batch_size = self.get_value("PYTORCH", "batch_size", "4", "int")
             self.save_freq = self.get_value("PYTORCH", "save_freq", "10", "int")
-            self.energy_weight = self.get_value("PYTORCH", "energy_weight", "0.01", "float")
-            self.force_weight = self.get_value("PYTORCH", "force_weight", "0.99", "float")
+            self.energy_weight = self.get_value("PYTORCH", "energy_weight", "1e-4", "float")
+            self.force_weight = self.get_value("PYTORCH", "force_weight", "1.0", "float")
+            self.training_fraction = self.get_value("PYTORCH", "training_fraction", "0.8", "float")
             self.save_state_output = self.check_path(self.get_value("PYTORCH", "save_state_output", "FitTorchModel"))
             self.save_state_input = self.check_path(self.get_value("PYTORCH", "save_state_input", None))
             self.output_file = self.check_path(self.get_value("PYTORCH", "output_file", "FitTorch_Pytorch.pt"))

@@ -130,10 +130,7 @@ class InRAMDatasetPyTorch(InRAMDataset):
         assert self.natoms_per_config[idx] == config_descriptors.size(0)
         dgrad = torch.tensor(self.dgrad[self.indices_dgrad == idx]).float()
         dbdrindx = torch.tensor(self.dbdrindx[self.indices_dgrad == idx]).long()
-        #print("----- number of dgrads:")
-        #print(number_of_dgrads)
         #print(dbdrindx.size())
-        #print("-----")
         unique_j_indices = torch.tensor(self.unique_j_indices[self.indices_dgrad == idx]).long()
         indices = torch.tensor([idx] * number_of_atoms)
         configuration = {'x': config_descriptors,
@@ -162,7 +159,25 @@ def torch_collate(batch):
     batch_of_unique_j = torch.cat([conf['unique_j'] for conf in batch], dim=0)
     batch_of_ndgrad = torch.cat([conf['ndgrad'] for conf in batch], dim=0)
 
-    # subtract first index of batch of unique j so that we can contract properly on this batch
+    # make a list of indices upon which to contract per-atom energies to calculate config energies
+    # this is made by knowing the number of atoms per config in this batch
+    # e.g. a batch with 3 configs and 2,4,3 atoms will have indices ordered like:
+    # [0,0,1,1,1,1,2,2,2]
+    
+    config_tag = 0
+    l = []
+    for natoms in number_of_atoms.tolist():
+        for i in range(0,natoms):
+            l.append(config_tag)
+        config_tag = config_tag+1
+    indices = torch.tensor(l).long() 
+
+    # make a list of unique j so that we can contract forces properly on this batch
+    # obtain unique atoms j, the central atom in Fj = sum_i{dBi/dBj}, for all atoms in all configs in this batch
+    # do this by labeling the atoms in all configs consecutively
+    # e.g. a batch with 3 configs and 2,4,3 atoms will have unique_j ordered like:
+    # [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,8]
+    # (assuming all atoms have 4 neighbors, the number of neighbors can be different)
     
     l = batch_of_unique_j.tolist()
     unique_l = set(l)
@@ -179,64 +194,24 @@ def torch_collate(batch):
         else:
             unique_tags[i] = tag-1
     batch_of_unique_j = torch.tensor(unique_tags).long()
-
-    """ 
-    torch.set_printoptions(threshold=10_000)
-    if ( (number_of_atoms[0] == 4) and (number_of_atoms[1] ==2)):
-        print("----- number of atoms:")
-        print(number_of_atoms)
-        print("----- batch of dbdrindx:")
-        print(batch_of_dbdrindx) 
-        print("----- batch of unique j:")
-        print(batch_of_unique_j)
-    """
-
-
-    """
-    #junk, batch_of_unique_j = torch.unique(batch_of_unique_j, return_inverse=True)
-    batch_of_unique_j = batch_of_unique_j - batch_of_unique_j.min()
-    batch_of_unique_j, sorted_indices = batch_of_unique_j.sort() 
-    if ( (number_of_atoms[0] == 4) and (number_of_atoms[1] ==2)):
-        print("----- batch of unique j after processing:")
-        print(batch_of_unique_j)
-        l = batch_of_unique_j.tolist()
-        unique_l = set(l)
-        seen = []
-        tag = 0
-        unique_tags = [-1]*len(l)
-        print(unique_tags)
-        for i,n in enumerate(l):
-            print(f"{i} {n}")
-            if n not in seen:
-                tag = tag+1
-                seen.append(n)
-                unique_tags[i] = tag-1
-            else:
-                unique_tags[i] = tag-1
-        print("----- unique tags:")
-        print(unique_tags)
-        #indexes = [l.index(x) for x in set(l)]
-        #print(indexes)
-        #print("----- junk:")
-        #print(junk)
-        #print("----- sorted indices:")
-        #print(sorted_indices)
-    """
-
-
     
+    # this fixes the neigh_indices bug for batch_size>1:
+    # organize the first column (neighbors i in Fj = sum_i{dBi/dRj} ) of dgrad_indices so that the
+    # minimum index (0) of each config starts at the number of atoms of the previous config in the batch
+    # this helps align the indices later when doing contraction over force components
 
-    # this messes up when using shuffle=True or train/validation splitting
-    #batch_of_unique_j = batch_of_unique_j - batch_of_unique_j[0]
-
-    #print("----- batch of dgrad:")
-    #print(batch_of_ndgrad)
-    #print(number_of_atoms)  
-    #print(indices)
-    #print(batch_of_dbdrindx)
+    # loop over all configs in this batch
+    # TODO: need to add onto natoms_indx and ndgrad_indx in a loop, like the hardcoded version below
+    natoms_indx = 0
+    ndgrad_indx = 0
+    nconfigs = number_of_atoms.size()[0]
+    for m in range(1,nconfigs): 
+        natoms_indx += number_of_atoms[m-1]
+        ndgrad_indx += batch_of_ndgrad[m-1]
+        batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[m],0] += natoms_indx
     
-    # this (hopefully) fixes the neigh_indices bug for batch_size=2:
-   
+    # hard-coded version of the above loop, this was working for batch size of 4:
+    """
     if (number_of_atoms.size()[0] > 1):
         natoms_indx = number_of_atoms[0]
         ndgrad_indx = batch_of_ndgrad[0]
@@ -254,18 +229,23 @@ def torch_collate(batch):
         ndgrad_indx = ndgrad_indx + batch_of_ndgrad[2]
         #print(f"{natoms_indx} {ndgrad_indx}")
         batch_of_dbdrindx[ndgrad_indx:ndgrad_indx+batch_of_ndgrad[3],0] += natoms_indx
-
     """
-    torch.set_printoptions(threshold=10_000)
+    # for debugging:
+    """
     if ( (number_of_atoms[0] == 4) and (number_of_atoms[1] ==2)):
-        print("----- number of atoms:")
-        print(number_of_atoms)
-        print("----- batch of dbdrindx:")
-        print(batch_of_dbdrindx) 
-        print("----- batch of unique j:")
-        print(batch_of_unique_j)
+        torch.set_printoptions(threshold=10_000)
+        #print("----- batch of dgrad:")
+        #print(batch_of_ndgrad)
+        print(number_of_atoms)  
+        #print(indices)
+        print(batch_of_dbdrindx)
     """
-    #print(batch_of_dbdrindx)
+
+    # asserts to catch bugs
+    # max index of neighbors i in the batch must be equal to number of atoms in the batch
+    assert (torch.max(batch_of_dbdrindx[:,0]) == (torch.sum(number_of_atoms)-1))
+    # max index of neighbors i must equal max index of unique_j
+    assert (torch.max(batch_of_dbdrindx[:,0]) == (torch.max(batch_of_unique_j)))
 
     collated_batch = {'x': batch_of_descriptors,
                       'y': batch_of_targets,

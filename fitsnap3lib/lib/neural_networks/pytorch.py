@@ -81,19 +81,6 @@ class FitTorch(torch.nn.Module):
 
         """
 
-        """ 
-        torch.set_printoptions(threshold=10_000)
-        print("----indices:")
-        print(indices)
-        print("----- natoms:")
-        print(atoms_per_structure)
-        print("----- xd_indx:")
-        print(xd_indx)
-        print("----- unique_j:")
-        print(unique_j)
-        """
-        
-
         # calculate energies
 
         if (self.energy_bool):

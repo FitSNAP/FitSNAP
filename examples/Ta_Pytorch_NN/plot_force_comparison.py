@@ -16,8 +16,8 @@ dat = np.loadtxt("force_comparison.dat")
 dat_val = np.loadtxt("force_comparison_val.dat")
 
 lims = [-11, 11]
-plt.plot(dat[:,0], dat[:,1], 'bo')
-plt.plot(dat_val[:,0], dat_val[:,1], 'ro')
+plt.plot(dat[:,0], dat[:,1], 'bo', markersize=1)
+plt.plot(dat_val[:,0], dat_val[:,1], 'ro', markersize=2)
 plt.plot(lims, lims, 'k-')
 plt.legend(["Train", "Validation", "Ideal"])
 plt.xlabel("Model force component (eV/A)")

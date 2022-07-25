@@ -69,6 +69,7 @@ try:
 
             self.energy_weight = config.sections['PYTORCH'].energy_weight
             self.force_weight = config.sections['PYTORCH'].force_weight
+            self.training_fraction = config.sections['PYTORCH'].training_fraction
 
             self.optimizer = None
             self.model = FitTorch(config.sections["PYTORCH"].network_architecture,
@@ -107,8 +108,8 @@ try:
             Creates the dataset to be used for training and the data loader for the batch system.
             """
 
-            training = [not elem for elem in pt.fitsnap_dict['Testing']]
-            print(len(training))
+            # this is not used, but may be useful later
+            #training = [not elem for elem in pt.fitsnap_dict['Testing']]
 
             # TODO: when only fitting to energy, we don't need all this extra data
 
@@ -121,17 +122,18 @@ try:
                                                      pt.shared_arrays["number_of_dgradrows"].array,
                                                      pt.shared_arrays["unique_j_indices"].array)
 
-            print(pt.shared_arrays["unique_j_indices"].array)
+            # randomly shuffle and split into training/validation data
 
-            #print(len(self.total_data))
-            #print(type(self.total_data))
-            self.train_size = int(0.8 * len(self.total_data))
+            if (self.training_fraction == 0.0):
+                raise Exception("Training fraction must be > 0.0 for now, later we might implement 0.0 training fraction for testing on a test set")
+            if ( (self.training_fraction > 1.0) or (self.training_fraction < 0.0) ):
+                raise Exception("Training fraction cannot be > 1.0 or < 0.0")
+            self.train_size = int(self.training_fraction * len(self.total_data))
             self.test_size = len(self.total_data) - self.train_size
             self.training_data, self.validation_data = torch.utils.data.random_split(self.total_data, [self.train_size, self.test_size])
 
-            #train_indices = [int(x) for x in range(0,1000)]
-            #print(train_indices)
-            #self.training_data = torch.utils.data.Subset(self.total_data, train_indices)
+            # make training and validation data loaders for batch training
+            # not sure if shuffling=True works, but data.random_split() above shuffles the input data
 
             self.training_loader = DataLoader(self.training_data,
                                               batch_size=config.sections["PYTORCH"].batch_size,
@@ -225,20 +227,6 @@ try:
                     self.optimizer.step()
                     train_losses_step.append(loss.item())
 
-                # average training losses across all batches
-                """
-                pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
-                train_losses_epochs.append(np.mean(np.asarray(train_losses_step)))
-                pt.single_print("Epoch time", time()-start)
-                if epoch % config.sections['PYTORCH'].save_freq == 0:
-                    torch.save({
-                        'epoch': epoch,
-                        'model_state_dict': self.model.state_dict(),
-                        'optimizer_state_dict': self.optimizer.state_dict(),
-                        'loss': loss},
-                        config.sections['PYTORCH'].save_state_output
-                    )
-                """
                 # loop over validation data
 
                 val_losses_step = []
@@ -305,26 +293,35 @@ try:
                 model_force_plot = np.concatenate(model_force_plot)
                 target_force_plot = np.array([target_force_plot]).T
                 model_force_plot = np.array([model_force_plot]).T
-                # validation
-                target_force_plot_val = np.concatenate(target_force_plot_val)
-                model_force_plot_val = np.concatenate(model_force_plot_val)
-                target_force_plot_val = np.array([target_force_plot_val]).T
-                model_force_plot_val = np.array([model_force_plot_val]).T
-                # save plots
                 dat = np.concatenate((model_force_plot, target_force_plot), axis=1)
-                dat_val = np.concatenate((model_force_plot_val, target_force_plot_val), axis=1)
                 np.savetxt("force_comparison.dat", dat)
-                np.savetxt("force_comparison_val.dat", dat_val)
+                # validation
+                if (target_force_plot_val):
+                    target_force_plot_val = np.concatenate(target_force_plot_val)
+                    model_force_plot_val = np.concatenate(model_force_plot_val)
+                    target_force_plot_val = np.array([target_force_plot_val]).T
+                    model_force_plot_val = np.array([model_force_plot_val]).T
+                    dat_val = np.concatenate((model_force_plot_val, target_force_plot_val), axis=1)
+                    np.savetxt("force_comparison_val.dat", dat_val) 
+
             if (self.energy_weight != 0.0):
 
                 # print target and model energies
-
+                # training
                 target_energy_plot = np.concatenate(target_energy_plot)
                 model_energy_plot = np.concatenate(model_energy_plot)
                 target_energy_plot = np.array([target_energy_plot]).T
                 model_energy_plot = np.array([model_energy_plot]).T
                 dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
                 np.savetxt("energy_comparison.dat", dat)
+                # validation
+                if (target_energy_plot_val):
+                    target_energy_plot_val = np.concatenate(target_energy_plot_val)
+                    model_energy_plot_val = np.concatenate(model_energy_plot_val)
+                    target_energy_plot_val = np.array([target_energy_plot_val]).T
+                    model_energy_plot_val = np.array([model_energy_plot_val]).T
+                    dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val), axis=1)
+                    np.savetxt("energy_comparison_val.dat", dat_val)
 
             # print training loss vs. epoch data
 

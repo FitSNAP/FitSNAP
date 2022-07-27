@@ -97,7 +97,9 @@ try:
                                                                         threshold_mode='abs')
 
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            #self.device = "cpu"
             pt.single_print("Pytorch device is set to", self.device)
+            self.model = self.model.to(self.device)
             self.total_data = None
             self.training_data = None
             self.validation_data = None
@@ -195,7 +197,7 @@ try:
                     dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                     dbdrindx = batch['dbdrindx'].to(self.device)
                     unique_j = batch['unique_j'].to(self.device)
-                    (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j)
+                    (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j, self.device)
 
                     if (self.energy_weight != 0):
                         energies = energies.to(self.device)
@@ -205,11 +207,11 @@ try:
                     if (epoch == config.sections["PYTORCH"].num_epochs-1):
 
                         if (self.force_weight !=0):
-                            target_force_plot.append(target_forces.detach().numpy())
-                            model_force_plot.append(forces.detach().numpy())
+                            target_force_plot.append(target_forces.cpu().detach().numpy())
+                            model_force_plot.append(forces.cpu().detach().numpy())
                         if (self.energy_weight !=0):
-                            target_energy_plot.append(targets.detach().numpy())
-                            model_energy_plot.append(energies.detach().numpy())
+                            target_energy_plot.append(targets.cpu().detach().numpy())
+                            model_energy_plot.append(energies.cpu().detach().numpy())
 
                     # assert that model and target force dimensions match
 
@@ -240,7 +242,7 @@ try:
                     dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                     dbdrindx = batch['dbdrindx'].to(self.device)
                     unique_j = batch['unique_j'].to(self.device)
-                    (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j)
+                    (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j, self.device)
                     if (self.energy_weight != 0):
                         energies = energies.to(self.device)
                     if (self.force_weight != 0):
@@ -249,11 +251,11 @@ try:
                     if (epoch == config.sections["PYTORCH"].num_epochs-1):
 
                         if (self.force_weight !=0):
-                            target_force_plot_val.append(target_forces.detach().numpy())
-                            model_force_plot_val.append(forces.detach().numpy())
+                            target_force_plot_val.append(target_forces.cpu().detach().numpy())
+                            model_force_plot_val.append(forces.cpu().detach().numpy())
                         if (self.energy_weight !=0):
-                            target_energy_plot_val.append(targets.detach().numpy())
-                            model_energy_plot_val.append(energies.detach().numpy())
+                            target_energy_plot_val.append(targets.cpu().detach().numpy())
+                            model_energy_plot_val.append(energies.cpu().detach().numpy())
 
                     # assert that model and target force dimensions match
 

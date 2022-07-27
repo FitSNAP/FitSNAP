@@ -145,6 +145,7 @@ class Calculator:
             pt.add_2_fitsnap("Row_Type", DistributedList(pt.fitsnap_dict["sub_a_size"]))
             pt.add_2_fitsnap("Atom_I", DistributedList(pt.fitsnap_dict["sub_a_size"]))
             pt.add_2_fitsnap("Testing", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+            pt.add_2_fitsnap("Atom_Type", DistributedList(pt.fitsnap_dict["sub_a_size"]))
 
     def process_configs(self, data, i):
         pass

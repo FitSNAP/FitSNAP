@@ -145,7 +145,7 @@ class Solver:
             else:
                 # need to see which method is faster, both give the same results within numerical errors
                 # Method 1
-                chol = np.linalg.cholesky(self.cov)
+                chol = np.linalg.cholesky(self.cov)   #TODO: update for robustness - get an error when cov was backfilled with 0s (multi-element with different 2J max values)
                 mat = this_a @ chol
                 pf_std = np.linalg.norm(mat, axis=1)
                 # Method 2

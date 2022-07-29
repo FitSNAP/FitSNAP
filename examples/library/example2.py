@@ -1,7 +1,7 @@
 """
 Python script for calculating errors on a test set using FitSNAP library.
 Before using this script,
-1) Declare your pair style in the nested list below.
+1) Declare your pair style in the list below.
 2) Read the README
 
 To use this particular example script for the Ta example:
@@ -13,9 +13,9 @@ python example2.py --fitsnap_in ../Ta_Linear_JCP2014/Ta-example.in --test_dir ..
 """
 # set pair style commands
 
-pairstyle = [["pair_style hybrid/overlay zbl 4.0 4.8 snap"],
-             ["pair_coeff * * zbl 73 73"],
-             ["pair_coeff * * snap ../Ta_Linear_JCP2014/Ta_pot.snapcoeff ../Ta_Linear_JCP2014/Ta_pot.snapparam Ta"]]
+pairstyle = ["pair_style hybrid/overlay zbl 4.0 4.8 snap",
+             "pair_coeff * * zbl 73 73",
+             "pair_coeff * * snap ../Ta_Linear_JCP2014/Ta_pot.snapcoeff ../Ta_Linear_JCP2014/Ta_pot.snapparam Ta"]
 
 import numpy as np
 #from mpi4py import MPI # maybe we can parallelize later for huge test sets... no need now
@@ -109,9 +109,8 @@ for i, configuration in enumerate(snap.data):
     # set neighlist
     calc._set_neighbor_list()
     # set your desired pair style
-    calc._lmp.command("pair_style hybrid/overlay zbl 4.0 4.8 snap") 
-    calc._lmp.command("pair_coeff * * zbl 73 73")
-    calc._lmp.command("pair_coeff * * snap ../Ta_Linear_JCP2014/Ta_pot.snapcoeff ../Ta_Linear_JCP2014/Ta_pot.snapparam Ta")
+    for pair_command in pairstyle:
+        calc._lmp.command(pair_command)
     # run lammps to calculate forces and energies (add a compute for stress if desired)
     calc._lmp.command("compute PE all pe")
     calc._run_lammps()

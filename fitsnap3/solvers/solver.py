@@ -209,32 +209,5 @@ class Solver:
             plt.savefig('dm_'+group+'_'+rtype+'_'+self.weighted+'.png')
             plt.clf()
 
-            if config.sections["EXTRAS"].plot > 0:
-                import matplotlib as mpl
-                import matplotlib.pyplot as plt
-                import logging
-                logging.getLogger('matplotlib').setLevel(logging.ERROR)
-                logging.getLogger('matplotlib.font_manager').disabled = True
-                mpl.rc('axes', linewidth=2, grid=True, labelsize=16)
-                mpl.rc('figure', max_open_warning=500)
-
-                plt.figure(figsize=(8,8))
-
-                if config.sections["EXTRAS"].plot == 1:
-                    plt.plot(true, pred, 'ro', markersize=11, markeredgecolor='w')
-                elif config.sections["EXTRAS"].plot > 1:
-                    plt.errorbar(true, pred, yerr=pf_std, fmt = 'ro', ecolor='r', elinewidth=2, markersize=11, markeredgecolor='w')
-
-                xmin, xmax = min(np.min(true),np.min(pred)), max(np.max(true),np.max(pred))
-                plt.plot([xmin, xmax], [xmin, xmax], 'k--', linewidth=1)
-                #plt.xlim([xmin, xmax])
-                #plt.ylim([xmin, xmax])
-                plt.xlabel('DFT')
-                plt.ylabel('SNAP')
-                plt.title(group+'; '+gtype+'; '+self.weighted)
-                plt.gcf().tight_layout()
-                plt.savefig('dm_'+group+'_'+gtype+'_'+self.weighted+'.png')
-                plt.clf()
-
     def _template_error(self):
         pass

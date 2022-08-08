@@ -800,7 +800,8 @@ class SharedArray:
         else:
             self._nbytes = 0
 
-        win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
+        #win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
+        win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
 
         buff, item_size = win.Shared_query(0)
 

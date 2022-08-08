@@ -42,8 +42,7 @@ from pkgutil import iter_modules
 from importlib import import_module
 from copy import deepcopy
 
-import gc
-import sys
+
 try:
     # stubs = 0 MPI is active
     stubs = 0
@@ -319,7 +318,6 @@ class ParallelTools(metaclass=Singleton):
                          [self._sub_comm, self._sub_rank, self._sub_size],
                          [self._head_group_comm, self._node_index, self._number_of_nodes]]
 
-                #if name is not 'a':
                 self.shared_arrays[name] = SharedArray(size1, size2=size2,
                                                        dtype=dtype,
                                                        multinode=tm,
@@ -468,8 +466,6 @@ class ParallelTools(metaclass=Singleton):
         if self._lmp is not None:
             # Kill lammps jobs
             self._lmp.close()   
-            #print(sys.getsizeof(self._lmp)) 
-            #del self._lmp
             self._lmp = None
         return self._lmp
 
@@ -750,8 +746,6 @@ class DistributedList:
             # value must be list
             assert isinstance(value, list)
             # length of value must equal length of slicing
-            #print(len(value))
-            #print(len(range(*key.indices(self.__len__()))) )
             assert len(value) == len(range(*key.indices(self.__len__())))
             # slice ending must not exceed Distributed list bound
             assert key.stop <= self.__len__()
@@ -806,11 +800,9 @@ class SharedArray:
         else:
             self._nbytes = 0
 
-        # win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
-        self.win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
-        #MPI.Win.Free(win)
+        win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
 
-        buff, item_size = self.win.Shared_query(0)
+        buff, item_size = win.Shared_query(0)
 
         if dtype == 'd':
             assert item_size == MPI.DOUBLE.Get_size()

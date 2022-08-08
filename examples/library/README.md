@@ -20,3 +20,13 @@ the input script needs to be modified to calculate test errors, we just need to 
 The `--test_dir` precedes the path to a directory containing test data.
 
 **Before running on your own example, change the `pairstyle` variable in this script.**
+
+### `example3.py`
+
+Use the FitSNAP library to perform a fit and extract the dataframe as a variable, which we can 
+manually calculate errors on.
+
+### `example4.py` 
+
+Use the FitSNAP library to perform many fits in a loop, where we change hyperparams like weights
+and descriptor settings during each loop. This is a good foundation for hyperparam optimization.

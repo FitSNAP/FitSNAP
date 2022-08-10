@@ -6,12 +6,6 @@ Try to import mliap package after: https://github.com/lammps/lammps/pull/3388
 See related bug: https://github.com/lammps/lammps/issues/3204
 For now we only use the following two MLIAP features for writing LAMMPS-ready pytorch models.
 """
-try:
-    from lammps.mliap.pytorch import IgnoreElems, TorchWrapper
-except:
-    OSError
-    print("This interpreter is not compatible with python-based mliap for LAMMPS. If you are using a Mac please make sure you have compiled python from source with "./configure --enabled-shared" ")
-    print("FitSNAP will continue without ML-IAP")
 
 def create_torch_network(layer_sizes):
     """
@@ -226,6 +220,7 @@ class FitTorch(torch.nn.Module):
 
         #print("WARNING: Not writing LAMMPS torch file due to ML-IAP bug: https://github.com/lammps/lammps/issues/3204")
         
+        from lammps.mliap.pytorch import IgnoreElems, TorchWrapper
         model = self.network_architecture
         if self.n_elem == 1:
             model = IgnoreElems(self.network_architecture)

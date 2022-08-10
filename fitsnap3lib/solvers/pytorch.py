@@ -1,14 +1,13 @@
 
+import sys
 from fitsnap3lib.solvers.solver import Solver
 from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.io.input import Config
 from time import time
 import numpy as np
 
-
 config = Config()
 pt = ParallelTools()
-
 
 try:
     from fitsnap3lib.lib.neural_networks.pytorch import FitTorch
@@ -335,8 +334,10 @@ try:
             np.savetxt("loss_vs_epochs.dat", loss_dat)
 
             pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
-
-            self.model.write_lammps_torch(config.sections["PYTORCH"].output_file)
+            
+            if 'lammps.mliap' in sys.modules:
+                self.model.write_lammps_torch(config.sections["PYTORCH"].output_file)
+            
             self.fit = None
 
 

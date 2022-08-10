@@ -29,6 +29,7 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
+import sys
 from time import time, sleep
 import numpy as np
 from lammps import lammps
@@ -431,14 +432,14 @@ class ParallelTools(metaclass=Singleton):
         self._lmp = None
     
     def initialize_mliap(self):
-        try:
-            if 'ML-IAP' in self._lmp.installed_packages:
+        if 'ML-IAP' in self._lmp.installed_packages:
+            try:
                 from lammps.mliap import activate_mliappy
                 activate_mliappy(self._lmp)
-        except:
-            OSError
-            print("This interpreter is not compatible with python-based mliap for LAMMPS. If you are using a Mac please make sure you have compiled python from source with "./configure --enabled-shared" ")
-            print("FitSNAP will continue without ML-IAP")
+            except:
+                print("This interpreter is not compatible with python-based mliap for LAMMPS. If you are using a Mac please make sure you have compiled python from source with './configure --enabled-shared' ")
+                print("FitSNAP will continue without ML-IAP")
+                pass
                 
     def initialize_lammps(self, lammpslog=0, printlammps=0):
         cmds = ["-screen", "none"]
@@ -447,10 +448,10 @@ class ParallelTools(metaclass=Singleton):
             cmds.append("none")
         if stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
-            initialize_mliap(self)
+            self.initialize_mliap()
         else:
             self._lmp = lammps(cmdargs=cmds)
-            initialize_mliap(self)
+            self.initialize_mliap()
 
         if printlammps == 1:
             self._lmp.command = print_lammps(self._lmp.command)

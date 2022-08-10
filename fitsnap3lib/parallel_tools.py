@@ -437,8 +437,6 @@ class ParallelTools(metaclass=Singleton):
                 from lammps.mliap import activate_mliappy
                 activate_mliappy(self._lmp)
             except:
-                print("This interpreter is not compatible with python-based mliap for LAMMPS. If you are using a Mac please make sure you have compiled python from source with './configure --enabled-shared' ")
-                print("FitSNAP will continue without ML-IAP")
                 pass
                 
     def initialize_lammps(self, lammpslog=0, printlammps=0):

@@ -337,6 +337,9 @@ try:
             
             if 'lammps.mliap' in sys.modules:
                 self.model.write_lammps_torch(config.sections["PYTORCH"].output_file)
+            else:
+                print("Warning: This interpreter is not compatible with python-based mliap for LAMMPS. If you are using a Mac please make sure you have compiled python from source with './configure --enabled-shared' ")
+                print("Warning: FitSNAP will continue without ML-IAP")
             
             self.fit = None
 

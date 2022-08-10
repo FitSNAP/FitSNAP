@@ -11,7 +11,7 @@ ASE atoms object.
 
 Usage:
 
-    python example4.py --fitsnap_in ../../Ta_Linear_JCP2014/Ta-example-nodump.in
+    python example.py --fitsnap_in ../../Ta_Linear_JCP2014/Ta-example-nodump.in
 """
 
 import numpy as np
@@ -88,7 +88,15 @@ from fitsnap3lib.parallel_tools import ParallelTools
 pt = ParallelTools()
 # Config class reads the input
 from fitsnap3lib.io.input import Config
-config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
+config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"], parse_config_bool=True)
+print(config.__dict__)
+for key in config.__dict__:
+    print(key) 
+# manually create a config object
+#config.default_protocol = 5
+#config.args = None
+#config.sections["OUTFILE"]
+# to see sections["NAME"] attributes, see io/sections
 # create a fitsnap object
 from fitsnap3lib.fitsnap import FitSnap
 snap = FitSnap()
@@ -108,5 +116,5 @@ atoms = frames[0]
 # calculate fitting data using this ASE atoms object
 
 fitting_data = calc_fitting_data(atoms)
-print(fitting_data)
+#print(fitting_data)
 

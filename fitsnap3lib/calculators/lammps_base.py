@@ -158,16 +158,18 @@ class LammpsBase(Calculator):
         assert number_of_atoms == n_atoms, f"Atom counts don't match when creating atoms: {number_of_atoms}, {n_atoms}"
 
     def _create_spins(self):
-        for i, (s_mag, s_x, s_y, s_z) in enumerate(self._data["Spins"]):
-            self._lmp.command(f"set atom {i + 1} spin {s_mag:20.20g} {s_x:20.20g} {s_y:20.20g} {s_z:20.20g} ")
+        spin = self._data["Spins"].flatten()
+        self._lmp.scatter_atoms("sp", 1, 4, (len(spin) * ctypes.c_double)(*spin))
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, f"Atom counts don't match when assigning spins: {i + 1}, {n_atoms}"
+        n_spins = len(self._data["Spins"])
+        assert n_spins == n_atoms, f"Atom counts don't match when assigning spins: {n_spins}, {n_atoms}"
 
     def _create_charge(self):
-        for i, q in enumerate(self._data["Charges"]):
-            self._lmp.command(f"set atom {i + 1} charge {q[0]:20.20g} ")
+        charges = self._data["Charges"].flatten()
+        self._lmp.scatter_atoms("q", 1, 1, (len(charges) * ctypes.c_int)(*charges))
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, f"Atom counts don't match when assigning charge: {i + 1}, {n_atoms}"
+        n_charges = len(self._data["Charges"])
+        assert n_charges == n_atoms, f"Atom counts don't match when assigning charge: {n_charges}, {n_atoms}"
 
     def _set_variables(self, **lmp_variable_args):
         for k, v in lmp_variable_args.items():

@@ -1,0 +1,61 @@
+[BISPECTRUM]
+# settings for computing bispectrum components
+numTypes = 1
+twojmax = 6
+rcutfac = 4.67637
+rfac0 = 0.99363
+rmin0 = 0.0
+wj = 1.0
+radelem = 0.5
+type = Ta
+wselfallflag = 0
+chemflag = 0
+bzeroflag = 0
+quadraticflag = 0
+
+[CALCULATOR]
+# calculator settings tell us which quantities to populate the fitting data with
+calculator = LAMMPSSNAP
+energy = 1
+force = 1
+stress = 1
+
+[ESHIFT]
+Ta = 0.0
+
+[SOLVER]
+# no use of a solver to perform fits with this example
+#solver = SVD
+#compute_testerrs = 1
+#detailed_errors = 1
+
+[SCRAPER]
+# no need to scrape data from files with this example
+
+[PATH]
+# no path to load data from in this example
+
+[OUTFILE]
+# no output files with this example
+
+[REFERENCE]
+# reference potential used by LAMMPS
+# the target energies/forces/stresses get subtracted by this potential
+units = metal
+atom_style = atomic
+pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.8
+pair_coeff1 = * * zero
+pair_coeff2 = * * zbl 73 73
+
+[GROUPS]
+# no groups being loaded in this example.
+
+[EXTRAS]
+# tell FitSNAP not to dump any files.
+dump_descriptors = 0
+dump_truth = 0
+dump_weights = 0
+dump_dataframe = 0
+
+[MEMORY]
+override = 0

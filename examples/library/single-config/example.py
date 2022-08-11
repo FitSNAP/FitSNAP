@@ -11,7 +11,7 @@ ASE atoms object.
 
 Usage:
 
-    python example.py --fitsnap_in ../../Ta_Linear_JCP2014/Ta-example-nodump.in
+    python example.py --fitsnap_in Ta-example.in
 """
 
 import numpy as np
@@ -28,7 +28,9 @@ def calc_fitting_data(atoms):
     Function to calculate fitting data from FitSNAP.
     Input: ASE atoms object for a single configuration of atoms.
     """
+
     # make a data dictionary for this config
+
     data = {}
     data['PositionsStyle'] = 'angstrom'
     data['AtomTypeStyle'] = 'chemicalsymbol'
@@ -52,7 +54,9 @@ def calc_fitting_data(atoms):
     data['eweight'] = 1.0
     data['fweight'] = 1.0
     data['vweight'] = 1.0
+
     # data must be a list of dictionaries
+
     data = [data]
 
     pt.create_shared_array('number_of_atoms', 1, tm=config.sections["SOLVER"].true_multinode)
@@ -60,14 +64,13 @@ def calc_fitting_data(atoms):
 
     # calculate A matrix for the list of configs in data: 
 
-    #snap.calculator.create_a()
     snap.data = data
     snap.calculator.shared_index=0
     snap.calculator.distributed_index=0 
     snap.process_configs()
 
     # return the A matrix for this config
-    # we can return other quantities associated with fitting
+    # we can also return other quantities (reference potential, etc.) associated with fitting
 
     return pt.shared_arrays['a'].array 
 
@@ -82,30 +85,30 @@ print(args.fitsnap_in)
 comm = MPI.COMM_WORLD
 
 # import parallel tools and create pt object
-# this is the backbone of FitSNAP
+
 from fitsnap3lib.parallel_tools import ParallelTools
 #pt = ParallelTools(comm=comm)
 pt = ParallelTools()
-# Config class reads the input
+
+# config class reads the input settings
+
 from fitsnap3lib.io.input import Config
-config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"], parse_config_bool=True)
-print(config.__dict__)
-for key in config.__dict__:
-    print(key) 
-# manually create a config object
-#config.default_protocol = 5
-#config.args = None
-#config.sections["OUTFILE"]
-# to see sections["NAME"] attributes, see io/sections
+config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
+
 # create a fitsnap object
+
 from fitsnap3lib.fitsnap import FitSnap
 snap = FitSnap()
 
 # tell ParallelTool not to create SharedArrays, optional depending on your usage of MPI during fits.
 #pt.create_shared_bool = False
+
 # tell ParallelTools not to check for existing fitsnap objects
+
 pt.check_fitsnap_exist = False
+
 # tell FitSNAP not to delete the data object after processing configs
+
 snap.delete_data = False
 
 # read configs and make a single ASE atoms object 
@@ -116,5 +119,5 @@ atoms = frames[0]
 # calculate fitting data using this ASE atoms object
 
 fitting_data = calc_fitting_data(atoms)
-#print(fitting_data)
+print(fitting_data)
 

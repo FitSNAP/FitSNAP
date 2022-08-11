@@ -29,6 +29,7 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
+import sys
 from time import time, sleep
 import numpy as np
 from lammps import lammps
@@ -429,7 +430,15 @@ class ParallelTools(metaclass=Singleton):
             raise Exception("Fitting interrupted! LAMMPS not compiled with C++ exceptions handling enabled")
         self._lmp.close()
         self._lmp = None
-
+    
+    def initialize_mliap(self):
+        if 'ML-IAP' in self._lmp.installed_packages:
+            try:
+                from lammps.mliap import activate_mliappy
+                activate_mliappy(self._lmp)
+            except:
+                pass
+                
     def initialize_lammps(self, lammpslog=0, printlammps=0):
         cmds = ["-screen", "none"]
         if not lammpslog:
@@ -437,14 +446,10 @@ class ParallelTools(metaclass=Singleton):
             cmds.append("none")
         if stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
-#            if 'ML-IAP' in self._lmp.installed_packages:
-#                from lammps.mliap import activate_mliappy
-#                activate_mliappy(self._lmp)
+            self.initialize_mliap()
         else:
             self._lmp = lammps(cmdargs=cmds)
-#            if 'ML-IAP' in self._lmp.installed_packages:
-#                from lammps.mliap import activate_mliappy
-#                activate_mliappy(self._lmp)
+            self.initialize_mliap()
 
         if printlammps == 1:
             self._lmp.command = print_lammps(self._lmp.command)

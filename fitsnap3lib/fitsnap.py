@@ -50,6 +50,8 @@ class FitSnap:
         self.solver = solver(config.sections["SOLVER"].solver)
         self.fit = None
         self.multinode = 0
+        self.delete_data = True # make False if don't want to delete data object
+                                # useful for using library to loop over fits
         if config.sections["EXTRAS"].only_test:
             self.fit = output.read_fit()
 
@@ -78,7 +80,9 @@ class FitSnap:
         else:
             for i, configuration in enumerate(self.data):
                 self.calculator.process_configs_nonlinear(configuration, i)
-        del self.data
+
+        if (self.delete_data):
+            del self.data
         self.calculator.collect_distributed_lists()
         self.calculator.extras()
 

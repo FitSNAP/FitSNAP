@@ -42,6 +42,8 @@ from inspect import isclass
 from pkgutil import iter_modules
 from importlib import import_module
 from copy import deepcopy
+
+
 try:
     # stubs = 0 MPI is active
     stubs = 0
@@ -164,6 +166,13 @@ class ParallelTools(metaclass=Singleton):
             self._comm = comm
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
+            self.create_shared_bool = True # set to False if want to avoid shared array
+                                           # this is helpful when using the library to loop over
+                                           # functions that create shared arrays, to avoid mem leaks
+            self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
+                                            # objects in the add_2_fitsnap function
+                                            # this is useful when using library to loop over fits
+
         if stubs == 1:
             self._rank = 0
             self._size = 1
@@ -305,15 +314,17 @@ class ParallelTools(metaclass=Singleton):
     def create_shared_array(self, name, size1, size2=1, dtype='d', tm=0):
 
         if isinstance(name, str):
-            if stubs == 0:
+            if (stubs == 0 and self.create_shared_bool):
                 comms = [[self._comm, self._rank, self._size],
                          [self._sub_comm, self._sub_rank, self._sub_size],
                          [self._head_group_comm, self._node_index, self._number_of_nodes]]
+
                 self.shared_arrays[name] = SharedArray(size1, size2=size2,
                                                        dtype=dtype,
                                                        multinode=tm,
                                                        comms=comms)
-            else:
+                
+            else:   
                 self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)
         else:
             raise TypeError("name must be a string")
@@ -323,8 +334,9 @@ class ParallelTools(metaclass=Singleton):
 
         # TODO: Replace cluttered shared array hanging objects!
         if isinstance(name, str):
-            if name in self.fitsnap_dict:
-                raise NameError("name is already in dictionary")
+            if (self.check_fitsnap_exist):
+                if name in self.fitsnap_dict:
+                    raise NameError("name is already in dictionary")
             self.fitsnap_dict[name] = an_object
         else:
             raise TypeError("name must be a string")
@@ -458,7 +470,7 @@ class ParallelTools(metaclass=Singleton):
     def close_lammps(self):
         if self._lmp is not None:
             # Kill lammps jobs
-            self._lmp.close()
+            self._lmp.close()   
             self._lmp = None
         return self._lmp
 
@@ -793,7 +805,7 @@ class SharedArray:
         else:
             self._nbytes = 0
 
-        # win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
+        #win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
         win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
 
         buff, item_size = win.Shared_query(0)

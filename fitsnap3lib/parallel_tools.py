@@ -160,6 +160,9 @@ def print_lammps(method):
 class ParallelTools(metaclass=Singleton):
 
     def __init__(self, comm=None):
+
+        self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
+
         if stubs == 0:
             if comm is None:
                 comm = MPI.COMM_WORLD
@@ -169,9 +172,6 @@ class ParallelTools(metaclass=Singleton):
             self.create_shared_bool = True # set to False if want to avoid shared array
                                            # this is helpful when using the library to loop over
                                            # functions that create shared arrays, to avoid mem leaks
-            self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
-                                            # objects in the add_2_fitsnap function
-                                            # this is useful when using library to loop over fits
 
         if stubs == 1:
             self._rank = 0

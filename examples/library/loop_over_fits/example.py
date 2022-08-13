@@ -8,7 +8,7 @@ This procedure happens in a loop and is a good foundation for implementing hyper
 
 Usage:
 
-    python example4.py --fitsnap_in ../Ta_Linear_JCP2014/Ta-example-nodump.in
+    python example.py --fitsnap_in ../../Ta_Linear_JCP2014/Ta-example-nodump.in
 """
 
 import numpy as np

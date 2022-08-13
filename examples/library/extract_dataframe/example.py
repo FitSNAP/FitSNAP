@@ -1,5 +1,6 @@
 """
-Python script for performing a fit using the FitSNAP library.
+Python script for performing a fit using the FitSNAP library, and extracting a dataframe of fitting
+quantities..
 
 We do this by creating a FitSNAP object and then calling the functions (see fitsnap3/__main__.py):
 
@@ -14,7 +15,7 @@ Usage:
 
 Simply run the script and supply a command line arg for the FitSNAP input file path, for example:
 
-    python example3.py --fitsnap_in ../Ta_Linear_JCP2014/Ta-example-nodump.in
+    python example.py --fitsnap_in ../../Ta_Linear_JCP2014/Ta-example-nodump.in
 """
 
 import numpy as np

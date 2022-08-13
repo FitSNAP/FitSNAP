@@ -6,10 +6,11 @@ Before using this script,
 
 To use this particular example script for the Ta example:
 1) Run FitSNAP on the Ta_Linear_JCP2014 example without training on some groups (e.g. the elastic 
-groups), by commenting them out in the GROUPS section.
+groups), by commenting them out in the GROUPS section. This creates a snapparam and snapcoeff file,
+that we will use here.
 2) Run this example like:
 
-python example2.py --fitsnap_in ../Ta_Linear_JCP2014/Ta-example.in --test_dir ../Ta_Linear_JCP2014/Test_Set_Example/
+python example2.py --fitsnap_in ../../Ta_Linear_JCP2014/Ta-example.in --test_dir ../../Ta_Linear_JCP2014/Test_Set_Example/
 """
 # set pair style commands
 

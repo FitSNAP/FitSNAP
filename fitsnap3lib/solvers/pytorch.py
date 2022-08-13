@@ -133,6 +133,8 @@ try:
             self.test_size = len(self.total_data) - self.train_size
             self.training_data, self.validation_data = torch.utils.data.random_split(self.total_data, [self.train_size, self.test_size])
 
+            
+
             # make training and validation data loaders for batch training
             # not sure if shuffling=True works, but data.random_split() above shuffles the input data
 
@@ -177,6 +179,7 @@ try:
             model_force_plot_val = []
             target_energy_plot_val = []
             model_energy_plot_val = []
+            natoms_per_config = [] # stores natoms per config for calculating eV/atom errors later.
             for epoch in range(config.sections["PYTORCH"].num_epochs):
                 print(f"----- epoch: {epoch}")
                 start = time()
@@ -252,6 +255,7 @@ try:
                         if (self.force_weight !=0):
                             target_force_plot_val.append(target_forces.cpu().detach().numpy())
                             model_force_plot_val.append(forces.cpu().detach().numpy())
+                            natoms_per_config.append(num_atoms.cpu().detach().numpy())
                         if (self.energy_weight !=0):
                             target_energy_plot_val.append(targets.cpu().detach().numpy())
                             model_energy_plot_val.append(energies.cpu().detach().numpy())
@@ -260,6 +264,13 @@ try:
 
                     if (self.force_weight !=0):
                         assert target_forces.size() == forces.size()
+
+                    # assert number of atoms is correct
+                    
+                    if (self.energy_weight !=0):
+                        natoms_batch = np.sum(num_atoms.cpu().detach().numpy())
+                        nforce_components_batch = forces.size()[0]
+                        assert (3*natoms_batch == nforce_components_batch)
 
                     # calculate loss
 
@@ -311,17 +322,21 @@ try:
                 # training
                 target_energy_plot = np.concatenate(target_energy_plot)
                 model_energy_plot = np.concatenate(model_energy_plot)
+
                 target_energy_plot = np.array([target_energy_plot]).T
                 model_energy_plot = np.array([model_energy_plot]).T
+
                 dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
                 np.savetxt("energy_comparison.dat", dat)
                 # validation
                 if (target_energy_plot_val):
                     target_energy_plot_val = np.concatenate(target_energy_plot_val)
                     model_energy_plot_val = np.concatenate(model_energy_plot_val)
+                    natoms_per_config = np.concatenate(natoms_per_config)
                     target_energy_plot_val = np.array([target_energy_plot_val]).T
                     model_energy_plot_val = np.array([model_energy_plot_val]).T
-                    dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val), axis=1)
+                    natoms_per_config = np.array([natoms_per_config]).T
+                    dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val, natoms_per_config), axis=1)
                     np.savetxt("energy_comparison_val.dat", dat_val)
 
             # print training loss vs. epoch data

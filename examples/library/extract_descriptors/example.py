@@ -1,3 +1,11 @@
+"""
+Scrape all the configs in a certain directory specified by the FitSNAP input script.
+
+Usage:
+
+    python example.py
+"""
+
 import numpy as np
 from mpi4py import MPI
 
@@ -9,7 +17,7 @@ from fitsnap3lib.parallel_tools import ParallelTools
 pt = ParallelTools(comm=comm)
 # Config class reads the input
 from fitsnap3lib.io.input import Config
-config = Config(arguments_lst = ["../Ta_Linear_JCP2014/Ta-example.in", "--overwrite"])
+config = Config(arguments_lst = ["../../Ta_Linear_JCP2014/Ta-example.in", "--overwrite"])
 # create a fitsnap object
 from fitsnap3lib.fitsnap import FitSnap
 snap = FitSnap()

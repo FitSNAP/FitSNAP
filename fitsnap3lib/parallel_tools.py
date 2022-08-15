@@ -158,6 +158,15 @@ def print_lammps(method):
 
 
 class ParallelTools(metaclass=Singleton):
+    """This classes creates and contains arrays used for fitting, across multiple processors.
+
+    Attributes
+    ----------
+    check_fitsnap_exist : bool
+        checks whether fitsnap dictionaries exist before creating a new one, set to `False` to allow
+        recreating a dictionary
+
+    """
 
     def __init__(self, comm=None):
 

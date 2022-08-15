@@ -27,8 +27,18 @@ class Singleton(type):
 
 
 class Config(metaclass=Singleton):
+    """ Class for storing input settings in a `config` instance.
 
-    def __init__(self, arguments_lst=None):
+    Attributes
+    ----------
+    parse_cmdline : list
+        list of args that can be supplied at the command line, must include a string to the location
+        of the FitSNAP input script 
+    """
+
+    #def __init__(self, arguments_lst=None):
+    def __init__(self, arguments_lst=["../examples/Ta_Linear_JCP2014/Ta-example-nodump.in", "--overwrite"]):
+        print(arguments_lst)
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
         self.parse_cmdline(arguments_lst=arguments_lst)

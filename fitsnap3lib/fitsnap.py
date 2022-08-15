@@ -37,13 +37,40 @@ from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.output import output
 from fitsnap3lib.io.input import Config
 
-
 config = Config()
 pt = ParallelTools()
 
 
 class FitSnap:
-    def __init__(self):
+    """ This classes houses the functions needed for machine learning a potential, start to finish.
+
+    Attributes
+    ----------
+    scraper : class Scraper
+        instance of the Scraper class for gathering configs
+
+    data : list
+        list of dictionaries, where each configuration of atoms has its own dictionary
+
+    calculator: class Calculator
+        instance of the Calculator class for calculating descriptors and fitting data
+
+    solver: class Solver
+        instance of the Solver class for performing a fit
+
+    fit: numpy array
+        array of fitting coefficients from linear models
+
+    delete_data: bool
+        boolean setting that deletes the data list (if `True`) after a fit, and is useful to make
+        `False` if looping over fits 
+
+    Methods
+    -------
+    scrape_configs():
+        scrapes configurations of atoms and creates the `data` list
+    """
+    def __init__(self): 
         self.scraper = scraper(config.sections["SCRAPER"].scraper)
         self.data = []
         self.calculator = calculator(config.sections["CALCULATOR"].calculator)
@@ -54,6 +81,7 @@ class FitSnap:
                                 # useful for using library to loop over fits
         if config.sections["EXTRAS"].only_test:
             self.fit = output.read_fit()
+        
 
     @pt.single_timeit
     def scrape_configs(self):

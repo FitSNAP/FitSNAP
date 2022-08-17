@@ -5,13 +5,15 @@ import numpy as np
 import pandas as pd
 
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 class Calculator:
 
     def __init__(self, name):
+        self.pt = ParallelTools()
+        self.config = Config()
         self.name = name
         self.number_of_atoms = None
         self.number_of_files_per_node = None
@@ -24,30 +26,31 @@ class Calculator:
     def create_a(self):
 
         # TODO : Any extra config pulls should be done before this
-
-        pt.sub_barrier()
-        self.number_of_atoms = pt.shared_arrays["number_of_atoms"].array.sum() # total number of atoms in all configs, summed
+        print("----- calculator.py")
+        print(self.pt)
+        self.pt.sub_barrier()
+        self.number_of_atoms = self.pt.shared_arrays["number_of_atoms"].array.sum() # total number of atoms in all configs, summed
         print(f"----- Total number of atoms in training set: {self.number_of_atoms}")
-        self.number_of_files_per_node = len(pt.shared_arrays["number_of_atoms"].array)
+        self.number_of_files_per_node = len(self.pt.shared_arrays["number_of_atoms"].array)
 
         # create data matrices for nonlinear pytorch solver
 
-        if (config.sections["SOLVER"].solver == "PYTORCH"):
+        if (self.config.sections["SOLVER"].solver == "PYTORCH"):
             print("----- Creating data arrays for nonlinear fitting in calculator.py")
-            pt.shared_arrays["number_of_dgradrows"].array = self.dgradrows
-            self.number_of_dgradrows = pt.shared_arrays["number_of_dgradrows"].array.sum()
+            self.pt.shared_arrays["number_of_dgradrows"].array = self.dgradrows
+            self.number_of_dgradrows = self.pt.shared_arrays["number_of_dgradrows"].array.sum()
             a_len = 0
             b_len = 0 # 1D array of reference energies for each config
             c_len = 0 # (nconfigs*natoms*3) array of reference forces for each config
             dgrad_len = 0
-            if config.sections["CALCULATOR"].energy:
+            if self.config.sections["CALCULATOR"].energy:
                 energy_rows = self.number_of_files_per_node
-                if config.sections["CALCULATOR"].per_atom_energy:
+                if self.config.sections["CALCULATOR"].per_atom_energy:
                     energy_rows = self.number_of_atoms # total number of atoms in all configs
                 a_len += energy_rows
                 b_len += self.number_of_files_per_node # total number of configs
 
-            if config.sections["CALCULATOR"].force:
+            if self.config.sections["CALCULATOR"].force:
                 c_len += 3*self.number_of_atoms
                 dgrad_len += self.number_of_dgradrows
 
@@ -62,17 +65,17 @@ class Calculator:
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
 
             a_size = a_len * a_width * double_size
-            output.screen(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / config.sections["MEMORY"].memory),
-                          "% of the total memory:", "{:.4f}".format(config.sections["MEMORY"].memory*1e-9), "GB")
-            if a_size / pt.get_ram() > 0.5 and not config.sections["MEMORY"].override:
+            output.screen(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+                          "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
+            if a_size / pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
                 raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
-            elif a_size / pt.get_ram() > 0.5 and config.sections["MEMORY"].override:
+            elif a_size / pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
                 output.screen("Warning: I hope you know what you are doing!")
 
-            pt.create_shared_array('a', a_len, a_width, tm=config.sections["SOLVER"].true_multinode)
-            pt.create_shared_array('b', b_len, tm=config.sections["SOLVER"].true_multinode)
-            pt.create_shared_array('c', c_len, tm=config.sections["SOLVER"].true_multinode)
-            pt.create_shared_array('w', b_len, tm=config.sections["SOLVER"].true_multinode)
+            pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
+            pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
+            pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
+            pt.create_shared_array('w', b_len, tm=self.config.sections["SOLVER"].true_multinode)
 
             # TODO: some sort of assertion on the sizes, here or later
             #print("b shape:")
@@ -80,13 +83,13 @@ class Calculator:
             #print("c shape:")
             #print(np.shape(pt.shared_arrays['c'].array))
 
-            if config.sections["CALCULATOR"].force:
-                pt.create_shared_array('dgrad', dgrad_len, a_width, tm=config.sections["SOLVER"].true_multinode)
-                pt.create_shared_array('dbdrindx', dgrad_len, 3, tm=config.sections["SOLVER"].true_multinode)
+            if self.config.sections["CALCULATOR"].force:
+                pt.create_shared_array('dgrad', dgrad_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
+                pt.create_shared_array('dbdrindx', dgrad_len, 3, tm=self.config.sections["SOLVER"].true_multinode)
                 # create a unique_j_indices array
                 # this will house all unique indices (atoms j) in the dbdrindx array
                 # so the size is (natoms*nconfigs,)
-                pt.create_shared_array('unique_j_indices', dgrad_len, tm=config.sections["SOLVER"].true_multinode)
+                pt.create_shared_array('unique_j_indices', dgrad_len, tm=self.config.sections["SOLVER"].true_multinode)
 
             pt.new_slice_a()
             self.shared_index = pt.fitsnap_dict["sub_a_indices"][0] # an index for which the 'a' array starts on a particular proc
@@ -110,14 +113,14 @@ class Calculator:
         else:
 
             a_len = 0
-            if config.sections["CALCULATOR"].energy:
+            if self.config.sections["CALCULATOR"].energy:
                 energy_rows = self.number_of_files_per_node
-                if config.sections["CALCULATOR"].per_atom_energy:
+                if self.config.sections["CALCULATOR"].per_atom_energy:
                     energy_rows = self.number_of_atoms
                 a_len += energy_rows
-            if config.sections["CALCULATOR"].force:
+            if self.config.sections["CALCULATOR"].force:
                 a_len += 3 * self.number_of_atoms
-            if config.sections["CALCULATOR"].stress:
+            if self.config.sections["CALCULATOR"].stress:
                 a_len += self.number_of_files_per_node * 6
 
             a_width = self.get_width()
@@ -125,27 +128,27 @@ class Calculator:
 
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
             a_size = a_len * a_width * double_size
-            output.screen(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / config.sections["MEMORY"].memory),
-                          "% of the total memory:", "{:.4f}".format(config.sections["MEMORY"].memory*1e-9), "GB")
-            if a_size / pt.get_ram() > 0.5 and not config.sections["MEMORY"].override:
+            output.screen(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+                          "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
+            if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
                 raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
-            elif a_size / pt.get_ram() > 0.5 and config.sections["MEMORY"].override:
+            elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
                 output.screen("Warning: I hope you know what you are doing!")
 
-            pt.create_shared_array('a', a_len, a_width, tm=config.sections["SOLVER"].true_multinode)
-            pt.create_shared_array('b', a_len, tm=config.sections["SOLVER"].true_multinode)
-            pt.create_shared_array('w', a_len, tm=config.sections["SOLVER"].true_multinode)
-            pt.create_shared_array('ref', a_len, tm=config.sections["SOLVER"].true_multinode)
-            pt.new_slice_a()
-            self.shared_index = pt.fitsnap_dict["sub_a_indices"][0]
+            self.pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('b', a_len, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('w', a_len, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('ref', a_len, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.new_slice_a()
+            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0]
             # pt.slice_array('a')
 
-            pt.add_2_fitsnap("Groups", DistributedList(pt.fitsnap_dict["sub_a_size"]))
-            pt.add_2_fitsnap("Configs", DistributedList(pt.fitsnap_dict["sub_a_size"]))
-            pt.add_2_fitsnap("Row_Type", DistributedList(pt.fitsnap_dict["sub_a_size"]))
-            pt.add_2_fitsnap("Atom_I", DistributedList(pt.fitsnap_dict["sub_a_size"]))
-            pt.add_2_fitsnap("Testing", DistributedList(pt.fitsnap_dict["sub_a_size"]))
-            pt.add_2_fitsnap("Atom_Type", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+            self.pt.add_2_fitsnap("Groups", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
+            self.pt.add_2_fitsnap("Configs", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
+            self.pt.add_2_fitsnap("Row_Type", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
+            self.pt.add_2_fitsnap("Atom_I", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
+            self.pt.add_2_fitsnap("Testing", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
+            self.pt.add_2_fitsnap("Atom_Type", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
 
     def process_configs(self, data, i):
         pass
@@ -158,6 +161,9 @@ class Calculator:
 
     @staticmethod
     def collect_distributed_lists():
+        pt = ParallelTools()    
+        #print("----- calculator.py collect_distributed_lists()")
+        #print(pt)
         for key in pt.fitsnap_dict.keys():
             if isinstance(pt.fitsnap_dict[key], DistributedList):
                 pt.gather_fitsnap(key)
@@ -166,8 +172,10 @@ class Calculator:
                 elif pt.fitsnap_dict[key] is not None:
                     pt.fitsnap_dict[key] = pt.fitsnap_dict[key].get_list()
 
-    @pt.rank_zero
+    #@pt.rank_zero
     def extras(self):
+        pt = ParallelTools()
+        config = Config()
         if config.sections["EXTRAS"].dump_a:
             np.save(config.sections['EXTRAS'].descriptor_file, pt.shared_arrays['a'].array)
         if config.sections["EXTRAS"].dump_b:

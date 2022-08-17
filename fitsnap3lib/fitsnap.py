@@ -37,8 +37,8 @@ from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.output import output
 from fitsnap3lib.io.input import Config
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 class FitSnap:
@@ -71,26 +71,33 @@ class FitSnap:
         scrapes configurations of atoms and creates the `data` list
     """
     def __init__(self): 
-        self.scraper = scraper(config.sections["SCRAPER"].scraper)
+
+        self.config = Config()
+
+        self.scraper = scraper(self.config.sections["SCRAPER"].scraper)
         self.data = []
-        self.calculator = calculator(config.sections["CALCULATOR"].calculator)
-        self.solver = solver(config.sections["SOLVER"].solver)
+        self.calculator = calculator(self.config.sections["CALCULATOR"].calculator)
+        self.solver = solver(self.config.sections["SOLVER"].solver)
         self.fit = None
         self.multinode = 0
         self.delete_data = True # make False if don't want to delete data object
                                 # useful for using library to loop over fits
-        if config.sections["EXTRAS"].only_test:
+        if self.config.sections["EXTRAS"].only_test:
             self.fit = output.read_fit()
+
+        self.pt = ParallelTools()
+        #print("----- fitsnap.py")
+        #print(self.pt)
         
 
-    @pt.single_timeit
+    #@pt.single_timeit
     def scrape_configs(self):
         self.scraper.scrape_groups()
         self.scraper.divvy_up_configs()
         self.data = self.scraper.scrape_configs()
         del self.scraper
 
-    @pt.single_timeit
+    #@pt.single_timeit
     def process_configs(self):
 
         # preprocess the configs (only if nonlinear)
@@ -114,9 +121,9 @@ class FitSnap:
         self.calculator.collect_distributed_lists()
         self.calculator.extras()
 
-    @pt.single_timeit
+    #@pt.single_timeit
     def perform_fit(self):
-        if not config.args.perform_fit:
+        if not self.config.args.perform_fit:
             return
         elif self.fit is None:
             self.solver.perform_fit()
@@ -125,9 +132,9 @@ class FitSnap:
         self.solver.fit_gather()
         self.solver.error_analysis()
 
-    @pt.single_timeit
+    #@pt.single_timeit
     def write_output(self):
-        if not config.args.perform_fit:
+        if not self.config.args.perform_fit:
             return
         # prevent Output class from trying to process non-existing solver.fit when using nonlinear solvers
         if self.solver.linear:

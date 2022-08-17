@@ -93,6 +93,7 @@ class Config(metaclass=Singleton):
 
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
+        print(self.args.infile)
         if not Path(self.args.infile).is_file():
             raise FileNotFoundError("Input file not found")
         tmp_config.read(self.args.infile)

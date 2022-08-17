@@ -23,7 +23,7 @@ from ase.io import read,write
 from ase.io import extxyz
 import itertools
 
-def calc_fitting_data(atoms):
+def calc_fitting_data(atoms, pt):
     """
     Function to calculate fitting data from FitSNAP.
     Input: ASE atoms object for a single configuration of atoms.
@@ -60,7 +60,10 @@ def calc_fitting_data(atoms):
     data = [data]
 
     pt.create_shared_array('number_of_atoms', 1, tm=config.sections["SOLVER"].true_multinode)
+    print("created shared array")
+    print(pt)
     pt.shared_arrays["number_of_atoms"].array = np.array([len(atoms)])
+    print(pt.shared_arrays["number_of_atoms"].array)
 
     # calculate A matrix for the list of configs in data: 
 
@@ -87,8 +90,8 @@ comm = MPI.COMM_WORLD
 # import parallel tools and create pt object
 
 from fitsnap3lib.parallel_tools import ParallelTools
-#pt = ParallelTools(comm=comm)
-pt = ParallelTools()
+pt = ParallelTools(comm=comm)
+#pt = ParallelTools()
 
 # config class reads the input settings
 
@@ -114,10 +117,31 @@ snap.delete_data = False
 # read configs and make a single ASE atoms object 
 
 frames = ase.io.read("Displaced_BCC.xyz", ":")
-atoms = frames[0]
+#atoms = frames[0]
 
 # calculate fitting data using this ASE atoms object
 
-fitting_data = calc_fitting_data(atoms)
-print(fitting_data)
+#fitting_data = calc_fitting_data(atoms)
+#print(fitting_data)
+
+#del snap
+#del config
+#del pt
+
+for atoms in frames:
+
+    #pt = ParallelTools(comm=comm)
+    #config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
+    #snap = FitSnap()
+
+    #pt.check_fitsnap_exist = False
+    
+    #print(pt)
+    fitting_data = calc_fitting_data(atoms, pt)
+
+    del snap    
+    del config
+    del pt
+
+
 

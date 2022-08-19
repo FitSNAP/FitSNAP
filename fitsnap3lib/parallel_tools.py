@@ -332,6 +332,11 @@ class ParallelTools(metaclass=Singleton):
                                                        dtype=dtype,
                                                        multinode=tm,
                                                        comms=comms)
+                #print("-----")
+                #print(name)
+                #print(self.shared_arrays[name].array)
+                #print(self)
+                #print("-----")
                 
             else:   
                 self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)

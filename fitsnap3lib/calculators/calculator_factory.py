@@ -10,7 +10,9 @@ from fitsnap3lib.calculators.basic_calculator import Basic
 def calculator(calculator_name):
     """Calculator Factory"""
     instance = search(calculator_name)
-    self.pt.single_print("Using {} as FitSNAP calculator".format(calculator_name))
+    pt = ParallelTools()
+    pt.single_print("Using {} as FitSNAP calculator".format(calculator_name))
+    
     instance.__init__(calculator_name)
     return instance
 

@@ -5,14 +5,16 @@ from fitsnap3lib.io.input import Config
 import numpy as np
 
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 class Snap(Output):
 
     def __init__(self, name):
         super().__init__(name)
+        self.config = Config()
+        self.pt = ParallelTools()
 
     def output(self, coeffs, errors):
         new_coeffs = None
@@ -21,40 +23,40 @@ class Snap(Output):
             coeffs = new_coeffs
         self.write(coeffs, errors)
 
-    @pt.rank_zero
+    #@pt.rank_zero
     def write(self, coeffs, errors):
-        if config.sections["EXTRAS"].only_test != 1:
-            if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
+        if self.config.sections["EXTRAS"].only_test != 1:
+            if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
                 raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
-        with optional_open(config.sections["OUTFILE"].potential_name and
-                           config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
+        with optional_open(self.config.sections["OUTFILE"].potential_name and
+                           self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
             file.write(_to_coeff_string(coeffs))
-        with optional_open(config.sections["OUTFILE"].potential_name and
-                           config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
+        with optional_open(self.config.sections["OUTFILE"].potential_name and
+                           self.config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
             file.write(_to_param_string())
         self.write_errors(errors)
 
-    @pt.sub_rank_zero
+    #@pt.sub_rank_zero
     def read_fit(self):
         # TODO fix this fix reader for bzeroflag = 0
-        if config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
+        if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
             raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
-        with optional_open(config.sections["OUTFILE"].potential_name and
-                           config.sections["OUTFILE"].potential_name + '.snapcoeff', 'r') as file:
+        with optional_open(self.config.sections["OUTFILE"].potential_name and
+                           self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'r') as file:
 
             info = file.readline()
             toss = file.readline()
             num_types, ncoeff = [int(i) for i in file.readline().split()]
             try:
-                assert ncoeff == (config.sections["BISPECTRUM"].ncoeff+1)
+                assert ncoeff == (self.config.sections["BISPECTRUM"].ncoeff+1)
             except AssertionError:
                 raise ValueError("number of coefficients: {} does not match "
-                                 "input file ncoeff: {}".format(ncoeff, config.sections["BISPECTRUM"].ncoeff+1))
+                                 "input file ncoeff: {}".format(ncoeff, self.config.sections["BISPECTRUM"].ncoeff+1))
             try:
-                assert num_types == config.sections["BISPECTRUM"].numtypes
+                assert num_types == self.config.sections["BISPECTRUM"].numtypes
             except AssertionError:
                 raise ValueError("number of types: {} does not match "
-                                 "input file numTypes: {}".format(num_types, config.sections["BISPECTRUM"].numtypes))
+                                 "input file numTypes: {}".format(num_types, self.config.sections["BISPECTRUM"].numtypes))
             fit = np.zeros((num_types, ncoeff-1))
             for i in range(num_types):
                 atom_header = file.readline()
@@ -66,6 +68,7 @@ class Snap(Output):
 
 
 def _to_param_string():
+    config = Config()
     if config.sections["BISPECTRUM"].chemflag != 0:
         chemflag_int = 1
     else:
@@ -90,6 +93,8 @@ def _to_coeff_string(coeffs):
     """
     Convert a set of coefficients along with bispec options into a .snapparam file
     """
+    config = Config()
+
     numtypes = config.sections["BISPECTRUM"].numtypes
     ncoeff = config.sections["BISPECTRUM"].ncoeff
     coeffs = coeffs.reshape((numtypes, -1))

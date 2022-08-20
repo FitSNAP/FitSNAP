@@ -4,7 +4,7 @@ from fitsnap3lib.io.outputs.pace import Pace
 from fitsnap3lib.io.outputs.snap import Snap
 
 
-pt = ParallelTools()
+#pt = ParallelTools()
 
 
 def output_factory(output_name):

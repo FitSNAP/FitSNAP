@@ -5,12 +5,12 @@ from fitsnap3lib.calculators.lammps_snap import LammpsSnap
 from fitsnap3lib.calculators.basic_calculator import Basic
 
 
-pt = ParallelTools()
+#pt = ParallelTools()
 
 def calculator(calculator_name):
     """Calculator Factory"""
     instance = search(calculator_name)
-    pt.single_print("Using {} as FitSNAP calculator".format(calculator_name))
+    self.pt.single_print("Using {} as FitSNAP calculator".format(calculator_name))
     instance.__init__(calculator_name)
     return instance
 

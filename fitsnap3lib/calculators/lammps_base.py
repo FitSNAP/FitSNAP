@@ -5,8 +5,8 @@ from fitsnap3lib.io.input import Config
 import numpy as np
 
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 class LammpsBase(Calculator):
@@ -16,14 +16,14 @@ class LammpsBase(Calculator):
         self._data = {}
         self._i = 0
         self._lmp = None
-        pt.check_lammps()
+        self.pt.check_lammps()
 
     def create_a(self):
         super().create_a()
 
     def preprocess_allocate(self, nconfigs):
         self.dgradrows = np.zeros(nconfigs).astype(int)
-        pt.create_shared_array('number_of_dgradrows', nconfigs, tm=config.sections["SOLVER"].true_multinode)
+        self.pt.create_shared_array('number_of_dgradrows', nconfigs, tm=self.config.sections["SOLVER"].true_multinode)
 
     def preprocess_configs(self, data, i):
         try:
@@ -33,16 +33,16 @@ class LammpsBase(Calculator):
             self._prepare_lammps()
             self._run_lammps()
             self._collect_lammps_preprocess()
-            self._lmp = pt.close_lammps()
+            self._lmp = self.pt.close_lammps()
         except Exception as e:
-            if config.args.printlammps:
+            if self.config.args.printlammps:
                 self._data = data
                 self._i = i
                 self._initialize_lammps(1)
                 self._prepare_lammps()
                 self._run_lammps()
                 self._collect_lammps_preprocess()
-                self._lmp = pt.close_lammps()
+                self._lmp = self.pt.close_lammps()
             raise e
 
     def process_configs(self, data, i):
@@ -53,16 +53,16 @@ class LammpsBase(Calculator):
             self._prepare_lammps()
             self._run_lammps()
             self._collect_lammps()
-            self._lmp = pt.close_lammps()
+            self._lmp = self.pt.close_lammps()
         except Exception as e:
-            if config.args.printlammps:
+            if self.config.args.printlammps:
                 self._data = data
                 self._i = i
                 self._initialize_lammps(1)
                 self._prepare_lammps()
                 self._run_lammps()
                 self._collect_lammps()
-                self._lmp = pt.close_lammps()
+                self._lmp = self.pt.close_lammps()
             raise e
 
     def process_configs_nonlinear(self, data, i):
@@ -73,16 +73,16 @@ class LammpsBase(Calculator):
             self._prepare_lammps()
             self._run_lammps()
             self._collect_lammps_nonlinear()
-            self._lmp = pt.close_lammps()
+            self._lmp = self.pt.close_lammps()
         except Exception as e:
-            if config.args.printlammps:
+            if self.config.args.printlammps:
                 self._data = data
                 self._i = i
                 self._initialize_lammps(1)
                 self._prepare_lammps()
                 self._run_lammps()
                 self._collect_lammps_nonlinear()
-                self._lmp = pt.close_lammps()
+                self._lmp = self.pt.close_lammps()
             raise e
 
     def _prepare_lammps(self):
@@ -101,12 +101,12 @@ class LammpsBase(Calculator):
         raise NotImplementedError
 
     def _initialize_lammps(self, printlammps=0):
-        self._lmp = pt.initialize_lammps(config.args.lammpslog, printlammps)
+        self._lmp = self.pt.initialize_lammps(self.config.args.lammpslog, printlammps)
 
     def _set_structure(self):
         self._lmp.command("clear")
-        self._lmp.command("units " + config.sections["REFERENCE"].units)
-        self._lmp.command("atom_style " + config.sections["REFERENCE"].atom_style)
+        self._lmp.command("units " + self.config.sections["REFERENCE"].units)
+        self._lmp.command("atom_style " + self.config.sections["REFERENCE"].atom_style)
 
         lmp_setup = _extract_commands("""
                         atom_modify map array sort 0 2.0
@@ -118,9 +118,9 @@ class LammpsBase(Calculator):
 
         self._create_atoms()
 
-        if config.sections["REFERENCE"].atom_style == "spin":
+        if self.config.sections["REFERENCE"].atom_style == "spin":
             self._create_spins()
-        if config.sections["REFERENCE"].atom_style == "charge":
+        if self.config.sections["REFERENCE"].atom_style == "charge":
             self._create_charge()
 
     def _set_neighbor_list(self):

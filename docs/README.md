@@ -8,6 +8,8 @@ This allows us to do the `sphinx-quickstart` command and create the Makefile, `c
 
 To contribute to the docs, first edit the `.rst` files in the `source` directory.
 
-Then build the HTML files with `make html`.
+Then build the HTML files with `make html` in this directory.
 
 This creates HTML files in `build/html` that may be viewed for testing purposes.
+
+To clean the HTML files and start anew, simply do `make clean` in this directory.

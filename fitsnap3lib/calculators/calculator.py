@@ -29,7 +29,6 @@ class Calculator:
 
         self.pt.sub_barrier()
         self.number_of_atoms = self.pt.shared_arrays["number_of_atoms"].array.sum() # total number of atoms in all configs, summed
-        print(f"----- Total number of atoms in training set: {self.number_of_atoms}")
         self.number_of_files_per_node = len(self.pt.shared_arrays["number_of_atoms"].array)
 
         # create data matrices for nonlinear pytorch solver

@@ -1,5 +1,6 @@
 import configparser
 import argparse
+import sys
 from pickle import HIGHEST_PROTOCOL
 from fitsnap3lib.io.sections.section_factory import new_section
 from fitsnap3lib.parallel_tools import ParallelTools
@@ -38,8 +39,6 @@ class Config(metaclass=Singleton):
     """
 
     def __init__(self, arguments_lst=None):
-    #def __init__(self, arguments_lst=["../examples/Ta_Linear_JCP2014/Ta-example-nodump.in", "--overwrite"]):
-        #print(arguments_lst)
         self.pt = ParallelTools()
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
@@ -52,6 +51,7 @@ class Config(metaclass=Singleton):
 
         parser.add_argument("infile", action="store",
                             help="Input file with bispectrum etc. options")
+
         # Not Implemented
         parser.add_argument("--verbose", "-v", action="store_true", dest="verbose",
                             default=False, help="Show more detailed information about processing")
@@ -89,13 +89,16 @@ class Config(metaclass=Singleton):
         parser.add_argument("--screen2file", "-s2f", action="store", dest="screen2file",
                             default=None, help="Print screen to a file")
 
+        # check if building docs, in which case we revert to using Ta Linear example
+
+        for item in sys.argv:
+            if (item=="build" or item=="html" or item=="source"): # we're building docs
+                arguments_lst = arguments_lst=["../examples/Ta_Linear_JCP2014/Ta-example-nodump.in", "--overwrite"]
         self.args = parser.parse_args(arguments_lst)
 
     def parse_config(self):
-
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
-        print(self.args.infile)
         if not Path(self.args.infile).is_file():
             raise FileNotFoundError("Input file not found")
         tmp_config.read(self.args.infile)

@@ -25,45 +25,51 @@ class Snap(Output):
 
     #@pt.rank_zero
     def write(self, coeffs, errors):
-        if self.config.sections["EXTRAS"].only_test != 1:
-            if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
-                raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
-        with optional_open(self.config.sections["OUTFILE"].potential_name and
-                           self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
-            file.write(_to_coeff_string(coeffs))
-        with optional_open(self.config.sections["OUTFILE"].potential_name and
-                           self.config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
-            file.write(_to_param_string())
-        self.write_errors(errors)
+        @self.pt.rank_zero
+        def decorated_write():
+            if self.config.sections["EXTRAS"].only_test != 1:
+                if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
+                    raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
+            with optional_open(self.config.sections["OUTFILE"].potential_name and
+                               self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
+                file.write(_to_coeff_string(coeffs))
+            with optional_open(self.config.sections["OUTFILE"].potential_name and
+                               self.config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
+                file.write(_to_param_string())
+            self.write_errors(errors)
+        decorated_write()
 
     #@pt.sub_rank_zero
     def read_fit(self):
-        # TODO fix this fix reader for bzeroflag = 0
-        if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
-            raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
-        with optional_open(self.config.sections["OUTFILE"].potential_name and
-                           self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'r') as file:
+        @self.pt.sub_rank_zero
+        def decorated_read_fit():
+            # TODO fix this fix reader for bzeroflag = 0
+            if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
+                raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
+            with optional_open(self.config.sections["OUTFILE"].potential_name and
+                               self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'r') as file:
 
-            info = file.readline()
-            toss = file.readline()
-            num_types, ncoeff = [int(i) for i in file.readline().split()]
-            try:
-                assert ncoeff == (self.config.sections["BISPECTRUM"].ncoeff+1)
-            except AssertionError:
-                raise ValueError("number of coefficients: {} does not match "
-                                 "input file ncoeff: {}".format(ncoeff, self.config.sections["BISPECTRUM"].ncoeff+1))
-            try:
-                assert num_types == self.config.sections["BISPECTRUM"].numtypes
-            except AssertionError:
-                raise ValueError("number of types: {} does not match "
-                                 "input file numTypes: {}".format(num_types, self.config.sections["BISPECTRUM"].numtypes))
-            fit = np.zeros((num_types, ncoeff-1))
-            for i in range(num_types):
-                atom_header = file.readline()
-                zero = file.readline()
-                for j in range(ncoeff-1):
-                    fit[i][j] = float(file.readline().split()[0])
-
+                info = file.readline()
+                toss = file.readline()
+                num_types, ncoeff = [int(i) for i in file.readline().split()]
+                try:
+                    assert ncoeff == (self.config.sections["BISPECTRUM"].ncoeff+1)
+                except AssertionError:
+                    raise ValueError("number of coefficients: {} does not match "
+                                     "input file ncoeff: {}".format(ncoeff, self.config.sections["BISPECTRUM"].ncoeff+1))
+                try:
+                    assert num_types == self.config.sections["BISPECTRUM"].numtypes
+                except AssertionError:
+                    raise ValueError("number of types: {} does not match "
+                                     "input file numTypes: {}".format(num_types, self.config.sections["BISPECTRUM"].numtypes))
+                fit = np.zeros((num_types, ncoeff-1))
+                for i in range(num_types):
+                    atom_header = file.readline()
+                    zero = file.readline()
+                    for j in range(ncoeff-1):
+                        fit[i][j] = float(file.readline().split()[0])
+            return fit
+        fit = decorated_read_fit()
         return fit.flatten()
 
 

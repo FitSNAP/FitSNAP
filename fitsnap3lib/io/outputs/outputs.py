@@ -45,14 +45,20 @@ class Output:
 
     #@pt.rank_zero
     def info(self, msg):
-        self.logger.info(msg)
+        @self.pt.rank_zero
+        def decorated_info():
+            self.logger.info(msg)
+        decorated_info()
 
     #@pt.rank_zero
     def warning(self, msg):
-        self.logger.warning(msg)
+        @self.pt.rank_zero
+        def decorated_warning():
+            self.logger.warning(msg)
+        decorated_warning()
 
-    #@staticmethod
-    def exception(err):
+    @staticmethod
+    def exception(self, err):
         self.pt.exception(err)
         # if '{}'.format(err) == 'MPI_ERR_INTERN: internal error':
         #     # Known Issues: Allocating too much memory
@@ -64,33 +70,36 @@ class Output:
 
     #@pt.rank_zero
     def write_errors(self, errors):
-        fname = self.config.sections["OUTFILE"].metric_file
-        arguments = {}
-        write_type = 'wt'
-        if self.config.sections["OUTFILE"].metrics_style == "MD":
-            # fname += '.md'
-            function = errors.to_markdown
-        elif self.config.sections["OUTFILE"].metrics_style == "CSV":
-            # fname += '.csv'
-            arguments['sep'] = ','
-            arguments['float_format'] = "%.8f"
-            function = errors.to_csv
-        elif self.config.sections["OUTFILE"].metrics_style == "SSV":
-            arguments['sep'] = ' '
-            arguments['float_format'] = "%.8f"
-            function = errors.to_csv
-        elif self.config.sections["OUTFILE"].metrics_style == "JSON":
-            # fname += '.json'
-            function = errors.to_json
-        elif self.config.sections["OUTFILE"].metrics_style == "DF":
-            # fname += '.db'
-            function = errors.to_pickle
-            write_type = 'wb'
-        else:
-            raise NotImplementedError("Metric style {} not implemented".format(
-                self.config.sections["OUTFILE"].metrics_style))
-        with optional_open(fname, write_type) as file:
-            function(file, **arguments)
+        @self.pt.rank_zero
+        def decorated_write_errors():
+            fname = self.config.sections["OUTFILE"].metric_file
+            arguments = {}
+            write_type = 'wt'
+            if self.config.sections["OUTFILE"].metrics_style == "MD":
+                # fname += '.md'
+                function = errors.to_markdown
+            elif self.config.sections["OUTFILE"].metrics_style == "CSV":
+                # fname += '.csv'
+                arguments['sep'] = ','
+                arguments['float_format'] = "%.8f"
+                function = errors.to_csv
+            elif self.config.sections["OUTFILE"].metrics_style == "SSV":
+                arguments['sep'] = ' '
+                arguments['float_format'] = "%.8f"
+                function = errors.to_csv
+            elif self.config.sections["OUTFILE"].metrics_style == "JSON":
+                # fname += '.json'
+                function = errors.to_json
+            elif self.config.sections["OUTFILE"].metrics_style == "DF":
+                # fname += '.db'
+                function = errors.to_pickle
+                write_type = 'wb'
+            else:
+                raise NotImplementedError("Metric style {} not implemented".format(
+                    self.config.sections["OUTFILE"].metrics_style))
+            with optional_open(fname, write_type) as file:
+                function(file, **arguments)
+        decorated_write_errors()
 
 
 @contextmanager

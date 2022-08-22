@@ -13,6 +13,7 @@ class Pace(Output):
 
     def __init__(self, name):
         super().__init__(name)
+        self.pt = ParallelTools()
 
     def output(self, coeffs, errors):
         new_coeffs = None
@@ -23,17 +24,23 @@ class Pace(Output):
 
     #@pt.rank_zero
     def write(self, coeffs, errors):
-        if self.config.sections["EXTRAS"].only_test != 1:
-            if self.config.sections["CALCULATOR"].calculator != "LAMMPSPACE":
-                raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
-            with optional_open(self.config.sections["OUTFILE"].potential_name and
-                               self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
-                file.write(_to_coeff_string(coeffs))
-        self.write_errors(errors)
+        @self.pt.rank_zero
+        def decorated_write():
+            if self.config.sections["EXTRAS"].only_test != 1:
+                if self.config.sections["CALCULATOR"].calculator != "LAMMPSPACE":
+                    raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
+                with optional_open(self.config.sections["OUTFILE"].potential_name and
+                                   self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
+                    file.write(_to_coeff_string(coeffs))
+            self.write_errors(errors)
+        decorated_write()
 
     #@pt.sub_rank_zero
     def read_fit(self):
-        assert NotImplementedError("read fit for pace potentials not implemented")
+        @self.pt.sub_rank_zero
+        def decorated_read_fit():
+            assert NotImplementedError("read fit for pace potentials not implemented")
+        decorated_read_fit()
 
 
 def _to_coeff_string(coeffs):

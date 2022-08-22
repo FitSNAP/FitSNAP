@@ -1,6 +1,7 @@
 """
 Python script demonstrating a function that takes in an ASE object for a single configuration of
-atoms, and then calls FitSNAP on that configuration to calculate fitting data.
+atoms, and then calls FitSNAP on that configuration to calculate fitting data. We then loop over
+separate configurations of atoms to extract the fitting data.
 
 We supply a FitSNAP input script which has settings for bispectrum components, reference potential,
 and other settings used for fitting.
@@ -60,10 +61,7 @@ def calc_fitting_data(atoms, pt):
     data = [data]
 
     pt.create_shared_array('number_of_atoms', 1, tm=config.sections["SOLVER"].true_multinode)
-    print("created shared array")
-    print(pt)
     pt.shared_arrays["number_of_atoms"].array = np.array([len(atoms)])
-    print(pt.shared_arrays["number_of_atoms"].array)
 
     # calculate A matrix for the list of configs in data: 
 
@@ -91,7 +89,6 @@ comm = MPI.COMM_WORLD
 
 from fitsnap3lib.parallel_tools import ParallelTools
 pt = ParallelTools(comm=comm)
-#pt = ParallelTools()
 
 # config class reads the input settings
 
@@ -105,10 +102,8 @@ snap = FitSnap()
 
 # tell ParallelTool not to create SharedArrays, optional depending on your usage of MPI during fits.
 #pt.create_shared_bool = False
-
 # tell ParallelTools not to check for existing fitsnap objects
-
-pt.check_fitsnap_exist = False
+#pt.check_fitsnap_exist = False
 
 # tell FitSNAP not to delete the data object after processing configs
 
@@ -121,23 +116,18 @@ frames = ase.io.read("Displaced_BCC.xyz", ":")
 
 # calculate fitting data using this ASE atoms object
 
-#fitting_data = calc_fitting_data(atoms)
-#print(fitting_data)
-
-#del snap
-#del config
-#del pt
+del snap
+del config
+del pt
 
 for atoms in frames:
 
-    #pt = ParallelTools(comm=comm)
-    #config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
-    #snap = FitSnap()
-
-    #pt.check_fitsnap_exist = False
+    pt = ParallelTools(comm=comm)
+    config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
+    snap = FitSnap()
     
-    #print(pt)
     fitting_data = calc_fitting_data(atoms, pt)
+    print(fitting_data)
 
     del snap    
     del config

@@ -4,13 +4,15 @@ import numpy as np
 from pandas import DataFrame
 
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 class Solver:
 
     def __init__(self, name, linear=True):
+        self.config = Config()
+        self.pt = ParallelTools()
         self.name = name
         self.configs = None
         self.fit = None
@@ -34,9 +36,9 @@ class Solver:
         pass
 
     def _offset(self):
-        num_types = config.sections["BISPECTRUM"].numtypes
+        num_types = self.config.sections["BISPECTRUM"].numtypes
         if num_types > 1:
-            self.fit = self.fit.reshape(num_types, config.sections["BISPECTRUM"].ncoeff)
+            self.fit = self.fit.reshape(num_types, self.config.sections["BISPECTRUM"].ncoeff)
             offsets = np.zeros((num_types, 1))
             self.fit = np.concatenate([offsets, self.fit], axis=1)
             self.fit = self.fit.reshape((-1, 1))
@@ -44,61 +46,64 @@ class Solver:
             self.fit = np.insert(self.fit, 0, 0)
 
     def _checks(self):
-        assert not (self.linear and config.sections['CALCULATOR'].per_atom_energy and config.args.perform_fit)
+        assert not (self.linear and self.config.sections['CALCULATOR'].per_atom_energy and self.config.args.perform_fit)
 
-    @pt.rank_zero
+    #@pt.rank_zero
     def error_analysis(self):
-        if not self.linear:
-            pt.single_print("No Error Analysis for non-linear potentials")
-            return
-        self.df = DataFrame(pt.shared_arrays['a'].array)
-        self.df['truths'] = pt.shared_arrays['b'].array.tolist()
-        self.df['preds'] = pt.shared_arrays['a'].array @ self.fit
-        self.df['weights'] = pt.shared_arrays['w'].array.tolist()
-        for key in pt.fitsnap_dict.keys():
-            if isinstance(pt.fitsnap_dict[key], list) and len(pt.fitsnap_dict[key]) == len(self.df.index):
-                self.df[key] = pt.fitsnap_dict[key]
-        if config.sections["EXTRAS"].dump_dataframe:
-            self.df.to_pickle(config.sections['EXTRAS'].dataframe_file)
-        for option in ["Unweighted", "Weighted"]:
-            self.weighted = option
-            self._all_error()
-            self._group_error()
-            if config.sections["SOLVER"].detailed_errors:
-                self._config_error()
+        @self.pt.rank_zero
+        def decorated_error_analysis():
+            if not self.linear:
+                self.pt.single_print("No Error Analysis for non-linear potentials")
+                return
+            self.df = DataFrame(self.pt.shared_arrays['a'].array)
+            self.df['truths'] = self.pt.shared_arrays['b'].array.tolist()
+            self.df['preds'] = self.pt.shared_arrays['a'].array @ self.fit
+            self.df['weights'] = self.pt.shared_arrays['w'].array.tolist()
+            for key in self.pt.fitsnap_dict.keys():
+                if isinstance(self.pt.fitsnap_dict[key], list) and len(self.pt.fitsnap_dict[key]) == len(self.df.index):
+                    self.df[key] = self.pt.fitsnap_dict[key]
+            if self.config.sections["EXTRAS"].dump_dataframe:
+                self.df.to_pickle(self.config.sections['EXTRAS'].dataframe_file)
+            for option in ["Unweighted", "Weighted"]:
+                self.weighted = option
+                self._all_error()
+                self._group_error()
+                if self.config.sections["SOLVER"].detailed_errors:
+                    self._config_error()
 
-        if self.template_error is True:
-            self._template_error()
+            if self.template_error is True:
+                self._template_error()
 
-        self.errors = DataFrame.from_records(self.errors)
-        self.errors = self.errors.set_index(["Group", "Weighting", "Subsystem", ]).sort_index()
+            self.errors = DataFrame.from_records(self.errors)
+            self.errors = self.errors.set_index(["Group", "Weighting", "Subsystem", ]).sort_index()
 
-        if config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and config.sections["BISPECTRUM"].bzeroflag:
-            self._offset()
+            if self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and self.config.sections["BISPECTRUM"].bzeroflag:
+                self._offset()
+        decorated_error_analysis()
 
     def _all_error(self):
-        if config.sections["CALCULATOR"].energy:
+        if self.config.sections["CALCULATOR"].energy:
             self._errors("*ALL", "Energy", (self.df['Row_Type'] == 'Energy'))
-        if config.sections["CALCULATOR"].force:
+        if self.config.sections["CALCULATOR"].force:
             self._errors("*ALL", "Force", (self.df['Row_Type'] == 'Force'))
-        if config.sections["CALCULATOR"].stress:
+        if self.config.sections["CALCULATOR"].stress:
             self._errors("*ALL", "Stress", (self.df['Row_Type'] == 'Stress'))
 
     def _group_error(self):
-        groups = set(pt.fitsnap_dict["Groups"])
-        if config.sections["CALCULATOR"].energy:
+        groups = set(self.pt.fitsnap_dict["Groups"])
+        if self.config.sections["CALCULATOR"].energy:
             energy_filter = self.df['Row_Type'] == 'Energy'
-        if config.sections["CALCULATOR"].force:
+        if self.config.sections["CALCULATOR"].force:
             force_filter = self.df['Row_Type'] == 'Force'
-        if config.sections["CALCULATOR"].stress:
+        if self.config.sections["CALCULATOR"].stress:
             stress_filter = self.df['Row_Type'] == 'Stress'
         for group in groups:
             group_filter = self.df['Groups'] == group
-            if config.sections["CALCULATOR"].energy:
+            if self.config.sections["CALCULATOR"].energy:
                 self._errors(group, "Energy", group_filter & energy_filter)
-            if config.sections["CALCULATOR"].force:
+            if self.config.sections["CALCULATOR"].force:
                 self._errors(group, "Force", group_filter & force_filter)
-            if config.sections["CALCULATOR"].stress:
+            if self.config.sections["CALCULATOR"].stress:
                 self._errors(group, "Stress", group_filter & stress_filter)
 
     def _config_error(self):
@@ -119,7 +124,7 @@ class Solver:
     def _errors(self, group, rtype, indices):
         this_true, this_pred = self.df['truths'][indices], self.df['preds'][indices]
         if self.weighted == 'Weighted':
-            w = pt.shared_arrays['w'].array[indices]
+            w = self.pt.shared_arrays['w'].array[indices]
             this_true, this_pred = w * this_true, w * this_pred
             nconfig = np.count_nonzero(w)
         else:

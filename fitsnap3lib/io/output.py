@@ -1,6 +1,7 @@
 from fitsnap3lib.io.outputs.output_factory import output_factory
 from fitsnap3lib.io.input import Config
 
+# instantiate a config object for the first time
 
 config = Config()
 

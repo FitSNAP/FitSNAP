@@ -331,8 +331,11 @@ class Scraper:
 
     #@pt.rank_zero
     def _write_seed_file(self, txt):
-        with open("RandomSamplingSeed.txt", 'w') as f:
-            f.write(txt+'\n')
+        @self.pt.rank_zero
+        def decorated_write_seed_file(txt):
+            with open("RandomSamplingSeed.txt", 'w') as f:
+                f.write(txt+'\n')
+        decorated_write_seed_file(txt)
 
     # def check_coords(self, cell, pos1, pos2):
     #     """Compares position 1 and position 2 with respect to periodic boundaries defined by cell"""

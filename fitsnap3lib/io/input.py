@@ -28,6 +28,7 @@ class Singleton(type):
 
 class Config(metaclass=Singleton):
     """ Class for storing input settings in a `config` instance.
+        The `config` instance is first created in `io/output.py`.
 
     Attributes
     ----------
@@ -38,10 +39,8 @@ class Config(metaclass=Singleton):
 
     def __init__(self, arguments_lst=None):
     #def __init__(self, arguments_lst=["../examples/Ta_Linear_JCP2014/Ta-example-nodump.in", "--overwrite"]):
-        print(arguments_lst)
+        #print(arguments_lst)
         self.pt = ParallelTools()
-        #self.output = Output()
-        print(f"----- self.pt input.py: {self.pt}")
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
         self.parse_cmdline(arguments_lst=arguments_lst)

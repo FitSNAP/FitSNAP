@@ -26,8 +26,7 @@ class Calculator:
     def create_a(self):
 
         # TODO : Any extra config pulls should be done before this
-        print("----- calculator.py")
-        print(self.pt)
+
         self.pt.sub_barrier()
         self.number_of_atoms = self.pt.shared_arrays["number_of_atoms"].array.sum() # total number of atoms in all configs, summed
         print(f"----- Total number of atoms in training set: {self.number_of_atoms}")

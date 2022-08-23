@@ -40,13 +40,15 @@ from copy import copy
 # from natsort import natsorted
 
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 class Scraper:
 
     def __init__(self, name):
+        self.pt = ParallelTools()
+        self.config = Config()
         self.name = name
         self.group_types = {}
         self.group_table = []
@@ -55,25 +57,25 @@ class Scraper:
         self.tests = None
         self.data = {}
         self.test_bool = None
-        self.default_conversions = {key: convert(config.sections["SCRAPER"].properties[key])
-                                    for key in config.sections["SCRAPER"].properties}
+        self.default_conversions = {key: convert(self.config.sections["SCRAPER"].properties[key])
+                                    for key in self.config.sections["SCRAPER"].properties}
         self.conversions = {}
 
         self._init_units()
 
     def scrape_groups(self):
-        group_dict = {k: config.sections["GROUPS"].group_types[i]
-                      for i, k in enumerate(config.sections["GROUPS"].group_sections)}
-        self.group_table = config.sections["GROUPS"].group_table
+        group_dict = {k: self.config.sections["GROUPS"].group_types[i]
+                      for i, k in enumerate(self.config.sections["GROUPS"].group_sections)}
+        self.group_table = self.config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
-        user_set_random_seed = config.sections["GROUPS"].random_seed ## default is 0
+        user_set_random_seed = self.config.sections["GROUPS"].random_seed ## default is 0
 
-        if config.sections["GROUPS"].random_sampling:
+        if self.config.sections["GROUPS"].random_sampling:
             output.screen(f"Random sampling of groups toggled on.")
             if not user_set_random_seed:
-                sampling_seed = pt.get_seed()
-                seed_txt = f"FitSNAP-generated seed for random sampling: {pt.get_seed()}"
+                sampling_seed = self.pt.get_seed()
+                seed_txt = f"FitSNAP-generated seed for random sampling: {self.pt.get_seed()}"
             else:
                 ## groups.py casts random_seed to float, just in case user
                 ## uses continuous variable. if user input was originally
@@ -105,13 +107,13 @@ class Scraper:
             if training_size is None:
                 raise ValueError("Please set training size for {}".format(key))
 
-            folder = path.join(config.sections["PATH"].datapath, key)
+            folder = path.join(self.config.sections["PATH"].datapath, key)
             folder_files = listdir(folder)
             for file_name in folder_files:
                 if folder not in self.files:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
-            if config.sections["GROUPS"].random_sampling:
+            if self.config.sections["GROUPS"].random_sampling:
                 shuffle(self.files[folder], random)
             nfiles = len(folder_files)
             if training_size < 1 or (training_size == 1 and size_type == float):
@@ -173,10 +175,10 @@ class Scraper:
             self.configs += test_list
 
         # NODES SPLIT UP HERE
-        self.configs = pt.split_by_node(self.configs)
-        self.test_bool = pt.split_by_node(self.test_bool)
-        groups = pt.split_by_node(groups)
-        group_list = pt.split_by_node(group_list)
+        self.configs = self.pt.split_by_node(self.configs)
+        self.test_bool = self.pt.split_by_node(self.test_bool)
+        groups = self.pt.split_by_node(groups)
+        group_list = self.pt.split_by_node(group_list)
         temp_configs = copy(self.configs)
 
         group_test = list(dict.fromkeys(group_list))
@@ -189,32 +191,32 @@ class Scraper:
         for i in range(len(group_test)):
             group_test[i] += '_testing'
 
-        pt.create_shared_array('configs_per_group', len(group_counts), dtype='i')
-        if pt.get_rank() == 0:
+        self.pt.create_shared_array('configs_per_group', len(group_counts), dtype='i')
+        if self.pt.get_rank() == 0:
             for i in range(len(group_counts)):
-                pt.shared_arrays['configs_per_group'].array[i] = group_counts[i]
-        pt.shared_arrays['configs_per_group'].list = group_set + group_test
+                self.pt.shared_arrays['configs_per_group'].array[i] = group_counts[i]
+        self.pt.shared_arrays['configs_per_group'].list = group_set + group_test
 
-        pt.shared_arrays['configs_per_group'].testing = 0
+        self.pt.shared_arrays['configs_per_group'].testing = 0
         if self.tests is not None:
-            pt.shared_arrays['configs_per_group'].testing = len(test_list)
+            self.pt.shared_arrays['configs_per_group'].testing = len(test_list)
 
         number_of_configs_per_node = len(self.configs)
-        pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
-        pt.slice_array('number_of_atoms')
-        pt.shared_arrays['number_of_atoms'].configs = temp_configs
+        self.pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
+        self.pt.slice_array('number_of_atoms')
+        self.pt.shared_arrays['number_of_atoms'].configs = temp_configs
 
         # PROCS SPLIT UP HERE
-        self.test_bool = pt.split_within_node(self.test_bool)
-        self.configs = pt.split_within_node(self.configs)
+        self.test_bool = self.pt.split_within_node(self.test_bool)
+        self.configs = self.pt.split_within_node(self.configs)
 
     def scrape_configs(self):
         raise NotImplementedError("Call to virtual Scraper.scrape_configs method")
 
     def _init_units(self):
-        if config.sections["REFERENCE"].units == "real":
+        if self.config.sections["REFERENCE"].units == "real":
             self.kb = 0.00198198665029335
-        if config.sections["REFERENCE"].units == "metal":
+        if self.config.sections["REFERENCE"].units == "metal":
             self.kb = 0.00008617333262145
 
     def _rotate_coords(self):
@@ -253,9 +255,9 @@ class Scraper:
         # Stress transforms on both the first and second axis.
         self.data["Lattice"] = out_cell
         self.data["Positions"] = self.data["Positions"] * self.conversions["Positions"] @ rot.T
-        if config.sections["CALCULATOR"].force:
+        if self.config.sections["CALCULATOR"].force:
             self.data["Forces"] = self.data["Forces"] * self.conversions["Forces"] @ rot.T
-        if config.sections["CALCULATOR"].stress:
+        if self.config.sections["CALCULATOR"].stress:
             self.data["Stress"] = rot @ (self.data["Stress"] * self.conversions["Stress"]) @ rot.T
         self.data["Rotation"] = rot
 
@@ -296,7 +298,7 @@ class Scraper:
         return int(a_float)
 
     def _weighting(self, natoms):
-        if config.sections["GROUPS"].boltz == 0:
+        if self.config.sections["GROUPS"].boltz == 0:
             for key in self.group_table[self.data['Group']]:
                 # Do not put the word weight in a group table unless you want to use it as a weight
                 if 'weight' in key:
@@ -304,13 +306,13 @@ class Scraper:
         else:
             self.data['eweight'] = np.exp(
                 (self.group_table[self.data['Group']]['eweight'] - self.data["Energy"] /
-                 float(natoms)) / (self.kb * float(config.sections["GROUPS"].boltz)))
+                 float(natoms)) / (self.kb * float(self.config.sections["GROUPS"].boltz)))
             for key in self.group_table[self.data['Group']]:
                 # Do not put the word weight in a group table unless you want to use it as a weight
                 if 'weight' in key and key != 'eweight':
                     self.data[key] = self.data['eweight'] * self.group_table[self.data['Group']][key]
 
-        if config.sections["GROUPS"].smartweights:
+        if self.config.sections["GROUPS"].smartweights:
             for key in self.group_table[self.data['Group']]:
                 # Do not put the word weight in a group table unless you want to use it as a weight
                 if 'weight' in key:
@@ -321,16 +323,19 @@ class Scraper:
                             self.data[key] /= self.group_table[self.data['Group']]['training_size']
                         except ZeroDivisionError:
                             self.data[key] = 0
-            if config.sections["CALCULATOR"].force:
+            if self.config.sections["CALCULATOR"].force:
                 self.data['fweight'] /= natoms*3
 
-            if config.sections["CALCULATOR"].stress:
+            if self.config.sections["CALCULATOR"].stress:
                 self.data['fweight'] /= 6
 
-    @pt.rank_zero
+    #@pt.rank_zero
     def _write_seed_file(self, txt):
-        with open("RandomSamplingSeed.txt", 'w') as f:
-            f.write(txt+'\n')
+        @self.pt.rank_zero
+        def decorated_write_seed_file(txt):
+            with open("RandomSamplingSeed.txt", 'w') as f:
+                f.write(txt+'\n')
+        decorated_write_seed_file(txt)
 
     # def check_coords(self, cell, pos1, pos2):
     #     """Compares position 1 and position 2 with respect to periodic boundaries defined by cell"""

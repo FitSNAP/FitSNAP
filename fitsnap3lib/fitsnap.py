@@ -37,72 +37,120 @@ from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.output import output
 from fitsnap3lib.io.input import Config
 
-
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 class FitSnap:
-    def __init__(self):
-        self.scraper = scraper(config.sections["SCRAPER"].scraper)
+    """ This classes houses the functions needed for machine learning a potential, start to finish.
+
+    Attributes
+    ----------
+    scraper : class Scraper
+        instance of the Scraper class for gathering configs
+
+    data : list
+        list of dictionaries, where each configuration of atoms has its own dictionary
+
+    calculator: class Calculator
+        instance of the Calculator class for calculating descriptors and fitting data
+
+    solver: class Solver
+        instance of the Solver class for performing a fit
+
+    fit: numpy array
+        array of fitting coefficients from linear models
+
+    delete_data: bool
+        boolean setting that deletes the data list (if `True`) after a fit, and is useful to make
+        `False` if looping over fits 
+
+    Methods
+    -------
+    scrape_configs():
+        scrapes configurations of atoms and creates the `data` list
+    """
+    def __init__(self): 
+
+        self.pt = ParallelTools()
+        self.config = Config()
+
+        self.scraper = scraper(self.config.sections["SCRAPER"].scraper)
         self.data = []
-        self.calculator = calculator(config.sections["CALCULATOR"].calculator)
-        self.solver = solver(config.sections["SOLVER"].solver)
+        self.calculator = calculator(self.config.sections["CALCULATOR"].calculator)
+        self.solver = solver(self.config.sections["SOLVER"].solver)
         self.fit = None
         self.multinode = 0
         self.delete_data = True # make False if don't want to delete data object
                                 # useful for using library to loop over fits
-        if config.sections["EXTRAS"].only_test:
+        if self.config.sections["EXTRAS"].only_test:
             self.fit = output.read_fit()
-
-    @pt.single_timeit
+       
+    #@pt.single_timeit 
     def scrape_configs(self):
-        self.scraper.scrape_groups()
-        self.scraper.divvy_up_configs()
-        self.data = self.scraper.scrape_configs()
-        del self.scraper
 
-    @pt.single_timeit
+        @self.pt.single_timeit
+        def decorated_scrape_configs():
+            self.scraper.scrape_groups()
+            self.scraper.divvy_up_configs()
+            self.data = self.scraper.scrape_configs()
+            del self.scraper
+        decorated_scrape_configs()
+
+    #@pt.single_timeit 
     def process_configs(self):
 
-        # preprocess the configs (only if nonlinear)
+        @self.pt.single_timeit
+        def decorated_process_configs():
 
-        if (not self.solver.linear):
-            print("Nonlinear solver, preprocessing configs.")
-            self.calculator.preprocess_allocate(len(self.data))
-            for i, configuration in enumerate(self.data):
-                self.calculator.preprocess_configs(configuration, i)
+            # preprocess the configs (only if nonlinear)
 
-        self.calculator.create_a()
-        if (self.solver.linear):
-            for i, configuration in enumerate(self.data):
-                self.calculator.process_configs(configuration, i)
-        else:
-            for i, configuration in enumerate(self.data):
-                self.calculator.process_configs_nonlinear(configuration, i)
+            if (not self.solver.linear):
+                print("Nonlinear solver, preprocessing configs.")
+                self.calculator.preprocess_allocate(len(self.data))
+                for i, configuration in enumerate(self.data):
+                    self.calculator.preprocess_configs(configuration, i)
 
-        if (self.delete_data):
-            del self.data
-        self.calculator.collect_distributed_lists()
-        self.calculator.extras()
+            self.calculator.create_a()
+            if (self.solver.linear):
+                for i, configuration in enumerate(self.data):
+                    self.calculator.process_configs(configuration, i)
+            else:
+                for i, configuration in enumerate(self.data):
+                    self.calculator.process_configs_nonlinear(configuration, i)
 
-    @pt.single_timeit
+            if (self.delete_data):
+                del self.data
+            self.calculator.collect_distributed_lists()
+            self.calculator.extras()
+
+        decorated_process_configs()
+
+    #@pt.single_timeit 
     def perform_fit(self):
-        if not config.args.perform_fit:
-            return
-        elif self.fit is None:
-            self.solver.perform_fit()
-        else:
-            self.solver.fit = self.fit
-        self.solver.fit_gather()
-        self.solver.error_analysis()
 
-    @pt.single_timeit
+        @ self.pt.single_timeit
+        def decorated_perform_fit():
+            if not self.config.args.perform_fit:
+                return
+            elif self.fit is None:
+                self.solver.perform_fit()
+            else:
+                self.solver.fit = self.fit
+            self.solver.fit_gather()
+            self.solver.error_analysis()
+
+        decorated_perform_fit()
+
+    #@pt.single_timeit  
     def write_output(self):
-        if not config.args.perform_fit:
-            return
-        # prevent Output class from trying to process non-existing solver.fit when using nonlinear solvers
-        if self.solver.linear:
-            output.output(self.solver.fit, self.solver.errors)
-        else:
-            print("WARNING: Nonlinear solvers do not output generic output - see PyTorch/JAX model files.")
+        @self.pt.single_timeit
+        def decorated_write_output():
+            if not self.config.args.perform_fit:
+                return
+            # prevent Output class from trying to process non-existing solver.fit when using nonlinear solvers
+            if self.solver.linear:
+                output.output(self.solver.fit, self.solver.errors)
+            else:
+                print("WARNING: Nonlinear solvers do not output generic output - see PyTorch/JAX model files.")
+        decorated_write_output()

@@ -98,6 +98,8 @@ comm = MPI.COMM_WORLD
 from fitsnap3lib.parallel_tools import ParallelTools
 #pt = ParallelTools(comm=comm)
 pt = ParallelTools()
+print("----- main script")
+#print(pt)
 # Config class reads the input
 from fitsnap3lib.io.input import Config
 config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
@@ -110,21 +112,38 @@ pt.create_shared_bool = False
 # tell ParallelTools not to check for existing fitsnap objects
 pt.check_fitsnap_exist = False
 # tell FitSNAP not to delete the data object after processing configs
-snap.delete_data = False
+#snap.delete_data = False
 
 # scrape configs to create the snap data list
 # we need only do this once, to allocate a data matrix for the configs
 # although snap.data will be changed later as we change/optimize the weights
 # snap.data contains a list of dictionaries for all configs, with keys for each config 
 
-snap.scraper.scrape_groups()
-snap.scraper.divvy_up_configs()
-snap.data = snap.scraper.scrape_configs()
+#snap.scraper.scrape_groups()
+#snap.scraper.divvy_up_configs()
+#snap.data = snap.scraper.scrape_configs()
+
+del config
+del snap
 
 ngenerations = 100
 for g in range(0,ngenerations):
 
     print(f"{g}")
+
+    pt = ParallelTools()
+    config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
+    snap = FitSnap()
+
+    # tell ParallelTool not to create SharedArrays
+    pt.create_shared_bool = False
+    # tell ParallelTools not to check for existing fitsnap objects
+    pt.check_fitsnap_exist = False
+    # tell FitSNAP not to delete the data object after processing configs
+    snap.delete_data = True
+    snap.scraper.scrape_groups()
+    snap.scraper.divvy_up_configs()
+    snap.data = snap.scraper.scrape_configs()
 
     # change the bispectrum hyperparams
 
@@ -155,6 +174,12 @@ for g in range(0,ngenerations):
     ftest_mae = calc_mae_force(snap.solver.df)
 
     print(f"Generation {g} Force MAE: {ftest_mae}")
+
+    # delete and clean up
+
+    del snap
+    del config
+    del pt
     
 
 

@@ -5,14 +5,15 @@ from fitsnap3lib.io.input import Config
 import numpy as np
 
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 class Pace(Output):
 
     def __init__(self, name):
         super().__init__(name)
+        self.pt = ParallelTools()
 
     def output(self, coeffs, errors):
         new_coeffs = None
@@ -21,19 +22,25 @@ class Pace(Output):
             coeffs = new_coeffs
         self.write(coeffs, errors)
 
-    @pt.rank_zero
+    #@pt.rank_zero
     def write(self, coeffs, errors):
-        if config.sections["EXTRAS"].only_test != 1:
-            if config.sections["CALCULATOR"].calculator != "LAMMPSPACE":
-                raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
-            with optional_open(config.sections["OUTFILE"].potential_name and
-                               config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
-                file.write(_to_coeff_string(coeffs))
-        self.write_errors(errors)
+        @self.pt.rank_zero
+        def decorated_write():
+            if self.config.sections["EXTRAS"].only_test != 1:
+                if self.config.sections["CALCULATOR"].calculator != "LAMMPSPACE":
+                    raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
+                with optional_open(self.config.sections["OUTFILE"].potential_name and
+                                   self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
+                    file.write(_to_coeff_string(coeffs))
+            self.write_errors(errors)
+        decorated_write()
 
-    @pt.sub_rank_zero
+    #@pt.sub_rank_zero
     def read_fit(self):
-        assert NotImplementedError("read fit for pace potentials not implemented")
+        @self.pt.sub_rank_zero
+        def decorated_read_fit():
+            assert NotImplementedError("read fit for pace potentials not implemented")
+        decorated_read_fit()
 
 
 def _to_coeff_string(coeffs):
@@ -42,15 +49,15 @@ def _to_coeff_string(coeffs):
     """
     desc_str = "ACE"
 
-    coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))
-    blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
-    if config.sections[desc_str].bzeroflag:
+    coeffs = coeffs.reshape((self.config.sections[desc_str].numtypes, -1))
+    blank2Js = self.config.sections[desc_str].blank2J.reshape((self.config.sections[desc_str].numtypes, -1))
+    if self.config.sections[desc_str].bzeroflag:
         blank2Js = np.insert(blank2Js, 0, [1.0], axis=1)
     coeffs = np.multiply(coeffs, blank2Js)
-    coeff_names = [[0]]+config.sections[desc_str].blist
-    type_names = config.sections[desc_str].types
+    coeff_names = [[0]]+self.config.sections[desc_str].blist
+    type_names = self.config.sections[desc_str].types
     out = f"# fitsnap fit/pace generated on {datetime.now()}\n\n"
-    out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/config.sections[desc_str].numtypes)))
+    out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/self.config.sections[desc_str].numtypes)))
     for elname, column in zip(type_names,
                         coeffs):
         out += "{}\n".format(elname)

@@ -36,7 +36,7 @@ manually calculate errors on.
 Use the FitSNAP library to perform many fits in a loop, where we change hyperparams like weights
 and descriptor settings during each loop. This is a good foundation for hyperparam optimization.
 
-### `single-config/example.py`
+### `single_config/example.py`
 
 Here we show a function that takes in an ASE atoms object for a single configuration of atoms, and
 return the fitting data associated with that atoms object. 

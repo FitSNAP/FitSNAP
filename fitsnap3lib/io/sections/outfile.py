@@ -4,13 +4,14 @@ from fitsnap3lib.parallel_tools import ParallelTools
 from os import path
 
 
-pt = ParallelTools()
+#pt = ParallelTools()
 
 
 class Outfile(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
+        self.pt = ParallelTools()
         self.allowedkeys = ['output_style',
                             'metrics',
                             'metrics_style',

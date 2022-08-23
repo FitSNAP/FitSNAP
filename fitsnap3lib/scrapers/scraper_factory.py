@@ -4,7 +4,7 @@ from fitsnap3lib.scrapers.json_scraper import Json
 from fitsnap3lib.scrapers.xyz_scraper import XYZ
 
 
-pt = ParallelTools()
+#pt = ParallelTools()
 
 
 def scraper(scraper_name):

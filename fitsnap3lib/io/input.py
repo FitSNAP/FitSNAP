@@ -1,5 +1,6 @@
 import configparser
 import argparse
+import sys
 from pickle import HIGHEST_PROTOCOL
 from fitsnap3lib.io.sections.section_factory import new_section
 from fitsnap3lib.parallel_tools import ParallelTools
@@ -8,7 +9,7 @@ from pathlib import Path
 
 
 output = Output()
-pt = ParallelTools()
+#pt = ParallelTools()
 
 
 class Singleton(type):
@@ -27,8 +28,18 @@ class Singleton(type):
 
 
 class Config(metaclass=Singleton):
+    """ Class for storing input settings in a `config` instance.
+        The `config` instance is first created in `io/output.py`.
+
+    Attributes
+    ----------
+    parse_cmdline : list
+        list of args that can be supplied at the command line, must include a string to the location
+        of the FitSNAP input script 
+    """
 
     def __init__(self, arguments_lst=None):
+        self.pt = ParallelTools()
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
         self.parse_cmdline(arguments_lst=arguments_lst)
@@ -40,6 +51,7 @@ class Config(metaclass=Singleton):
 
         parser.add_argument("infile", action="store",
                             help="Input file with bispectrum etc. options")
+
         # Not Implemented
         parser.add_argument("--verbose", "-v", action="store_true", dest="verbose",
                             default=False, help="Show more detailed information about processing")
@@ -77,10 +89,14 @@ class Config(metaclass=Singleton):
         parser.add_argument("--screen2file", "-s2f", action="store", dest="screen2file",
                             default=None, help="Print screen to a file")
 
+        # check if building docs, in which case we revert to using Ta Linear example
+
+        for item in sys.argv:
+            if (item=="build" or item=="html" or item=="source"): # we're building docs
+                arguments_lst = arguments_lst=["../examples/Ta_Linear_JCP2014/Ta-example-nodump.in", "--overwrite"]
         self.args = parser.parse_args(arguments_lst)
 
     def parse_config(self):
-
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
         if not Path(self.args.infile).is_file():

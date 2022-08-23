@@ -1,6 +1,7 @@
 """
 Python script demonstrating a function that takes in an ASE object for a single configuration of
-atoms, and then calls FitSNAP on that configuration to calculate fitting data.
+atoms, and then calls FitSNAP on that configuration to calculate fitting data. We then loop over
+separate configurations of atoms to extract the fitting data.
 
 We supply a FitSNAP input script which has settings for bispectrum components, reference potential,
 and other settings used for fitting.
@@ -23,7 +24,7 @@ from ase.io import read,write
 from ase.io import extxyz
 import itertools
 
-def calc_fitting_data(atoms):
+def calc_fitting_data(atoms, pt):
     """
     Function to calculate fitting data from FitSNAP.
     Input: ASE atoms object for a single configuration of atoms.
@@ -87,8 +88,7 @@ comm = MPI.COMM_WORLD
 # import parallel tools and create pt object
 
 from fitsnap3lib.parallel_tools import ParallelTools
-#pt = ParallelTools(comm=comm)
-pt = ParallelTools()
+pt = ParallelTools(comm=comm)
 
 # config class reads the input settings
 
@@ -102,10 +102,8 @@ snap = FitSnap()
 
 # tell ParallelTool not to create SharedArrays, optional depending on your usage of MPI during fits.
 #pt.create_shared_bool = False
-
 # tell ParallelTools not to check for existing fitsnap objects
-
-pt.check_fitsnap_exist = False
+#pt.check_fitsnap_exist = False
 
 # tell FitSNAP not to delete the data object after processing configs
 
@@ -114,10 +112,26 @@ snap.delete_data = False
 # read configs and make a single ASE atoms object 
 
 frames = ase.io.read("Displaced_BCC.xyz", ":")
-atoms = frames[0]
+#atoms = frames[0]
 
 # calculate fitting data using this ASE atoms object
 
-fitting_data = calc_fitting_data(atoms)
-print(fitting_data)
+del snap
+del config
+del pt
+
+for atoms in frames:
+
+    pt = ParallelTools(comm=comm)
+    config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
+    snap = FitSnap()
+    
+    fitting_data = calc_fitting_data(atoms, pt)
+    print(fitting_data)
+
+    del snap    
+    del config
+    del pt
+
+
 

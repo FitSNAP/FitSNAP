@@ -39,6 +39,7 @@ class OPT(Solver):
         param_ini = np.random.randn(aw.shape[1], )
         res = minimize(distance, param_ini, args=(aw, bw), method='BFGS', options={'gtol': 1e-13}, jac=distance_grad)
         self.fit = res.x
+        np.save('mean.npy', self.fit)
 
     def _dump_a(self):
         np.savez_compressed('a.npz', a=pt.shared_arrays['a'].array)

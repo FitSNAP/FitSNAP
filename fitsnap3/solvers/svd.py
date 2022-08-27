@@ -24,6 +24,8 @@ class SVD(Solver):
             else:
                 print("The Matrix is ill-conditioned for the transpose trick")
         self.fit, residues, rank, s = lstsq(aw, bw, 1.0e-13)
+        np.save('mean.npy', self.fit)
+
 
     @staticmethod
     def _dump_a():

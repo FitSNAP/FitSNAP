@@ -51,6 +51,7 @@ class ANL(Solver):
         self.fit_sam = np.random.multivariate_normal(self.fit, self.cov, size=(nsam,))
         # self.fit_sam = self.fit + np.sqrt(np.diag(self.cov))*np.random.randn(nsam,nbas)
         np.save('covariance.npy', self.cov)
+        np.save('mean.npy', self.fit)
 
 
     @staticmethod

@@ -113,6 +113,7 @@ class MCMC(Solver):
         self.fit_sam = samples[nmcmc//2:nmcmc:nevery, :][-nsam:, :]
         np.savetxt('chn.txt', samples)
         np.savetxt('chn_sam.txt', self.fit_sam)
+        np.save('mean.npy', self.fit)
 
 
     def _dump_a(self):

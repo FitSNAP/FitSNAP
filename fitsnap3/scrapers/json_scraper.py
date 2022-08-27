@@ -22,7 +22,8 @@ class Json(Scraper):
         self.conversions = copy(self.default_conversions)
         for i, file_name in enumerate(self.files):
             with open(file_name) as file:
-                file.readline()
+                if file.readline()[0]=="{":
+                    file.seek(0)
                 try:
                     self.data = loads(file.read(), parse_constant=True)
                 except Exception as e:

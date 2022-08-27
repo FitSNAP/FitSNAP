@@ -19,6 +19,7 @@ class Solver:
         self.a = None
         self.b = None
         self.w = None
+
         self.df = None
         self.linear = linear
         self.cov = None
@@ -57,6 +58,7 @@ class Solver:
 
             else:
                 self.fit_sam = np.insert(self.fit_sam, 0, 0, axis=1)
+
 
 
     def _checks(self):
@@ -133,26 +135,10 @@ class Solver:
         #         # self._errors(this_config, "Stress", indices)
         pass
 
+
     def _errors(self, group, rtype, indices):
         this_true, this_pred = self.df['truths'][indices], self.df['preds'][indices]
         this_a = self.df.iloc[:, 0:pt.shared_arrays['a'].array.shape[1]].loc[indices].to_numpy()
-        if self.fit_sam is not None:  ## should be correctly updated for current internal data format
-            if self.cov is None:
-                pf_std = np.std(self.fit_sam @ this_a.T, axis=0)
-            else:
-                # need to see which method is faster, both give the same results within numerical errors
-                # Method 1
-                chol = np.linalg.cholesky(self.cov)
-                mat = this_a @ chol
-                pf_std = np.linalg.norm(mat, axis=1)
-                # Method 2
-                # tmp = np.dot(a_err, self.cov)
-                # pf_std = np.empty(a_err.shape[0])
-                # for ipt in range(a_err.shape[0]):
-                #     pf_std[ipt] = np.sqrt(np.dot(tmp[ipt, :], a_err[ipt, :]))
-                # print(np.linalg.norm(pf_std-pf_std0), np.linalg.norm(pf_std0), np.linalg.norm(pf_std))
-        else:
-            pf_std = np.zeros(this_a.shape[0])
         if self.weighted == 'Weighted':
             w = pt.shared_arrays['w'].array[indices]
             this_true, this_pred = w * this_true, w * this_pred
@@ -180,13 +166,31 @@ class Solver:
         self.errors.append(error_record)
 
         if config.sections["EXTRAS"].plot > 0:
+            if self.fit_sam is not None:  ## should be correctly updated for current internal data format
+                if self.cov is None:
+                    pf_std = np.std(self.fit_sam @ this_a.T, axis=0)
+                else:
+                    # need to see which method is faster, both give the same results within numerical errors
+                    # Method 1
+                    chol = np.linalg.cholesky(self.cov)   #TODO: update for robustness - get an error when cov was backfilled with 0s (multi-element with different 2J max values)
+                    mat = this_a @ chol
+                    pf_std = np.linalg.norm(mat, axis=1)
+                    # Method 2
+                    # tmp = np.dot(this_a, self.cov)
+                    # pf_std = np.empty(this_a.shape[0])
+                    # for ipt in range(this_a.shape[0]):
+                        # pf_std[ipt] = np.sqrt(np.dot(tmp[ipt, :], this_a[ipt, :]))
+                    # print(np.linalg.norm(pf_std-pf_std0), np.linalg.norm(pf_std0), np.linalg.norm(pf_std))
+            else:
+                pf_std = np.zeros(this_a.shape[0])
+            
             import matplotlib as mpl
             import matplotlib.pyplot as plt
             import logging
             logging.getLogger('matplotlib').setLevel(logging.ERROR)
             mpl.rc('axes', linewidth=2, grid=True, labelsize=16)
             mpl.rc('figure', max_open_warning=500)
-            
+
             plt.figure(figsize=(8,8))
 
             if config.sections["EXTRAS"].plot == 1:

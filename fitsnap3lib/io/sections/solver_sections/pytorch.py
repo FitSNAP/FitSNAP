@@ -1,9 +1,9 @@
 from fitsnap3lib.io.sections.sections import Section
 
-
 try:
     import torch
-    from fitsnap3lib.lib.neural_networks.pytorch import create_torch_network
+    from fitsnap3lib.lib.neural_networks.pytorch import create_torch_network    
+    from torch.nn import Parameter
 
 
     class PYTORCH(Section):
@@ -32,6 +32,25 @@ try:
             self.save_state_input = self.check_path(self.get_value("PYTORCH", "save_state_input", None))
             self.output_file = self.check_path(self.get_value("PYTORCH", "output_file", "FitTorch_Pytorch.pt"))
             self.network_architecture = create_torch_network(self.layer_sizes)
+            self.network_architecture2 = create_torch_network(self.layer_sizes)
+            
+            for name, param in self.network_architecture.named_parameters():   
+                print(f"{name} {param}")   
+
+           
+            # manually set weights for testing purposes
+            """ 
+            with torch.no_grad():
+                self.network_architecture[0].weight = Parameter(0.02*torch.ones_like(self.network_architecture[0].weight))
+                self.network_architecture[0].bias = Parameter(0.02*torch.ones_like(self.network_architecture[0].bias))
+                self.network_architecture[1].weight = Parameter(0.03*torch.ones_like(self.network_architecture[1].weight))
+                self.network_architecture[1].bias = Parameter(0.03*torch.ones_like(self.network_architecture[1].bias))
+
+                self.network_architecture[3].weight = Parameter(0.04*torch.ones_like(self.network_architecture[3].weight))
+                self.network_architecture[3].bias = Parameter(0.04*torch.ones_like(self.network_architecture[3].bias))
+                 
+            """
+
             self.delete()
 
 except ModuleNotFoundError:

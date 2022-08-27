@@ -63,6 +63,15 @@ class FitTorch(torch.nn.Module):
         if (force_weight==0.0):
             self.force_bool = False
 
+    def evaluate_per_atom(self, x, types):
+
+        per_atom_energies = torch.empty((x.size()[0], 1))
+        for indx, descriptors in enumerate(x):
+            per_atom_energies[indx] = self.network_architecture(descriptors)
+
+        return per_atom_energies
+         
+
     def forward(self, x, xd, indices, atoms_per_structure, xd_indx, unique_j, device):
         """
         Saves lammps ready pytorch model.
@@ -79,12 +88,34 @@ class FitTorch(torch.nn.Module):
 
         """
 
+        types = torch.ones(x.size()[0])
+
+       
+        # this is ~3x slower 
+        #"""
+        per_atom_energies = torch.empty((x.size()[0], 1))
+        for indx, descriptors in enumerate(x):
+            per_atom_energies[indx] = self.network_architecture(descriptors)
+        #"""
+       
+        """ 
+        per_atom_energies = []
+        for indx, descriptors in enumerate(x):
+            per_atom_energies.append(self.network_architecture(descriptors))
+        per_atom_energies = torch.stack(per_atom_energies)
+        """
+        
+        # this is what we did originally, for one atom type
+        #per_atom_energies = self.network_architecture(x)
+        
+
         # calculate energies
 
         if (self.energy_bool):
             predicted_energy_total = torch.zeros(atoms_per_structure.size()).to(device)
-            #print(predicted_energy_total.device)
-            predicted_energy_total.index_add_(0, indices, self.network_architecture(x).squeeze())
+            # old way:
+            #predicted_energy_total.index_add_(0, indices, self.network_architecture(x).squeeze())
+            predicted_energy_total.index_add_(0, indices, per_atom_energies.squeeze())
         else:
             predicted_energy_total = None
 
@@ -114,7 +145,9 @@ class FitTorch(torch.nn.Module):
             neigh_indices_y = xd_indx[y_indices_bool,0] 
             neigh_indices_z = xd_indx[z_indices_bool,0]
 
-            dEdD = torch.autograd.grad(self.network_architecture(x), x, grad_outputs=torch.ones_like(self.network_architecture(x)), create_graph=True)[0]
+            # old way:
+            #dEdD = torch.autograd.grad(self.network_architecture(x), x, grad_outputs=torch.ones_like(self.network_architecture(x)), create_graph=True)[0]
+            dEdD = torch.autograd.grad(per_atom_energies, x, grad_outputs=torch.ones_like(per_atom_energies), create_graph=True)[0]
 
             # extract proper dE/dD values to align with neighbors i of atoms j
 

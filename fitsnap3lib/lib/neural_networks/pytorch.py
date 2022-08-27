@@ -88,15 +88,15 @@ class FitTorch(torch.nn.Module):
 
         """
 
-        types = torch.ones(x.size()[0])
+        types = torch.zeros(x.size()[0], dtype=torch.int64)
 
        
         # this is ~3x slower 
-        #"""
+        """
         per_atom_energies = torch.empty((x.size()[0], 1))
         for indx, descriptors in enumerate(x):
             per_atom_energies[indx] = self.network_architecture(descriptors)
-        #"""
+        """
        
         """ 
         per_atom_energies = []
@@ -107,6 +107,23 @@ class FitTorch(torch.nn.Module):
         
         # this is what we did originally, for one atom type
         #per_atom_energies = self.network_architecture(x)
+
+        #per_atom_energies_1 = self.network_architecture(x)
+        #per_atom_energies_2 = self.network_architecture(x)
+    
+        #energies_list = [self.network_architecture(x), self.network_architecture(x)]
+        # faster version of the 3x slower method
+        atom_indices = torch.arange(x.size()[0])
+        #x_stacked = torch.stack((x,x))
+        per_atom_energies_1 = self.network_architecture(x)
+        per_atom_energies_2 = self.network_architecture(x)
+        per_atom_stacked = torch.stack((per_atom_energies_1, per_atom_energies_2))
+        #per_atom_stacked = self.network_architecture(x_stacked)
+        #print(per_atom_stacked.size())
+        per_atom_energies = per_atom_stacked[types,atom_indices]
+        #print(per_atom_stacked.size())
+
+        
         
 
         # calculate energies

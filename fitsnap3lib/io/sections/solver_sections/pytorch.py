@@ -39,7 +39,7 @@ try:
 
            
             # manually set weights for testing purposes
-            """ 
+            
             with torch.no_grad():
                 self.network_architecture[0].weight = Parameter(0.02*torch.ones_like(self.network_architecture[0].weight))
                 self.network_architecture[0].bias = Parameter(0.02*torch.ones_like(self.network_architecture[0].bias))
@@ -49,7 +49,7 @@ try:
                 self.network_architecture[3].weight = Parameter(0.04*torch.ones_like(self.network_architecture[3].weight))
                 self.network_architecture[3].bias = Parameter(0.04*torch.ones_like(self.network_architecture[3].bias))
                  
-            """
+            
 
             self.delete()
 

@@ -76,12 +76,25 @@ try:
             self.energy_weight = self.config.sections['PYTORCH'].energy_weight
             self.force_weight = self.config.sections['PYTORCH'].force_weight
             self.training_fraction = self.config.sections['PYTORCH'].training_fraction
+            self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
 
             self.optimizer = None
+            """
             self.model = FitTorch(self.config.sections["PYTORCH"].network_architecture,
                                   self.config.sections["CALCULATOR"].num_desc,
                                   self.energy_weight,
-                                  self.force_weight)
+                                  self.force_weight,
+                                  1,
+                                  self.multi_element_option)
+            """
+            #"""
+            self.model = FitTorch(self.config.sections["PYTORCH"].networks,
+                                  self.config.sections["CALCULATOR"].num_desc,
+                                  self.energy_weight,
+                                  self.force_weight,
+                                  1,
+                                  self.multi_element_option)
+            #"""
             self.loss_function = torch.nn.MSELoss()
             self.learning_rate = self.config.sections["PYTORCH"].learning_rate
             if self.config.sections['PYTORCH'].save_state_input is not None:
@@ -93,7 +106,14 @@ try:
                     self.model.load_state_dict(save_state_dict["model_state_dict"])
                     self.optimizer.load_state_dict(save_state_dict["optimizer_state_dict"])
             if self.optimizer is None:
-                self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+                print("-----!!!!!")
+                print(self.model.parameters())      
+                test = [{'params': self.model.parameters()}]
+                #test = [{'params': self.model.network_architecture[0].parameters()},
+                #        {'params': self.model.network_architecture[1].parameters()}]
+                #test = [{'params': self.model.network_architecture[0].parameters()}]
+                #self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+                self.optimizer = torch.optim.Adam(test, lr=self.learning_rate)
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
                                                                         mode='min',
                                                                         factor=0.5,
@@ -168,10 +188,15 @@ try:
                 if self.config.sections['PYTORCH'].save_state_input is None:
 
                     # standardization
+                    # need to perform on all networks in the model
 
                     inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
                     mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
+                    #state_dict = self.model.state_dict()
+                    #state_dict = self.model.network_architecture.state_dict()
+                    #print(f"----- state_dict: {state_dict}")
                     state_dict = self.model.state_dict()
+                    #print(f"----- state_dict: {state_dict}")
                     keys = [*state_dict.keys()][:2]
                     state_dict[keys[0]] = torch.tensor(inv_std)*torch.eye(len(inv_std))
                     state_dict[keys[1]] = torch.tensor(mean_inv_std)

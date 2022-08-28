@@ -12,7 +12,7 @@ try:
             super().__init__(name, config, args)
             self.allowedkeys = ['layer_sizes', 'learning_rate', 'num_epochs', 'batch_size', 'save_state_output',
                                 'save_freq', 'save_state_input', 'output_file', 'energy_weight', 'force_weight',
-                                'training_fraction']
+                                'training_fraction', 'multi_element_option', 'num_elements']
             self._check_section()
 
             self._check_if_used("SOLVER", "solver", "SVD")
@@ -28,18 +28,30 @@ try:
             self.energy_weight = self.get_value("PYTORCH", "energy_weight", "1e-4", "float")
             self.force_weight = self.get_value("PYTORCH", "force_weight", "1.0", "float")
             self.training_fraction = self.get_value("PYTORCH", "training_fraction", "0.8", "float")
+            self.multi_element_option = self.get_value("PYTORCH", "multi_element_option", "1", "int")
+            self.num_elements = self.get_value("PYTORCH", "num_elements", "1", "int")
+
             self.save_state_output = self.check_path(self.get_value("PYTORCH", "save_state_output", "FitTorchModel"))
             self.save_state_input = self.check_path(self.get_value("PYTORCH", "save_state_input", None))
             self.output_file = self.check_path(self.get_value("PYTORCH", "output_file", "FitTorch_Pytorch.pt"))
-            self.network_architecture = create_torch_network(self.layer_sizes)
-            self.network_architecture2 = create_torch_network(self.layer_sizes)
+
+            #self.network_architecture = create_torch_network(self.layer_sizes)
+            #self.network_architecture2 = create_torch_network(self.layer_sizes)
+
+            self.networks = []
+            if (self.multi_element_option==1):
+                self.network_architecture = create_torch_network(self.layer_sizes)
+                self.networks.append(self.network_architecture)
+            elif (self.multi_element_option==2):
+                for t in range(self.num_elements):
+                    self.networks.append(create_torch_network(self.layer_sizes))
             
-            for name, param in self.network_architecture.named_parameters():   
-                print(f"{name} {param}")   
+            #for name, param in self.network_architecture.named_parameters():   
+            #    print(f"{name} {param}")   
 
            
             # manually set weights for testing purposes
-            
+            """ 
             with torch.no_grad():
                 self.network_architecture[0].weight = Parameter(0.02*torch.ones_like(self.network_architecture[0].weight))
                 self.network_architecture[0].bias = Parameter(0.02*torch.ones_like(self.network_architecture[0].bias))
@@ -48,6 +60,16 @@ try:
 
                 self.network_architecture[3].weight = Parameter(0.04*torch.ones_like(self.network_architecture[3].weight))
                 self.network_architecture[3].bias = Parameter(0.04*torch.ones_like(self.network_architecture[3].bias))
+            """
+
+            with torch.no_grad():
+                self.networks[0][0].weight = Parameter(0.02*torch.ones_like(self.networks[0][0].weight))
+                self.networks[0][0].bias = Parameter(0.02*torch.ones_like(self.networks[0][0].bias))
+                self.networks[0][1].weight = Parameter(0.03*torch.ones_like(self.networks[0][1].weight))
+                self.networks[0][1].bias = Parameter(0.03*torch.ones_like(self.networks[0][1].bias))
+
+                self.networks[0][3].weight = Parameter(0.04*torch.ones_like(self.networks[0][3].weight))
+                self.networks[0][3].bias = Parameter(0.04*torch.ones_like(self.networks[0][3].bias))
                  
             
 

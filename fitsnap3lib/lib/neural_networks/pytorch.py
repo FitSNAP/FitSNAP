@@ -20,6 +20,8 @@ def create_torch_network(layer_sizes):
             Network Architecture of type neural network sequential
 
     """
+
+    #torch.manual_seed(0)
     layers = []
     try:
         layers.append(torch.nn.Linear(layer_sizes[0], layer_sizes[0]))

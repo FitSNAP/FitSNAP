@@ -12,7 +12,7 @@ try:
             super().__init__(name, config, args)
             self.allowedkeys = ['layer_sizes', 'learning_rate', 'num_epochs', 'batch_size', 'save_state_output',
                                 'save_freq', 'save_state_input', 'output_file', 'energy_weight', 'force_weight',
-                                'training_fraction', 'multi_element_option', 'num_elements']
+                                'training_fraction', 'multi_element_option', 'num_elements', 'manual_seed_flag']
             self._check_section()
 
             self._check_if_used("SOLVER", "solver", "SVD")
@@ -30,6 +30,7 @@ try:
             self.training_fraction = self.get_value("PYTORCH", "training_fraction", "0.8", "float")
             self.multi_element_option = self.get_value("PYTORCH", "multi_element_option", "1", "int")
             self.num_elements = self.get_value("PYTORCH", "num_elements", "1", "int")
+            self.manual_seed_flag = self.get_value("PYTORCH", "manual_seed_flag", "False", "bool")
 
             self.save_state_output = self.check_path(self.get_value("PYTORCH", "save_state_output", "FitTorchModel"))
             self.save_state_input = self.check_path(self.get_value("PYTORCH", "save_state_input", None))
@@ -38,10 +39,14 @@ try:
             #self.network_architecture = create_torch_network(self.layer_sizes)
             #self.network_architecture2 = create_torch_network(self.layer_sizes)
 
+            if (self.manual_seed_flag):
+                torch.manual_seed(0)
+
             self.networks = []
             if (self.multi_element_option==1):
                 #self.network_architecture = create_torch_network(self.layer_sizes)
-                self.networks.append(self.network_architecture)
+                #self.networks.append(self.network_architecture)
+                self.networks.append(create_torch_network(self.layer_sizes))
             elif (self.multi_element_option==2):
                 for t in range(self.num_elements):
                     self.networks.append(create_torch_network(self.layer_sizes))

@@ -16,7 +16,7 @@ try:
     
     # manually set seed for debugging purposes
 
-    torch.manual_seed(0)
+    #torch.manual_seed(0)
 
 
     class PYTORCH(Solver):
@@ -202,6 +202,23 @@ try:
                     #print(f"----- state_dict: {state_dict}")
                     state_dict = self.model.state_dict()
                     #print(f"----- state_dict: {state_dict}")
+                    # look for the first layer for all types of networks, these are keys like
+                    # network_architecture0.0.weight and network_architecture0.0.bias
+                    # for the first network, and
+                    # network_architecture1.0.weight and network_architecture0.1.bias for the next,
+                    # and so forth
+
+                    ntypes = self.config.sections["PYTORCH"].num_elements
+                    keys = [*state_dict.keys()]
+                    for t in range(0,ntypes):
+                        first_layer_weight = "network_architecture"+str(t)+".0.weight"
+                        first_layer_bias = "network_architecture"+str(t)+".0.bias"
+                        #print(state_dict[first_layer_weight])
+                        state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
+                        state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
+
+
+                    """
                     # take the first two input keys, network0.0.weight and network0.0.bias
                     keys = [*state_dict.keys()][:2]
                     state_dict[keys[0]] = torch.tensor(inv_std)*torch.eye(len(inv_std))
@@ -214,6 +231,7 @@ try:
                     state_dict[keys[0]] = torch.tensor(inv_std)*torch.eye(len(inv_std))
                     #print(keys)
                     state_dict[keys[1]] = torch.tensor(mean_inv_std)
+                    """
 
                     # load the new state_dict with the standardized weights
                     

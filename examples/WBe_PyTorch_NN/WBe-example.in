@@ -29,7 +29,7 @@ Be = 0.0
 [PYTORCH]
 layer_sizes =  30 10 1 #num_desc 10 1
 learning_rate = 1e-4 
-num_epochs = 2 #300
+num_epochs = 1 #300
 batch_size = 4 # 363 configs in entire set
 save_state_output = WBe_Pytorch.pt
 energy_weight = 1e-4
@@ -37,6 +37,7 @@ force_weight = 1.0
 training_fraction = 0.7
 multi_element_option = 2
 num_elements = 2
+manual_seed_flag = 1
 
 [SOLVER]
 solver = PYTORCH

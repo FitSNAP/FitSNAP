@@ -57,10 +57,10 @@ class Ace(Section):
         if self.RPI_heuristic == 'lexicographic':
             ranked_chem_nus = [generate_nl(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax)) for ind,rnk in enumerate(self.ranks)]
         else:
-            ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax) ) for ind,rnk in enumerate(self.ranks)]
+            ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = 0 ) for ind,rnk in enumerate(self.ranks)]
         flatnus = [item for sublist in ranked_chem_nus for item in sublist]
         pt.single_print("Total ACE descriptors",len(flatnus))
-        pt.single_print("ACE descriptors",flatnus)
+        #pt.single_print("ACE descriptors",flatnus)
         byattyp = srt_by_attyp(flatnus)
 
         for atype in range(self.numtypes):
@@ -76,12 +76,14 @@ class Ace(Section):
                 self.blist.append([i] + flat_nu)
                 self.blank2J.append([prefac])
         self.ncoeff = int(len(self.blist)/self.numtypes)
+        pt.single_print('in compute: coeff, blank2j',self.ncoeff,len(self.blank2J),len(flatnus))
         if not self.bzeroflag:
             self.blank2J = np.reshape(self.blank2J, (self.numtypes, int(len(self.blist)/self.numtypes)))
             #self.blank2J = np.reshape(self.blank2J, (self.numtypes, self.ncoeff)))
             onehot_atoms = np.ones((self.numtypes, 1))
             self.blank2J = np.concatenate((onehot_atoms, self.blank2J), axis=1)
             self.blank2J = np.reshape(self.blank2J, (len(self.blist) + self.numtypes))
+            pt.single_print('new shape for blank2j',np.shape(self.blank2J))
         else:
             self.blank2J = np.reshape(self.blank2J, len(self.blist))
 
@@ -91,27 +93,24 @@ class Ace(Section):
             reference_ens = [float(e0) for e0 in self.erefs]
         elif not self.bzeroflag:
             reference_ens = [0.0] * len(self.types)
-        if not os.path.isfile('coupling_coefficients.yace'):
-            bondinds=range(len(self.types))
-            bonds = [b for b in itertools.product(bondinds,bondinds)]
-            bondstrs = ['[%d, %d]' % b for b in bonds]
-            pt.single_print("Bonds",bondstrs)
-            assert len(self.lmbda) == len(bondstrs), "must provide rc, lambda, for each BOND type" 
-            assert len(self.rcutfac) == len(bondstrs), "must provide rc, lambda, for each BOND type" 
-            if len(self.lmbda) == 1:
-                lmbdavals = self.lmbda
-                rcvals = self.rcutfac
-                rcinnervals = self.rcinner
-                drcinnervals = self.drcinner
-            if len(self.lmbda) > 1:
-                lmbdavals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.lmbda)}
-                rcvals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcutfac)}
-                rcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcinner)}
-                drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
+        bondinds=range(len(self.types))
+        bonds = [b for b in itertools.product(bondinds,bondinds)]
+        bondstrs = ['[%d, %d]' % b for b in bonds]
+        pt.single_print("Bonds",bondstrs)
+        assert len(self.lmbda) == len(bondstrs), "must provide rc, lambda, for each BOND type" 
+        assert len(self.rcutfac) == len(bondstrs), "must provide rc, lambda, for each BOND type" 
+        if len(self.lmbda) == 1:
+            lmbdavals = self.lmbda
+            rcvals = self.rcutfac
+            rcinnervals = self.rcinner
+            drcinnervals = self.drcinner
+        if len(self.lmbda) > 1:
+            lmbdavals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.lmbda)}
+            rcvals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcutfac)}
+            rcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcinner)}
+            drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
                 
 
-            apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, self.RPI_heuristic)
-            apot.write_pot('coupling_coefficients')
+        apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals,0, self.RPI_heuristic)
+        apot.write_pot('coupling_coefficients')
 
-        else:
-            pt.single_print('USING EXISTING coupling_coefficients.yace -this file will need to be deleted if potential parameters are changed in the FitSNAP infile!')

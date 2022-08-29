@@ -108,7 +108,10 @@ class LammpsPace(LammpsBase):
 
         # everything is handled by LAMMPS compute pace (same format as compute snap) with same dummy variables currently
 
-        base_pace = "compute snap all pace coupling_coefficients.yace"
+        if not config.sections['ACE'].bikflag:
+            base_pace = "compute snap all pace coupling_coefficients.yace 0 0"
+        elif config.sections['ACE'].bikflag:
+            base_pace = "compute snap all pace coupling_coefficients.yace 1 0"
         self._lmp.command(base_pace)
 
     def _collect_lammps(self):
@@ -141,9 +144,10 @@ class LammpsPace(LammpsBase):
         ncols_snap = ncols_bispectrum + ncols_reference
         index = self.shared_index
         dindex = self.distributed_index
-
+        pt.single_print('nrows,ncols',nrows_snap,ncols_snap)
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
-
+        pt.single_print('nrows,ncols',nrows_snap,ncols_snap, np.shape(lmp_snap))
+        pt.single_print(lmp_snap)
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
             raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
                                                                                   self._data["Group"]))
@@ -163,6 +167,7 @@ class LammpsPace(LammpsBase):
             EPS = 1.0e-10
             b000sum0 = 0.0
             nstride = n_coeff
+            pt.single_print(nstride,np.shape(b_sum_temp))
             b000sum = sum(b_sum_temp[::nstride])
             if not config.sections['ACE'].bikflag:
                 if not config.sections["ACE"].bzeroflag:
@@ -176,8 +181,9 @@ class LammpsPace(LammpsBase):
                     onehot_atoms[config.sections["ACE"].type_mapping[atom]-1] += 1
                 onehot_atoms /= len(self._data["AtomTypes"])
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
-                b_sum_temp.shape = (num_types * (n_coeff + num_types))
-
+                #b_sum_temp.shape = (num_types * (n_coeff + num_types))
+                b_sum_temp.shape = (num_types * n_coeff + num_types)
+            pt.single_print('bsum shape',np.shape(b_sum_temp.shape))
             pt.shared_arrays['a'].array[index] = b_sum_temp * config.sections["ACE"].blank2J
             ref_energy = lmp_snap[irow, icolref]
             pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms

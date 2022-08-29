@@ -13,11 +13,6 @@ try:
     from fitsnap3lib.lib.neural_networks.pytorch import FitTorch
     from fitsnap3lib.tools.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
     import torch
-    
-    # manually set seed for debugging purposes
-
-    #torch.manual_seed(0)
-
 
     class PYTORCH(Solver):
         """

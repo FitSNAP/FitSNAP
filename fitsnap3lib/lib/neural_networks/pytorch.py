@@ -34,8 +34,7 @@ def create_torch_network(layer_sizes):
 
 class FitTorch(torch.nn.Module):
     """
-    FitSNAP PyTorch Neural Network Architecture Model
-    Currently only fits on energies
+    FitSNAP PyTorch network model.  
     """
 
     def __init__(self, networks, descriptor_count, energy_weight, force_weight, n_elements=1, multi_element_option=1):
@@ -56,61 +55,21 @@ class FitTorch(torch.nn.Module):
         super().__init__()
         #print(self.state_dict())
 
-        # pytorch does a nifty thing here where each attribute here makes a unique key in state_dict
-        # THE FOLLOWING WORKS
-        #self.network_architecture = networks[0]
-        #self.network_architecture2 = networks[1]
-        #setattr(self, "network_architecture", networks[0])
-        #setattr(self, "network_architecture2", networks[1])
+        # pytorch does a nifty thing where each attribute here makes a unique key in state_dict
         # we therefore need to make a unique instance attribute for each network
+        # by doing this, self.state_dict() gets automatically populated by pytorch internals
+
         for indx, model in enumerate(networks):
             setattr(self, "network_architecture"+str(indx), networks[indx])
 
         self.networks = networks
-        # try to populate the state dict manually
-        """
-        print(network_architecture[0].state_dict()['1.bias'])
-        print(network_architecture[0].state_dict().keys())
-        #for name, param in self.network_architecture.named_parameters():   
-        #    print(f"{name} {param}") 
-        #print(network_architecture[0].state_dict()) 
-        print("Input network's state_dict:")
-        for key, value in network_architecture[0].state_dict().items():
-            #print(param_tensor, "\t", network_architecture[0].state_dict()[param_tensor].size()) 
-            print(f"{key} {value}") 
-        """
-
-        """ 
-        for key in self.network_architecture[0].state_dict():
-            print(f"----- {key}")
-            print(self.network_architecture[0].state_dict()[".1."+key])
-        """
-
-        # adding a single network's state:
-        # this doesn't work because load_state_dict says unexpected keys
-        """
-        state = {f"network_architecture.{k}": v for k, v in network_architecture[0].state_dict().items()} 
-        print(state)
-        """
-        #self.load_state_dict(state)
-        #self.state_dict() = state
- 
-        #self.networks = network_architecture
-        #self.load_state_dict(network_architecture[0].state_dict())
 
         # now self.state_dict is populated with the attributes declared above
         
-        #self
-        
-        print("Model's state_dict:")
-        for param_tensor in self.state_dict():
-            print(param_tensor, "\t", self.state_dict()[param_tensor].size())   
+        #print("Model's state_dict:")
+        #for param_tensor in self.state_dict():
+        #    print(param_tensor, "\t", self.state_dict()[param_tensor].size())   
          
-        #self.state_dict
-        #self.state_dict = self.load_state_dict(self.network_architecture)
-        #print(self.network_architecture.state_dict())
-        #self.state_dict = self.network_architecture.state_dict()
-        #print(self.load_state_dict)
         self.desc_len = descriptor_count
         self.n_elem = n_elements
         self.multi_element_option = multi_element_option
@@ -135,71 +94,53 @@ class FitTorch(torch.nn.Module):
 
     def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, device):
         """
-        Saves lammps ready pytorch model.
+        Forward pass through the PyTorch network model, calculating both energies and forces.
 
-            Parameters:
-                x (tensor of floats): Array of descriptors
-                xd (tensor of floats): Array of descriptor derivatives dDi/dRj
-                indices (tensor of ints): Array of indices upon which to contract per atom energies
-                atoms_per_structure (tensor of ints): Number of atoms per configuration
-                types(tensor of ints): Atom types starting from 0
-                xd_indx (tensor of int64, long ints): array of indices corresponding to descriptor derivatives
-                unique_j (tensor of int64, long ints): array of indices corresponding to unique atoms j in all batches of configs.
-                                                       all forces in this batch will be contracted over these indices.
-                device: pytorch accelerator device object
+        Attributes
+        ----------
 
-        """
+        x: torch.Tensor.float
+            Array of descriptors for this batch
 
-        #types = torch.zeros(x.size()[0], dtype=torch.int64)
-        #types[-1] = 1
-        #print(types)
+        xd: torch.Tensor.float
+            Array of descriptor derivatives dDi/dRj for this batch
 
+        indices: torch.Tensor.long
+            Array of indices upon which to contract per atom energies, for this batch
 
-        # build per atom energies for this batch based on multi element option
-       
-        # this is ~3x slower 
-        """
-        per_atom_energies = torch.empty((x.size()[0], 1))
-        for indx, descriptors in enumerate(x):
-            per_atom_energies[indx] = self.network_architecture(descriptors)
-        """
-       
-        """ 
-        per_atom_energies = []
-        for indx, descriptors in enumerate(x):
-            per_atom_energies.append(self.network_architecture(descriptors))
-        per_atom_energies = torch.stack(per_atom_energies)
+        atoms_per_structure: torch.Tensor.long
+            Number of atoms per configuration for this batch
+
+        types: torch.Tensor.long
+            Atom types starting from 0, for this batch
+
+        xd_indx: torch.Tensor.long 
+            Array of indices corresponding to descriptor derivatives, for this batch
+
+        unique_j: torch.Tensor.long 
+            Array of indices corresponding to unique atoms j in all batches of configs.
+            All forces in this batch will be contracted over these indices.
+        
+        device: pytorch accelerator device object
+
         """
         
-        # this is what we did originally, for one atom type
+
         if (self.multi_element_option==1):
             #per_atom_energies = self.network_architecture[0](x)
             per_atom_energies = self.network_architecture0(x)
-
-        #per_atom_energies_1 = self.network_architecture(x)
-        #per_atom_energies_2 = self.network_architecture(x)
-    
-        #energies_list = [self.network_architecture(x), self.network_architecture(x)]
-        # faster version of the 3x slower method
+   
         elif (self.multi_element_option==2):
             atom_indices = torch.arange(x.size()[0])
-            #x_stacked = torch.stack((x,x))
             # this kind of scares me... maybe we should use getattr instead:
             # because self.networks[0] and self.network_architecture0 are different states? 
             # e.g network = getattr(self, "network_architecture0") might be safer
-            #print(f"{self.networks[0]} {self.network_architecture0}")
             per_atom_energies_1 = self.networks[0](x)
             per_atom_energies_2 = self.networks[1](x)
             #per_atom_energies_1 = self.network_architecture0(x)
             #per_atom_energies_2 = self.network_architecture0(x)
             per_atom_stacked = torch.stack((per_atom_energies_1, per_atom_energies_2))
-            #per_atom_stacked = self.network_architecture(x_stacked)
-            #print(per_atom_stacked.size())
             per_atom_energies = per_atom_stacked[types,atom_indices]
-            #print(per_atom_stacked.size())
-
-        
-        
 
         # calculate energies
 

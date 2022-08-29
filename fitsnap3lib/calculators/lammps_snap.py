@@ -186,7 +186,7 @@ class LammpsSnap(LammpsBase):
 
         # populate the truth array 'b'
 
-        self.pt.shared_arrays['b'].array[index_b] = energy - ref_energy
+        self.pt.shared_arrays['b'].array[index_b] = (energy - ref_energy)/num_atoms
         index_b += 1
 
         # populate the truth array 'c'

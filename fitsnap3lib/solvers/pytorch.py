@@ -230,7 +230,7 @@ try:
                     print(f"----- epoch: {epoch}")
                     start = time()
 
-                    # loop over training set
+                    # loop over training data
 
                     train_losses_step = []
                     loss = None
@@ -247,6 +247,7 @@ try:
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
                         (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
+                        energies = torch.div(energies,num_atoms)
 
                         if (self.energy_weight != 0):
                             energies = energies.to(self.device)
@@ -293,6 +294,8 @@ try:
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
                         (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
+                        energies = torch.div(energies,num_atoms)
+
                         if (self.energy_weight != 0):
                             energies = energies.to(self.device)
                         if (self.force_weight != 0):

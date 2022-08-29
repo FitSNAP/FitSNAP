@@ -74,22 +74,12 @@ try:
             self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
 
             self.optimizer = None
-            """
-            self.model = FitTorch(self.config.sections["PYTORCH"].network_architecture,
-                                  self.config.sections["CALCULATOR"].num_desc,
-                                  self.energy_weight,
-                                  self.force_weight,
-                                  1,
-                                  self.multi_element_option)
-            """
-            #"""
             self.model = FitTorch(self.config.sections["PYTORCH"].networks,
                                   self.config.sections["CALCULATOR"].num_desc,
                                   self.energy_weight,
                                   self.force_weight,
                                   1,
                                   self.multi_element_option)
-            #"""
             self.loss_function = torch.nn.MSELoss()
             self.learning_rate = self.config.sections["PYTORCH"].learning_rate
             if self.config.sections['PYTORCH'].save_state_input is not None:
@@ -101,14 +91,8 @@ try:
                     self.model.load_state_dict(save_state_dict["model_state_dict"])
                     self.optimizer.load_state_dict(save_state_dict["optimizer_state_dict"])
             if self.optimizer is None:
-                print("-----!!!!!")
-                print(self.model.parameters())      
-                test = [{'params': self.model.parameters()}]
-                #test = [{'params': self.model.network_architecture[0].parameters()},
-                #        {'params': self.model.network_architecture[1].parameters()}]
-                #test = [{'params': self.model.network_architecture[0].parameters()}]
-                #self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
-                self.optimizer = torch.optim.Adam(test, lr=self.learning_rate)
+                parameter_list = [{'params': self.model.parameters()}]
+                self.optimizer = torch.optim.Adam(parameter_list, lr=self.learning_rate)
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
                                                                         mode='min',
                                                                         factor=0.5,
@@ -135,7 +119,7 @@ try:
             #training = [not elem for elem in pt.fitsnap_dict['Testing']]
 
             # TODO: when only fitting to energy, we don't need all this extra data
-            print(self.pt.shared_arrays['t'].array)
+
             self.total_data = InRAMDatasetPyTorch(self.pt.shared_arrays['a'].array,
                                                   self.pt.shared_arrays['b'].array,
                                                   self.pt.shared_arrays['c'].array,
@@ -210,12 +194,12 @@ try:
 
                 train_losses_epochs = []
                 val_losses_epochs = []
-                # list for storing training energies and forces
+                # lists for storing training energies and forces
                 target_force_plot = []
                 model_force_plot = []
                 target_energy_plot = []
                 model_energy_plot = []
-                # list for storing validation energies and forces
+                # lists for storing validation energies and forces
                 target_force_plot_val = []
                 model_force_plot_val = []
                 target_energy_plot_val = []

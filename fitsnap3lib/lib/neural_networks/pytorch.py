@@ -34,23 +34,34 @@ def create_torch_network(layer_sizes):
 
 class FitTorch(torch.nn.Module):
     """
-    FitSNAP PyTorch network model.  
+    FitSNAP PyTorch network model. 
+
+    Attributes
+    ----------
+
+    networks : list
+        A list of nn.Sequential network architectures.
+        Each list element is a different network type.
+
+    descriptor_count: int
+        Length of descriptors for an atom
+
+    energy_weight: float
+        Weight of energy in loss function, used for determining if energy is fit or not
+
+    force_weight: float
+        Weight of force in loss function, used for determining if energy is fit or not
+
+    n_elements: int
+        Number of differentiable atoms types 
+
+    multi_element_option: int
+        Option for which multi-element network model to use
     """
 
     def __init__(self, networks, descriptor_count, energy_weight, force_weight, n_elements=1, multi_element_option=1):
         """
-        Saves lammps ready pytorch model.
-
-            Parameters:
-                network_architecture : A nn.Sequential network architecture
-                descriptor_count (int): Length of descriptors for an atom
-                energy_weight (float): Weight of energy in loss function, used
-                                       for determining if energy is fit or not
-                force_weight (float): Weight of force in loss function, used
-                                      for determining if energy is fit or not
-                n_elements (int): Number of differentiable atoms types
-                multi_element_option (int): Option for which multi-element network model to use
-
+        Initializer.
         """
         super().__init__()
         #print(self.state_dict())

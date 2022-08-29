@@ -40,7 +40,7 @@ try:
 
             self.networks = []
             if (self.multi_element_option==1):
-                self.network_architecture = create_torch_network(self.layer_sizes)
+                #self.network_architecture = create_torch_network(self.layer_sizes)
                 self.networks.append(self.network_architecture)
             elif (self.multi_element_option==2):
                 for t in range(self.num_elements):
@@ -51,25 +51,16 @@ try:
 
            
             # manually set weights for testing purposes
-            """ 
-            with torch.no_grad():
-                self.network_architecture[0].weight = Parameter(0.02*torch.ones_like(self.network_architecture[0].weight))
-                self.network_architecture[0].bias = Parameter(0.02*torch.ones_like(self.network_architecture[0].bias))
-                self.network_architecture[1].weight = Parameter(0.03*torch.ones_like(self.network_architecture[1].weight))
-                self.network_architecture[1].bias = Parameter(0.03*torch.ones_like(self.network_architecture[1].bias))
-
-                self.network_architecture[3].weight = Parameter(0.04*torch.ones_like(self.network_architecture[3].weight))
-                self.network_architecture[3].bias = Parameter(0.04*torch.ones_like(self.network_architecture[3].bias))
             """
-
             with torch.no_grad():
                 self.networks[0][0].weight = Parameter(0.02*torch.ones_like(self.networks[0][0].weight))
                 self.networks[0][0].bias = Parameter(0.02*torch.ones_like(self.networks[0][0].bias))
                 self.networks[0][1].weight = Parameter(0.03*torch.ones_like(self.networks[0][1].weight))
                 self.networks[0][1].bias = Parameter(0.03*torch.ones_like(self.networks[0][1].bias))
-
+                # "layer" 2 is for the activation function, so we ignore.
                 self.networks[0][3].weight = Parameter(0.04*torch.ones_like(self.networks[0][3].weight))
                 self.networks[0][3].bias = Parameter(0.04*torch.ones_like(self.networks[0][3].bias))
+            """
                  
             
 

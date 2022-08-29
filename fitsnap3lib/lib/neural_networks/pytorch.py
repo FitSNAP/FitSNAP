@@ -100,11 +100,11 @@ class FitTorch(torch.nn.Module):
         # now self.state_dict is populated with the attributes declared above
         
         #self
-        """
+        
         print("Model's state_dict:")
         for param_tensor in self.state_dict():
             print(param_tensor, "\t", self.state_dict()[param_tensor].size())   
-        """     
+         
         #self.state_dict
         #self.state_dict = self.load_state_dict(self.network_architecture)
         #print(self.network_architecture.state_dict())
@@ -132,7 +132,7 @@ class FitTorch(torch.nn.Module):
         return per_atom_energies
          
 
-    def forward(self, x, xd, indices, atoms_per_structure, xd_indx, unique_j, device):
+    def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, device):
         """
         Saves lammps ready pytorch model.
 
@@ -141,6 +141,7 @@ class FitTorch(torch.nn.Module):
                 xd (tensor of floats): Array of descriptor derivatives dDi/dRj
                 indices (tensor of ints): Array of indices upon which to contract per atom energies
                 atoms_per_structure (tensor of ints): Number of atoms per configuration
+                types(tensor of ints): Atom types starting from 0
                 xd_indx (tensor of int64, long ints): array of indices corresponding to descriptor derivatives
                 unique_j (tensor of int64, long ints): array of indices corresponding to unique atoms j in all batches of configs.
                                                        all forces in this batch will be contracted over these indices.
@@ -148,7 +149,9 @@ class FitTorch(torch.nn.Module):
 
         """
 
-        types = torch.zeros(x.size()[0], dtype=torch.int64)
+        #types = torch.zeros(x.size()[0], dtype=torch.int64)
+        #types[-1] = 1
+        #print(types)
 
 
         # build per atom energies for this batch based on multi element option
@@ -183,7 +186,7 @@ class FitTorch(torch.nn.Module):
             # this kind of scares me... maybe we should use getattr instead:
             # because self.networks[0] and self.network_architecture0 are different states? 
             # e.g network = getattr(self, "network_architecture0") might be safer
-            print(f"{self.networks[0]} {self.network_architecture0}")
+            #print(f"{self.networks[0]} {self.network_architecture0}")
             per_atom_energies_1 = self.networks[0](x)
             per_atom_energies_2 = self.networks[1](x)
             #per_atom_energies_1 = self.network_architecture0(x)

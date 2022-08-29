@@ -1,0 +1,78 @@
+[BISPECTRUM]
+numTypes = 2
+twojmax = 6 6 #8 8
+rcutfac = 4.812302818
+rfac0 = 0.99363
+rmin0 = 0.0
+wj = 1.0 0.9590493408
+radelem = 0.5 0.417932464
+type = W Be
+wselfallflag = 0
+chemflag = 0
+bzeroflag = 1
+quadraticflag = 0
+bikflag = 1
+dgradflag = 1
+
+[CALCULATOR]
+calculator = LAMMPSSNAP
+energy = 1
+per_atom_energy = 1
+force = 1
+stress = 0
+nonlinear = 1
+
+[ESHIFT]
+W = 0.0
+Be = 0.0
+
+[PYTORCH]
+layer_sizes =  30 10 1 #num_desc 10 1
+learning_rate = 1e-4 
+num_epochs = 2 #300
+batch_size = 4 # 363 configs in entire set
+save_state_output = WBe_Pytorch.pt
+energy_weight = 1e-4
+force_weight = 1.0
+training_fraction = 0.7
+multi_element_option = 2
+num_elements = 2
+
+[SOLVER]
+solver = PYTORCH
+compute_testerrs = 1
+detailed_errors = 1
+
+[SCRAPER]
+scraper = JSON
+
+[PATH]
+dataPath = JSON
+
+[OUTFILE]
+metrics = WBe_metrics.md
+potential = WBe_pot
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.8
+pair_coeff1 = * * zero
+pair_coeff2 = 1 1 zbl 74 74
+pair_coeff3 = 1 2 zbl 74 4
+pair_coeff4 = 2 2 zbl 4 4
+
+[GROUPS]
+group_sections = name training_size testing_size eweight fweight vweight
+group_types = str float float float float float
+smartweights = 0
+random_sampling = 0
+DFT_MD_300K              = 1.0 0.0 436.46713269739    25.9225848378898 1.0e-12
+
+[EXTRAS]
+dump_descriptors = 0
+dump_truth = 0
+dump_weights = 0
+
+[MEMORY]
+override = 0

@@ -606,6 +606,42 @@ class ParallelTools(metaclass=Singleton):
         self._bcast_fitsnap("sub_c_indices")
         self.fitsnap_dict["sub_c_indices"] = indices[self._sub_rank]
 
+    def new_slice_t(self):
+        """ create array to show which sub types matrix indices belong to which proc """
+        nof = len(self.shared_arrays["number_of_atoms"].array)
+        #print(f"----- nof: {nof} in parallel_tools.py")
+        if self._sub_rank != 0:
+            # wait for head proc on node to fill indices
+            self._bcast_fitsnap("sub_t_size")
+            self.fitsnap_dict["sub_t_size"] = int(self.fitsnap_dict["sub_t_size"][self._sub_rank])
+            self._bcast_fitsnap("sub_t_indices")
+            self.fitsnap_dict["sub_t_indices"] = self.fitsnap_dict["sub_t_indices"][self._sub_rank]
+            return
+        sub_t_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+
+        for i in range(nof):
+            proc_number = i % self._sub_size
+            if self.fitsnap_dict["energy"]:
+                descriptor_rows = 1
+                if self.fitsnap_dict["per_atom_energy"]:
+                    descriptor_rows = self.shared_arrays["number_of_atoms"].array[i]
+                sub_t_sizes[proc_number] += descriptor_rows
+
+        assert sum(sub_t_sizes) == len(self.shared_arrays['a'].array)
+        self.add_2_fitsnap("sub_t_size", sub_t_sizes)
+        self._bcast_fitsnap("sub_t_size")
+        self.fitsnap_dict["sub_t_size"] = sub_t_sizes[self._sub_rank]
+
+        count = 0
+        indices = np.zeros((self._sub_size, 2), dtype=np.int)
+        for i, value in enumerate(sub_t_sizes):
+            indices[i] = count, count+value-1
+            count += value
+        self.add_2_fitsnap("sub_t_indices", indices)
+        self._bcast_fitsnap("sub_t_indices")
+        self.fitsnap_dict["sub_t_indices"] = indices[self._sub_rank]
+
+
     def new_slice_dgrad(self):
         """ create array to show which sub dgrad matrix indices belong to which proc """
         nof = len(self.shared_arrays["number_of_atoms"].array)

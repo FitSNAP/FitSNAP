@@ -140,10 +140,11 @@ try:
             #training = [not elem for elem in pt.fitsnap_dict['Testing']]
 
             # TODO: when only fitting to energy, we don't need all this extra data
-
+            print(self.pt.shared_arrays['t'].array)
             self.total_data = InRAMDatasetPyTorch(self.pt.shared_arrays['a'].array,
                                                   self.pt.shared_arrays['b'].array,
                                                   self.pt.shared_arrays['c'].array,
+                                                  self.pt.shared_arrays['t'].array,
                                                   self.pt.shared_arrays['dgrad'].array,
                                                   self.pt.shared_arrays['number_of_atoms'].array,
                                                   self.pt.shared_arrays['dbdrindx'].array,
@@ -190,6 +191,10 @@ try:
                     # standardization
                     # need to perform on all networks in the model
 
+                    # TODO: Turn the following into a loop over networks
+                    #       Requires finding the proper indices for where a new network starts
+                    #       in keys = [*state_dict.keys()][start:end]
+
                     inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
                     mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
                     #state_dict = self.model.state_dict()
@@ -197,9 +202,21 @@ try:
                     #print(f"----- state_dict: {state_dict}")
                     state_dict = self.model.state_dict()
                     #print(f"----- state_dict: {state_dict}")
+                    # take the first two input keys, network0.0.weight and network0.0.bias
                     keys = [*state_dict.keys()][:2]
                     state_dict[keys[0]] = torch.tensor(inv_std)*torch.eye(len(inv_std))
+                    #print(keys)
                     state_dict[keys[1]] = torch.tensor(mean_inv_std)
+
+                    # take the next two input keys, network1.0.weight and network1.0.bias
+                    
+                    keys = [*state_dict.keys()][6:8]
+                    state_dict[keys[0]] = torch.tensor(inv_std)*torch.eye(len(inv_std))
+                    #print(keys)
+                    state_dict[keys[1]] = torch.tensor(mean_inv_std)
+
+                    # load the new state_dict with the standardized weights
+                    
                     self.model.load_state_dict(state_dict)
 
                 train_losses_epochs = []
@@ -227,6 +244,7 @@ try:
                     for i, batch in enumerate(self.training_loader):
                         #self.model.train()
                         descriptors = batch['x'].to(self.device).requires_grad_(True)
+                        atom_types = batch['t'].to(self.device)
                         targets = batch['y'].to(self.device).requires_grad_(True)
                         target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                         indices = batch['i'].to(self.device)
@@ -234,7 +252,7 @@ try:
                         dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
-                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j, self.device)
+                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
 
                         if (self.energy_weight != 0):
                             energies = energies.to(self.device)
@@ -272,6 +290,7 @@ try:
                     self.model.eval()
                     for i, batch in enumerate(self.validation_loader):
                         descriptors = batch['x'].to(self.device).requires_grad_(True)
+                        atom_types = batch['t'].to(self.device)
                         targets = batch['y'].to(self.device).requires_grad_(True)
                         target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                         indices = batch['i'].to(self.device)
@@ -279,7 +298,7 @@ try:
                         dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
-                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j, self.device)
+                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
                         if (self.energy_weight != 0):
                             energies = energies.to(self.device)
                         if (self.force_weight != 0):

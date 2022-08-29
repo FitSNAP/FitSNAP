@@ -121,6 +121,7 @@ class LammpsSnap(LammpsBase):
         # extract types
 
         lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
+        #print(lmp_types)
         lmp_volume = self._lmp.get_thermo("vol")
 
         # extract SNAP data, including reference potential data
@@ -142,6 +143,7 @@ class LammpsSnap(LammpsBase):
         assert nrows_snap == np.shape(lmp_snap)[0]
         index = self.shared_index # Index telling where to start in the shared arrays on this proc.
                                   # Currently this is an index for the 'a' array (natoms*nconfigs rows).
+                                  # This is also an index for the 't' array of types (natoms*nconfigs rows).
                                   # Also made indices for:
                                   # - the 'b' array (3*natoms+1)*nconfigs rows.
                                   # - the 'dgrad' array (natoms+1)*nneigh*3*nconfigs rows.
@@ -179,6 +181,7 @@ class LammpsSnap(LammpsBase):
         # populate the bispectrum array 'a'
 
         self.pt.shared_arrays['a'].array[index:index+bik_rows] = bispectrum_components
+        self.pt.shared_arrays['t'].array[index:index+bik_rows] = lmp_types
         index += num_atoms
 
         # populate the truth array 'b'

@@ -189,19 +189,12 @@ try:
                 if self.config.sections['PYTORCH'].save_state_input is None:
 
                     # standardization
-                    # need to perform on all networks in the model
-
-                    # TODO: Turn the following into a loop over networks
-                    #       Requires finding the proper indices for where a new network starts
-                    #       in keys = [*state_dict.keys()][start:end]
+                    # need to perform on all network types in the model
 
                     inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
                     mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
-                    #state_dict = self.model.state_dict()
-                    #state_dict = self.model.network_architecture.state_dict()
-                    #print(f"----- state_dict: {state_dict}")
                     state_dict = self.model.state_dict()
-                    #print(f"----- state_dict: {state_dict}")
+
                     # look for the first layer for all types of networks, these are keys like
                     # network_architecture0.0.weight and network_architecture0.0.bias
                     # for the first network, and
@@ -213,25 +206,8 @@ try:
                     for t in range(0,ntypes):
                         first_layer_weight = "network_architecture"+str(t)+".0.weight"
                         first_layer_bias = "network_architecture"+str(t)+".0.bias"
-                        #print(state_dict[first_layer_weight])
                         state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
                         state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
-
-
-                    """
-                    # take the first two input keys, network0.0.weight and network0.0.bias
-                    keys = [*state_dict.keys()][:2]
-                    state_dict[keys[0]] = torch.tensor(inv_std)*torch.eye(len(inv_std))
-                    #print(keys)
-                    state_dict[keys[1]] = torch.tensor(mean_inv_std)
-
-                    # take the next two input keys, network1.0.weight and network1.0.bias
-                    
-                    keys = [*state_dict.keys()][6:8]
-                    state_dict[keys[0]] = torch.tensor(inv_std)*torch.eye(len(inv_std))
-                    #print(keys)
-                    state_dict[keys[1]] = torch.tensor(mean_inv_std)
-                    """
 
                     # load the new state_dict with the standardized weights
                     

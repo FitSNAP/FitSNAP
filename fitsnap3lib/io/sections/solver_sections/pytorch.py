@@ -51,24 +51,6 @@ try:
                 for t in range(self.num_elements):
                     self.networks.append(create_torch_network(self.layer_sizes))
             
-            #for name, param in self.network_architecture.named_parameters():   
-            #    print(f"{name} {param}")   
-
-           
-            # manually set weights for testing purposes
-            """
-            with torch.no_grad():
-                self.networks[0][0].weight = Parameter(0.02*torch.ones_like(self.networks[0][0].weight))
-                self.networks[0][0].bias = Parameter(0.02*torch.ones_like(self.networks[0][0].bias))
-                self.networks[0][1].weight = Parameter(0.03*torch.ones_like(self.networks[0][1].weight))
-                self.networks[0][1].bias = Parameter(0.03*torch.ones_like(self.networks[0][1].bias))
-                # "layer" 2 is for the activation function, so we ignore.
-                self.networks[0][3].weight = Parameter(0.04*torch.ones_like(self.networks[0][3].weight))
-                self.networks[0][3].bias = Parameter(0.04*torch.ones_like(self.networks[0][3].bias))
-            """
-                 
-            
-
             self.delete()
 
 except ModuleNotFoundError:

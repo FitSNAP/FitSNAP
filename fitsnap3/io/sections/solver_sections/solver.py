@@ -9,7 +9,7 @@ class Solver(Section):
                             'compute_testerrs', 'detailed_errors', \
                             'nsam', 'cov_nugget', \
                             'mcmc_num', 'mcmc_gamma', \
-                            'merr_mult', 'merr_method']
+                            'merr_mult', 'merr_method', "merr_cfs"]
         self._check_section()
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
@@ -28,4 +28,5 @@ class Solver(Section):
         self.mcmc_gamma = self.get_value("SOLVER", "mcmc_gamma", "0.01", "float")
         self.merr_mult = self.get_value("SOLVER", "merr_mult", "0", "bool")
         self.merr_method = self.get_value("SOLVER", "merr_method", "abc", "str")
+        self.merr_cfs = self.get_value("SOLVER", "merr_cfs", "all", "str")
         self.delete()

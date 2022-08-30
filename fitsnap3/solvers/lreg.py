@@ -180,7 +180,7 @@ class lreg_merr(lreg):
         elif self.method == 'bfgs':
             #params_ini[nbas:] = np.random.rand(nbas_emb,)
             res = minimize((lambda x, fcn, p: -fcn(x, **p)), params_ini, args=(logpost_emb, logpost_params), method='BFGS', options={'gtol': 1e-3})
-            print(res)
+            #print(res)
             coeffs = res.x[:nbas]
             coefs_sig = res.x[nbas:]
 

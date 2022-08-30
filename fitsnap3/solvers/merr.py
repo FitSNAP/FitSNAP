@@ -42,7 +42,18 @@ class MERR(Solver):
 
         merr_mult = config.sections["SOLVER"].merr_mult
         merr_method = config.sections["SOLVER"].merr_method
-        lreg = lreg_merr(ind_embed=[2, 3], datavar=sigmahat,
+        merr_cfs_str = config.sections["SOLVER"].merr_cfs
+        if merr_cfs_str == 'all':
+            ind_embed = None
+            print("Embedding model error in all coefficients")
+        else:
+            ind_embed = []
+            for i in list(merr_cfs_str.split(" ")): # Sanity check
+                assert(int(i)<=nbas)
+                ind_embed.append(int(i))
+            print("Embedding model error in coefficients: ", ind_embed)
+
+        lreg = lreg_merr(ind_embed=ind_embed, datavar=sigmahat,
                  multiplicative=bool(merr_mult), merr_method=merr_method,
                  method='bfgs')
 

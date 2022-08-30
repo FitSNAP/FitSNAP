@@ -166,21 +166,16 @@ class Solver:
         self.errors.append(error_record)
 
         if config.sections["EXTRAS"].plot > 0:
-            if self.fit_sam is not None:  ## should be correctly updated for current internal data format
+            if self.fit_sam is not None:  ## TODO: should be correctly updated for current internal data format
                 if self.cov is None:
-                    pf_std = np.std(self.fit_sam @ this_a.T, axis=0)
+                    pf_std = self._compute_stdev(this_a, "sam")
                 else:
-                    # need to see which method is faster, both give the same results within numerical errors
-                    # Method 1
-                    chol = np.linalg.cholesky(self.cov)   #TODO: update for robustness - get an error when cov was backfilled with 0s (multi-element with different 2J max values)
-                    mat = this_a @ chol
-                    pf_std = np.linalg.norm(mat, axis=1)
-                    # Method 2
-                    # tmp = np.dot(this_a, self.cov)
-                    # pf_std = np.empty(this_a.shape[0])
-                    # for ipt in range(this_a.shape[0]):
-                        # pf_std[ipt] = np.sqrt(np.dot(tmp[ipt, :], this_a[ipt, :]))
-                    # print(np.linalg.norm(pf_std-pf_std0), np.linalg.norm(pf_std0), np.linalg.norm(pf_std))
+                    try:
+                        pf_std = self._compute_stdev(this_a, "chol")
+                    except np.linalg.LinAlgError:
+                        pf_std = self._compute_stdev(this_a, "svd")
+
+
             else:
                 pf_std = np.zeros(this_a.shape[0])
             
@@ -211,3 +206,37 @@ class Solver:
 
     def _template_error(self):
         pass
+
+    def _compute_stdev(self, a, method="chol"):
+        if method == "sam":
+            assert(self.fit_sam is not None)
+            pf_stdev = np.std(self.fit_sam @ a.T, axis=0)
+        elif method == "chol":
+            assert(self.cov is not None)
+            chol = np.linalg.cholesky(self.cov)
+            mat = a @ chol
+            pf_stdev = np.linalg.norm(mat, axis=1)
+        elif method == "choleye":
+            assert(self.cov is not None)
+            eigvals = np.linalg.eigvalsh(self.cov)
+            chol = np.linalg.cholesky(self.cov+(abs(eigvals[0]) + 1e-14) * np.eye(self.cov.shape[0]))
+            mat = a @ chol
+            pf_stdev = np.linalg.norm(mat, axis=1)
+        elif method == "svd":
+            assert(self.cov is not None)
+            u, s, vh = np.linalg.svd(self.cov, hermitian=True)
+            mat = (a @ u) @ np.sqrt(np.diag(s))
+            pf_stdev = np.linalg.norm(mat, axis=1)
+        elif method == "loop":
+            assert(self.cov is not None)
+            tmp = np.dot(a, self.cov)
+            pf_stdev = np.empty(a.shape[0])
+            for ipt in range(a.shape[0]):
+                pf_stdev[ipt] = np.sqrt(np.dot(tmp[ipt, :], a[ipt, :]))
+        elif method == "fullcov":
+            assert(self.cov is not None)
+            pf_stdev = np.sqrt(np.diag((a @ self.cov) @ a.T))
+        else:
+            pf_stdev = np.zeros(a.shape[0])
+
+        return pf_stdev

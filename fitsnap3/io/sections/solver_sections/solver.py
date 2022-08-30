@@ -5,8 +5,11 @@ class Solver(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.allowedkeys = ['solver', 'normalweight', 'normratio', 'compute_testerrs', 'detailed_errors', \
-                            'nsam', 'cov_nugget', 'mcmc_num', 'mcmc_gamma']
+        self.allowedkeys = ['solver', 'normalweight', 'normratio', \
+                            'compute_testerrs', 'detailed_errors', \
+                            'nsam', 'cov_nugget', \
+                            'mcmc_num', 'mcmc_gamma', \
+                            'merr_mult', 'merr_method']
         self._check_section()
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
@@ -23,4 +26,6 @@ class Solver(Section):
         self.cov_nugget = self.get_value("SOLVER", "cov_nugget", "0.0", "float")
         self.mcmc_num = self.get_value("SOLVER", "mcmc_num", "10000", "int")
         self.mcmc_gamma = self.get_value("SOLVER", "mcmc_gamma", "0.01", "float")
+        self.merr_mult = self.get_value("SOLVER", "merr_mult", "0", "bool")
+        self.merr_method = self.get_value("SOLVER", "merr_method", "abc", "str")
         self.delete()

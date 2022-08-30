@@ -40,8 +40,10 @@ class MERR(Solver):
         sigmahat = bp/(ap-1.)
         # print("Datanoise stdev : ", np.sqrt(sigmahat))
 
-        lreg = lreg_merr(ind_embed=None, datavar=sigmahat,
-                 multiplicative=False, merr_method='abc',
+        merr_mult = config.sections["SOLVER"].merr_mult
+        merr_method = config.sections["SOLVER"].merr_method
+        lreg = lreg_merr(ind_embed=[2, 3], datavar=sigmahat,
+                 multiplicative=bool(merr_mult), merr_method=merr_method,
                  method='bfgs')
 
         lreg.fit(aw, bw)

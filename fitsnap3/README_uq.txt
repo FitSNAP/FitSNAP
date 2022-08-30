@@ -41,9 +41,10 @@ plot = 1 # Options are 0, 1, 2. Plots 'diagonal' plots (DFT-vs-SNAP) for all gro
 UQ Todos:
 =========
 Dump the data and write an outside script for simpler UQ debugging
-Test BCS and make it prune bases
-Pipe to MD propagation
-Implement MERR solver (model error), work with GSA for best embedding?
-Expose some parameters (e.g. nmcmc) to the input file rather than hardwired
+Implement input file handling which coefficient to embed in
 Handle non-positive covariance issues (e.g. when data is truncated)
+Test BCS and make it prune bases
+Save npy not txt in mcmc
+Implement Logan's anl additions
+Update template and readme
 

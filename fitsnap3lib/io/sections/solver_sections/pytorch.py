@@ -41,15 +41,11 @@ try:
             self.save_state_input = self.check_path(self.get_value("PYTORCH", "save_state_input", None))
             self.output_file = self.check_path(self.get_value("PYTORCH", "output_file", "FitTorch_Pytorch.pt"))
 
-            #self.network_architecture = create_torch_network(self.layer_sizes)
-
             if (self.manual_seed_flag):
                 torch.manual_seed(0)
 
             self.networks = []
             if (self.multi_element_option==1):
-                #self.network_architecture = create_torch_network(self.layer_sizes)
-                #self.networks.append(self.network_architecture)
                 self.networks.append(create_torch_network(self.layer_sizes))
             elif (self.multi_element_option==2):
                 for t in range(self.num_elements):

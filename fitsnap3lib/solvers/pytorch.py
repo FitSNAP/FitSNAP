@@ -72,13 +72,14 @@ try:
             self.force_weight = self.config.sections['PYTORCH'].force_weight
             self.training_fraction = self.config.sections['PYTORCH'].training_fraction
             self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
+            self.num_elements = self.config.sections["PYTORCH"].num_elements
 
             self.optimizer = None
             self.model = FitTorch(self.config.sections["PYTORCH"].networks,
                                   self.config.sections["CALCULATOR"].num_desc,
                                   self.energy_weight,
                                   self.force_weight,
-                                  1,
+                                  self.num_elements,
                                   self.multi_element_option)
             self.loss_function = torch.nn.MSELoss()
             self.learning_rate = self.config.sections["PYTORCH"].learning_rate
@@ -102,7 +103,7 @@ try:
                                                                         threshold_mode='abs')
 
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            #self.device = "cpu"
+            # self.device = "cpu"
             self.pt.single_print("Pytorch device is set to", self.device)
             self.model = self.model.to(self.device)
             self.total_data = None
@@ -116,7 +117,7 @@ try:
             """
 
             # this is not used, but may be useful later
-            #training = [not elem for elem in pt.fitsnap_dict['Testing']]
+            # training = [not elem for elem in pt.fitsnap_dict['Testing']]
 
             # TODO: when only fitting to energy, we don't need all this extra data
 
@@ -215,7 +216,6 @@ try:
                     loss = None
                     self.model.train()
                     for i, batch in enumerate(self.training_loader):
-                        #self.model.train()
                         descriptors = batch['x'].to(self.device).requires_grad_(True)
                         atom_types = batch['t'].to(self.device)
                         targets = batch['y'].to(self.device).requires_grad_(True)

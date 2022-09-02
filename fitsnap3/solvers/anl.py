@@ -63,13 +63,12 @@ class ANL(Solver):
         sized_cov = np.zeros((original_a_num_columns, original_a_num_columns), dtype=aw.dtype)
         sized_cov[np.array(original_a_filled_column_indices).reshape(-1,1), original_a_filled_column_indices] = self.cov
         self.cov = sized_cov
-        np.save('covariance.npy', self.cov)
-        np.save('mean.npy', self.fit)
 
         sized_fit = np.zeros((original_a_num_columns), dtype = aw.dtype)
         sized_fit[original_a_filled_column_indices] = self.fit
         self.fit = sized_fit
-
+        np.save('covariance.npy', self.cov)
+        np.save('mean.npy', self.fit)
 
         nsam = config.sections["SOLVER"].nsam
         if nsam:

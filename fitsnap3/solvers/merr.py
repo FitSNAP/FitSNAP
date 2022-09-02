@@ -26,6 +26,14 @@ class MERR(Solver):
             else:
                 print("The Matrix is ill-conditioned for the transpose trick")
 
+        ## If multiple elements with different 2J max settings, there will be columns of all 0.
+        ## Need to remove those to make the matrix invertible. Backfill in the columns after calculations.
+        zero_column_list = []
+        for i in range(aw.shape[1]):
+            if not np.any(aw[:,i]):
+                zero_column_list.append(i)
+        aw = np.delete(aw, zero_column_list, 1)
+                
         npt, nbas = aw.shape
 
         cov_nugget = config.sections["SOLVER"].cov_nugget
@@ -60,6 +68,21 @@ class MERR(Solver):
         lreg.fit(aw, bw)
         self.fit = lreg.cf.copy()
         self.cov = lreg.cf_cov.copy()
+        ## Backfilling 0s for any removed 0 columns from the A matrix
+        original_a_num_columns = aw.shape[1]+len(zero_column_list)
+        original_a_filled_column_indices = [k for k in range(original_a_num_columns) if k not in zero_column_list]
+        #original_a = np.zeros((aw.shape[0], original_a_num_columns), dtype=a.dtype)  ## making the correct size matrix
+        #original_a[:, original_a_filled_column_indices] = aw  ## I don't believe the code actually needs this, so currently leaving out
+        sized_cov = np.zeros((original_a_num_columns, original_a_num_columns), dtype=aw.dtype)
+        sized_cov[np.array(original_a_filled_column_indices).reshape(-1,1), original_a_filled_column_indices] = self.cov
+        self.cov = sized_cov
+
+        sized_fit = np.zeros((original_a_num_columns), dtype = aw.dtype)
+        sized_fit[original_a_filled_column_indices] = self.fit
+        self.fit = sized_fit
+        np.save('covariance.npy', self.cov)
+        np.save('mean.npy', self.fit)
+        
 
         nsam = config.sections["SOLVER"].nsam
         self.fit_sam = np.random.multivariate_normal(self.fit, self.cov, size=(nsam,))

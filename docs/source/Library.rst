@@ -57,3 +57,31 @@ FitSNAP
 
 .. automodule:: fitsnap3lib.fitsnap
     :members:
+
+Solver
+------
+FitSNAP uses a `Solver` class which is a parent of all the different types of solvers, e.g. SVD and
+ARD for linear regression, `PYTORCH` and `JAX` for neural networks, etc.
+
+.. automodule:: fitsnap3lib.solvers.solver
+    :members:
+
+PYTORCH
+^^^^^^^
+
+This class inherits from the `Solver` class, since it is a particular solver option. 
+
+.. automodule:: fitsnap3lib.solvers.pytorch
+    :members:
+
+lib/
+----
+
+The `fitsnap3lib/lib` directory contains external code used by FitSNAP, sort of like helper classes
+and functions. 
+
+FitTorch
+^^^^^^^^
+
+.. automodule:: fitsnap3lib.lib.neural_networks.pytorch
+    :members:

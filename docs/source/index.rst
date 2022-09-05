@@ -27,7 +27,10 @@ Indices and tables
    :name: userdoc
    :includehidden:
 
+   Introduction
    usage
+   Run
+   Pytorch
 
 .. _programmer_documentation:
 .. toctree::

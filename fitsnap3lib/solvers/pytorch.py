@@ -14,7 +14,6 @@ try:
     from fitsnap3lib.tools.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
     import torch
 
-
     class PYTORCH(Solver):
         """
         A class to wrap Modules to ensure lammps mliap compatability.
@@ -72,12 +71,16 @@ try:
             self.energy_weight = self.config.sections['PYTORCH'].energy_weight
             self.force_weight = self.config.sections['PYTORCH'].force_weight
             self.training_fraction = self.config.sections['PYTORCH'].training_fraction
+            self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
+            self.num_elements = self.config.sections["PYTORCH"].num_elements
 
             self.optimizer = None
-            self.model = FitTorch(self.config.sections["PYTORCH"].network_architecture,
+            self.model = FitTorch(self.config.sections["PYTORCH"].networks,
                                   self.config.sections["CALCULATOR"].num_desc,
                                   self.energy_weight,
-                                  self.force_weight)
+                                  self.force_weight,
+                                  self.num_elements,
+                                  self.multi_element_option)
             self.loss_function = torch.nn.MSELoss()
             self.learning_rate = self.config.sections["PYTORCH"].learning_rate
             if self.config.sections['PYTORCH'].save_state_input is not None:
@@ -89,7 +92,8 @@ try:
                     self.model.load_state_dict(save_state_dict["model_state_dict"])
                     self.optimizer.load_state_dict(save_state_dict["optimizer_state_dict"])
             if self.optimizer is None:
-                self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+                parameter_list = [{'params': self.model.parameters()}]
+                self.optimizer = torch.optim.Adam(parameter_list, lr=self.learning_rate)
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
                                                                         mode='min',
                                                                         factor=0.5,
@@ -99,7 +103,7 @@ try:
                                                                         threshold_mode='abs')
 
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            #self.device = "cpu"
+            # self.device = "cpu"
             self.pt.single_print("Pytorch device is set to", self.device)
             self.model = self.model.to(self.device)
             self.total_data = None
@@ -113,13 +117,14 @@ try:
             """
 
             # this is not used, but may be useful later
-            #training = [not elem for elem in pt.fitsnap_dict['Testing']]
+            # training = [not elem for elem in pt.fitsnap_dict['Testing']]
 
             # TODO: when only fitting to energy, we don't need all this extra data
 
             self.total_data = InRAMDatasetPyTorch(self.pt.shared_arrays['a'].array,
                                                   self.pt.shared_arrays['b'].array,
                                                   self.pt.shared_arrays['c'].array,
+                                                  self.pt.shared_arrays['t'].array,
                                                   self.pt.shared_arrays['dgrad'].array,
                                                   self.pt.shared_arrays['number_of_atoms'].array,
                                                   self.pt.shared_arrays['dbdrindx'].array,
@@ -164,23 +169,38 @@ try:
                 if self.config.sections['PYTORCH'].save_state_input is None:
 
                     # standardization
+                    # need to perform on all network types in the model
 
                     inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
                     mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
                     state_dict = self.model.state_dict()
-                    keys = [*state_dict.keys()][:2]
-                    state_dict[keys[0]] = torch.tensor(inv_std)*torch.eye(len(inv_std))
-                    state_dict[keys[1]] = torch.tensor(mean_inv_std)
+
+                    # look for the first layer for all types of networks, these are keys like
+                    # network_architecture0.0.weight and network_architecture0.0.bias
+                    # for the first network, and
+                    # network_architecture1.0.weight and network_architecture0.1.bias for the next,
+                    # and so forth
+
+                    ntypes = self.config.sections["PYTORCH"].num_elements
+                    keys = [*state_dict.keys()]
+                    for t in range(0,ntypes):
+                        first_layer_weight = "network_architecture"+str(t)+".0.weight"
+                        first_layer_bias = "network_architecture"+str(t)+".0.bias"
+                        state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
+                        state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
+
+                    # load the new state_dict with the standardized weights
+                    
                     self.model.load_state_dict(state_dict)
 
                 train_losses_epochs = []
                 val_losses_epochs = []
-                # list for storing training energies and forces
+                # lists for storing training energies and forces
                 target_force_plot = []
                 model_force_plot = []
                 target_energy_plot = []
                 model_energy_plot = []
-                # list for storing validation energies and forces
+                # lists for storing validation energies and forces
                 target_force_plot_val = []
                 model_force_plot_val = []
                 target_energy_plot_val = []
@@ -190,14 +210,14 @@ try:
                     print(f"----- epoch: {epoch}")
                     start = time()
 
-                    # loop over training set
+                    # loop over training data
 
                     train_losses_step = []
                     loss = None
                     self.model.train()
                     for i, batch in enumerate(self.training_loader):
-                        #self.model.train()
                         descriptors = batch['x'].to(self.device).requires_grad_(True)
+                        atom_types = batch['t'].to(self.device)
                         targets = batch['y'].to(self.device).requires_grad_(True)
                         target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                         indices = batch['i'].to(self.device)
@@ -205,7 +225,8 @@ try:
                         dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
-                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j, self.device)
+                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
+                        energies = torch.div(energies,num_atoms)
 
                         if (self.energy_weight != 0):
                             energies = energies.to(self.device)
@@ -243,6 +264,7 @@ try:
                     self.model.eval()
                     for i, batch in enumerate(self.validation_loader):
                         descriptors = batch['x'].to(self.device).requires_grad_(True)
+                        atom_types = batch['t'].to(self.device)
                         targets = batch['y'].to(self.device).requires_grad_(True)
                         target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                         indices = batch['i'].to(self.device)
@@ -250,7 +272,9 @@ try:
                         dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
-                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, dbdrindx, unique_j, self.device)
+                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
+                        energies = torch.div(energies,num_atoms)
+
                         if (self.energy_weight != 0):
                             energies = energies.to(self.device)
                         if (self.force_weight != 0):

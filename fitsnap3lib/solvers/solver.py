@@ -9,6 +9,25 @@ from pandas import DataFrame
 
 
 class Solver:
+    """
+    This class declares the method to solve the machine learning problem, e.g. linear regression,
+    nonlinear regression, etc.
+
+    Attributes
+    ----------
+    fit : numpy array
+        array containing coefficients of fit
+
+    Methods
+    -------
+    error_analysis():
+        extracts and stores fitting data, such as descriptor values, truths, and predictions, into
+        a Pandas dataframe
+
+    _errors():
+        calculate errors for a particular group, used by `_group_errors()` and `_all_errors()`
+         
+    """
 
     def __init__(self, name, linear=True):
         self.config = Config()

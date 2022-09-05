@@ -20,6 +20,7 @@ def create_torch_network(layer_sizes):
             Network Architecture of type neural network sequential
 
     """
+
     layers = []
     try:
         layers.append(torch.nn.Linear(layer_sizes[0], layer_sizes[0]))
@@ -33,28 +34,54 @@ def create_torch_network(layer_sizes):
 
 class FitTorch(torch.nn.Module):
     """
-    FitSNAP PyTorch Neural Network Architecture Model
-    Currently only fits on energies
+    FitSNAP PyTorch network model. 
+
+    Attributes
+    ----------
+
+    networks : list
+        A list of nn.Sequential network architectures.
+        Each list element is a different network type.
+
+    descriptor_count: int
+        Length of descriptors for an atom
+
+    energy_weight: float
+        Weight of energy in loss function, used for determining if energy is fit or not
+
+    force_weight: float
+        Weight of force in loss function, used for determining if energy is fit or not
+
+    n_elements: int
+        Number of differentiable atoms types 
+
+    multi_element_option: int
+        Option for which multi-element network model to use
     """
 
-    def __init__(self, network_architecture, descriptor_count, energy_weight, force_weight, n_elements=1):
+    def __init__(self, networks, descriptor_count, energy_weight, force_weight, n_elements=1, multi_element_option=1):
         """
-        Saves lammps ready pytorch model.
-
-            Parameters:
-                network_architecture : A nn.Sequential network architecture
-                descriptor_count (int): Length of descriptors for an atom
-                energy_weight (float): Weight of energy in loss function, used
-                                       for determining if energy is fit or not
-                force_weight (float): Weight of force in loss function, used
-                                      for determining if energy is fit or not
-                n_elements (int): Number of differentiable atoms types
-
+        Initializer.
         """
         super().__init__()
-        self.network_architecture = network_architecture
+
+        # pytorch does a nifty thing where each attribute here makes a unique key in state_dict
+        # we therefore need to make a unique instance attribute for each network
+        # by doing this, self.state_dict() gets automatically populated by pytorch internals
+
+        for indx, model in enumerate(networks):
+            setattr(self, "network_architecture"+str(indx), networks[indx])
+
+        self.networks = networks
+
+        # now self.state_dict is populated with the attributes declared above 
+        # print("Model's state_dict:")
+        # for param_tensor in self.state_dict():
+        #     print(param_tensor, "\t", self.state_dict()[param_tensor].size())   
+         
         self.desc_len = descriptor_count
         self.n_elem = n_elements
+        self.multi_element_option = multi_element_option
 
         self.energy_bool = True
         self.force_bool = True
@@ -63,28 +90,53 @@ class FitTorch(torch.nn.Module):
         if (force_weight==0.0):
             self.force_bool = False
 
-    def forward(self, x, xd, indices, atoms_per_structure, xd_indx, unique_j, device):
+    def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, device):
         """
-        Saves lammps ready pytorch model.
+        Forward pass through the PyTorch network model, calculating both energies and forces.
 
-            Parameters:
-                x (tensor of floats): Array of descriptors
-                xd (tensor of floats): Array of descriptor derivatives dDi/dRj
-                indices (tensor of ints): Array of indices upon which to contract per atom energies
-                atoms_per_structure (tensor of ints): Number of atoms per configuration
-                xd_indx (tensor of int64, long ints): array of indices corresponding to descriptor derivatives
-                unique_j (tensor of int64, long ints): array of indices corresponding to unique atoms j in all batches of configs.
-                                                       all forces in this batch will be contracted over these indices.
-                device: pytorch accelerator device object
+        Attributes
+        ----------
+
+        x: torch.Tensor.float
+            Array of descriptors for this batch
+
+        xd: torch.Tensor.float
+            Array of descriptor derivatives dDi/dRj for this batch
+
+        indices: torch.Tensor.long
+            Array of indices upon which to contract per atom energies, for this batch
+
+        atoms_per_structure: torch.Tensor.long
+            Number of atoms per configuration for this batch
+
+        types: torch.Tensor.long
+            Atom types starting from 0, for this batch
+
+        xd_indx: torch.Tensor.long 
+            Array of indices corresponding to descriptor derivatives, for this batch
+
+        unique_j: torch.Tensor.long 
+            Array of indices corresponding to unique atoms j in all batches of configs.
+            All forces in this batch will be contracted over these indices.
+        
+        device: pytorch accelerator device object
 
         """
+        
+
+        if (self.multi_element_option==1):
+            per_atom_energies = self.network_architecture0(x)
+   
+        elif (self.multi_element_option==2):
+            atom_indices = torch.arange(x.size()[0])
+            per_atom_energies = torch.stack([self.networks[i](x) 
+                                             for i in range(self.n_elem)])[types,atom_indices]
 
         # calculate energies
 
         if (self.energy_bool):
             predicted_energy_total = torch.zeros(atoms_per_structure.size()).to(device)
-            #print(predicted_energy_total.device)
-            predicted_energy_total.index_add_(0, indices, self.network_architecture(x).squeeze())
+            predicted_energy_total.index_add_(0, indices, per_atom_energies.squeeze())
         else:
             predicted_energy_total = None
 
@@ -93,14 +145,6 @@ class FitTorch(torch.nn.Module):
         if (self.force_bool):
             nd = x.size()[1] # number of descriptors
             natoms = atoms_per_structure.sum() # Total number of atoms in this batch
-
-            # this works if we don't ignore zero valued dgrad for some Cartesian directions
-            #x_indices = xd_indx[0::3]
-            #y_indices = xd_indx[1::3]
-            #z_indices = xd_indx[2::3]
-            #neigh_indices_x = xd_indx[0::3,0]
-            #neigh_indices_y = xd_indx[1::3,0] 
-            #neigh_indices_z = xd_indx[2::3,0]
     
             # boolean indices used to properly index descriptor gradients
 
@@ -114,57 +158,50 @@ class FitTorch(torch.nn.Module):
             neigh_indices_y = xd_indx[y_indices_bool,0] 
             neigh_indices_z = xd_indx[z_indices_bool,0]
 
-            dEdD = torch.autograd.grad(self.network_architecture(x), x, grad_outputs=torch.ones_like(self.network_architecture(x)), create_graph=True)[0]
+            dEdD = torch.autograd.grad(per_atom_energies, 
+                                       x, 
+                                       grad_outputs=torch.ones_like(per_atom_energies), 
+                                       create_graph=True)[0]
 
             # extract proper dE/dD values to align with neighbors i of atoms j
-
-            # these are true if no neighlist pruning (comment out the block with the "strip" comment in lammps_snap.py)
-            #assert(torch.all(xd_indx[x_indices_bool,0] == xd_indx[0::3,0]))
-            #assert(torch.all(xd_indx[y_indices_bool,0] == xd_indx[1::3,0]))      
-            #assert(torch.all(xd_indx[z_indices_bool,0] == xd_indx[2::3,0]))   
-            #assert(torch.all(xd[x_indices_bool,0] == xd[0::3,0]))
-            #assert(torch.all(xd[y_indices_bool,0] == xd[1::3,0]))      
-            #assert(torch.all(xd[z_indices_bool,0] == xd[2::3,0]))
  
-            #dEdD = dEdD[neigh_indices_x, :] #.requires_grad_(True)
             dEdD_x = dEdD[neigh_indices_x, :]
             dEdD_y = dEdD[neigh_indices_y, :]
             dEdD_z = dEdD[neigh_indices_z, :]
 
-            dDdRx = xd[x_indices_bool] #.requires_grad_(True)
-            dDdRy = xd[y_indices_bool] #.requires_grad_(True)
-            dDdRz = xd[z_indices_bool] #.requires_grad_(True)   
+            dDdRx = xd[x_indices_bool] 
+            dDdRy = xd[y_indices_bool] 
+            dDdRz = xd[z_indices_bool] 
 
             # elementwise multiplication of dDdR and dEdD
 
-            elementwise_x = torch.mul(dDdRx, dEdD_x) #.requires_grad_(True)
-            elementwise_y = torch.mul(dDdRy, dEdD_y) #.requires_grad_(True)
-            elementwise_z = torch.mul(dDdRz, dEdD_z) #.requires_grad_(True)
+            elementwise_x = torch.mul(dDdRx, dEdD_x) 
+            elementwise_y = torch.mul(dDdRy, dEdD_y) 
+            elementwise_z = torch.mul(dDdRz, dEdD_z) 
 
             # contract these elementwise components along rows with indices given by unique_j
 
-            fx_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) #.double() #.requires_grad_(True)
-            fy_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) #.double() #.requires_grad_(True)
-            fz_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) #.double() #.requires_grad_(True)
+            fx_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) 
+            fy_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) 
+            fz_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) 
 
-            # contract over unique j indices, which has same number of rows as dgrad
-            # replace unique_j[a_indices_bool] with xd_indx[a_indices_bool, 1] and it's the same result for batch size of 1
+            # contract over unique j indices, which has same number of rows as dgrad 
 
-            contracted_x = fx_components.index_add_(0,unique_j[x_indices_bool],elementwise_x) #.requires_grad_(True)
-            contracted_y = fy_components.index_add_(0,unique_j[y_indices_bool],elementwise_y) #.requires_grad_(True)
-            contracted_z = fz_components.index_add_(0,unique_j[z_indices_bool],elementwise_z) #.requires_grad_(True)
+            contracted_x = fx_components.index_add_(0,unique_j[x_indices_bool],elementwise_x) 
+            contracted_y = fy_components.index_add_(0,unique_j[y_indices_bool],elementwise_y) 
+            contracted_z = fz_components.index_add_(0,unique_j[z_indices_bool],elementwise_z) 
 
             # sum along bispectrum components to get force on each atom
 
-            predicted_fx = torch.sum(contracted_x, dim=1) #.requires_grad_(True)
-            predicted_fy = torch.sum(contracted_y, dim=1) #.requires_grad_(True)
-            predicted_fz = torch.sum(contracted_z, dim=1) #.requires_grad_(True)
+            predicted_fx = torch.sum(contracted_x, dim=1) 
+            predicted_fy = torch.sum(contracted_y, dim=1) 
+            predicted_fz = torch.sum(contracted_z, dim=1) 
 
             # reshape to get 2D tensor
 
-            predicted_fx = torch.reshape(predicted_fx, (natoms,1)) #.requires_grad_(True)
-            predicted_fy = torch.reshape(predicted_fy, (natoms,1)) #.requires_grad_(True)
-            predicted_fz = torch.reshape(predicted_fz, (natoms,1)) #.requires_grad_(True)
+            predicted_fx = torch.reshape(predicted_fx, (natoms,1)) 
+            predicted_fy = torch.reshape(predicted_fy, (natoms,1)) 
+            predicted_fz = torch.reshape(predicted_fz, (natoms,1)) 
 
             # check that number of rows is equal to number of atoms
 
@@ -172,12 +209,11 @@ class FitTorch(torch.nn.Module):
 
             # create a 3Nx1 array
 
-            predicted_forces = torch.cat((predicted_fx,predicted_fy,predicted_fz), dim=1) #.requires_grad_(True)
-            #predicted_forces = -1.*torch.flatten(predicted_forces).float() #.requires_grad_(True) # need to be float to match targets
+            predicted_forces = torch.cat((predicted_fx,predicted_fy,predicted_fz), dim=1) 
 
             # don't need to multiply by -1 since compute snap already gives us negative derivatives
 
-            predicted_forces = torch.flatten(predicted_forces).float() #.requires_grad_(True) # need to be float to match targets
+            predicted_forces = torch.flatten(predicted_forces).float() 
             assert predicted_forces.size()[0] == 3*natoms
 
         else:

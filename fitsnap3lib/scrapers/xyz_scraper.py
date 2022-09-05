@@ -3,7 +3,7 @@ from fitsnap3lib.io.input import Config
 from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.io.output import output
 import numpy as np
-from random import shuffle
+from random import shuffle, random
 from os import path, listdir
 from copy import copy
 import re
@@ -356,7 +356,7 @@ class XYZ(Scraper):
                         fp.write("\n")
 
             if config.sections["GROUPS"].random_sampling:
-                shuffle(self.configs[file_base], pt.get_seed)
+                shuffle(self.configs[file_base], random)
             nconfigs = len(self.configs[file_base])
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:
@@ -364,11 +364,11 @@ class XYZ(Scraper):
                 elif training_size == 0:
                     pass
                 else:
-                    training_size = max(1, int(abs(training_size) * nconfigs - 0.5))
+                    training_size = max(1, int(abs(training_size) * nconfigs + 0.5))
                 if bc_bool and testing_size == 0:
                     testing_size = nconfigs - training_size
             if testing_size != 0 and (testing_size < 1 or (testing_size == 1 and testing_size_type == float)):
-                testing_size = max(1, int(abs(testing_size) * nconfigs - 0.5))
+                testing_size = max(1, int(abs(testing_size) * nconfigs + 0.5))
             training_size = self._float_to_int(training_size)
             testing_size = self._float_to_int(testing_size)
             if nconfigs - testing_size - training_size < 0:

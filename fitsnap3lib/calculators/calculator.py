@@ -74,6 +74,7 @@ class Calculator:
             self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('w', b_len, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
 
             # TODO: some sort of assertion on the sizes, here or later
             #print("b shape:")
@@ -95,6 +96,8 @@ class Calculator:
             self.shared_index_b = self.pt.fitsnap_dict["sub_b_indices"][0] # an index for which the 'b' array starts on a particular proc
             self.pt.new_slice_c()
             self.shared_index_c = self.pt.fitsnap_dict["sub_c_indices"][0] # an index for which the 'c' array starts on a particular proc
+            self.pt.new_slice_t() # atom types
+
             self.pt.new_slice_dgrad()
             self.shared_index_dgrad = self.pt.fitsnap_dict["sub_dgrad_indices"][0] # an index for which the 'dgrad' array starts on a particular proc
             self.shared_index_dbdrindx = self.pt.fitsnap_dict["sub_dbdrindx_indices"][0] # an index for which the 'dbdrindx' array starts on a particular proc

@@ -8,7 +8,7 @@ before_loading =\
 
 # Initialize simulation
 
-variable nsteps index 100
+variable nsteps index 10000
 variable nrep equal 4
 variable a equal 3.316
 units           metal
@@ -97,7 +97,7 @@ lmp.commands_string(before_loading)
 # Define the model however you like. In this example
 # we load it from disk:
 import torch
-model = torch.load('Ta.mliap.pytorch.pt')
+model = torch.load('../FitTorch_Pytorch.pt')
 
 # Connect the PyTorch model to the mliap pair style.
 lammps.mliap.load_model(model)

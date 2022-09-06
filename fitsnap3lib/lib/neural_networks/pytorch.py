@@ -261,10 +261,10 @@ class FitTorch(torch.nn.Module):
         # self.network_architecture0 is network model for the first element type
 
         if self.n_elem == 1:
-            print(" Single element, saving model with IgnoreElems ML-IAP wrapper")
+            print("Single element, saving model with IgnoreElems ML-IAP wrapper")
             model = IgnoreElems(self.network_architecture0)
         else:
-            print(" Multi element, saving model with ElemwiseModels ML-IAP wrapper")
+            print("Multi element, saving model with ElemwiseModels ML-IAP wrapper")
             model = ElemwiseModels(self.networks, self.n_elem)
         linked_model = TorchWrapper(model, n_descriptors=self.desc_len, n_elements=self.n_elem)
         torch.save(linked_model, filename)

@@ -256,10 +256,16 @@ class FitTorch(torch.nn.Module):
 
         #print("WARNING: Not writing LAMMPS torch file due to ML-IAP bug: https://github.com/lammps/lammps/issues/3204")
         
-        from lammps.mliap.pytorch import IgnoreElems, TorchWrapper
-        model = self.network_architecture
+        from lammps.mliap.pytorch import IgnoreElems, TorchWrapper, ElemwiseModels
+
+        # self.network_architecture0 is network model for the first element type
+
         if self.n_elem == 1:
-            model = IgnoreElems(self.network_architecture)
+            print(" Single element, saving model with IgnoreElems ML-IAP wrapper")
+            model = IgnoreElems(self.network_architecture0)
+        else:
+            print(" Multi element, saving model with ElemwiseModels ML-IAP wrapper")
+            model = ElemwiseModels(self.networks, self.n_elem)
         linked_model = TorchWrapper(model, n_descriptors=self.desc_len, n_elements=self.n_elem)
         torch.save(linked_model, filename)
         

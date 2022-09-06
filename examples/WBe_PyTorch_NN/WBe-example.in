@@ -48,7 +48,7 @@ detailed_errors = 1
 scraper = JSON
 
 [PATH]
-dataPath = JSON
+dataPath = ../WBe_PRB2019/JSON
 
 [OUTFILE]
 metrics = WBe_metrics.md

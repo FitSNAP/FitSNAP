@@ -73,10 +73,11 @@ try:
             self.training_fraction = self.config.sections['PYTORCH'].training_fraction
             self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
             self.num_elements = self.config.sections["PYTORCH"].num_elements
+            self.num_desc_per_element = self.config.sections["CALCULATOR"].num_desc/self.num_elements
 
             self.optimizer = None
             self.model = FitTorch(self.config.sections["PYTORCH"].networks,
-                                  self.config.sections["CALCULATOR"].num_desc,
+                                  self.num_desc_per_element,
                                   self.energy_weight,
                                   self.force_weight,
                                   self.num_elements,

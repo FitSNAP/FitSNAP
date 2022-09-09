@@ -28,9 +28,9 @@ Fe = 0.0
 [PYTORCH]
 layer_sizes = num_desc 10 8 6 1
 learning_rate = 1e-4
-num_epochs = 30
+num_epochs = 1 #30
 batch_size = 4
-save_state_output = Ta_Pytorch.pt
+save_state_output = Fe_Pytorch.pt
 energy_weight = 1e-4
 force_weight = 1.0
 training_fraction = 0.7
@@ -47,8 +47,8 @@ scraper = JSON
 dataPath = ../Fe_Linear_NPJ2021/JSON
 
 [OUTFILE]
-metrics = Ta_metrics.md
-potential = Ta_pot
+metrics = Fe_metrics.md
+potential = Fe_pot
 
 [REFERENCE]
 units = metal

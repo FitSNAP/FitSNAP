@@ -22,7 +22,8 @@ try:
             # Section.num_desc is summed over all element types, e.g. twojmax=6 and ntypes=2 gives
             # 60 descriptors, but our per-atom networks should only have 30 descriptors, so here
             # we divide by number of types
-            # this therefore requires that all atom types have the same number of descriptors
+            # this therefore requires that all atom types have the same number of descriptors, but
+            # can easily be changed later
             if self.layer_sizes[0] == "num_desc":
                 assert (Section.num_desc % self.num_elements == 0)
                 self.layer_sizes[0] = int(Section.num_desc/self.num_elements)

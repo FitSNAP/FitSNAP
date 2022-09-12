@@ -2,7 +2,6 @@
 
 import functools
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.linalg import lstsq
 from scipy.optimize import minimize
 from scipy.stats import multivariate_normal

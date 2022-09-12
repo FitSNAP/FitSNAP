@@ -38,7 +38,7 @@ class ANL(Solver):
         cov_nugget = config.sections["SOLVER"].cov_nugget
         invptp = np.linalg.inv(np.dot(aw.T, aw)+cov_nugget*np.diag(np.ones((nbas,))))
         invptp = invptp*0.5 + invptp.T*0.5  #forcing symmetry; can get numerically significant errors when A is ill-conditioned
-        np.savetxt('invptp', invptp)
+        #np.savetxt('invptp', invptp)
         self.fit = np.dot(invptp, np.dot(aw.T, bw))
 
 

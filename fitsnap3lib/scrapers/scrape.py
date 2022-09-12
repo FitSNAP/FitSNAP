@@ -43,10 +43,65 @@ from copy import copy
 #config = Config()
 #pt = ParallelTools()
 
-
 class Scraper:
+    """
+    FitSNAP PyTorch network model. 
+
+    Attributes
+    ----------
+
+        pt: fitsnap3lib.parallel_tools.ParallelTools 
+            Singleton instance of ParallelTools class
+
+        config: fitsnap3lib.io.input.Config 
+            Singleton instance of Config class
+
+        name: str
+            Name of Scraper type (e.g., JSON, XYZ)
+            Instantiated by scraper_factory.py
+            
+        group_types: List[str]
+            ## TODO CONFIRM 
+            Populated by class method scrape_groups
+
+        group_table: List[?]
+            ## TODO !!outdated, vestigial organ of fitsnap2?
+            Populated by class method scrape_groups
+
+        files: dict[str, List[str]] 
+            ## TODO CHECK
+            Key is group folder name, value is a list of str with all files located in that folder
+            Populated by class method scrape_groups
+
+        configs: dict[?, ?]
+            ## TODO 
+            Populated by class method scrape_groups
+
+        tests: List[?]
+            ## TODO 
+            Populated by class method scrape_groups
+
+        data: dict[?, ?]
+            ## TODO 
+            Populated by class method scrape_groups
+
+        test_bool: bool
+            ## TODO 
+            Populated by class method scrape_groups
+
+        default_conversions: dict[?, ?]
+            ## TODO 
+            Populated by class method scrape_groups
+
+        conversions: dict[?, ?]
+            ## TODO 
+            Populated by class method scrape_groups
+        """
 
     def __init__(self, name):
+        """
+        Initializer.
+        """
         self.pt = ParallelTools()
         self.config = Config()
         self.name = name
@@ -60,7 +115,6 @@ class Scraper:
         self.default_conversions = {key: convert(self.config.sections["SCRAPER"].properties[key])
                                     for key in self.config.sections["SCRAPER"].properties}
         self.conversions = {}
-
         self._init_units()
 
     def scrape_groups(self):

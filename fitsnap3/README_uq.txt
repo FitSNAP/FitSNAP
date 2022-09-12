@@ -1,4 +1,6 @@
-.
+.# this is the exhaustive documentation of UQ options available in main FitSNAP. Not all are guaranteed to provide good results. All UQ solvers output a covariance.npy file in addition to performing the FitSNAP model fit. The current general status is:
+ANL solver is the recommended go-to for now. It is fast to run and produces the same fit (within numerical error) as the default SVD solver. The errors calculated from ANL covariance are known to under-predict actual error in general, and biases are likely to exist in datasets that span a range of prediction values.
+
 UQ options:
 ===========
 
@@ -8,47 +10,27 @@ solver = OPT
 
 # analytical result for Bayesian fit, assuming constant noise size (not a great assumption generally)
 solver = ANL
+nsam = 133            #this is the number of sample fits requested to be drawn from the distribution
+cov_nugget = 1.e-10   #this is the small number to be added to the matrix inverse for better conditioning 
+
 
 # MCMC sampling, currently assuming constant noise size, but unlike the ANL case, there is flexibility if one plays with the log-post function
 solver = MCMC
+nsam = 133            #this is the number of sample fits requested to be drawn from the distribution
+mcmc_num = 1000       #this is the number of total MCMC steps requested
+mcmc_gamma = 0.01     #this is the MCMC proposal jump size (smaller gamma increases the acceptance rate)
 
-# Model error embedding approach
+
+# Model error embedding approach - powerful but very slow. Requires an optimization that does not run in parallel currently, and is not guaranteed to converge.
 solver = MERR
+nsam = 133                #this is the number of sample fits requested to be drawn from the distribution
+merr_method = iid         #specific liklihood model: options are iid, independent identically distributed, and abc, approximate bayesian computation, and full (too heavy and degenerate, not intended to be used yet)
+merr_mult = 0             #0 is additive model error, 1 is multiplicative
+merr_cfs = 5 44 3 49 10 33 4 39 38 23       #can provide either a list of coefficient indices to embed on, or "all"
+cov_nugget = 1.e-10       #this is the small number to be added to the matrix inverse for better conditioning
 
 # Fitting with Bayesian compressive sensing, need to learn how to prune bispectrum bases in order for this to be useful. Not working properly yet.
 solver = BCS
-
-# if solver==ANL or solver==MCMC or solver==MERR, this is the number of fits requested
-nsam = 133
-
-# if solver==ANL, or solver==MERR this is the small number to be added to inverse covariance for better conditioning
-cov_nugget = 1.e-10
-
-# if solver==MCMC, this is the number of total MCMC steps requested
-mcmc_num = 1000
-
-# if solver==MCMC, this is the MCMC proposal jump size (smaller gamma increases the acceptance rate)
-mcmc_gamma = 0.01
-
-# if solver==MERR, this is the specific likelihood method for model error
-merr_method = abc 
-# Options are abc (Approximate Bayesian Computation), iid (independent identically distributed approximation), or full (too heavy and degenerate, not intended to be used yet)
-
-# if solver==MERR, this controls whether we want multiplicative or additive embedding
-merr_mult = 1   
-# Options are 0 (additive) or 1 (multiplicative)
-
-# if solver==MERR, this is a list of integers for coefficients where model error is embedded
-merr_cfs = 2 5 0
-# Options are a string of space-separated integers, or a string 'all' (embed in all bispectum coefficients). The option 'all' leads to a high-dimensional inference with less than robust results.
-
-[EXTRAS] 
-plot = 1 
-# Options are 0, 1, 2. Plots 'diagonal' plots (DFT-vs-SNAP) for all groups, weighted and unweighted, requires matplotlib, and may take time to generate all png files. Option 2 plots with errorbars.
-
-
-
-
 
 UQ Todos:
 =========
@@ -57,6 +39,6 @@ Implement input file handling which coefficient to embed in
 Handle non-positive covariance issues (e.g. when data is truncated)
 Test BCS and make it prune bases
 Save npy not txt in mcmc
-Implement Logan's anl additions
+Separate out repetitive code for dropping and re-adding zeros into standalone function(s)
 Update template and readme
 

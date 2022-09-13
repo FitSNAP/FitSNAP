@@ -52,10 +52,10 @@ The :code:`PYTORCH` section keys are explained in more detail below.
   restarting an existing fit, or for calculating test errors.
 
 - :code:`energy_weight` is a scalar constant multiplied by the mean squared energy error in the 
-  loss function.
+  loss function. Declaring this parameter will override the weights in the GROUPS section for all configs.
 
 - :code:`force_weight` is a scalar constant multiplied by the mean squared force error in the loss
-  function
+  function. Declaring this parameter will override the weights in the GROUPS section for all configs.
 
 - :code:`training_fraction` is a decimal fraction of how much of the total data should be trained
   on. The leftover code:`1.0 - training_fraction` portion is used for calculating validation errors

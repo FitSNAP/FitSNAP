@@ -63,17 +63,20 @@ class Calculator:
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
 
             a_size = a_len * a_width * double_size
-            output.screen(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
-                          "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
+            output.screen(">>> Matrix of descriptors takes up ", 
+                          "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+                          "% of the total memory:", 
+                          "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
             if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
                 raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
             elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
                 output.screen("Warning: I hope you know what you are doing!")
 
-            self.pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('a', a_len, a_width, 
+                                        tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('w', b_len, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
 
             # TODO: some sort of assertion on the sizes, here or later
@@ -83,25 +86,35 @@ class Calculator:
             #print(np.shape(pt.shared_arrays['c'].array))
 
             if self.config.sections["CALCULATOR"].force:
-                self.pt.create_shared_array('dgrad', dgrad_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
-                self.pt.create_shared_array('dbdrindx', dgrad_len, 3, tm=self.config.sections["SOLVER"].true_multinode)
+                self.pt.create_shared_array('dgrad', dgrad_len, a_width, 
+                                            tm=self.config.sections["SOLVER"].true_multinode)
+                self.pt.create_shared_array('dbdrindx', dgrad_len, 3, 
+                                            tm=self.config.sections["SOLVER"].true_multinode)
                 # create a unique_j_indices array
                 # this will house all unique indices (atoms j) in the dbdrindx array
                 # so the size is (natoms*nconfigs,)
-                self.pt.create_shared_array('unique_j_indices', dgrad_len, tm=self.config.sections["SOLVER"].true_multinode)
+                self.pt.create_shared_array('unique_j_indices', dgrad_len, 
+                                            tm=self.config.sections["SOLVER"].true_multinode)
 
             self.pt.new_slice_a()
-            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0] # an index for which the 'a' array starts on a particular proc
+            # an index for which the 'a' array starts on a particular proc
+            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0] 
             self.pt.new_slice_b()
-            self.shared_index_b = self.pt.fitsnap_dict["sub_b_indices"][0] # an index for which the 'b' array starts on a particular proc
+            # an index for which the 'b' array starts on a particular proc
+            self.shared_index_b = self.pt.fitsnap_dict["sub_b_indices"][0] 
             self.pt.new_slice_c()
-            self.shared_index_c = self.pt.fitsnap_dict["sub_c_indices"][0] # an index for which the 'c' array starts on a particular proc
+            # an index for which the 'c' array starts on a particular proc
+            self.shared_index_c = self.pt.fitsnap_dict["sub_c_indices"][0] 
             self.pt.new_slice_t() # atom types
 
             self.pt.new_slice_dgrad()
-            self.shared_index_dgrad = self.pt.fitsnap_dict["sub_dgrad_indices"][0] # an index for which the 'dgrad' array starts on a particular proc
-            self.shared_index_dbdrindx = self.pt.fitsnap_dict["sub_dbdrindx_indices"][0] # an index for which the 'dbdrindx' array starts on a particular proc
-            self.shared_index_unique_j = 0 # index for which the 'unique_j_indices' array starts on a particular proc, need to add to fitsnap_dict later
+            # an index for which the 'dgrad' array starts on a particular proc
+            self.shared_index_dgrad = self.pt.fitsnap_dict["sub_dgrad_indices"][0]
+            # an index for which the 'dbdrindx' array starts on a particular proc 
+            self.shared_index_dbdrindx = self.pt.fitsnap_dict["sub_dbdrindx_indices"][0] 
+            # index for which the 'unique_j_indices' array starts on a particular proc, 
+            # need to add to fitsnap_dict later
+            self.shared_index_unique_j = 0 
 
             self.pt.add_2_fitsnap("Groups", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
             self.pt.add_2_fitsnap("Configs", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))

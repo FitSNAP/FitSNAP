@@ -153,6 +153,7 @@ class LammpsSnap(LammpsBase):
         index_c = self.shared_index_c
         index_dgrad = self.shared_index_dgrad
         index_unique_j = self.shared_index_unique_j
+        #index_w = self.shared_index_w
 
         # extract the useful parts of the snap array
 
@@ -184,13 +185,15 @@ class LammpsSnap(LammpsBase):
         self.pt.shared_arrays['t'].array[index:index+bik_rows] = lmp_types
         index += num_atoms
 
-        # populate the truth array 'b'
+        # populate the truth array 'b' and weight array 'w'
 
         self.pt.shared_arrays['b'].array[index_b] = (energy - ref_energy)/num_atoms
+        self.pt.shared_arrays['w'].array[index_b,0] = self._data["eweight"]
+        self.pt.shared_arrays['w'].array[index_b,1] = self._data["fweight"]
         index_b += 1
 
         # populate the truth array 'c'
-
+        #print(self._data["Forces"])
         self.pt.shared_arrays['c'].array[index_c:(index_c + (3*num_atoms))] = self._data["Forces"].ravel() - ref_forces
         index_c += 3*num_atoms
 
@@ -323,7 +326,8 @@ class LammpsSnap(LammpsBase):
             self.pt.fitsnap_dict['Atom_I'][dindex:dindex + bik_rows] = [int(i) for i in range(nrows_energy)]
             # create an atom types list for the energy rows, if bikflag=1
             if self.config.sections['BISPECTRUM'].bikflag:
-                self.pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = lmp_types
+                types_energy = [int(i) for i in lmp_types]
+                self.pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = types_energy
             else:
                 self.pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = [0]
 

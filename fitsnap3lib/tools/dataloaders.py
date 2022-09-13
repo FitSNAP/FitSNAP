@@ -7,13 +7,16 @@ import numpy as np
 class InRAMDataset(torch.utils.data.Dataset):
     """Load A matrix Dataset from RAM"""
 
-    def __init__(self, a_matrix, b, c, t, dgrad, natoms_per_config, dbdrindx, number_of_dgrad_rows, unique_j_indices, indices=None):
+    def __init__(self, a_matrix, b, c, t, w, dgrad, natoms_per_config, dbdrindx, 
+                 number_of_dgrad_rows, unique_j_indices, indices=None):
         """
         Args:
             a_matrix (numpy array): Matrix of descriptors with shape (natoms*nconfigs, ndescriptors)
-            b (numpy array): Array of feature truth values with shape (nconfigs, )
+            b (numpy array): Array of energy truth values with shape (nconfigs, )
             c (numpy array): Array of force truth values with shape (nconfigs*natoms*3, )
             t (numpy array): Array of atom types with shape (natoms*nconfigs, )
+            w (numpy array): Array of weights for energy (1st col) and force (2nd col) with shape
+                             (nconfigs, 2)
             dgrad (numpy array): Array of dBi/dRj values organized as documented in compute snap
             natoms_per_config: Array of natoms for each config
             dbdrindx: array of indices corresponding to dgrad as documented in compute snap
@@ -26,6 +29,7 @@ class InRAMDataset(torch.utils.data.Dataset):
         self.targets = b
         self.target_forces = c
         self.atom_types = t - 1 # make atom types start at zero
+        self.weights = w
         self.dgrad = dgrad
         self.natoms_per_config = natoms_per_config
         self.dbdrindx = dbdrindx
@@ -85,7 +89,7 @@ class InRAMDataset(torch.utils.data.Dataset):
                 self.indices_target_forces.append(config_indx)
             config_indx = config_indx + 1
         self.indices_target_forces = np.array(self.indices_target_forces).astype(np.int32)
-        #print(self.indices_target_forces[0:163])
+        print(self.indices_target_forces[0:20])
 
         # create indices for dgrad and dbdrindx and unique_j_indices
 
@@ -127,6 +131,7 @@ class InRAMDatasetPyTorch(InRAMDataset):
         config_descriptors = torch.tensor(self.descriptors[self.indices_descriptors == idx]).float()
         atom_types = torch.tensor(self.atom_types[self.indices_descriptors == idx]).long()
         target = torch.tensor(self.targets[self.indices_targets == idx]).float()
+        weights = torch.tensor(self.weights[self.indices_targets == idx]).float()
         target_forces = torch.tensor(self.target_forces[self.indices_target_forces == idx]).float()
         number_of_atoms = torch.tensor(self.natoms_per_config[idx])
         number_of_dgrads = torch.tensor(self.number_of_dgrad_rows[idx])
@@ -141,6 +146,7 @@ class InRAMDatasetPyTorch(InRAMDataset):
                          'y_forces': target_forces,
                          'noa': number_of_atoms.reshape(-1), #number_of_atoms.reshape(-1),
                          't': atom_types,
+                         'w': weights,
                          'i': indices,
                          'dgrad': dgrad,
                          'dbdrindx': dbdrindx,
@@ -156,6 +162,7 @@ def torch_collate(batch):
     batch_of_descriptors = torch.cat([conf['x'] for conf in batch], dim=0)
     batch_of_types = torch.cat([conf['t'] for conf in batch], dim=0)
     batch_of_targets = torch.cat([conf['y'] for conf in batch], dim=0)
+    batch_of_weights = torch.cat([conf['w'] for conf in batch], dim=0)
     batch_of_target_forces = torch.cat([conf['y_forces'] for conf in batch], dim=0)
     number_of_atoms = torch.cat([conf['noa'] for conf in batch], dim=0)
     indices = torch.cat([conf['i'] for conf in batch], dim=0) % len(batch)
@@ -257,6 +264,7 @@ def torch_collate(batch):
                       'y': batch_of_targets,
                       'y_forces': batch_of_target_forces,
                       'noa': number_of_atoms,
+                      'w': batch_of_weights,
                       'i': indices,
                       'dgrad': batch_of_dgrad,
                       'dbdrindx': batch_of_dbdrindx,

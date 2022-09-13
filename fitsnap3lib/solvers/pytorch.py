@@ -112,6 +112,9 @@ try:
             self.validation_data = None
             self.training_loader = None
 
+        def weighted_mse_loss(self, prediction, target, weight):
+            return torch.mean(weight * (prediction - target)**2)
+
         def create_datasets(self):
             """
             Creates the dataset to be used for training and the data loader for the batch system.
@@ -120,12 +123,15 @@ try:
             # this is not used, but may be useful later
             # training = [not elem for elem in pt.fitsnap_dict['Testing']]
 
+            print(self.pt.shared_arrays['w'].array)
+
             # TODO: when only fitting to energy, we don't need all this extra data
 
             self.total_data = InRAMDatasetPyTorch(self.pt.shared_arrays['a'].array,
                                                   self.pt.shared_arrays['b'].array,
                                                   self.pt.shared_arrays['c'].array,
                                                   self.pt.shared_arrays['t'].array,
+                                                  self.pt.shared_arrays['w'].array,
                                                   self.pt.shared_arrays['dgrad'].array,
                                                   self.pt.shared_arrays['number_of_atoms'].array,
                                                   self.pt.shared_arrays['dbdrindx'].array,
@@ -223,11 +229,23 @@ try:
                         target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                         indices = batch['i'].to(self.device)
                         num_atoms = batch['noa'].to(self.device)
+                        weights = batch['w'].to(self.device)
+                        print("^^^^^")
+                        #print(weights)
+                        #print(indices)
                         dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
                         (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
                         energies = torch.div(energies,num_atoms)
+
+                        # use indices to extract per-atom force weights
+                        # first need to repeat interleave the indices 
+                        # this gives indices showing which config a force belongs to
+
+                        indices_forces = torch.repeat_interleave(indices, 3)
+                        #print(indices_forces)
+                        force_weights = weights[indices_forces,1]
 
                         if (self.energy_weight != 0):
                             energies = energies.to(self.device)
@@ -253,7 +271,9 @@ try:
                         elif (self.force_weight==0.0):
                             loss = self.energy_weight*self.loss_function(energies, targets)
                         else:
-                            loss = self.energy_weight*self.loss_function(energies, targets) + self.force_weight*self.loss_function(forces, target_forces)
+                            #loss = self.energy_weight*self.loss_function(energies, targets) + self.force_weight*self.loss_function(forces, target_forces)
+                            loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
+                                 + self.weighted_mse_loss(forces, target_forces, force_weights)
                         self.optimizer.zero_grad()
                         loss.backward()
                         self.optimizer.step()

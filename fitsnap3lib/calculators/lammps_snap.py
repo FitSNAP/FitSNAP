@@ -193,7 +193,7 @@ class LammpsSnap(LammpsBase):
         index_b += 1
 
         # populate the truth array 'c'
-        #print(self._data["Forces"])
+
         self.pt.shared_arrays['c'].array[index_c:(index_c + (3*num_atoms))] = self._data["Forces"].ravel() - ref_forces
         index_c += 3*num_atoms
 

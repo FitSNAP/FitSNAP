@@ -68,8 +68,10 @@ try:
             self.pt = ParallelTools()
             self.config = Config()
 
+            self.global_weight_bool = self.config.sections['PYTORCH'].global_weight_bool
             self.energy_weight = self.config.sections['PYTORCH'].energy_weight
             self.force_weight = self.config.sections['PYTORCH'].force_weight
+
             self.training_fraction = self.config.sections['PYTORCH'].training_fraction
             self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
             self.num_elements = self.config.sections["PYTORCH"].num_elements
@@ -122,8 +124,6 @@ try:
 
             # this is not used, but may be useful later
             # training = [not elem for elem in pt.fitsnap_dict['Testing']]
-
-            print(self.pt.shared_arrays['w'].array)
 
             # TODO: when only fitting to energy, we don't need all this extra data
 
@@ -230,21 +230,15 @@ try:
                         indices = batch['i'].to(self.device)
                         num_atoms = batch['noa'].to(self.device)
                         weights = batch['w'].to(self.device)
-                        print("^^^^^")
-                        #print(weights)
-                        #print(indices)
                         dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
                         (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
                         energies = torch.div(energies,num_atoms)
 
-                        # use indices to extract per-atom force weights
-                        # first need to repeat interleave the indices 
-                        # this gives indices showing which config a force belongs to
+                        # make indices showing which config a force belongs to
 
                         indices_forces = torch.repeat_interleave(indices, 3)
-                        #print(indices_forces)
                         force_weights = weights[indices_forces,1]
 
                         if (self.energy_weight != 0):
@@ -271,9 +265,12 @@ try:
                         elif (self.force_weight==0.0):
                             loss = self.energy_weight*self.loss_function(energies, targets)
                         else:
-                            #loss = self.energy_weight*self.loss_function(energies, targets) + self.force_weight*self.loss_function(forces, target_forces)
-                            loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
-                                 + self.weighted_mse_loss(forces, target_forces, force_weights)
+                            if (self.global_weight_bool):
+                                loss = self.energy_weight*self.loss_function(energies, targets) \
+                                     + self.force_weight*self.loss_function(forces, target_forces)
+                            else:
+                                loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
+                                    + self.weighted_mse_loss(forces, target_forces, force_weights)
                         self.optimizer.zero_grad()
                         loss.backward()
                         self.optimizer.step()
@@ -290,11 +287,17 @@ try:
                         target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                         indices = batch['i'].to(self.device)
                         num_atoms = batch['noa'].to(self.device)
+                        weights = batch['w'].to(self.device)
                         dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
                         (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
                         energies = torch.div(energies,num_atoms)
+                        
+                        # make indices showing which config a force belongs to
+
+                        indices_forces = torch.repeat_interleave(indices, 3)
+                        force_weights = weights[indices_forces,1]
 
                         if (self.energy_weight != 0):
                             energies = energies.to(self.device)
@@ -330,7 +333,13 @@ try:
                         elif (self.force_weight==0.0):
                             loss = self.energy_weight*self.loss_function(energies, targets)
                         else:
-                            loss = self.energy_weight*self.loss_function(energies, targets) + self.force_weight*self.loss_function(forces, target_forces)
+                            if (self.global_weight_bool):
+                                loss = self.energy_weight*self.loss_function(energies, targets) \
+                                     + self.force_weight*self.loss_function(forces, target_forces)
+                            else:
+                                loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
+                                    + self.weighted_mse_loss(forces, target_forces, force_weights)
+
                         val_losses_step.append(loss.item())
 
                     # average training and validation losses across all batches

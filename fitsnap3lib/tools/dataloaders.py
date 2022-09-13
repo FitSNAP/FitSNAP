@@ -89,7 +89,6 @@ class InRAMDataset(torch.utils.data.Dataset):
                 self.indices_target_forces.append(config_indx)
             config_indx = config_indx + 1
         self.indices_target_forces = np.array(self.indices_target_forces).astype(np.int32)
-        print(self.indices_target_forces[0:20])
 
         # create indices for dgrad and dbdrindx and unique_j_indices
 

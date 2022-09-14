@@ -80,5 +80,76 @@ The :code:`PYTORCH` section keys are explained in more detail below.
   useful for debugging purposes.
 
 
+Outputs and Error Calculation
+-----------------------------
+
+FitSNAP outputs include files that aid in error calculation, and files that can be used to restart 
+a fit or even run MD simulations in LAMMPS.
+
+Error/Comparison files
+^^^^^^^^^^^^^^^^^^^^^^
+
+After training a potential, FitSNAP produces outputs that can be used to intrepret the quality of a 
+fit on the training and/or validation data. The following comparison files are written after a fit:
+
+- :code:`energy_comparison.dat` energy comparisons for all configs in the training set. Each row 
+corresponds to a specific configuration in the training set. The first column is the model energy, 
+and the 2nd column is the target energy. 
+
+- :code:`energy_comparison_val.dat` energy comparisons for all configs in the validation set. 
+  Format is same as above.
+
+- :code:`force_comparison.dat` force comparisons for all atoms in all configs in the training set.
+  Each row corresponds to a single atom's Cartesian component for a specific config in the training 
+  set. The first column is the model energy, and the 2nd column is the target energy.
+
+- :code:`force_comparison_val.dat` same as above, but for the validation set.
+
+These outputs allow you to compare the configuration energies, or per-atom forces, however you want
+after a fit. For example, in the `Ta_PyTorch_NN example <https://github.com/FitSNAP/FitSNAP/tree/master/examples/Ta_PyTorch_NN>`_
+, we provide python scripts that help post-process these files to calculate mean absolute error or 
+plot comparisons in energies and forces.
+
+PyTorch model files
+^^^^^^^^^^^^^^^^^^^
+
+FitSNAP outputs two PyTorch :code:`.pt` models file after fitting. One is used for restarting a fit
+based on an existing model, specifically the model name supplied by the user in the 
+:code:`save_state_output` keyword of the input script. In the `Ta_PyTorch_NN example <https://github.com/FitSNAP/FitSNAP/tree/master/examples/Ta_PyTorch_NN>`_
+we can see this keyword is :code:`Ta_Pytorch.pt`. This file will therefore be saved every epoch, and 
+it may be fed into FitSNAP via the :code:`save_state_input` keyword to restart another fit from that
+particular model.
+
+The other PyTorch model is used for running MD simulations in LAMMPS after a fit. This file has the 
+name :code:`FitTorch_Pytorch.pt`, and is used to run MD in LAMMPS via the ML-IAP package. An example 
+is given for tantalum here: https://github.com/FitSNAP/FitSNAP/tree/master/examples/Ta_PyTorch_NN/MD 
+
+Calculate errors on a test set
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Users may want to use models to calculate errors on a test set that was completely separate from the
+training/validation sets used in fitting. To do this, we change the input script to read an existing
+PyTorch model file, e.g. for Ta::
+
+    [PYTORCH]
+    layer_sizes =  num_desc 60 60 1
+    learning_rate = 1.5e-4 
+    num_epochs = 1 ##### Set to 1 for testing
+    batch_size = 4
+    save_state_input = Ta_Pytorch.pt ##### Load an existing model
+    energy_weight = 1e-2
+    force_weight = 1.0
+    training_fraction = 1.0
+    multi_element_option = 1
+    num_elements = 1
+
+Notice how we are now using :code:`save_state_input` instead of :code:`save_state_output`, and that 
+we set :code:`num_epochs = 1`. This will load the existing PyTorch model, and perform a single epoch
+which involves calculating the energy and force comparisons (mentioned above) for the current model, 
+on whatever user-defined groups of configs in the groups section.We can therefore use the energy and 
+force comparison files here to calculate mean absolute errors, e.g. with the script in 
+the `Ta_PyTorch_NN example <https://github.com/FitSNAP/FitSNAP/tree/master/examples/Ta_PyTorch_NN>`_
+
+
 
 

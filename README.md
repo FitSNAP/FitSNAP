@@ -27,7 +27,7 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 
 <!-----------------END-HEADER------------------------------------->
 
-**Check out our documentation:** [fitsnap.github.io](https://fitsnap.github.io)
+**Documentation page:** [https://fitsnap.github.io](https://fitsnap.github.io)
 
 #### Using this package:
 * [Required] This package expects a python 3.6+ version.

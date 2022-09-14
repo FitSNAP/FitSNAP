@@ -34,6 +34,9 @@ class Calculator:
         # create data matrices for nonlinear pytorch solver
 
         if (self.config.sections["SOLVER"].solver == "PYTORCH"):
+            if (self.pt._sub_size > 1):
+                print(f"Using {self.pt._sub_size} procs")
+                raise Exception("PyTorch models not yet set up for multiprocs, please use 1 proc.")
             print("----- Creating data arrays for nonlinear fitting in calculator.py")
             self.pt.shared_arrays["number_of_dgradrows"].array = self.dgradrows
             self.number_of_dgradrows = self.pt.shared_arrays["number_of_dgradrows"].array.sum()

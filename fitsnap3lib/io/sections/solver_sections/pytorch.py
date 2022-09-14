@@ -44,7 +44,11 @@ try:
             elif (self.energy_weight == self.energy_weight and self.force_weight == self.force_weight):
                 print("----- Global weights set: Overriding group weights.")
                 self.global_weight_bool = True
-            self.training_fraction = self.get_value("PYTORCH", "training_fraction", "0.8", "float")
+            self.training_fraction = self.get_value("PYTORCH", "training_fraction", "NaN", "float")
+            self.global_fraction_bool = False
+            if (self.training_fraction == self.training_fraction):
+                print("----- Global training fraction set: Overriding group fractions.")
+                self.global_fraction_bool = True
             self.multi_element_option = self.get_value("PYTORCH", "multi_element_option", "1", "int")
             self.manual_seed_flag = self.get_value("PYTORCH", "manual_seed_flag", "False", "bool")
 

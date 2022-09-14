@@ -53,9 +53,11 @@ The :code:`PYTORCH` section keys are explained in more detail below.
 
 - :code:`energy_weight` is a scalar constant multiplied by the mean squared energy error in the 
   loss function. Declaring this parameter will override the weights in the GROUPS section for all configs.
+  We therefore call this the "global energy weight".
 
 - :code:`force_weight` is a scalar constant multiplied by the mean squared force error in the loss
   function. Declaring this parameter will override the weights in the GROUPS section for all configs.
+  We therefore call this the "global force weight".
 
 - :code:`training_fraction` is a decimal fraction of how much of the total data should be trained
   on. The leftover code:`1.0 - training_fraction` portion is used for calculating validation errors
@@ -69,6 +71,9 @@ The :code:`PYTORCH` section keys are explained in more detail below.
 
 - :code:`num_elements` number of unique atom elements, or more specifically number of unique 
   networks.
+
+- :code:`manual_seed_flag` set to 0 by default, can set to 1 if want to force a random seed which is
+  useful for debugging purposes.
 
 
 

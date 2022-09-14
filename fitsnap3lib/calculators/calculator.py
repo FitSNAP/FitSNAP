@@ -116,11 +116,13 @@ class Calculator:
             # need to add to fitsnap_dict later
             self.shared_index_unique_j = 0 
 
-            self.pt.add_2_fitsnap("Groups", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Configs", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
+            # some fitsnap dicts have same size as number of configs for nonlinear fitting
+
+            self.pt.add_2_fitsnap("Groups", DistributedList(self.number_of_files_per_node))
+            self.pt.add_2_fitsnap("Configs", DistributedList(self.number_of_files_per_node))
             self.pt.add_2_fitsnap("Row_Type", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
             self.pt.add_2_fitsnap("Atom_I", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Testing", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
+            self.pt.add_2_fitsnap("Testing", DistributedList(self.number_of_files_per_node))
 
         # get data arrays for linear solvers
 

@@ -72,7 +72,9 @@ try:
             self.energy_weight = self.config.sections['PYTORCH'].energy_weight
             self.force_weight = self.config.sections['PYTORCH'].force_weight
 
+            self.global_fraction_bool = self.config.sections['PYTORCH'].global_fraction_bool
             self.training_fraction = self.config.sections['PYTORCH'].training_fraction
+
             self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
             self.num_elements = self.config.sections["PYTORCH"].num_elements
             self.num_desc_per_element = self.config.sections["CALCULATOR"].num_desc/self.num_elements
@@ -122,8 +124,8 @@ try:
             Creates the dataset to be used for training and the data loader for the batch system.
             """
 
-            # this is not used, but may be useful later
-            # training = [not elem for elem in pt.fitsnap_dict['Testing']]
+            # observe if config GROUPS are getting shuffled before PyTorch shuffling:
+            #print(self.pt.fitsnap_dict['Configs'])
 
             # TODO: when only fitting to energy, we don't need all this extra data
 
@@ -138,20 +140,34 @@ try:
                                                   self.pt.shared_arrays["number_of_dgradrows"].array,
                                                   self.pt.shared_arrays["unique_j_indices"].array)
 
-            # randomly shuffle and split into training/validation data
+            # randomly shuffle and split into training/validation data if using global fractions
 
-            if (self.training_fraction == 0.0):
-                raise Exception("Training fraction must be > 0.0 for now, later we might implement 0.0 training fraction for testing on a test set")
-            if ( (self.training_fraction > 1.0) or (self.training_fraction < 0.0) ):
-                raise Exception("Training fraction cannot be > 1.0 or < 0.0")
-            self.train_size = int(self.training_fraction * len(self.total_data))
-            self.test_size = len(self.total_data) - self.train_size
-            self.training_data, self.validation_data = torch.utils.data.random_split(self.total_data, [self.train_size, self.test_size])
+            if (self.global_fraction_bool):
 
-            
+                if (self.training_fraction == 0.0):
+                    raise Exception("Training fraction must be > 0.0 for now, later we might implement 0.0 training fraction for testing on a test set")
+                if ( (self.training_fraction > 1.0) or (self.training_fraction < 0.0) ):
+                    raise Exception("Training fraction cannot be > 1.0 or < 0.0")
+                self.train_size = int(self.training_fraction * len(self.total_data))
+                self.test_size = len(self.total_data) - self.train_size
+                self.training_data, self.validation_data = \
+                    torch.utils.data.random_split(self.total_data, 
+                                                  [self.train_size, self.test_size])
+
+            else: 
+
+                # we are using group training/testing fractions
+
+                training_bool_indices = [not elem for elem in self.pt.fitsnap_dict['Testing']]
+                training_indices = [i for i, x in enumerate(training_bool_indices) if x]
+                testing_indices = [i for i, x in enumerate(training_bool_indices) if not x]
+                self.training_data = torch.utils.data.Subset(self.total_data, training_indices)
+                self.validation_data = torch.utils.data.Subset(self.total_data, testing_indices)
 
             # make training and validation data loaders for batch training
-            # not sure if shuffling=True works, but data.random_split() above shuffles the input data
+            # not sure if shuffling=True works, 
+            # but data.random_split() above shuffles the input data,
+            # and the group fractions are shuffled with random_sampling=1 flag.
 
             self.training_loader = DataLoader(self.training_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,

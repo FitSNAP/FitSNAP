@@ -27,6 +27,8 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 
 <!-----------------END-HEADER------------------------------------->
 
+**Check out our documentation:** [fitsnap.github.io](https://fitsnap.github.io)
+
 #### Using this package:
 * [Required] This package expects a python 3.6+ version.
 * [Required] Compile LAMMPS (lammps.sandia.gov) as a shared library, detailed instructions can be found here `docs/LAMMPS.md`. If you can open python and run `import lammps; lmp = lammps.lammps()` and it succeeds, you should be good.

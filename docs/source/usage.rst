@@ -43,7 +43,7 @@ FitSNAP. Start with cloning the LAMMPS repo:
 
 Next, make sure you have a Python environment that you want to use FitSNAP in. 
 
-Use :code:`pip`or :code:`conda` to activate your environment before proceeding, and install the
+Use :code:`pip` or :code:`conda` to activate your environment before proceeding, and install the
 following:
 
 .. code-block:: console
@@ -52,7 +52,7 @@ following:
     pip install torch 
     pip install Cython
 
-Then move into your LAMMPS directory and prepare a Makefile that'll build LAMMPS with all the 
+Then move into your LAMMPS directory and use cmake to prepare a Makefile that'll build LAMMPS with all the 
 packages required by FitSNAP:
 
 .. code-block:: console

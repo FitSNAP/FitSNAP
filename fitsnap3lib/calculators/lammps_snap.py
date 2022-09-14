@@ -227,6 +227,14 @@ class LammpsSnap(LammpsBase):
         #    print(dgrad_indices)
         self.pt.shared_arrays['unique_j_indices'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = unique_j_indices
 
+        # Populate the fitsnap dicts
+
+        dindex = dindex+1
+        self.pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = ['{}'.format(self._data['Group'])]
+        self.pt.fitsnap_dict['Configs'][self.distributed_index:dindex] = ['{}'.format(self._data['File'])]
+        self.pt.fitsnap_dict['Testing'][self.distributed_index:dindex] = [bool(self._data['test_bool'])]
+
+        # update indices
 
         index_dgrad += nrows_dgrad
         index_unique_j = index_unique_j + 1

@@ -1,8 +1,11 @@
-from .solver import Solver
-from ..parallel_tools import pt
-from ..io.input import config
+from fitsnap3lib.solvers.solver import Solver
+from fitsnap3lib.parallel_tools import ParallelTools()
+from fitsnap3lib.io.input import Config()
 import numpy as np
 from scipy.linalg import lstsq
+
+pt = ParallelTools()
+config = Config()
 
 
 # Adaptive Markov chain Monte Carlo

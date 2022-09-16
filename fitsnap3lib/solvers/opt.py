@@ -1,9 +1,11 @@
-from .solver import Solver
-from ..parallel_tools import pt
-from ..io.input import config
+from fitsnap3lib.solvers.solver import Solver
+from fitsnap3lib.parallel_tools import ParallelTools
+from fitsnap3lib.io.input import Config
 from scipy.optimize import minimize
 import numpy as np
 
+pt = ParallelTools()
+config = Config()
 
 def distance(x, aw, bw):
     return np.linalg.norm(np.dot(aw, x) - bw)

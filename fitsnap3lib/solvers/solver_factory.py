@@ -7,7 +7,8 @@ from fitsnap3lib.solvers.pytorch import PYTORCH
 from fitsnap3lib.solvers.scalapack import ScaLAPACK
 from fitsnap3lib.solvers.svd import SVD
 from fitsnap3lib.solvers.tensorflowsvd import TensorflowSVD
-
+from fitsnap3lib.solvers.anl import ANL
+from fitsnap3lib.solvers.merr import MERR
 
 pt = ParallelTools()
 

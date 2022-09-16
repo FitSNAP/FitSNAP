@@ -3,10 +3,8 @@ from fitsnap3lib.parallel_tools import ParallelTools
 import numpy as np
 from pandas import DataFrame
 
-
-#config = Config()
 #pt = ParallelTools()
-
+#config = Config()
 
 class Solver:
     """
@@ -43,8 +41,11 @@ class Solver:
         self.a = None
         self.b = None
         self.w = None
+
         self.df = None
         self.linear = linear
+        self.cov = None
+        self.fit_sam = None
         self._checks()
 
     def perform_fit(self):
@@ -63,6 +64,24 @@ class Solver:
             self.fit = self.fit.reshape((-1, 1))
         else:
             self.fit = np.insert(self.fit, 0, 0)
+
+        if self.fit_sam is not None:
+
+            if num_types > 1:
+                offsets = np.zeros((num_types, 1))
+                nsam, ncf = self.fit_sam.shape
+
+                fit_sam = np.empty((nsam, ncf + num_types))
+                for isam, fit in enumerate(self.fit_sam.reshape(nsam, num_types, config.sections["BISPECTRUM"].ncoeff)):
+                    fit = np.concatenate([offsets, fit], axis=1)
+                    fit_sam[isam, :] = fit.reshape((-1,))
+
+                self.fit_sam = fit_sam + 0.0
+
+            else:
+                self.fit_sam = np.insert(self.fit_sam, 0, 0, axis=1)
+
+
 
     def _checks(self):
         assert not (self.linear and self.config.sections['CALCULATOR'].per_atom_energy and self.config.args.perform_fit)
@@ -140,8 +159,10 @@ class Solver:
         #         # self._errors(this_config, "Stress", indices)
         pass
 
+
     def _errors(self, group, rtype, indices):
         this_true, this_pred = self.df['truths'][indices], self.df['preds'][indices]
+        this_a = self.df.iloc[:, 0:self.pt.shared_arrays['a'].array.shape[1]].loc[indices].to_numpy()
         if self.weighted == 'Weighted':
             w = self.pt.shared_arrays['w'].array[indices]
             this_true, this_pred = w * this_true, w * this_pred
@@ -170,3 +191,37 @@ class Solver:
 
     def _template_error(self):
         pass
+
+    def _compute_stdev(self, a, method="chol"):
+        if method == "sam":
+            assert(self.fit_sam is not None)
+            pf_stdev = np.std(self.fit_sam @ a.T, axis=0)
+        elif method == "chol":
+            assert(self.cov is not None)
+            chol = np.linalg.cholesky(self.cov)
+            mat = a @ chol
+            pf_stdev = np.linalg.norm(mat, axis=1)
+        elif method == "choleye":
+            assert(self.cov is not None)
+            eigvals = np.linalg.eigvalsh(self.cov)
+            chol = np.linalg.cholesky(self.cov+(abs(eigvals[0]) + 1e-14) * np.eye(self.cov.shape[0]))
+            mat = a @ chol
+            pf_stdev = np.linalg.norm(mat, axis=1)
+        elif method == "svd":
+            assert(self.cov is not None)
+            u, s, vh = np.linalg.svd(self.cov, hermitian=True)
+            mat = (a @ u) @ np.sqrt(np.diag(s))
+            pf_stdev = np.linalg.norm(mat, axis=1)
+        elif method == "loop":
+            assert(self.cov is not None)
+            tmp = np.dot(a, self.cov)
+            pf_stdev = np.empty(a.shape[0])
+            for ipt in range(a.shape[0]):
+                pf_stdev[ipt] = np.sqrt(np.dot(tmp[ipt, :], a[ipt, :]))
+        elif method == "fullcov":
+            assert(self.cov is not None)
+            pf_stdev = np.sqrt(np.diag((a @ self.cov) @ a.T))
+        else:
+            pf_stdev = np.zeros(a.shape[0])
+
+        return pf_stdev

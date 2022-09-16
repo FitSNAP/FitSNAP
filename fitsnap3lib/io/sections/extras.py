@@ -19,6 +19,7 @@ class Extras(Section):
         self.dump_a = self.get_value("EXTRAS", "dump_descriptors", "0", "bool")
         self.dump_b = self.get_value("EXTRAS", "dump_truth", "0", "bool")
         self.dump_w = self.get_value("EXTRAS", "dump_weights", "0", "bool")
+
         self.dump_dataframe = self.get_value("EXTRAS", "dump_dataframe", "0", "bool")
         self.descriptor_file = \
             self.check_path(self.get_value("OUTFILE", "descriptors", "Descriptors.npy"))
@@ -28,4 +29,5 @@ class Extras(Section):
             self.check_path(self.get_value("OUTFILE", "weights", "Weights.npy"))
         self.dataframe_file = \
             self.check_path(self.get_value("OUTFILE", "dataframe", "FitSNAP.df"))
+
         self.delete()

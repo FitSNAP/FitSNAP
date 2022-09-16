@@ -12,6 +12,7 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 #### Key contributors (alphabetical):
     Mary Alice Cusentino (Sandia National Labs)
     Nicholas Lubbers (Los Alamos National Lab)
+    Drew Rohskopf (Sandia National Labs)
     Charles Sievers (UC Davis, Sandia National Labs)
     Adam Stephens (Sandia National Labs)
     Mitchell Wood (Sandia National Labs)
@@ -33,15 +34,17 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
     * Clone the ML-PACE package with the implemented ACE descriptor computes into your build directory from: git@github.com:jmgoff/lammps-user-pace.git
     * Follow the README.md and INSTALL.md in this repo to build lammps with ACE descriptor calculators
 
-#### Installing:
-* For the most recent bug fixes/code changes:
-    * Clone this repository and add it to your PYTHONPATH environment variable. Periodically `git pull` for code updates.
-* A minimal working environment can be achieved with the following;
-   `conda create -n fitsnap python=3.9 ;
-     conda activate fitsnap ;
-     conda install lammps psutil pandas tabulate mpi4py`
-* NOTE : Conda lammps installation does NOT include ACE descriptor set or SPIN package needed for these corresponding examples.
-* See docs/INSTALL.md for more information.
+#### Installing a minimal working environment with Conda:
+* Clone this repository
+* Add the cloned repository path to your PYTHONPATH environment variable (periodically `git pull` for code updates)
+* Add conda-forge to your Conda install, if not already added
+    `conda config --add channels conda-forge` 
+* Create a new Conda environment
+    `conda create -n fitsnap python=3.9 ;
+    conda activate fitsnap ;`
+* Install packages:
+    `conda install lammps psutil pandas tabulate sphinx sphinx_rtd_theme mpi4py`
+* WARNING: Conda lammps installation does NOT include ACE descriptor set or SPIN package needed for these corresponding examples.
 
 #### Running:
 * `(mpirun -np #) python -m fitsnap3 [options] infile` (optional)

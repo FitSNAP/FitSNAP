@@ -30,7 +30,7 @@ class MERR(Solver):
                 print("The Matrix is ill-conditioned for the transpose trick")
 
         ## If multiple elements with different 2J max settings, there will be columns of all 0.
-        ## Need to remove those to make the matrix invertible. Backfill in the columns after calculations.
+        ## Want to remove those because there's no reason to embed upon them. Backfill with 0s afterwards.
         zero_column_list = []
         for i in range(aw.shape[1]):
             if not np.any(aw[:,i]):
@@ -40,7 +40,7 @@ class MERR(Solver):
         npt, nbas = aw.shape
 
         cov_nugget = config.sections["SOLVER"].cov_nugget
-        invptp = np.linalg.inv(np.dot(aw.T, aw)+cov_nugget*np.diag(np.ones((nbas,))))
+        invptp = np.linalg.pinv(np.dot(aw.T, aw)+cov_nugget*np.diag(np.ones((nbas,))))
         invptp = invptp*0.5 + invptp.T*0.5  #forcing symmetry; can get numerically significant errors when A is ill-conditioned
         cf = np.dot(invptp, np.dot(aw.T, bw))
 

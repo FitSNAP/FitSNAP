@@ -31,6 +31,7 @@ Indices and tables
    usage
    Run
    Pytorch
+   Uncertainty Quantification
 
 .. _programmer_documentation:
 .. toctree::

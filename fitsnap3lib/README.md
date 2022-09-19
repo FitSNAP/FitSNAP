@@ -1,4 +1,4 @@
-## FitSNAP3 
+## FitSNAP3
 A Python Package For Training SNAP Interatomic Potentials for use in LAMMPS Molecular Dynamics
 
 _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_

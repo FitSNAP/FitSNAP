@@ -8,6 +8,8 @@ Welcome to FitSNAP's documentation!
 
 **FitSNAP** is a molecular machine learning package for LAMMPS. 
 
+https://github.com/FitSNAP/FitSNAP
+
 Indices and tables
 ==================
 
@@ -28,9 +30,10 @@ Indices and tables
    :includehidden:
 
    Introduction
-   usage
+   Installation
    Run
    Pytorch
+   Uncertainty Quantification
 
 .. _programmer_documentation:
 .. toctree::

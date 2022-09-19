@@ -33,3 +33,17 @@ WARNING: Conda lammps installation does NOT include ACE descriptor set or SPIN p
 
 TIP: Periodically use the command :code:`git pull` in the cloned directory for updates 
 
+
+Install with latest (development) LAMMPS version:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#. Clone the 'develop' branch at https://github.com/lammps/lammp.
+
+#. ccmake: Build LAMMPS using the following steps:
+        - in the main directory, create a new directory called 'build'
+        - cd into 'build' and use command 'ccmake ../cmake'
+        - hit 'c' for configure, and toggle the following tp TRUE: BUILD_MPI, BUILD_SHARED_LIBS,LAMMPS_EXCEPTIONS,ML_SNAP,(whatever other packages you want)
+        - (stuck here, need to install MPI and get it compatible with mpi4py...)
+
+
+
+

@@ -30,7 +30,7 @@ Indices and tables
    :includehidden:
 
    Introduction
-   usage
+   Installation
    Run
    Pytorch
    Uncertainty Quantification

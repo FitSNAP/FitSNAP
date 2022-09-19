@@ -1,6 +1,8 @@
 <!----------------BEGIN-HEADER------------------------------------>
 ## FitSNAP3
-A Python Package For Training SNAP Interatomic Potentials for use in the LAMMPS molecular dynamics package
+A Python package for training machine learned potentials in the LAMMPS molecular dynamics package.
+
+**Documentation page:** [https://fitsnap.github.io](https://fitsnap.github.io)
 
 _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
 ##
@@ -28,26 +30,27 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 <!-----------------END-HEADER------------------------------------->
 
 #### Using this package:
-* [Required] This package expects a python 3.6+ version.
-* [Required] Compile LAMMPS (lammps.sandia.gov) as a shared library, detailed instructions can be found here `docs/LAMMPS.md`. If you can open python and run `import lammps; lmp = lammps.lammps()` and it succeeds, you should be good.
+* [Required] This package expects a python 3.6+ version. Python dependencies: pandas scipy sphinx sphinx_rtd_theme psutil tabulate
+* [Required] Compile LAMMPS (lammps.sandia.gov) as a shared library. Detailed instructions can be found in `Usage --> Installation` section of the manual. If you can open python and run `import lammps; lmp = lammps.lammps()` and it succeeds, you should be good.
+* [Optional] To use neural network fitting functionality, install the Python package pytorch 
+* [Optional] For optimal performance, also install your favored flavor of MPI (OpenMPI, MPICCH) and the Python package mpi4py. Note: if installing mpi4py with a Python package manager, we strongly recommend using pip over conda as pip will auto-configure your package to your system's defaut MPI version (usually what you used to build LAMMPS)
 * [Optional] (Required for atomic cluster expansion, ACE, capabilities ) Along with compiling LAMMPS with all of the typical FitSNAP flags, turn the ML-PACE package on.
     * Clone the ML-PACE package with the implemented ACE descriptor computes into your build directory from: git@github.com:jmgoff/lammps-user-pace.git
     * Follow the README.md and INSTALL.md in this repo to build lammps with ACE descriptor calculators
 
-#### Installing a minimal working environment with Conda:
+#### Quick install (minimal working environment) using Conda:
+(Similar instructions can be found in the manual under 'Usage --> Simple Conda install')
 * Clone this repository
 * Add the cloned repository path to your PYTHONPATH environment variable (periodically `git pull` for code updates)
-* Add conda-forge to your Conda install, if not already added
+* Add conda-forge to your Conda install, if not already added \
     `conda config --add channels conda-forge` 
-* Create a new Conda environment
-    `conda create -n fitsnap python=3.9 ;
-    conda activate fitsnap ;`
-* Install packages:
+* Create a new Conda environment\
+    `conda create -n fitsnap python=3.9; conda activate fitsnap;`
+* Install the following packages:\
     `conda install lammps psutil pandas tabulate sphinx sphinx_rtd_theme mpi4py`
-* WARNING: Conda lammps installation does NOT include ACE descriptor set or SPIN package needed for these corresponding examples.
+* WARNING: Conda lammps installation does NOT include ACE descriptor set or SPIN package needed for the corresponding examples.
 
 #### Running:
 * `(mpirun -np #) python -m fitsnap3 [options] infile` (optional)
 * Command line options can be seen with `python -m fitsnap3 -h`
-* Input files are described by `docs/TEMPLATE.in` and `docs/GROUPLIST.template`
 * Examples of published SNAP interatomic potentials can be found in `examples/`

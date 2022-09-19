@@ -1,3 +1,19 @@
+# ignoring run example files
+examples/Ta_Linear_JCP2014/Descriptors.npy
+examples/Ta_Linear_JCP2014/FitSNAP.df
+examples/Ta_Linear_JCP2014/Ta_metrics.md
+examples/Ta_Linear_JCP2014/Ta_pot.snapcoeff
+examples/Ta_Linear_JCP2014/Ta_pot.snapparam
+examples/Ta_Linear_JCP2014/Truth-Ref.npy
+examples/Ta_Linear_JCP2014/Weights.npy
+examples/Ta_Linear_JCP2014/log.lammps
+
+# ignoring built test docs
+docs/build/
+
+# ignoring VS Code workspace file
+*.code-workspace
+
 # ignoring .pyc files
 *.pyc
 

@@ -66,12 +66,7 @@ BCS
 
 .. code-block:: console
 
-    solver = MERR
-    nsam = 133                #this is the number of sample fits requested to be drawn from the distribution
-    merr_method = iid         #specific liklihood model: options are iid, independent identically distributed, and abc, approximate bayesian computation, and full (too heavy and degenerate, not intended to be used yet)
-    merr_mult = 0             #0 is additive model error, 1 is multiplicative
-    merr_cfs = 5 44 3 49 10 33 4 39 38 23       #can provide either a list of coefficient indices to embed on, or "all"
-    cov_nugget = 1.e-10       #this is the small number to be added to the matrix inverse for better conditioning
+    solver = BCS
 
 Fitting with Bayesian compressive sensing, need to learn how to prune bispectrum bases in order for 
 this to be useful. Not working properly yet.

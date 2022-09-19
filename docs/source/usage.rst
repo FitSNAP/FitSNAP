@@ -27,9 +27,9 @@ After installing Anaconda:
         conda create -n fitsnap python=3.9
         conda activate fitsnap
 
-#. Install packages::
+#. Install packages (pytorch is optional)::
 
-        conda install lammps psutil pandas tabulate sphinx sphinx_rtd_theme mpi4py
+        conda install lammps psutil pandas tabulate sphinx sphinx_rtd_theme mpi4py pytorch
 
 - WARNING: Conda lammps installation does NOT include ACE descriptor set or SPIN package needed for these corresponding examples.
 
@@ -113,7 +113,7 @@ After building, add your openmpi executable path to your "PATH" variable as well
 
         git clone https://github.com/lammps/lammps.git
 
-        - TIP: Periodically use the command :code:`git pull` in the cloned directory for updates 
+    - TIP: Periodically use the command :code:`git pull` in the cloned directory for updates 
 
 #. For the curses cmake (ccmake) method, build LAMMPS using the following steps:
 
@@ -126,4 +126,3 @@ After building, add your openmpi executable path to your "PATH" variable as well
         - At the command line, type 'cmake --build . -jN' where N is the number of processors you can run simultaneously. N=8 or N=16 are good general settings, the more the faster
         - If all goes to plan, you should now have a usable LAMMPS executable 'lmp' in your build directory! If not, check out the cmake output for compile errors
         - To test your LAMMPS executable, attempt to run it with `./lmp`. If you load the LAMMPS command line, you're in business (CTRL + C to exit).
-        

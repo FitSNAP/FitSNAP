@@ -30,6 +30,7 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 #### Using this package:
 * [Required] This package expects a python 3.6+ version. Python dependencies: pandas scipy sphinx sphinx_rtd_theme psutil tabulate
 * [Required] Compile LAMMPS (lammps.sandia.gov) as a shared library. Detailed instructions can be found in `Usage --> Installation` section of the manual. If you can open python and run `import lammps; lmp = lammps.lammps()` and it succeeds, you should be good.
+* [Optional] To use neural network fitting functionality, install the Python package pytorch 
 * [Optional] For optimal performance, also install your favored flavor of MPI (OpenMPI, MPICCH) and the Python package mpi4py. Note: if installing mpi4py with a Python package manager, we strongly recommend using pip over conda as pip will auto-configure your package to your system's defaut MPI version (usually what you used to build LAMMPS)
 * [Optional] (Required for atomic cluster expansion, ACE, capabilities ) Along with compiling LAMMPS with all of the typical FitSNAP flags, turn the ML-PACE package on.
     * Clone the ML-PACE package with the implemented ACE descriptor computes into your build directory from: git@github.com:jmgoff/lammps-user-pace.git

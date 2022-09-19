@@ -32,19 +32,24 @@ automatically find your MPI install, e.g.::
 LAMMPS for FitSNAP.
 ^^^^^^^^^^^^^^^^^^^
 
-First clone the LAMMPS repo::
+**First activate your Python virtual environment or conda environment.** Install the necessary 
+pre-requisites to build LAMMPS with python using pip or conda::
+
+        pip install virtualenv numpy
+
+Then clone the LAMMPS repo::
 
         git clone https://github.com/lammps/lammps.git
 
-**Activate your Python virtual environment or conda environment**, and make a custom LAMMPS and 
-PyLammps build specifically for FitSNAP::
+This creates a :code:`lammps` directory, which we go to to create a custom LAMMPS and PyLammps build 
+specifically for FitSNAP::
 
         cd /path/to/lammps
         mkdir build-fitsnap
         cd build-fitsnap
         cmake ../cmake -DLAMMPS_EXCEPTIONS=yes -DBUILD_SHARED_LIBS=yes -DMLIAP_ENABLE_PYTHON=yes -DPKG_PYTHON=yes -DPKG_ML-SNAP=yes -DPKG_ML-IAP=yes -DPKG_ML-PACE=yes -DPKG_SPIN=yes
-        make
-        make install-python
+        make ### Builds a LAMMPS executable and shared library
+        make install-python ### Installs PyLammps so you can use the LAMMPS library in Python
 
 This will create a LAMMPS executable :code:`lmp`, which should be used to run MD using FitSNAP fits.
 This will also create a PyLammps interface located in your Python :code:`site-packages/lammps` 

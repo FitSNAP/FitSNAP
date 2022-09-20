@@ -13,7 +13,7 @@ for more details on installing LAMMPS. Here we start with a speedy minimal descr
 
     # Create and activate a new conda environment
 
-    conda create --name fitsnap python=3.8
+    conda create --name fitsnap python=3.10
     conda activate fitsnap
 
     # Install dependencies with your conda's pip 
@@ -29,7 +29,15 @@ for more details on installing LAMMPS. Here we start with a speedy minimal descr
     LAMMPS_DIR=/path/to/lammps
     mkdir $LAMMPS_DIR/build-fitsnap
     cd $LAMMPS_DIR/build-fitsnap
-    cmake ../cmake -DLAMMPS_EXCEPTIONS=yes -DBUILD_SHARED_LIBS=yes -DMLIAP_ENABLE_PYTHON=yes -DPKG_PYTHON=yes -DPKG_ML-SNAP=yes -DPKG_ML-IAP=yes -DPKG_ML-PACE=yes -DPKG_SPIN=yes
+    cmake ../cmake -DLAMMPS_EXCEPTIONS=yes \
+                   -DBUILD_SHARED_LIBS=yes \
+                   -DMLIAP_ENABLE_PYTHON=yes \
+                   -DPKG_PYTHON=yes \
+                   -DPKG_ML-SNAP=yes \
+                   -DPKG_ML-IAP=yes \
+                   -DPKG_ML-PACE=yes \
+                   -DPKG_SPIN=yes \
+                   -DPYTHON_EXECUTABLE:FILEPATH=`which python`
     make
     make install-python
 
@@ -38,7 +46,8 @@ Set the following environment variables so that your Python can find LAMMPS::
     LAMMPS_DIR=/path/to/lammps
     export LD_LIBRARY_PATH=$LAMMPS_DIR/build-fitsnap:$LD_LIBRARY_PATH # Use DYLD_LIBRARY_PATH for MacOS
     export PYTHONPATH=$LAMMPS_DIR/python:$PYTHONPATH
-    export PYTHONPATH=/path/to/python/environment/site-packages:$PYTHONPATH # So that ML-IAP package can find torch
+    SITE_PACKAGES_DIR=`python -c "import site; print(site.getsitepackages()[0])"`
+    export PYTHONPATH=${SITE_PACKAGES_DIR}:$PYTHONPATH # So that ML-IAP package can find torch
 
 To make sure everything is working, please see `LAMMPS Installation docs <Installation.html#lammps-installation>`__.
 
@@ -55,10 +64,10 @@ Fit a neural network for tantalum::
     cd $FITSNAP_DIR/examples/Ta_PyTorch_NN
     python -m fitsnap3 Ta-example.in --overwrite
 
-Run MD with this neural network potential::
+Run high-performance MD with this neural network potential::
 
     cd MD
-    lmp < in.run
+    mpirun -np 4 ${LAMMPS_DIR}/fitsnap-build/lmp < in.run
 
 
 

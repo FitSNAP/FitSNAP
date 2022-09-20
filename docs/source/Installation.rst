@@ -35,7 +35,7 @@ LAMMPS for FitSNAP.
 **First activate your Python virtual environment or conda environment.** Install the necessary 
 pre-requisites to build LAMMPS with python using pip or conda::
 
-        pip install virtualenv numpy
+        pip install virtualenv numpy Cython
 
 Then clone the LAMMPS repo::
 
@@ -53,7 +53,35 @@ specifically for FitSNAP::
 
 This will create a LAMMPS executable :code:`lmp`, which should be used to run MD using FitSNAP fits.
 This will also create a PyLammps interface located in your Python :code:`site-packages/lammps` 
-directory. **Now you have LAMMPS and PyLammps ready to use FitSNAP!**
+directory. Set the following environment variables so that your Python can find LAMMPS::
+
+    LAMMPS_DIR=/path/to/lammps
+    export LD_LIBRARY_PATH=$LAMMPS_DIR/build-fitsnap:$LD_LIBRARY_PATH # Use DYLD_LIBRARY_PATH for MacOS
+    export PYTHONPATH=$LAMMPS_DIR/python:$PYTHONPATH
+
+To make sure MPI is working, make a Python script called :code:`test.py` with the following::
+
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    print("Proc %d out of %d procs" % (comm.Get_rank(),comm.Get_size()))
+
+And see the output for each processor by running::
+
+    # NOTE: the line order is not deterministic
+    $ mpirun -np 4 python test.py
+    Proc 0 out of 4 procs
+    Proc 1 out of 4 procs
+    Proc 2 out of 4 procs
+    Proc 3 out of 4 procs
+
+Also make sure your Python LAMMPS library is working by firing up your Python interpreter and doing::
+
+    import lammps
+    lmp = lammps.lammps()
+
+which should produce no errors.
+
+**Now you have LAMMPS and PyLammps ready to use FitSNAP!**
 
 Alternatively, LAMMPS can be built with the GUI CMake curses interface as explained below. With the 
 CMake curses (ccmake) GUI interface, build LAMMPS using the following steps:

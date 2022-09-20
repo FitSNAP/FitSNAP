@@ -5,6 +5,68 @@ Interfacing with PyTorch allows us to conveniently fit neural network potentials
 that exist in LAMMPS. We may then use these neural network models to run high-performance MD 
 simulations in LAMMPS. These capabilities are explained below.
 
+Getting Started
+---------------
+
+First we need a python environment with PyTorch and LAMMPS installed. See `LAMMPS Installation docs <Installation.html#lammps-installation>`__ 
+for more details on installing LAMMPS. Here we start with a speedy minimal description LAMMPS setup::
+
+    # Create and activate a new conda environment
+
+    conda create --name fitsnap python=3.8
+    conda activate fitsnap
+
+    # Install dependencies with your conda's pip 
+
+    pip install numpy torch scipy virtualenv psutil pandas tabulate mpi4py Cython
+
+    # Clone the LAMMPS repo
+
+    git clone https://github.com/lammps/lammps
+
+    # Make a build specifically for FitSNAP
+
+    LAMMPS_DIR=/path/to/lammps
+    mkdir $LAMMPS_DIR/build-fitsnap
+    cd $LAMMPS_DIR/build-fitsnap
+    cmake ../cmake -DLAMMPS_EXCEPTIONS=yes -DBUILD_SHARED_LIBS=yes -DMLIAP_ENABLE_PYTHON=yes -DPKG_PYTHON=yes -DPKG_ML-SNAP=yes -DPKG_ML-IAP=yes -DPKG_ML-PACE=yes -DPKG_SPIN=yes
+    make
+    make install-python
+
+Set the following environment variables so that your Python can find LAMMPS::
+
+    LAMMPS_DIR=/path/to/lammps
+    export LD_LIBRARY_PATH=$LAMMPS_DIR/build-fitsnap:$LD_LIBRARY_PATH # Use DYLD_LIBRARY_PATH for MacOS
+    export PYTHONPATH=$LAMMPS_DIR/python:$PYTHONPATH
+    export PYTHONPATH=/path/to/python/environment/site-packages:$PYTHONPATH # So that ML-IAP package can find torch
+
+To make sure everything is working, please see `LAMMPS Installation docs <Installation.html#lammps-installation>`__.
+
+Now we are ready to fit potentials with FitSNAP, and run MD with those potentials in LAMMPS. Get 
+FitSNAP with::
+
+    cd /path/to/where/FitSNAP/will/be
+    git clone https://github.com/FitSNAP/FitSNAP
+    FITSNAP_DIR=/path/to/FitSNAP
+    export PYTHONPATH=$FITSNAP_DIR/python:$PYTHONPATH
+
+Fit a neural network for tantalum::
+
+    cd $FITSNAP_DIR/examples/Ta_PyTorch_NN
+    python -m fitsnap3 Ta-example.in --overwrite
+
+Run MD with this neural network potential::
+
+    cd MD
+    lmp < in.run
+
+
+
+
+
+
+
+
 Fitting Neural Network Potentials
 ---------------------------------
 

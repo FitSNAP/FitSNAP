@@ -26,12 +26,12 @@ nonlinear = 1
 Ta = 0.0
 
 [PYTORCH]
-layer_sizes = num_desc 10 8 6 1 #1000 1000 8 1
+layer_sizes = num_desc 64 32 16 1 #1000 1000 8 1
 learning_rate = 1.5e-4 
 num_epochs = 100
 batch_size = 4 # 363 configs in entire set
 save_state_output = Ta_Pytorch.pt
-energy_weight = 1e-4
+energy_weight = 1e-2
 force_weight = 1.0
 training_fraction = 0.7
 

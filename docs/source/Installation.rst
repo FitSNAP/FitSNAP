@@ -22,8 +22,8 @@ both applications will very significantly speed up runtimes.
 We built MPI fromm source for LAMMPS and FitSNAP using OpenMPI version 4.1.4 (https://www.open-mpi.org/) 
 and the instructions on that webiste (https://www.open-mpi.org/faq/?category=building#easy-build).
 
-After building, add your openmpi executable path to your "PATH" variable as well so that LAMMPS can 
-automatically find your MPI install, e.g.::
+After building, add your openmpi executable path to your :code:`PATH`` variable as well so that 
+LAMMPS can automatically find your MPI install, e.g.::
                 
         # in e.g., ~/.bashrc
         MPI_DIR=/usr/local/openmpi     
@@ -53,7 +53,7 @@ specifically for FitSNAP::
 
 This will create a LAMMPS executable :code:`lmp`, which should be used to run MD using FitSNAP fits.
 This will also create a PyLammps interface located in your Python :code:`site-packages/lammps` 
-directory. Now you have LAMMPS and PyLammps ready to use FitSNAP!
+directory. **Now you have LAMMPS and PyLammps ready to use FitSNAP!**
 
 Alternatively, LAMMPS can be built with the GUI CMake curses interface as explained below. With the 
 CMake curses (ccmake) GUI interface, build LAMMPS using the following steps:

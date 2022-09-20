@@ -128,9 +128,17 @@ class FitTorch(torch.nn.Module):
             per_atom_energies = self.network_architecture0(x)
    
         elif (self.multi_element_option==2):
-            atom_indices = torch.arange(x.size()[0])
-            per_atom_energies = torch.stack([self.networks[i](x) 
-                                             for i in range(self.n_elem)])[types,atom_indices]
+            # Working, but not ideal due to stacking
+            #atom_indices = torch.arange(x.size()[0])
+            #per_atom_energies = torch.stack([self.networks[i](x) 
+            #                                 for i in range(self.n_elem)])[types,atom_indices]
+
+            # Slightly slower, but more general
+
+            per_atom_energies = torch.zeros(types.size(dim=0), dtype=torch.float32)
+            given_elems, elem_indices = torch.unique(types, return_inverse=True)
+            for i, elem in enumerate(given_elems):
+              per_atom_energies[elem_indices == i] = self.networks[elem](x[elem_indices == i]).flatten()
 
         # calculate energies
 
@@ -253,10 +261,9 @@ class FitTorch(torch.nn.Module):
                 filename (str): Filename for lammps usable pytorch model
 
         """
-
-        #print("WARNING: Not writing LAMMPS torch file due to ML-IAP bug: https://github.com/lammps/lammps/issues/3204")
         
-        from lammps.mliap.pytorch import IgnoreElems, TorchWrapper, ElemwiseModels
+        #from lammps.mliap.pytorch import IgnoreElems, TorchWrapper, ElemwiseModels
+        from fitsnap3lib.lib.neural_networks.write import IgnoreElems, TorchWrapper, ElemwiseModels
 
         # self.network_architecture0 is network model for the first element type
 

@@ -93,13 +93,8 @@ After training a potential, FitSNAP produces outputs that can be used to intrepr
 fit on the training and/or validation data. The following comparison files are written after a fit:
 
 - :code:`energy_comparison.dat` energy comparisons for all configs in the training set. Each row 
-<<<<<<< HEAD
-corresponds to a specific configuration in the training set. The first column is the model energy, 
-and the 2nd column is the target energy. 
-=======
   corresponds to a specific configuration in the training set. The first column is the model energy, 
   and the 2nd column is the target energy. 
->>>>>>> master
 
 - :code:`energy_comparison_val.dat` energy comparisons for all configs in the validation set. 
   Format is same as above.

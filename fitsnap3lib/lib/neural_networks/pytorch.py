@@ -39,7 +39,7 @@ class FitTorch(torch.nn.Module):
     Attributes
     ----------
 
-    networks : list
+    networks: list
         A list of nn.Sequential network architectures.
         Each list element is a different network type.
 
@@ -195,6 +195,8 @@ class FitTorch(torch.nn.Module):
 
             # contract over unique j indices, which has same number of rows as dgrad 
 
+            #print(unique_j)
+            #print(x_indices_bool)
             contracted_x = fx_components.index_add_(0,unique_j[x_indices_bool],elementwise_x) 
             contracted_y = fy_components.index_add_(0,unique_j[y_indices_bool],elementwise_y) 
             contracted_z = fz_components.index_add_(0,unique_j[z_indices_bool],elementwise_z) 

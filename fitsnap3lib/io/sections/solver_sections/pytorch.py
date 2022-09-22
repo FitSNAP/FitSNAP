@@ -1,4 +1,5 @@
 from fitsnap3lib.io.sections.sections import Section
+from fitsnap3lib.parallel_tools import ParallelTools
 
 try:
     import torch
@@ -32,33 +33,38 @@ try:
             self.num_epochs = self.get_value("PYTORCH", "num_epochs", "10", "int")
             self.batch_size = self.get_value("PYTORCH", "batch_size", "4", "int")
             self.save_freq = self.get_value("PYTORCH", "save_freq", "10", "int")
-            #self.energy_weight = self.get_value("PYTORCH", "energy_weight", "1e-4", "float")
             self.energy_weight = self.get_value("PYTORCH", "energy_weight", "NaN", "float")
-            #self.force_weight = self.get_value("PYTORCH", "force_weight", "1.0", "float")
             self.force_weight = self.get_value("PYTORCH", "force_weight", "NaN", "float")
             self.global_weight_bool = False
+            self.training_fraction = self.get_value("PYTORCH", "training_fraction", "NaN", "float")
+            self.global_fraction_bool = False
+            self.multi_element_option = self.get_value("PYTORCH", "multi_element_option", "1", "int")
+            self.manual_seed_flag = self.get_value("PYTORCH", "manual_seed_flag", "False", "bool")
+            self.save_state_output = self.check_path(self.get_value("PYTORCH", "save_state_output", "FitTorchModel"))
+            self.save_state_input = self.check_path(self.get_value("PYTORCH", "save_state_input", None))
+            self.output_file = self.check_path(self.get_value("PYTORCH", "output_file", "FitTorch_Pytorch.pt"))
+
+            # catch errors associated with settings, and set necessary flags for later
+
+            self.pt = ParallelTools()
             if (self.energy_weight != self.energy_weight and self.force_weight == self.force_weight):
                 raise Exception("Must use global energy weight with global force weight.")
             elif (self.energy_weight == self.energy_weight and self.force_weight != self.force_weight):
                 raise Exception("Must use global force weight with global energy weight.")
             elif (self.energy_weight == self.energy_weight and self.force_weight == self.force_weight):
-                print("----- Global weights set: Overriding group weights.")
+                if (self.pt._rank==0):
+                    print("----- Global weights set: Overriding group weights.")
                 self.global_weight_bool = True
-            self.training_fraction = self.get_value("PYTORCH", "training_fraction", "NaN", "float")
-            self.global_fraction_bool = False
             if (self.training_fraction == self.training_fraction):
-                print("----- Global training fraction set: Overriding group fractions.")
+                if (self.pt._rank==0):
+                    print("----- Global training fraction set: Overriding group fractions.")
                 self.global_fraction_bool = True
-            self.multi_element_option = self.get_value("PYTORCH", "multi_element_option", "1", "int")
-            self.manual_seed_flag = self.get_value("PYTORCH", "manual_seed_flag", "False", "bool")
-
-            self.save_state_output = self.check_path(self.get_value("PYTORCH", "save_state_output", "FitTorchModel"))
-            self.save_state_input = self.check_path(self.get_value("PYTORCH", "save_state_input", None))
-            self.output_file = self.check_path(self.get_value("PYTORCH", "output_file", "FitTorch_Pytorch.pt"))
-
             if (self.manual_seed_flag):
-                print("----- manual_seed_flag=1: Setting random seed to 0 for debugging.")
+                if (self.pt._rank==0):
+                    print("----- manual_seed_flag=1: Setting random seed to 0 for debugging.")
                 torch.manual_seed(0)
+
+            # create list of networks based on multi-element option
 
             self.networks = []
             if (self.multi_element_option==1):

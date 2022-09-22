@@ -5,6 +5,7 @@ from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.io.input import Config
 from time import time
 import numpy as np
+import psutil
 
 #config = Config()
 #pt = ParallelTools()
@@ -12,6 +13,7 @@ import numpy as np
 try:
     from fitsnap3lib.lib.neural_networks.pytorch import FitTorch
     from fitsnap3lib.tools.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
+    from fitsnap3lib.tools.configuration import Configuration
     import torch
 
     class PYTORCH(Solver):
@@ -127,18 +129,41 @@ try:
             # observe if config GROUPS are getting shuffled before PyTorch shuffling:
             #print(self.pt.fitsnap_dict['Configs'])
 
-            # TODO: when only fitting to energy, we don't need all this extra data
+            # TODO: when only fitting to energy, we don't need all this extra data, and could save 
+            # time by only fitting some configs to forces. 
 
-            self.total_data = InRAMDatasetPyTorch(self.pt.shared_arrays['a'].array,
-                                                  self.pt.shared_arrays['b'].array,
-                                                  self.pt.shared_arrays['c'].array,
-                                                  self.pt.shared_arrays['t'].array,
-                                                  self.pt.shared_arrays['w'].array,
-                                                  self.pt.shared_arrays['dgrad'].array,
-                                                  self.pt.shared_arrays['number_of_atoms'].array,
-                                                  self.pt.shared_arrays['dbdrindx'].array,
-                                                  self.pt.shared_arrays["number_of_dgradrows"].array,
-                                                  self.pt.shared_arrays["unique_j_indices"].array)
+            self.configs = [Configuration(int(natoms)) for natoms in self.pt.fitsnap_dict['NumAtoms']]
+
+            # add descriptors and atom types
+
+            indx_natoms_low = 0
+            indx_forces_low = 0
+            indx_dgrad_low = 0
+            for i, config in enumerate(self.configs):
+                
+                indx_natoms_high = indx_natoms_low + config.natoms
+                indx_forces_high = indx_forces_low + 3*config.natoms
+                nrows_dgrad = int(self.pt.fitsnap_dict["NumDgradRows"][i])
+                indx_dgrad_high = indx_dgrad_low + nrows_dgrad
+
+                config.energy = self.pt.shared_arrays['b'].array[i]
+                config.filename = self.pt.fitsnap_dict['Configs'][i]
+                config.weights = self.pt.shared_arrays['w'].array[i]
+                config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
+                config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
+                config.forces = self.pt.shared_arrays['c'].array[indx_forces_low:indx_forces_high]
+                config.dgrad = self.pt.shared_arrays['dgrad'].array[indx_dgrad_low:indx_dgrad_high]
+                config.dgrad_indices = self.pt.shared_arrays['dbdrindx'].array[indx_dgrad_low:indx_dgrad_high]
+
+                indx_natoms_low += config.natoms
+                indx_forces_low += 3*config.natoms
+                indx_dgrad_low += nrows_dgrad
+
+            # Check that we make assignments, not copies, of data, to save memory
+
+            assert(np.shares_memory(self.configs[0].descriptors, self.pt.shared_arrays['a'].array))
+
+            self.total_data = InRAMDatasetPyTorch(self.configs)
 
             # randomly shuffle and split into training/validation data if using global fractions
 
@@ -148,6 +173,7 @@ try:
                     raise Exception("Training fraction must be > 0.0 for now, later we might implement 0.0 training fraction for testing on a test set")
                 if ( (self.training_fraction > 1.0) or (self.training_fraction < 0.0) ):
                     raise Exception("Training fraction cannot be > 1.0 or < 0.0")
+
                 self.train_size = int(self.training_fraction * len(self.total_data))
                 self.test_size = len(self.total_data) - self.train_size
                 self.training_data, self.validation_data = \
@@ -171,12 +197,12 @@ try:
 
             self.training_loader = DataLoader(self.training_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              shuffle=False,
+                                              shuffle=False, #True, #False,
                                               collate_fn=torch_collate,
                                               num_workers=0)
             self.validation_loader = DataLoader(self.validation_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              shuffle=False,
+                                              shuffle=False, #True, #False,
                                               collate_fn=torch_collate,
                                               num_workers=0)
 

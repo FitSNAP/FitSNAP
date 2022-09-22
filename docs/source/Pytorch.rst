@@ -24,7 +24,7 @@ for more details on installing LAMMPS. Here we start with a speedy minimal descr
 
     git clone https://github.com/lammps/lammps
 
-    # Make a build specifically for FitSNAP
+    # Make a LAMMPS build specifically for FitSNAP
 
     LAMMPS_DIR=/path/to/lammps
     mkdir $LAMMPS_DIR/build-fitsnap
@@ -69,12 +69,7 @@ Run high-performance MD with this neural network potential::
     cd MD
     mpirun -np 4 ${LAMMPS_DIR}/fitsnap-build/lmp < in.run
 
-
-
-
-
-
-
+More details on setting up input scripts for NN fitting are given below.
 
 Fitting Neural Network Potentials
 ---------------------------------
@@ -176,6 +171,8 @@ fit on the training and/or validation data. The following comparison files are w
 
 - :code:`force_comparison_val.dat` same as above, but for the validation set.
 
+- :code:`loss_vs_epochs.dat` training and validation loss as a function of epochs, to check convergence.
+
 These outputs allow you to compare the configuration energies, or per-atom forces, however you want
 after a fit. For example, in the `Ta_PyTorch_NN example <https://github.com/FitSNAP/FitSNAP/tree/master/examples/Ta_PyTorch_NN>`_
 , we provide python scripts that help post-process these files to calculate mean absolute error or 
@@ -205,7 +202,7 @@ PyTorch model file, e.g. for Ta::
     [PYTORCH]
     layer_sizes =  num_desc 60 60 1
     learning_rate = 1.5e-4 
-    num_epochs = 1 ##### Set to 1 for testing
+    num_epochs = 1 ##### Set to 1 for calculating test errors
     batch_size = 4
     save_state_input = Ta_Pytorch.pt ##### Load an existing model
     energy_weight = 1e-2
@@ -221,6 +218,33 @@ on whatever user-defined groups of configs in the groups section.We can therefor
 force comparison files here to calculate mean absolute errors, e.g. with the script in 
 the `Ta_PyTorch_NN example <https://github.com/FitSNAP/FitSNAP/tree/master/examples/Ta_PyTorch_NN>`_
 
+Training Performance
+--------------------
 
+As seen in the :code:`Ta_Pytorch_NN` example, fitting to ~300 configs (each with ~12 atoms) takes 
+about ~0.5 s/epoch. The number of epochs required, and therefore total time of your fit, will depend 
+on the size of your dataset *and* the :code:`batch_size`. For example, the :code:`Ta_Pytorch_NN` 
+might take ~200 epochs to fully converge (see :code:`loss_vs_epochs.dat`). In this example, however, 
+we used :code:`batch_size=4`, meaning that each epoch involved :code:`~300/4 = ~75` gradient descent 
+minimizations as we cycled through batches. For much larger datasets, the network will experience 
+more cycles through the batches with each epoch, and therefore may require less epochs to reach 
+the same convergence.
+
+For data sets of ~10,000 configs and ~50 atoms per config, training will take ~12-24 hours, or about 
+20 minutes per epoch. 
+
+We do not recommend using datasets much larger than this since training may take days/weeks.
+
+Mini-batch network training is embarassingly parallel up to the batch size, but currently FitSNAP 
+does not support parallelized NN training.
+
+GPU Acceleration
+^^^^^^^^^^^^^^^^
+
+FitSNAP supports GPU acceleration via PyTorch. With small batch sizes, however, most of the benefit 
+of GPU parallelization comes from evaluating the NN model and calculating gradients. You will not see 
+a large benefit of GPUs using a small batch size unless you have a large NN model (e.g. > 1 million 
+parameters). If you have a small model, you may see a speedup on GPUs using a large enough batch size, 
+but this has not been tested.
 
 

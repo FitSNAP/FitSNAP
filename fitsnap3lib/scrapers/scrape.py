@@ -206,6 +206,12 @@ class Scraper:
         self.pt.slice_array('number_of_atoms')
         self.pt.shared_arrays['number_of_atoms'].configs = temp_configs
 
+        # number of dgrad rows serves similar purpose as number of atoms
+        
+        self.pt.create_shared_array('number_of_dgrad_rows', number_of_configs_per_node, dtype='i')
+        self.pt.slice_array('number_of_dgrad_rows')
+        self.pt.shared_arrays['number_of_dgrad_rows'].configs = temp_configs
+
         # PROCS SPLIT UP HERE
         self.test_bool = self.pt.split_within_node(self.test_bool)
         self.configs = self.pt.split_within_node(self.configs)

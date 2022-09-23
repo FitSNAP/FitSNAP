@@ -107,6 +107,10 @@ def torch_collate(batch):
     batch_of_unique_i = torch.cat(unique_i_indices, dim=0)
     batch_of_unique_j = torch.cat(unique_j_indices, dim=0)
 
+    # batch of testing bools to check that we have proper training/testing configs:
+    
+    batch_of_testing_bools = [conf.testing_bool for conf in configs]
+
     # TODO: Add cheap asserts to catch possible bugs
     # use the following for debugging
     # filenames and associated quantities can be checked by confirming values in files
@@ -128,7 +132,8 @@ def torch_collate(batch):
                       'dgrad': batch_of_dgrad,
                       'dbdrindx': batch_of_dbdrindx,
                       'unique_j': batch_of_unique_j,
-                      'unique_i': batch_of_unique_i}
+                      'unique_i': batch_of_unique_i,
+                      'testing_bools': batch_of_testing_bools}
 
     return collated_batch
 

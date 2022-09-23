@@ -41,6 +41,8 @@ for more details on installing LAMMPS. Here we start with a speedy minimal descr
     make
     make install-python
 
+To add these extra :code:`-D` flags in :code:`ccmake`, go to the Advanced Options section.
+
 Set the following environment variables so that your Python can find LAMMPS::
 
     LAMMPS_DIR=/path/to/lammps
@@ -49,7 +51,9 @@ Set the following environment variables so that your Python can find LAMMPS::
     SITE_PACKAGES_DIR=`python -c "import site; print(site.getsitepackages()[0])"`
     export PYTHONPATH=${SITE_PACKAGES_DIR}:$PYTHONPATH # So that ML-IAP package can find torch
 
-To make sure everything is working, please see `LAMMPS Installation docs <Installation.html#lammps-installation>`__.
+Alternatively to setting environment variables, symbolic links to these paths are also appropriate.
+
+To make sure installs and paths are working, please see `LAMMPS Installation docs <Installation.html#lammps-installation>`__.
 
 Now we are ready to fit potentials with FitSNAP, and run MD with those potentials in LAMMPS. Get 
 FitSNAP with::

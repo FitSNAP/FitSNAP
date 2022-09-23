@@ -145,6 +145,7 @@ try:
 
                 config.energy = self.pt.shared_arrays['b'].array[i]
                 config.filename = self.pt.fitsnap_dict['Configs'][i]
+                config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
                 config.weights = self.pt.shared_arrays['w'].array[i]
                 config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
                 config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
@@ -271,8 +272,13 @@ try:
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
                         unique_i = batch['unique_i'].to(self.device)
+                        testing_bools = batch['testing_bools']
                         (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, unique_i, self.device)
                         energies = torch.div(energies,num_atoms)
+
+                        # good assert for verifying that we have proper training configs:
+                        #for test_bool in testing_bools:
+                        #    assert(test_bool)
 
                         # make indices showing which config a force belongs to
 

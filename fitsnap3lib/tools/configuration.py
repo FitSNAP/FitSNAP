@@ -9,6 +9,7 @@ class Configuration():
         self.natoms = natoms
         self.filename = ""
         self.energy = None
+        self.testing_bool = None
         self.weights = None
         self.descriptors = None
         self.types = None

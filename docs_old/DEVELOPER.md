@@ -32,13 +32,17 @@ class, which depends on the particular calculator being used.
 ### Modifying the output dataframe
 
 The `error_analysis` function in `solvers/solver.py` builds a dataframe containing arrays from 
-`pt.shared_arrays`. If you want to add your own column to the dataframe, it must first be 
-declared/allocated as a `pt.shared_array` in `calculators/calculator.py`, with the 
+`pt.shared_arrays` and `pt.fitsnap_dict`. If you want to add your own column to the dataframe, 
+it must first be declared/allocated as a `pt.fitsnap_dict` in `calculators/calculator.py`, with the 
 `pt.add_2_fitsnap` function. When extracting LAMMPS data in a particular calculator subclass, 
 there are loops over energy `bik` rows, force rows, and stress rows. These are located in 
 `lammps_snap.py` and `lammps_pace.py`, in the `_collect_lammps()` function. There it is seen that 
 data is added to the `pt.fitsnap_dict['Column_Name'][indices]` array, where `'Column_Name'` is the 
 name of the new column declared earlier, and `'indices'` are the rows of the array.
+
+When adding a new `pt.fitsnap_dict`, realize that it's a `DistributedList`; this means that a list of 
+whatever declared size exists on each proc. There is a method `collect_distributed_lists` in 
+`calculators/calculator.py` that gathers all these distributed lists on the root proc. 
 
 ### Adding new keywords in the input file
 

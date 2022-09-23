@@ -161,5 +161,6 @@ class FitSnap:
             if self.solver.linear:
                 output.output(self.solver.fit, self.solver.errors)
             else:
-                print("WARNING: Nonlinear solvers do not output generic output - see PyTorch/JAX model files.")
+                if (self.pt._rank==0):
+                    print("WARNING: Nonlinear solvers do not output generic output - see PyTorch/JAX model files.")
         decorated_write_output()

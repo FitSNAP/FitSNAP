@@ -113,11 +113,17 @@ class FitTorch(torch.nn.Module):
             Atom types starting from 0, for this batch
 
         xd_indx: torch.Tensor.long 
-            Array of indices corresponding to descriptor derivatives, for this batch
+            Array of indices corresponding to descriptor derivatives, for this batch. These are 
+            concatenations of the direct LAMMPS dgradflag=1 output; we rely on unique_j and unique_i 
+            for adjusted indices of this batch (see dataloader.torch_collate)
 
         unique_j: torch.Tensor.long 
             Array of indices corresponding to unique atoms j in all batches of configs.
             All forces in this batch will be contracted over these indices.
+
+        unique_i: torch.Tensor.long
+            Array of indices corresponding to unique neighbors i in all batches of configs. Forces 
+            on atoms j are summed over these neighbors and contracted appropriately. 
         
         device: pytorch accelerator device object
 
@@ -141,11 +147,7 @@ class FitTorch(torch.nn.Module):
               per_atom_energies[elem_indices == i] = self.networks[elem](x[elem_indices == i]).flatten()
 
         # calculate energies
-        #print(atoms_per_structure)
-        #print(indices)
-        #print(xd_indx)
-        #print(unique_i)
-        #print(unique_j)
+
         if (self.energy_bool):
             predicted_energy_total = torch.zeros(atoms_per_structure.size()).to(device)
             predicted_energy_total.index_add_(0, indices, per_atom_energies.squeeze())
@@ -156,7 +158,7 @@ class FitTorch(torch.nn.Module):
 
         if (self.force_bool):
             nd = x.size()[1] # number of descriptors
-            natoms = atoms_per_structure.sum() # Total number of atoms in this batch
+            natoms = atoms_per_structure.sum() # total number of atoms in this batch
     
             # boolean indices used to properly index descriptor gradients
 
@@ -202,8 +204,6 @@ class FitTorch(torch.nn.Module):
 
             # contract over unique j indices, which has same number of rows as dgrad 
 
-            #print(unique_j)
-            #print(x_indices_bool)
             contracted_x = fx_components.index_add_(0,unique_j[x_indices_bool],elementwise_x) 
             contracted_y = fy_components.index_add_(0,unique_j[y_indices_bool],elementwise_y) 
             contracted_z = fz_components.index_add_(0,unique_j[z_indices_bool],elementwise_z) 

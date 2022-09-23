@@ -191,18 +191,16 @@ try:
                 self.validation_data = torch.utils.data.Subset(self.total_data, testing_indices)
 
             # make training and validation data loaders for batch training
-            # not sure if shuffling=True works, 
-            # but data.random_split() above shuffles the input data,
-            # and the group fractions are shuffled with random_sampling=1 flag.
+            # TODO: make shuffling=True an option; this shuffles data every epoch, could give more robust fits.
 
             self.training_loader = DataLoader(self.training_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              shuffle=False, #True, #False,
+                                              shuffle=False, #True
                                               collate_fn=torch_collate,
                                               num_workers=0)
             self.validation_loader = DataLoader(self.validation_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              shuffle=False, #True, #False,
+                                              shuffle=False, #True
                                               collate_fn=torch_collate,
                                               num_workers=0)
 

@@ -90,7 +90,7 @@ class FitTorch(torch.nn.Module):
         if (force_weight==0.0):
             self.force_bool = False
 
-    def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, device):
+    def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, unique_i, device):
         """
         Forward pass through the PyTorch network model, calculating both energies and forces.
 
@@ -141,7 +141,11 @@ class FitTorch(torch.nn.Module):
               per_atom_energies[elem_indices == i] = self.networks[elem](x[elem_indices == i]).flatten()
 
         # calculate energies
-
+        #print(atoms_per_structure)
+        #print(indices)
+        #print(xd_indx)
+        #print(unique_i)
+        #print(unique_j)
         if (self.energy_bool):
             predicted_energy_total = torch.zeros(atoms_per_structure.size()).to(device)
             predicted_energy_total.index_add_(0, indices, per_atom_energies.squeeze())
@@ -162,9 +166,12 @@ class FitTorch(torch.nn.Module):
 
             # neighbors i of atom j
 
-            neigh_indices_x = xd_indx[x_indices_bool,0]
-            neigh_indices_y = xd_indx[y_indices_bool,0] 
-            neigh_indices_z = xd_indx[z_indices_bool,0]
+            #neigh_indices_x = xd_indx[x_indices_bool,0]
+            #neigh_indices_y = xd_indx[y_indices_bool,0] 
+            #neigh_indices_z = xd_indx[z_indices_bool,0]
+            neigh_indices_x = unique_i[x_indices_bool]
+            neigh_indices_y = unique_i[y_indices_bool] 
+            neigh_indices_z = unique_i[z_indices_bool]
 
             dEdD = torch.autograd.grad(per_atom_energies, 
                                        x, 

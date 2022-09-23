@@ -98,10 +98,13 @@ def torch_collate(batch):
 
     configs = [conf['configs'] for conf in batch] # batch of Configuration objects
     natoms_grow = 0
+    unique_i_indices = []
     unique_j_indices = []
     for i, conf in enumerate(configs):
+        unique_i_indices.append(torch.tensor(conf.dgrad_indices[:,0]+natoms_grow).long())
         unique_j_indices.append(torch.tensor(conf.dgrad_indices[:,1]+natoms_grow).long())
         natoms_grow += conf.natoms
+    batch_of_unique_i = torch.cat(unique_i_indices, dim=0)
     batch_of_unique_j = torch.cat(unique_j_indices, dim=0)
 
     # TODO: Add cheap asserts to catch possible bugs
@@ -124,7 +127,8 @@ def torch_collate(batch):
                       'i': indices,
                       'dgrad': batch_of_dgrad,
                       'dbdrindx': batch_of_dbdrindx,
-                      'unique_j': batch_of_unique_j}
+                      'unique_j': batch_of_unique_j,
+                      'unique_i': batch_of_unique_i}
 
     return collated_batch
 

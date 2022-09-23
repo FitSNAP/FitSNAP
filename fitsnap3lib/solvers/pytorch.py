@@ -275,7 +275,8 @@ try:
                         dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
-                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
+                        unique_i = batch['unique_i'].to(self.device)
+                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, unique_i, self.device)
                         energies = torch.div(energies,num_atoms)
 
                         # make indices showing which config a force belongs to
@@ -333,7 +334,8 @@ try:
                         dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                         dbdrindx = batch['dbdrindx'].to(self.device)
                         unique_j = batch['unique_j'].to(self.device)
-                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, self.device)
+                        unique_i = batch['unique_i'].to(self.device)
+                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, unique_i, self.device)
                         energies = torch.div(energies,num_atoms)
                         
                         # make indices showing which config a force belongs to

@@ -641,7 +641,6 @@ class ParallelTools(metaclass=Singleton):
         self._bcast_fitsnap("sub_t_indices")
         self.fitsnap_dict["sub_t_indices"] = indices[self._sub_rank]
 
-
     def new_slice_dgrad(self):
         """ create array to show which sub dgrad matrix indices belong to which proc """
         nof = len(self.shared_arrays["number_of_atoms"].array)
@@ -652,34 +651,18 @@ class ParallelTools(metaclass=Singleton):
             self.fitsnap_dict["sub_dgrad_size"] = int(self.fitsnap_dict["sub_dgrad_size"][self._sub_rank])
             self._bcast_fitsnap("sub_dgrad_indices")
             self.fitsnap_dict["sub_dgrad_indices"] = self.fitsnap_dict["sub_dgrad_indices"][self._sub_rank]
-
-            # dbdrindx
-            #self._bcast_fitsnap("sub_dbdrindx_size")
-            #print(f" parallel tools sub dbdrindx size {self.fitsnap_dict['sub_dbdrindx_size']}")
-            #self.fitsnap_dict["sub_dbdrindx_size"] = int(self.fitsnap_dict["sub_dbdrindx_size"][self._sub_rank])
-            #self._bcast_fitsnap("sub_dbdrindx_indices")
-            #self.fitsnap_dict["sub_dbdrindx_indices"] = self.fitsnap_dict["sub_dbdrindx_indices"][self._sub_rank]
             return
         sub_dgrad_sizes = np.zeros((self._sub_size, ), dtype=np.int)
-        #sub_dbdrindx_sizes = np.zeros((self._sub_size, ), dtype=np.int)
 
         for i in range(nof):
             proc_number = i % self._sub_size
             natoms = self.shared_arrays["number_of_atoms"].array[i]
-            #sub_dgrad_sizes[proc_number] += self.shared_arrays["number_of_dgradrows"].array[i]
-            #sub_dbdrindx_sizes[proc_number] += self.shared_arrays["number_of_dgradrows"].array[i]
             sub_dgrad_sizes[proc_number] += self.shared_arrays["number_of_dgrad_rows"].array[i]
-            #sub_dbdrindx_sizes[proc_number] += self.shared_arrays["number_of_dgrad_rows"].array[i]
         assert sum(sub_dgrad_sizes) == len(self.shared_arrays['dgrad'].array)
-        #assert sum(sub_dbdrindx_sizes) == len(self.shared_arrays['dbdrindx'].array)
         # dbidrj
         self.add_2_fitsnap("sub_dgrad_size", sub_dgrad_sizes)
         self._bcast_fitsnap("sub_dgrad_size")
         self.fitsnap_dict["sub_dgrad_size"] = sub_dgrad_sizes[self._sub_rank]
-        # dbdrindx
-        #self.add_2_fitsnap("sub_dbdrindx_size", sub_dgrad_sizes)
-        #self._bcast_fitsnap("sub_dbdrindx_size")
-        #self.fitsnap_dict["sub_dbdrindx_size"] = sub_dgrad_sizes[self._sub_rank]
 
         count = 0
         indices = np.zeros((self._sub_size, 2), dtype=np.int)
@@ -690,77 +673,6 @@ class ParallelTools(metaclass=Singleton):
         self.add_2_fitsnap("sub_dgrad_indices", indices)
         self._bcast_fitsnap("sub_dgrad_indices")
         self.fitsnap_dict["sub_dgrad_indices"] = indices[self._sub_rank]
-        # dbdrindx
-        #self.add_2_fitsnap("sub_dbdrindx_indices", indices)
-        #self._bcast_fitsnap("sub_dbdrindx_indices")
-        #self.fitsnap_dict["sub_dbdrindx_indices"] = indices[self._sub_rank]
-
-    def new_slice_dbdrindx(self):
-        """ create array to show which sub dbdrindx matrix indices belong to which proc """
-        nof = len(self.shared_arrays["number_of_atoms"].array)
-        #print(f"--- nof: {nof} in parallel_tools.py new_slice_dgrad")
-        if self._sub_rank != 0:
-            # wait for head proc on node to fill indices
-            self._bcast_fitsnap("sub_dbdrindx_size")
-            self.fitsnap_dict["sub_dbdrindx_size"] = int(self.fitsnap_dict["sub_dbdrindx_size"][self._sub_rank])
-            self._bcast_fitsnap("sub_dbdrindx_indices")
-            self.fitsnap_dict["sub_dbdrindx_indices"] = self.fitsnap_dict["sub_dbdrindx_indices"][self._sub_rank]
-            return
-        sub_dbdrindx_sizes = np.zeros((self._sub_size, ), dtype=np.int)
-
-        for i in range(nof):
-            proc_number = i % self._sub_size
-            natoms = self.shared_arrays["number_of_atoms"].array[i]
-            #sub_dgrad_sizes[proc_number] += self.shared_arrays["number_of_dgradrows"].array[i]
-            #sub_dbdrindx_sizes[proc_number] += self.shared_arrays["number_of_dgradrows"].array[i]
-            sub_dbdrindx_sizes[proc_number] += self.shared_arrays["number_of_dgrad_rows"].array[i]
-        assert sum(sub_dbdrindx_sizes) == len(self.shared_arrays['dbdrindx'].array)
-        # dbdrindx
-        self.add_2_fitsnap("sub_dbdrindx_size", sub_dbdrindx_sizes)
-        self._bcast_fitsnap("sub_dbdrindx_size")
-        self.fitsnap_dict["sub_dbdrindx_size"] = sub_dbdrindx_sizes[self._sub_rank]
-
-        count = 0
-        indices = np.zeros((self._sub_size, 2), dtype=np.int)
-        for i, value in enumerate(sub_dbdrindx_sizes):
-            indices[i] = count, count+value-1
-            count += value
-        # dbdrindx
-        self.add_2_fitsnap("sub_dbdrindx_indices", indices)
-        self._bcast_fitsnap("sub_dbdrindx_indices")
-        self.fitsnap_dict["sub_dbdrindx_indices"] = indices[self._sub_rank]
-
-    def new_slice_config(self):
-        """ create array to show which sub config matrix indices belong to which proc """
-        nof = len(self.shared_arrays["number_of_atoms"].array)
-        #print(f"----- nof: {nof} in parallel_tools.py")
-        if self._sub_rank != 0:
-            # wait for head proc on node to fill indices
-            self._bcast_fitsnap("sub_config_size")
-            self.fitsnap_dict["sub_config_size"] = int(self.fitsnap_dict["sub_config_size"][self._sub_rank])
-            self._bcast_fitsnap("sub_config_indices")
-            self.fitsnap_dict["sub_config_indices"] = self.fitsnap_dict["sub_config_indices"][self._sub_rank]
-            return
-        sub_config_sizes = np.zeros((self._sub_size, ), dtype=np.int)
-
-        for i in range(nof):
-            proc_number = i % self._sub_size
-            sub_config_sizes[proc_number] += 1
-
-        assert sum(sub_config_sizes) == len(self.shared_arrays['config'].array)
-        self.add_2_fitsnap("sub_config_size", sub_config_sizes)
-        self._bcast_fitsnap("sub_config_size")
-        self.fitsnap_dict["sub_config_size"] = sub_config_sizes[self._sub_rank]
-
-        count = 0
-        indices = np.zeros((self._sub_size, 2), dtype=np.int)
-        for i, value in enumerate(sub_config_sizes):
-            indices[i] = count, count+value-1
-            count += value
-        self.add_2_fitsnap("sub_config_indices", indices)
-        self._bcast_fitsnap("sub_config_indices")
-        self.fitsnap_dict["sub_config_indices"] = indices[self._sub_rank]
-
 
     @stub_check
     def combine_coeffs(self, coeff):

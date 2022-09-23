@@ -194,8 +194,10 @@ class LammpsSnap(LammpsBase):
         index_dgrad += nrows_dgrad
 
         # populate the fitsnap dicts
-        # these are Distributed Lists and therefore have different size per proc, but will get 
+        # these are distributed lists and therefore have different size per proc, but will get 
         # gathered later onto the root proc in calculator.collect_distributed_lists
+        # we use fitsnap dicts for NumAtoms and NumDgradRows here because they are organized differently 
+        # than the corresponding shared arrays. 
 
         dindex = dindex+1
         self.pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = ['{}'.format(self._data['Group'])]

@@ -99,10 +99,6 @@ class Calculator:
             # make an index for which the 'dgrad' array starts on a particular proc
             self.pt.new_slice_dgrad()
             self.shared_index_dgrad = self.pt.fitsnap_dict["sub_dgrad_indices"][0]
-            # an index for which the 'dbdrindx' array starts on a particular proc 
-            # this is not necessary, as we can use the same index as dgrad
-            #self.pt.new_slice_dbdrindx()
-            #self.shared_index_dbdrindx = self.pt.fitsnap_dict["sub_dbdrindx_indices"][0] 
 
             # create fitsnap dicts - distributed lists of size nconfig per proc
             # these later get gathered on the root proc in calculator.gather_distributed_lists

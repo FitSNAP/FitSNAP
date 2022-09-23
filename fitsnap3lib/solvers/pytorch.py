@@ -126,11 +126,8 @@ try:
             Creates the dataset to be used for training and the data loader for the batch system.
             """
 
-            # observe if config GROUPS are getting shuffled before PyTorch shuffling:
-            #print(self.pt.fitsnap_dict['Configs'])
-
             # TODO: when only fitting to energy, we don't need all this extra data, and could save 
-            # time by only fitting some configs to forces. 
+            # resources by only fitting some configs to forces. 
 
             self.configs = [Configuration(int(natoms)) for natoms in self.pt.fitsnap_dict['NumAtoms']]
 
@@ -159,7 +156,7 @@ try:
                 indx_forces_low += 3*config.natoms
                 indx_dgrad_low += nrows_dgrad
 
-            # Check that we make assignments, not copies, of data, to save memory
+            # check that we make assignments (not copies) of data, to save memory
 
             assert(np.shares_memory(self.configs[0].descriptors, self.pt.shared_arrays['a'].array))
 

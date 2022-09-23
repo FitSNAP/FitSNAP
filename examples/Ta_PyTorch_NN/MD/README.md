@@ -1,14 +1,24 @@
 ### Example on how to run an MD simulation with the PyTorch neural network potential in LAMMPS.
 
-If the ML-IAP package was loaded successfully during fitting, you should have a ".pt" model that is 
-saved at the end of the simulation.
+First fit a model in the prevous directory, which should save a `FitTorch_pytorch.pt` file.
 
-Note: This is not the `Ta_Pytorch.pt` model that is saved after every epoch. Instead it is the 
-`FitTorch_pytorch.pt` file.
+**Before running LAMMPS,** be sure to set your PYTHONPATH to include your `site-packages` 
+directory. If you don't know where your `site-packages` directory is, run the following lines in
+your python interpreter:
 
-This is a lammps-ready model you can directly use with LAMMPS.
-Run `mpirun -np 2 python mliap_pytorch_Ta.py` to start an example simulation with the provided 
-potential. The `.descriptor` file contains the SNAP definition and must be in the same directory.
+    import site
+    print(site.getsitepackages())
 
-Currently normal LAMMPS scripts such as `in.run` do not work in some python environments, because
-the ML-IAP package fails to load torch. This python example will therefore suffice for now.
+This will help the embedded Python in ML-IAP find your torch and other libraries.
+
+Run the LAMMPS input script with
+
+    mpirun -np 2 lmp < in.run
+
+The `.descriptor` file contains the SNAP definition and must be in the same directory.
+
+Alternatively, we run LAMMPS MD in Python. **This only works if your Python interpreter is 
+compatible with ML-IAP, which is unlikely. We recommend sticking with the the usual use of LAMMPS
+input scripts for now.** Run MD in python with
+
+    mpirun -np 2 python mliap_pytorch_Ta.py

@@ -63,7 +63,7 @@ class Config(metaclass=Singleton):
                             help="""Put output files in the directory of INFILE. If this flag
                              is not not present, the files are stored in the
                             current working directory.""")
-        # Not Implemented
+
         parser.add_argument("--nofit", "-nf", action="store_false", dest="perform_fit",
                             help="Don't perform fit, just compute bispectrum data.")
 

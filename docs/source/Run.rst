@@ -7,6 +7,8 @@ is scraped from a directory, configurations are input to LAMMPS to calculate des
 machine learning problem is solved. The python library provides more flexibility and allows one to
 modify the steps in that fitting process.
 
+.. _Run Executable:
+
 Executable
 ----------
 
@@ -140,6 +142,51 @@ We explain the sections and their keys in more detail below.
 
 [SOLVER]
 ^^^^^^^^
+.. _PATH:
+
+[PATH]
+^^^^^^
+
+This section contains a :code:`dataPath` keyword that locates the directory of the training data. 
+For example if the training data is in a file called :code:`JSON` in the previous directory relative 
+to where we run the FitSNAP executable, this section looks like::
+
+    [PATH]
+    dataPath = JSON
+
+[GROUPS]
+^^^^^^^^
+
+Each group should be its own sub-irectory in the directory given by the :code:`dataPath/` keyword in 
+`the [PATH] section <Run.html#path>`__. There are a few different allowed syntaxes; subdirectory 
+names in the first column is common to all options.
+
+The default grouplist format has five columns and is as follows::
+
+    name  size  eweight  fweight  vweight
+    (STR) (REAL) (REAL)  (REAL)   (REAL)
+
+The first column is the name of the subfolder with training data. The second column defines the 
+number of files to be used in training the fit. The last three columns are real numbers defining the 
+weight vector for all configurations in this group::
+
+    NAME_OF_SUBFOLDER NUMBER_OF_FILES ENERGY_WEIGHT FORCE_WEIGHT VIRIAL_WEIGHT
+
+If the second column is a fraction::
+
+    (STR) (REAL, <=1.0) (REAL) (REAL) (REAL)
+
+The second column now defines the fraction of this group to be used in fitting. This will sample at 
+random from the list of files in this group::
+
+    NAME_OF_SUBFOLDER FRACTION_OF_FILES ENERGY_WEIGHT FORCE_WEIGHT VIRIAL_WEIGHT
+
+Other available grouplist columns through the group_sections keyword are:
+
+- :code:`training_size` = size or fraction of total files to be used in training
+- :code:`testing_size` = size or fraction of total files to be used in testing
+
+A few examples are found in the :code:`fitsnap/examples` directory.
 
 Library
 -------

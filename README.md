@@ -29,6 +29,8 @@ _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85
 
 <!-----------------END-HEADER------------------------------------->
 
+**Documentation page:** [https://fitsnap.github.io](https://fitsnap.github.io)
+
 #### Using this package:
 * [Required] This package expects a python 3.6+ version. Python dependencies: pandas scipy sphinx sphinx_rtd_theme psutil tabulate
 * [Required] Compile LAMMPS (lammps.sandia.gov) as a shared library. Detailed instructions can be found in `docs/Installation.rst --> LAMMPS installation --> LAMMPS for FitSNAP` section of the manual. If you can open python and run `import lammps; lmp = lammps.lammps()` and it succeeds, you should be good.

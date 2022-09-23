@@ -18,7 +18,6 @@ class LammpsSnap(LammpsBase):
         self._i = 0
         self._lmp = None
         self._row_index = 0
-        self.dgradrows = None
         self.pt.check_lammps()
 
     def get_width(self):
@@ -110,6 +109,7 @@ class LammpsSnap(LammpsBase):
         num_types = self.config.sections['BISPECTRUM'].numtypes
         n_coeff = self.config.sections['BISPECTRUM'].ncoeff
         energy = self._data["Energy"]
+        filename = self._data["File"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
         assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
@@ -121,7 +121,6 @@ class LammpsSnap(LammpsBase):
         # extract types
 
         lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
-        #print(lmp_types)
         lmp_volume = self._lmp.get_thermo("vol")
 
         # extract SNAP data, including reference potential data
@@ -152,7 +151,6 @@ class LammpsSnap(LammpsBase):
         index_b = self.shared_index_b
         index_c = self.shared_index_c
         index_dgrad = self.shared_index_dgrad
-        index_unique_j = self.shared_index_unique_j
 
         # extract the useful parts of the snap array
 
@@ -170,13 +168,6 @@ class LammpsSnap(LammpsBase):
         nrows_dgrad = np.shape(dgrad)[0]
         nrows_snap = np.shape(dgrad)[0] + nrows_energy + 1
         dgrad_indices = dgrad_indices[nonzero_rows, :]
-        
-        # this case in Ta example shows how stripping zero rows does more than simply pruning the neighlist
-        # this is because some Cartesian indices of some neighbors may have zero valued gradients
-        #if (nrows_dgrad==191):
-        #    print(nrows_dgrad)
-        #    print(np.shape(dgrad_indices)[0])
-        #    print(dgrad_indices)
 
         # populate the bispectrum array 'a'
 
@@ -184,12 +175,14 @@ class LammpsSnap(LammpsBase):
         self.pt.shared_arrays['t'].array[index:index+bik_rows] = lmp_types
         index += num_atoms
 
-        # populate the truth array 'b'
+        # populate the truth array 'b' and weight array 'w'
 
         self.pt.shared_arrays['b'].array[index_b] = (energy - ref_energy)/num_atoms
+        self.pt.shared_arrays['w'].array[index_b,0] = self._data["eweight"]
+        self.pt.shared_arrays['w'].array[index_b,1] = self._data["fweight"]
         index_b += 1
 
-        # populate the truth array 'c'
+        # populate the force truth array 'c'
 
         self.pt.shared_arrays['c'].array[index_c:(index_c + (3*num_atoms))] = self._data["Forces"].ravel() - ref_forces
         index_c += 3*num_atoms
@@ -198,35 +191,20 @@ class LammpsSnap(LammpsBase):
 
         self.pt.shared_arrays['dgrad'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad
         self.pt.shared_arrays['dbdrindx'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad_indices
-
-        # populate the unique_j_indices array
-        # this is like the 2nd column of dgrad_indices, but the indices keep adding onto themselves for an entire batch when we do fitting later
-        # for example, if natoms=64 and you have 3 configs in a batch, unique_j_indices will go up to 191
-
-        unique_j_indices = []
-        jold = dgrad_indices[0,1]
-        for jindx in range(0,nrows_dgrad):
-            jtmp = dgrad_indices[jindx,1]
-            if (jold==jtmp):
-                value = index_unique_j
-                unique_j_indices.append(value)
-            else:
-                jold = jtmp
-                index_unique_j = index_unique_j + 1
-                value = index_unique_j
-                unique_j_indices.append(value)
-
-        unique_j_indices = np.array(unique_j_indices)
-        assert(np.size(unique_j_indices) == nrows_dgrad)
-        assert( np.all((unique_j_indices-unique_j_indices[0]) == dgrad_indices[:,1]) )
-        #if (nrows_dgrad==191):
-        #    print(unique_j_indices-3842)
-        #    print(dgrad_indices)
-        self.pt.shared_arrays['unique_j_indices'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = unique_j_indices
-
-
         index_dgrad += nrows_dgrad
-        index_unique_j = index_unique_j + 1
+
+        # populate the fitsnap dicts
+        # these are distributed lists and therefore have different size per proc, but will get 
+        # gathered later onto the root proc in calculator.collect_distributed_lists
+        # we use fitsnap dicts for NumAtoms and NumDgradRows here because they are organized differently 
+        # than the corresponding shared arrays. 
+
+        dindex = dindex+1
+        self.pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = ['{}'.format(self._data['Group'])]
+        self.pt.fitsnap_dict['Configs'][self.distributed_index:dindex] = ['{}'.format(self._data['File'])]
+        self.pt.fitsnap_dict['NumAtoms'][self.distributed_index:dindex] = ['{}'.format(self._data['NumAtoms'])]
+        self.pt.fitsnap_dict['NumDgradRows'][self.distributed_index:dindex] = ['{}'.format(nrows_dgrad)]
+        self.pt.fitsnap_dict['Testing'][self.distributed_index:dindex] = [bool(self._data['test_bool'])]
 
         # reset indices since we are stacking data in the shared arrays
 
@@ -235,7 +213,6 @@ class LammpsSnap(LammpsBase):
         self.shared_index_b = index_b
         self.shared_index_c = index_c
         self.shared_index_dgrad = index_dgrad
-        self.shared_index_unique_j = index_unique_j
 
     def _collect_lammps(self):
 
@@ -323,7 +300,8 @@ class LammpsSnap(LammpsBase):
             self.pt.fitsnap_dict['Atom_I'][dindex:dindex + bik_rows] = [int(i) for i in range(nrows_energy)]
             # create an atom types list for the energy rows, if bikflag=1
             if self.config.sections['BISPECTRUM'].bikflag:
-                self.pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = lmp_types
+                types_energy = [int(i) for i in lmp_types]
+                self.pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = types_energy
             else:
                 self.pt.fitsnap_dict['Atom_Type'][dindex:dindex + bik_rows] = [0]
 
@@ -427,4 +405,10 @@ class LammpsSnap(LammpsBase):
         dgrad = dgrad[nonzero_rows, :]
         nrows_dgrad = np.shape(dgrad)[0]
         
-        self.dgradrows[self._i] = nrows_dgrad
+        #self.dgradrows[self._i] = nrows_dgrad # no need to store this in a single proc, use a shared array instead
+
+        # check that number of atoms here is equal to number of atoms in the sliced array
+
+        natoms_sliced = self.pt.shared_arrays['number_of_atoms'].sliced_array[self._i]
+        assert(natoms_sliced==num_atoms)
+        self.pt.shared_arrays['number_of_dgrad_rows'].sliced_array[self._i] = nrows_dgrad

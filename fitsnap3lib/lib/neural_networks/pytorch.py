@@ -39,7 +39,7 @@ class FitTorch(torch.nn.Module):
     Attributes
     ----------
 
-    networks : list
+    networks: list
         A list of nn.Sequential network architectures.
         Each list element is a different network type.
 
@@ -90,7 +90,7 @@ class FitTorch(torch.nn.Module):
         if (force_weight==0.0):
             self.force_bool = False
 
-    def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, device):
+    def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, unique_i, device):
         """
         Forward pass through the PyTorch network model, calculating both energies and forces.
 
@@ -113,11 +113,17 @@ class FitTorch(torch.nn.Module):
             Atom types starting from 0, for this batch
 
         xd_indx: torch.Tensor.long 
-            Array of indices corresponding to descriptor derivatives, for this batch
+            Array of indices corresponding to descriptor derivatives, for this batch. These are 
+            concatenations of the direct LAMMPS dgradflag=1 output; we rely on unique_j and unique_i 
+            for adjusted indices of this batch (see dataloader.torch_collate)
 
         unique_j: torch.Tensor.long 
             Array of indices corresponding to unique atoms j in all batches of configs.
             All forces in this batch will be contracted over these indices.
+
+        unique_i: torch.Tensor.long
+            Array of indices corresponding to unique neighbors i in all batches of configs. Forces 
+            on atoms j are summed over these neighbors and contracted appropriately. 
         
         device: pytorch accelerator device object
 
@@ -128,9 +134,17 @@ class FitTorch(torch.nn.Module):
             per_atom_energies = self.network_architecture0(x)
    
         elif (self.multi_element_option==2):
-            atom_indices = torch.arange(x.size()[0])
-            per_atom_energies = torch.stack([self.networks[i](x) 
-                                             for i in range(self.n_elem)])[types,atom_indices]
+            # Working, but not ideal due to stacking
+            #atom_indices = torch.arange(x.size()[0])
+            #per_atom_energies = torch.stack([self.networks[i](x) 
+            #                                 for i in range(self.n_elem)])[types,atom_indices]
+
+            # Slightly slower, but more general
+
+            per_atom_energies = torch.zeros(types.size(dim=0), dtype=torch.float32)
+            given_elems, elem_indices = torch.unique(types, return_inverse=True)
+            for i, elem in enumerate(given_elems):
+              per_atom_energies[elem_indices == i] = self.networks[elem](x[elem_indices == i]).flatten()
 
         # calculate energies
 
@@ -144,7 +158,7 @@ class FitTorch(torch.nn.Module):
 
         if (self.force_bool):
             nd = x.size()[1] # number of descriptors
-            natoms = atoms_per_structure.sum() # Total number of atoms in this batch
+            natoms = atoms_per_structure.sum() # total number of atoms in this batch
     
             # boolean indices used to properly index descriptor gradients
 
@@ -154,9 +168,12 @@ class FitTorch(torch.nn.Module):
 
             # neighbors i of atom j
 
-            neigh_indices_x = xd_indx[x_indices_bool,0]
-            neigh_indices_y = xd_indx[y_indices_bool,0] 
-            neigh_indices_z = xd_indx[z_indices_bool,0]
+            #neigh_indices_x = xd_indx[x_indices_bool,0]
+            #neigh_indices_y = xd_indx[y_indices_bool,0] 
+            #neigh_indices_z = xd_indx[z_indices_bool,0]
+            neigh_indices_x = unique_i[x_indices_bool]
+            neigh_indices_y = unique_i[y_indices_bool] 
+            neigh_indices_z = unique_i[z_indices_bool]
 
             dEdD = torch.autograd.grad(per_atom_energies, 
                                        x, 
@@ -253,10 +270,9 @@ class FitTorch(torch.nn.Module):
                 filename (str): Filename for lammps usable pytorch model
 
         """
-
-        #print("WARNING: Not writing LAMMPS torch file due to ML-IAP bug: https://github.com/lammps/lammps/issues/3204")
         
-        from lammps.mliap.pytorch import IgnoreElems, TorchWrapper, ElemwiseModels
+        #from lammps.mliap.pytorch import IgnoreElems, TorchWrapper, ElemwiseModels
+        from fitsnap3lib.lib.neural_networks.write import IgnoreElems, TorchWrapper, ElemwiseModels
 
         # self.network_architecture0 is network model for the first element type
 

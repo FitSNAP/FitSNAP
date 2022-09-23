@@ -22,8 +22,17 @@ class LammpsBase(Calculator):
         super().create_a()
 
     def preprocess_allocate(self, nconfigs):
+        """
+        Allocate arrays to be used by this proc. These arrays have size nconfigs.
+
+        Attributes
+        ----------
+        nconfigs : int 
+            number of configs on this proc
+        """
         self.dgradrows = np.zeros(nconfigs).astype(int)
         self.pt.create_shared_array('number_of_dgradrows', nconfigs, tm=self.config.sections["SOLVER"].true_multinode)
+        self.nconfigs = nconfigs
 
     def preprocess_configs(self, data, i):
         try:

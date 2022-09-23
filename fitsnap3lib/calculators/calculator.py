@@ -28,18 +28,18 @@ class Calculator:
         # TODO : Any extra config pulls should be done before this
 
         self.pt.sub_barrier()
-        self.number_of_atoms = self.pt.shared_arrays["number_of_atoms"].array.sum() # total number of atoms in all configs, summed
+        # total number of atoms in all configs, summed
+        self.number_of_atoms = self.pt.shared_arrays["number_of_atoms"].array.sum()
+        # total number of configs on all procs in a node
         self.number_of_files_per_node = len(self.pt.shared_arrays["number_of_atoms"].array)
+        # self.nconfigs is the number of configs on this proc, assigned in lammps_base
 
         # create data matrices for nonlinear pytorch solver
 
         if (self.config.sections["SOLVER"].solver == "PYTORCH"):
-            print("----- Creating data arrays for nonlinear fitting in calculator.py")
-            self.pt.shared_arrays["number_of_dgradrows"].array = self.dgradrows
-            self.number_of_dgradrows = self.pt.shared_arrays["number_of_dgradrows"].array.sum()
             a_len = 0
-            b_len = 0 # 1D array of reference energies for each config
-            c_len = 0 # (nconfigs*natoms*3) array of reference forces for each config
+            b_len = 0 # number reference energies for all configs
+            c_len = 0 # number of reference forces for all configs
             dgrad_len = 0
             if self.config.sections["CALCULATOR"].energy:
                 energy_rows = self.number_of_files_per_node
@@ -50,7 +50,7 @@ class Calculator:
 
             if self.config.sections["CALCULATOR"].force:
                 c_len += 3*self.number_of_atoms
-                dgrad_len += self.number_of_dgradrows
+                dgrad_len += self.pt.shared_arrays["number_of_dgrad_rows"].array.sum()
 
 #            # stress fitting not supported yet.
 #            if config.sections["CALCULATOR"].stress:
@@ -62,52 +62,52 @@ class Calculator:
 
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
 
-            a_size = a_len * a_width * double_size
-            output.screen(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
-                          "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
+            a_size = ( (a_len * a_width) + (dgrad_len * a_width) ) * double_size
+            output.screen(">>> Matrix of descriptors and descriptor derivatives takes up ", 
+                          "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+                          "% of the total memory:", 
+                          "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
             if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
                 raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
             elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
                 output.screen("Warning: I hope you know what you are doing!")
 
-            self.pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('a', a_len, a_width, 
+                                        tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('w', b_len, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
 
-            # TODO: some sort of assertion on the sizes, here or later
-            #print("b shape:")
-            #print(np.shape(pt.shared_arrays['b'].array))
-            #print("c shape:")
-            #print(np.shape(pt.shared_arrays['c'].array))
-
             if self.config.sections["CALCULATOR"].force:
-                self.pt.create_shared_array('dgrad', dgrad_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
-                self.pt.create_shared_array('dbdrindx', dgrad_len, 3, tm=self.config.sections["SOLVER"].true_multinode)
-                # create a unique_j_indices array
-                # this will house all unique indices (atoms j) in the dbdrindx array
-                # so the size is (natoms*nconfigs,)
-                self.pt.create_shared_array('unique_j_indices', dgrad_len, tm=self.config.sections["SOLVER"].true_multinode)
+                self.pt.create_shared_array('dgrad', dgrad_len, a_width, 
+                                            tm=self.config.sections["SOLVER"].true_multinode)
+                self.pt.create_shared_array('dbdrindx', dgrad_len, 3, 
+                                            tm=self.config.sections["SOLVER"].true_multinode)
 
+            # make an index for which the 'a' array starts on a particular proc
             self.pt.new_slice_a()
-            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0] # an index for which the 'a' array starts on a particular proc
+            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0] 
+            # make an index for which the 'b' array starts on a particular proc
             self.pt.new_slice_b()
-            self.shared_index_b = self.pt.fitsnap_dict["sub_b_indices"][0] # an index for which the 'b' array starts on a particular proc
+            self.shared_index_b = self.pt.fitsnap_dict["sub_b_indices"][0] 
+            # make an index for which the 'c' array starts on a particular proc
             self.pt.new_slice_c()
-            self.shared_index_c = self.pt.fitsnap_dict["sub_c_indices"][0] # an index for which the 'c' array starts on a particular proc
-            self.pt.new_slice_t() # atom types
+            self.shared_index_c = self.pt.fitsnap_dict["sub_c_indices"][0] 
+            #self.pt.new_slice_t() # atom types
 
+            # make an index for which the 'dgrad' array starts on a particular proc
             self.pt.new_slice_dgrad()
-            self.shared_index_dgrad = self.pt.fitsnap_dict["sub_dgrad_indices"][0] # an index for which the 'dgrad' array starts on a particular proc
-            self.shared_index_dbdrindx = self.pt.fitsnap_dict["sub_dbdrindx_indices"][0] # an index for which the 'dbdrindx' array starts on a particular proc
-            self.shared_index_unique_j = 0 # index for which the 'unique_j_indices' array starts on a particular proc, need to add to fitsnap_dict later
+            self.shared_index_dgrad = self.pt.fitsnap_dict["sub_dgrad_indices"][0]
 
-            self.pt.add_2_fitsnap("Groups", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Configs", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Row_Type", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Atom_I", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Testing", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
+            # create fitsnap dicts - distributed lists of size nconfig per proc
+            # these later get gathered on the root proc in calculator.gather_distributed_lists
+
+            self.pt.add_2_fitsnap("Groups", DistributedList(self.nconfigs))
+            self.pt.add_2_fitsnap("Configs", DistributedList(self.nconfigs))
+            self.pt.add_2_fitsnap("NumAtoms", DistributedList(self.nconfigs))
+            self.pt.add_2_fitsnap("NumDgradRows", DistributedList(self.nconfigs))
+            self.pt.add_2_fitsnap("Testing", DistributedList(self.nconfigs))
 
         # get data arrays for linear solvers
 
@@ -162,9 +162,12 @@ class Calculator:
 
     @staticmethod
     def collect_distributed_lists():
+        """
+        Gathers all the distributed lists on each proc to the root proc.
+        For each distributed list (fitsnap dicts) this will create a concatenated list on the root proc.
+        We use this function in fitsnap.py after processing configs.
+        """
         pt = ParallelTools()    
-        #print("----- calculator.py collect_distributed_lists()")
-        #print(pt)
         for key in pt.fitsnap_dict.keys():
             if isinstance(pt.fitsnap_dict[key], DistributedList):
                 pt.gather_fitsnap(key)

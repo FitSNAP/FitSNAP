@@ -106,7 +106,8 @@ class FitSnap:
             # preprocess the configs (only if nonlinear)
 
             if (not self.solver.linear):
-                print("Nonlinear solver, preprocessing configs.")
+                if (self.pt._rank==0): 
+                    print("Nonlinear solver, preprocessing configs.")
                 self.calculator.preprocess_allocate(len(self.data))
                 for i, configuration in enumerate(self.data):
                     self.calculator.preprocess_configs(configuration, i)
@@ -134,7 +135,15 @@ class FitSnap:
             if not self.config.args.perform_fit:
                 return
             elif self.fit is None:
-                self.solver.perform_fit()
+
+                # Perform nonlinear fitting on 1 proc only
+
+                if self.solver.linear:
+                    self.solver.perform_fit()
+                else:
+
+                    if(self.pt._rank==0):
+                        self.solver.perform_fit()
             else:
                 self.solver.fit = self.fit
             self.solver.fit_gather()
@@ -152,5 +161,6 @@ class FitSnap:
             if self.solver.linear:
                 output.output(self.solver.fit, self.solver.errors)
             else:
-                print("WARNING: Nonlinear solvers do not output generic output - see PyTorch/JAX model files.")
+                if (self.pt._rank==0):
+                    print("WARNING: Nonlinear solvers do not output generic output - see PyTorch/JAX model files.")
         decorated_write_output()

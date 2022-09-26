@@ -1,7 +1,7 @@
-name: FitSNAP Pytests
+name: tests
 
 on:
-  pull:
+  pull_request:
     branches: [master]
   push:
     branches: [master]
@@ -11,12 +11,17 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        test: [mpi, quad, eme, xyz, neme, spin, pace]
+        test: [mpi, quad, eme, xyz, neme, spin] #, pace], TODO: add pace tests
+        python-version: ["3.10"]
       max-parallel: 20
     runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
     - name: Load Mac Env
       if: matrix.os == 'macos-latest'
       run: |
@@ -26,24 +31,22 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install mpi-default-bin mpi-default-dev ninja-build
-    - name: Add conda to system path
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
+        sudo apt install -y openmpi-bin libopenmpi-dev
     - name: Install dependencies
       run: |
+        python --version
         which python
-        conda install numpy
-        conda install pandas
-        conda install tabulate
-        conda install scipy
-        conda install psutil
+        python -m pip install --upgrade setuptools pip wheel
+        python -m pip install --upgrade numpy
+        python -m pip install --upgrade pandas
+        python -m pip install --upgrade tabulate
+        python -m pip install --upgrade scipy
+        python -m pip install --upgrade psutil
     - name: Lint with flake8
       run: |
-        conda install flake8
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        python -m pip install --upgrade flake8
+        # stop the build if there are Python syntax errors or undefined names (actually ignoring F821 undefined names because of known flake8 bug)
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --ignore=F821
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install LAMMPS
@@ -56,25 +59,28 @@ jobs:
         cd lammps/cmake
         mkdir build
         cd build
-        cmake -D PKG_ML-SNAP=yes -D PKG_SPIN=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes -D Python_FIND_FRAMEWORK=LAST ../
+        # need to manually set CMAKE_OSX_DEPLOYMENT_TARGET to 10.15, needs to be changed/maintain as versions change
+        cmake -D PKG_ML-SNAP=yes -D PKG_SPIN=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes -D Python_FIND_FRAMEWORK=LAST -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 ../
         make -j 20
         make install-python
         cd ../../../FitSNAP
     - name: Test stubs with pytest
       run: |
-        conda install pytest
+        python -m pip install --upgrade pytest
         export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
         pytest test_examples.py::test_stubs
     - name: Get mpi4py
       run: |
-        cd $CONDA/lib/python*/site-packages/
-        ls 
-        curl -L https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.1.3.tar.gz -o mpi4py-3.1.3.tar.gz
-        tar -xzvf mpi4py-3.1.3.tar.gz
-        cd mpi4py-3.1.3
-        python setup.py build
-        python setup.py install
+        python -m pip install --upgrade mpi4py
+        # can also install mpi4py manually, but very buggy with conda:
+        #cd $CONDA/lib/python*/site-packages/
+        #ls 
+        #curl -L https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.1.3.tar.gz -o mpi4py-3.1.3.tar.gz
+        #tar -xzvf mpi4py-3.1.3.tar.gz
+        #cd mpi4py-3.1.3
+        #python setup.py build
+        #python setup.py install
     - name: Test rest of tests
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH

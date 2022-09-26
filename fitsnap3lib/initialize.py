@@ -50,7 +50,7 @@ def initialize_fitsnap_run():
     pt.single_print(" / __/  / // /_ ___/ // /|  // ___ | / ____/ ")
     pt.single_print("/_/    /_/ \__//____//_/ |_//_/  |_|/_/      ")
     pt.single_print("")
-    pt.single_print("-----7Feb22------")
+    pt.single_print("-----23Sep22------")
 
     try:
         pt.single_print("Reading input...")

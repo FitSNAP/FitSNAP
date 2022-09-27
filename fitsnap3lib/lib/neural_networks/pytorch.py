@@ -73,7 +73,7 @@ class FitTorch(torch.nn.Module):
 
         for indx, model in enumerate(networks):
             networks[indx].to(self.dtype)
-            setattr(self, "network_architecture"+str(indx), networks[indx]) # take this double out!
+            setattr(self, "network_architecture"+str(indx), networks[indx])
 
 
         self.networks = networks
@@ -137,12 +137,8 @@ class FitTorch(torch.nn.Module):
 
         """
 
-        #print(x)
-        #for param in self.network_architecture0.parameters():
-        #    print(param.data)
         if (self.multi_element_option==1):
-            per_atom_energies = self.network_architecture0(x) #.double()
-            #print(per_atom_energies)
+            per_atom_energies = self.network_architecture0(x)
    
         elif (self.multi_element_option==2):
             # Working, but not ideal due to stacking
@@ -152,7 +148,7 @@ class FitTorch(torch.nn.Module):
 
             # Slightly slower, but more general
 
-            per_atom_energies = torch.zeros(types.size(dim=0), dtype=dtype) #torch.float64) #dtype=torch.float32)
+            per_atom_energies = torch.zeros(types.size(dim=0), dtype=dtype)
             given_elems, elem_indices = torch.unique(types, return_inverse=True)
             for i, elem in enumerate(given_elems):
               per_atom_energies[elem_indices == i] = self.networks[elem](x[elem_indices == i]).flatten()
@@ -241,7 +237,7 @@ class FitTorch(torch.nn.Module):
 
             # don't need to multiply by -1 since compute snap already gives us negative derivatives
 
-            predicted_forces = torch.flatten(predicted_forces) #.double() #.float() 
+            predicted_forces = torch.flatten(predicted_forces)
             assert predicted_forces.size()[0] == 3*natoms
 
         else:

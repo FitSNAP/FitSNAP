@@ -9,7 +9,11 @@ our main repo page if the tests were successful.
 
 ### Testing locally
 
-We can manually perform these tests locally, e.g.
+We can manually perform these tests locally. 
+
+**You may have to ensure that your `DYLD_LIBRARY_PATH` and PYTHONPATH are properly set**.
+
+For example:
 
     pytest -s test_examples.py::test_fitsnap_basic
 

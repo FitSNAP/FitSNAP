@@ -11,7 +11,7 @@ import psutil
 #pt = ParallelTools()
 
 try:
-    from fitsnap3lib.lib.neural_networks.pytorch import FitTorch
+    from fitsnap3lib.lib.neural_networks.pytorch import FitTorch, create_torch_network
     from fitsnap3lib.tools.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
     from fitsnap3lib.tools.configuration import Configuration
     import torch
@@ -81,13 +81,24 @@ try:
             self.num_elements = self.config.sections["PYTORCH"].num_elements
             self.num_desc_per_element = self.config.sections["CALCULATOR"].num_desc/self.num_elements
 
+            self.dtype = self.config.sections["PYTORCH"].dtype
+            self.layer_sizes = self.config.sections["PYTORCH"].layer_sizes
+
+            self.networks = []
+            if (self.multi_element_option==1):
+                self.networks.append(create_torch_network(self.layer_sizes))
+            elif (self.multi_element_option==2):
+                for t in range(self.num_elements):
+                    self.networks.append(create_torch_network(self.layer_sizes))
+
             self.optimizer = None
-            self.model = FitTorch(self.config.sections["PYTORCH"].networks,
+            self.model = FitTorch(self.networks, #config.sections["PYTORCH"].networks,
                                   self.num_desc_per_element,
                                   self.energy_weight,
                                   self.force_weight,
                                   self.num_elements,
-                                  self.multi_element_option)
+                                  self.multi_element_option,
+                                  self.dtype)
             self.loss_function = torch.nn.MSELoss()
             self.learning_rate = self.config.sections["PYTORCH"].learning_rate
             if self.config.sections['PYTORCH'].save_state_input is not None:
@@ -464,6 +475,149 @@ try:
                 self.fit = None
 
             decorated_perform_fit()
+
+        #@pt.sub_rank_zero
+        def evaluate_configs(self, option = 1, standardize_bool = True, dtype=torch.float64):
+            """
+            Evaluates energies and forces on configs for testing purposes. 
+
+            Attributes
+            ----------
+            option : int
+                1 - evaluate energies/forces for all configs separately
+                2 - evaluate energies/forces using the dataloader/batch procedure
+
+            standardize_bool : bool
+                True - Standardize weights
+                False - Do not standardize weights, useful if you are comparing inputs on a previously
+                        standardized model
+
+            dtype : torch.dtype
+                Optional override of the global dtype
+            """
+
+            @self.pt.sub_rank_zero
+            def decorated_evaluate_configs():
+                #self.create_datasets()
+
+                if (standardize_bool):
+                  if self.config.sections['PYTORCH'].save_state_input is None:
+
+                      # standardization
+                      # need to perform on all network types in the model
+
+                      inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
+                      mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
+                      state_dict = self.model.state_dict()
+
+                      # look for the first layer for all types of networks, these are keys like
+                      # network_architecture0.0.weight and network_architecture0.0.bias
+                      # for the first network, and
+                      # network_architecture1.0.weight and network_architecture0.1.bias for the next,
+                      # and so forth
+
+                      ntypes = self.config.sections["PYTORCH"].num_elements
+                      keys = [*state_dict.keys()]
+                      for t in range(0,ntypes):
+                          first_layer_weight = "network_architecture"+str(t)+".0.weight"
+                          first_layer_bias = "network_architecture"+str(t)+".0.bias"
+                          state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
+                          state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
+
+                      # load the new state_dict with the standardized weights
+                      
+                      self.model.load_state_dict(state_dict)
+
+                # only evaluate, no weight gradients
+
+                self.model.eval()
+
+                # for evaluating on single config:
+
+                if (option==1):
+
+                  energies_configs = []
+                  forces_configs = []
+                  for config in self.configs:
+                      """
+                      descriptors = torch.tensor(config.descriptors).float().requires_grad_(True)
+                      #print(descriptors)
+                      atom_types = torch.tensor(config.types).long()
+                      target = torch.tensor(config.energy).float().reshape(-1)
+                      # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
+                      weights = torch.tensor(config.weights[None,:]).float()
+                      target_forces = torch.tensor(config.forces).float()
+                      num_atoms = torch.tensor(config.natoms)
+                      dgrad = torch.tensor(config.dgrad).float()
+                      dbdrindx = torch.tensor(config.dgrad_indices).long()
+                      """
+                      
+                      descriptors = torch.tensor(config.descriptors).requires_grad_(True)
+                      atom_types = torch.tensor(config.types).long()
+                      target = torch.tensor(config.energy).reshape(-1)
+                      # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
+                      weights = torch.tensor(config.weights[None,:])
+                      target_forces = torch.tensor(config.forces)
+                      num_atoms = torch.tensor(config.natoms)
+                      dgrad = torch.tensor(config.dgrad)
+                      dbdrindx = torch.tensor(config.dgrad_indices).long()
+
+                      # convert quantities to desired dtype
+                
+                      descriptors = descriptors.to(dtype)
+                      target = target.to(dtype)
+                      weights = weights.to(dtype)
+                      target_forces = target_forces.to(dtype)
+                      dgrad = dgrad.to(dtype)
+
+                      # make indices upon which to contract per-atom energies for this config
+
+                      config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
+                      indices = torch.repeat_interleave(config_indices, num_atoms)
+
+                      # illustrate what unique_j and unique_i are
+
+                      unique_i = dbdrindx[:,0]
+                      unique_j = dbdrindx[:,1]
+
+                      (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
+                                                     atom_types, dbdrindx, unique_j, unique_i, 
+                                                     self.device, dtype)
+                      energies_configs.append(energies)
+                      forces_configs.append(forces)
+                  return(energies_configs, forces_configs)
+
+                """
+                for epoch in range(self.config.sections["PYTORCH"].num_epochs):
+                    print(f"----- epoch: {epoch}")
+                    start = time()
+
+                    # loop over training data
+
+                    train_losses_step = []
+                    loss = None
+                    self.model.eval() # don't calculate gradients for simple evaluating
+                    for i, batch in enumerate(self.training_loader):
+                        descriptors = batch['x'].to(self.device).requires_grad_(True)
+                        atom_types = batch['t'].to(self.device)
+                        targets = batch['y'].to(self.device) #.requires_grad_(True)
+                        target_forces = batch['y_forces'].to(self.device) #.requires_grad_(True)
+                        indices = batch['i'].to(self.device)
+                        num_atoms = batch['noa'].to(self.device)
+                        weights = batch['w'].to(self.device)
+                        dgrad = batch['dgrad'].to(self.device) #.requires_grad_(True)
+                        dbdrindx = batch['dbdrindx'].to(self.device)
+                        unique_j = batch['unique_j'].to(self.device)
+                        unique_i = batch['unique_i'].to(self.device)
+                        testing_bools = batch['testing_bools']
+                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, unique_i, self.device)
+                        energies = torch.div(energies,num_atoms)
+                        print(forces)
+                """
+
+            (energies,forces) = decorated_evaluate_configs()
+
+            return(energies,forces)
 
 
 except ModuleNotFoundError:

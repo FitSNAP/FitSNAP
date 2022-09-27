@@ -43,6 +43,11 @@ try:
             self.save_state_output = self.check_path(self.get_value("PYTORCH", "save_state_output", "FitTorchModel"))
             self.save_state_input = self.check_path(self.get_value("PYTORCH", "save_state_input", None))
             self.output_file = self.check_path(self.get_value("PYTORCH", "output_file", "FitTorch_Pytorch.pt"))
+            self.dtype_setting = self.get_value("PYTORCH", "dtype_setting", "1", "int")
+            if (self.dtype_setting==1):
+                self.dtype = torch.float32
+            else:
+                self.dtype = torch.float64
 
             # catch errors associated with settings, and set necessary flags for later
 

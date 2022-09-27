@@ -105,3 +105,7 @@ examples to add a new keyword. Likewise for other sections such as :code:`SOLVER
 in the FitSNAP code somewhere, it is done with :code:`config.sections['SOLVER'].new_keyword` for 
 example.  
 
+If you want to add new descriptor settings for LAMMPS, e.g. in the :code:`BISPECTRUM` section, follow 
+the format in :code:`io/sections/calculator_sections/bispectrum.py`. Then make sure that the new compute 
+setting is used in :code:`calculators/lammps_snap.py` in the :code:`_set_computes` function. 
+

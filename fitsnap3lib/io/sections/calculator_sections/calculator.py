@@ -9,6 +9,7 @@ class Calculator(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
+        print("CALCULATOR IO ----------")
         self.pt = ParallelTools()
         self.allowedkeys = ['calculator', 'energy', 'per_atom_energy', 'force', 'stress', 'nonlinear']
         self._check_section()
@@ -28,4 +29,6 @@ class Calculator(Section):
         self.pt.add_2_fitsnap("stress", self.stress)
         self.nonlinear = self.get_value("CALCULATOR", "nonlinear", "False", "bool")
         self.pt.add_2_fitsnap("nonlinear", self.nonlinear)
+        if (self.nonlinear):
+            self.linear = False
         self.delete()

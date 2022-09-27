@@ -62,7 +62,7 @@ def test_fd_single_elem():
 
     # chose a random config to test against
 
-    random_indx = random.randint(0, len(snap.data))
+    random_indx = random.randint(0, len(snap.data)-1)
 
     percent_errors = []
     for m in range(random_indx,random_indx+1):
@@ -168,7 +168,7 @@ def test_fd_multi_elem():
 
     # chose a random config to test against
 
-    random_indx = random.randint(0, len(snap.data))
+    random_indx = random.randint(0, len(snap.data)-1)
 
     percent_errors = []
     for m in range(random_indx,random_indx+1):

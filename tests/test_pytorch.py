@@ -10,6 +10,12 @@ import random
 import torch
 
 
+this_path = Path(__file__).parent.resolve()
+parent_path = Path(__file__).parent.resolve().parent
+example_path = parent_path / 'examples'
+ta_example_file = example_path / 'Ta_PyTorch_NN' / 'Ta-example.in'
+wbe_example_file = example_path / 'WBe_PyTorch_NN' / 'WBe-example.in'
+
 def test_fd_single_elem():
     # TODO: Make equivalent test using MPI
 
@@ -22,7 +28,8 @@ def test_fd_single_elem():
     # don't check for existing fitsnap objects since we'll be overwriting things
     pt.check_fitsnap_exist = False
     from fitsnap3lib.io.input import Config
-    fitsnap_in = "../examples/Ta_Pytorch_NN/Ta-example.in"
+    #fitsnap_in = "../examples/Ta_Pytorch_NN/Ta-example.in"
+    fitsnap_in = ta_example_file.as_posix()
     config = Config(arguments_lst = [fitsnap_in, "--overwrite"])
     config.sections['BISPECTRUM'].switchflag = 1 # required for smooth finite difference
     config.sections['PYTORCH'].manual_seed_flag = 1
@@ -59,8 +66,8 @@ def test_fd_single_elem():
 
     percent_errors = []
     for m in range(random_indx,random_indx+1):
-        #for i in range(0,snap.data[m]['NumAtoms']):
-        for i in range(0,1):
+        for i in range(0,snap.data[m]['NumAtoms']):
+        #for i in range(0,1):
               for a in range(0,3):
                   natoms = snap.data[m]['NumAtoms']
 
@@ -127,7 +134,8 @@ def test_fd_multi_elem():
     # don't check for existing fitsnap objects since we'll be overwriting things
     pt.check_fitsnap_exist = False
     from fitsnap3lib.io.input import Config
-    fitsnap_in = "../examples/WBe_Pytorch_NN/WBe-example.in"
+    #fitsnap_in = "../examples/WBe_Pytorch_NN/WBe-example.in"
+    fitsnap_in = wbe_example_file.as_posix()
     config = Config(arguments_lst = [fitsnap_in, "--overwrite"])
     config.sections['BISPECTRUM'].switchflag = 1 # required for smooth finite difference
     config.sections['PYTORCH'].manual_seed_flag = 1

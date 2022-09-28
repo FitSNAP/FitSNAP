@@ -15,7 +15,7 @@ Create & activate conda environment with dependencies::
 
     conda create --name fitsnap python=3.10
     conda activate fitsnap
-    pip install numpy torch scipy virtualenv psutil pandas tabulate mpi4py Cython
+    python -m pip install numpy torch scipy virtualenv psutil pandas tabulate mpi4py Cython
 
 Set the following environment variables::
 

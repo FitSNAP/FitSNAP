@@ -35,7 +35,7 @@ LAMMPS for FitSNAP.
 **First activate your Python virtual environment or conda environment.** Install the necessary 
 pre-requisites to build LAMMPS with python using pip or conda::
 
-        pip install virtualenv numpy Cython
+        python -m pip install virtualenv numpy Cython # mpi4py (optional)
 
 Then clone the LAMMPS repo::
 

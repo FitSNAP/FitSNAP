@@ -18,7 +18,7 @@ for more details on installing LAMMPS. Here we start with a speedy minimal descr
 
     # Install dependencies with your conda's pip 
 
-    pip install numpy torch scipy virtualenv psutil pandas tabulate mpi4py Cython
+    python -m pip install numpy torch scipy virtualenv psutil pandas tabulate mpi4py Cython
 
     # Clone the LAMMPS repo
 

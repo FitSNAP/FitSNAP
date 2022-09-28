@@ -78,11 +78,19 @@ try:
             self.training_fraction = self.config.sections['PYTORCH'].training_fraction
 
             self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
-            self.num_elements = self.config.sections["PYTORCH"].num_elements
+            if (self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP"):
+                self.num_elements = self.config.sections["BISPECTRUM"].numtypes
+
             self.num_desc_per_element = self.config.sections["CALCULATOR"].num_desc/self.num_elements
 
             self.dtype = self.config.sections["PYTORCH"].dtype
             self.layer_sizes = self.config.sections["PYTORCH"].layer_sizes
+            if self.layer_sizes[0] == "num_desc":
+                #assert (Section.num_desc % self.num_elements == 0)
+                self.layer_sizes[0] = int(self.num_desc_per_element)
+            self.layer_sizes = [int(layer_size) for layer_size in self.layer_sizes]
+
+            # create list of networks based on multi-element option
 
             self.networks = []
             if (self.multi_element_option==1):
@@ -237,9 +245,11 @@ try:
                     # network_architecture1.0.weight and network_architecture0.1.bias for the next,
                     # and so forth
 
-                    ntypes = self.config.sections["PYTORCH"].num_elements
+                    ntypes = self.num_elements
+                    num_networks = len(self.networks)
                     keys = [*state_dict.keys()]
-                    for t in range(0,ntypes):
+                    #for t in range(0,ntypes):
+                    for t in range(0,num_networks):
                         first_layer_weight = "network_architecture"+str(t)+".0.weight"
                         first_layer_bias = "network_architecture"+str(t)+".0.bias"
                         state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
@@ -516,9 +526,11 @@ try:
                       # network_architecture1.0.weight and network_architecture0.1.bias for the next,
                       # and so forth
 
-                      ntypes = self.config.sections["PYTORCH"].num_elements
+                      ntypes = self.num_elements
+                      num_networks = len(self.networks)
                       keys = [*state_dict.keys()]
-                      for t in range(0,ntypes):
+                      #for t in range(0,ntypes):
+                      for t in range(0,num_networks):
                           first_layer_weight = "network_architecture"+str(t)+".0.weight"
                           first_layer_bias = "network_architecture"+str(t)+".0.bias"
                           state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))

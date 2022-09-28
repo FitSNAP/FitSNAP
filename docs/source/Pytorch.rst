@@ -93,7 +93,6 @@ which for the tantalum example looks like::
     force_weight = 1.0
     training_fraction = 1.0
     multi_element_option = 1
-    num_elements = 1
 
 We must also add a :code:`nonlinear = 1` key in the :code:`CALCULATOR` section, and set 
 :code:`solver = PYTORCH` in the :code:`SOLVER` section. Now the input script is ready to fit a 
@@ -142,9 +141,6 @@ The :code:`PYTORCH` section keys are explained in more detail below.
     - 1: All element types share the same network. Descriptors may still be different per type.
     - 2: Each element type has its own network.
     - 3: (Coming soon) One-hot encoding of element types, where each type shares the same network.
-
-- :code:`num_elements` number of unique atom elements, or more specifically number of unique 
-  networks.
 
 - :code:`manual_seed_flag` set to 0 by default, can set to 1 if want to force a random seed which is
   useful for debugging purposes.

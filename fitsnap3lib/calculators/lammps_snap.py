@@ -77,6 +77,7 @@ class LammpsSnap(LammpsBase):
                 "wselfallflag": "wselfallflag",
                 "bikflag": "bikflag",
                 "switchinnerflag": "switchinnerflag",
+                "switchflag": "switchflag",
                 "sinner": "sinner",
                 "dinner": "dinner",
                 "dgradflag": "dgradflag",
@@ -117,6 +118,7 @@ class LammpsSnap(LammpsBase):
         # extract positions
 
         lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
+        #print(lmp_pos[0,0])
 
         # extract types
 
@@ -155,6 +157,7 @@ class LammpsSnap(LammpsBase):
         # extract the useful parts of the snap array
 
         bispectrum_components = lmp_snap[0:bik_rows, 3:n_coeff+3]
+        #print(bispectrum_components)
         ref_forces = lmp_snap[0:bik_rows, 0:3].flatten()
         dgrad = lmp_snap[bik_rows:(bik_rows+nrows_dgrad), 3:n_coeff+3]
         dgrad_indices = lmp_snap[bik_rows:(bik_rows+nrows_dgrad), 0:3].astype(np.int32)

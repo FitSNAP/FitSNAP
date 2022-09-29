@@ -64,16 +64,15 @@ def test_stubs(stubs_input):
     [ta_linear_example_file]
 )
 def test_fitsnap_basic(basic_input):
-    """Test FitSNAP 1 proc non stubs is working on Ta Linear Example"""
+    #Test FitSNAP 1 proc non stubs is working on Ta Linear Example
     ec = example_checker.ExampleChecker(basic_input)
     ec.assert_not_stubs()
     ec.run_fitsnap()
     ec.snapcoeff_diff()
 
-
 @example_checker.mpi_run(3)
 def test_fitsnap_mpi():
-    """Test FitSNAP 3 proc non stubs is working on Ta Linear Example"""
+    #Test FitSNAP 3 proc non stubs is working on Ta Linear Example
     ec = example_checker.ExampleChecker(ta_linear_example_file)
     ec.assert_not_stubs()
     ec.run_fitsnap()
@@ -82,7 +81,7 @@ def test_fitsnap_mpi():
 
 @example_checker.mpi_run(2)
 def test_fitsnap_quad():
-    """Test FitSNAP 2 proc is working on Ta Quadratic Example"""
+    #Test FitSNAP 2 proc is working on Ta Quadratic Example
     ec = example_checker.ExampleChecker(ta_quadratic_example_file)
     ec.assert_not_stubs()
     ec.run_fitsnap()
@@ -91,7 +90,7 @@ def test_fitsnap_quad():
 
 @example_checker.mpi_run(2)
 def test_fitsnap_eme():
-    """Test FitSNAP 2 proc is working on InP EME Example"""
+    #Test FitSNAP 2 proc is working on InP EME Example
     ec = example_checker.ExampleChecker(inp_eme_example_file)
     ec.assert_not_stubs()
     ec.run_fitsnap()
@@ -100,7 +99,7 @@ def test_fitsnap_eme():
 
 @example_checker.mpi_run(2)
 def test_fitsnap_xyz():
-    """Test FitSNAP 2 proc XYZ scraper on Ta Linear Example"""
+    #Test FitSNAP 2 proc XYZ scraper on Ta Linear Example
     ec = example_checker.ExampleChecker(ta_xyz_example_file)
     ec.assert_not_stubs()
     ec.run_fitsnap()
@@ -109,7 +108,7 @@ def test_fitsnap_xyz():
 
 @example_checker.mpi_run(2)
 def test_fitsnap_neme():
-    """Test FitSNAP multi element non-explicit WBe Linear Example"""
+    #Test FitSNAP multi element non-explicit WBe Linear Example
     ec = example_checker.ExampleChecker(wbe_linear_example_file)
     ec.assert_not_stubs()
     ec.run_fitsnap()
@@ -118,7 +117,7 @@ def test_fitsnap_neme():
 
 @example_checker.mpi_run(2)
 def test_fitsnap_spin():
-    """Test FitSNAP Fe Linear Spin Example"""
+    #Test FitSNAP Fe Linear Spin Example
     ec = example_checker.ExampleChecker(fe_spin_example_file)
     ec.assert_not_stubs()
     ec.run_fitsnap()
@@ -127,7 +126,7 @@ def test_fitsnap_spin():
 
 @example_checker.mpi_run(2)
 def test_fitsnap_pace():
-    """Test FitSNAP Fe Linear Spin Example"""
+    #Test FitSNAP Fe Linear Spin Example
     ec = example_checker.ExampleChecker(pace_example_file)
     ec.assert_not_stubs()
     ec.run_fitsnap()

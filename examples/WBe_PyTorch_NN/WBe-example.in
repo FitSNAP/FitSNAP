@@ -35,8 +35,8 @@ save_state_output = WBe_Pytorch.pt
 energy_weight = 1e-2
 force_weight = 1.0
 training_fraction = 0.7
-multi_element_option = 2
-num_elements = 2
+multi_element_option = 2 # 1 - single network for all types (less parameters)
+                         # 2 - unique network for all types (more flexible)
 manual_seed_flag = 1
 
 [SOLVER]
@@ -67,8 +67,8 @@ pair_coeff4 = 2 2 zbl 4 4
 group_sections = name training_size testing_size eweight fweight vweight
 group_types = str float float float float float
 smartweights = 0
-random_sampling = 0
-DFT_MD_300K              = 0.1 0.0 436.46713269739    25.9225848378898 1.0e-12
+random_sampling = 1
+DFT_MD_300K              = 1.0 0.0 436.46713269739    25.9225848378898 1.0e-12
 
 [EXTRAS]
 dump_descriptors = 0

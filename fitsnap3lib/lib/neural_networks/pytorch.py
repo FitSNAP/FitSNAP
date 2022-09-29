@@ -59,7 +59,7 @@ class FitTorch(torch.nn.Module):
         Option for which multi-element network model to use
     """
 
-    def __init__(self, networks, descriptor_count, energy_weight, force_weight, n_elements=1, multi_element_option=1):
+    def __init__(self, networks, descriptor_count, energy_weight, force_weight, n_elements=1, multi_element_option=1, dtype=torch.float32):
         """
         Initializer.
         """
@@ -69,8 +69,12 @@ class FitTorch(torch.nn.Module):
         # we therefore need to make a unique instance attribute for each network
         # by doing this, self.state_dict() gets automatically populated by pytorch internals
 
+        self.dtype = dtype
+
         for indx, model in enumerate(networks):
+            networks[indx].to(self.dtype)
             setattr(self, "network_architecture"+str(indx), networks[indx])
+
 
         self.networks = networks
 
@@ -90,7 +94,7 @@ class FitTorch(torch.nn.Module):
         if (force_weight==0.0):
             self.force_bool = False
 
-    def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, unique_i, device):
+    def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, unique_i, device, dtype=torch.float32):
         """
         Forward pass through the PyTorch network model, calculating both energies and forces.
 
@@ -125,10 +129,13 @@ class FitTorch(torch.nn.Module):
             Array of indices corresponding to unique neighbors i in all batches of configs. Forces 
             on atoms j are summed over these neighbors and contracted appropriately. 
         
+        dtype: torch.float32
+            Data type used for torch tensors, default is torch.float32 for easy training, but we set 
+            to torch.float64 for finite difference tests to ensure correct force calculations.
+
         device: pytorch accelerator device object
 
         """
-        
 
         if (self.multi_element_option==1):
             per_atom_energies = self.network_architecture0(x)
@@ -141,7 +148,7 @@ class FitTorch(torch.nn.Module):
 
             # Slightly slower, but more general
 
-            per_atom_energies = torch.zeros(types.size(dim=0), dtype=torch.float32)
+            per_atom_energies = torch.zeros(types.size(dim=0), dtype=dtype)
             given_elems, elem_indices = torch.unique(types, return_inverse=True)
             for i, elem in enumerate(given_elems):
               per_atom_energies[elem_indices == i] = self.networks[elem](x[elem_indices == i]).flatten()
@@ -149,7 +156,7 @@ class FitTorch(torch.nn.Module):
         # calculate energies
 
         if (self.energy_bool):
-            predicted_energy_total = torch.zeros(atoms_per_structure.size()).to(device)
+            predicted_energy_total = torch.zeros(atoms_per_structure.size(), dtype=dtype).to(device)
             predicted_energy_total.index_add_(0, indices, per_atom_energies.squeeze())
         else:
             predicted_energy_total = None
@@ -198,9 +205,9 @@ class FitTorch(torch.nn.Module):
 
             # contract these elementwise components along rows with indices given by unique_j
 
-            fx_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) 
-            fy_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) 
-            fz_components = torch.zeros(atoms_per_structure.sum(),nd).to(device) 
+            fx_components = torch.zeros(atoms_per_structure.sum(),nd, dtype=dtype).to(device) 
+            fy_components = torch.zeros(atoms_per_structure.sum(),nd, dtype=dtype).to(device) 
+            fz_components = torch.zeros(atoms_per_structure.sum(),nd, dtype=dtype).to(device) 
 
             # contract over unique j indices, which has same number of rows as dgrad 
 
@@ -230,7 +237,7 @@ class FitTorch(torch.nn.Module):
 
             # don't need to multiply by -1 since compute snap already gives us negative derivatives
 
-            predicted_forces = torch.flatten(predicted_forces).float() 
+            predicted_forces = torch.flatten(predicted_forces)
             assert predicted_forces.size()[0] == 3*natoms
 
         else:

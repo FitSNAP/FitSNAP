@@ -18,7 +18,7 @@ for more details on installing LAMMPS. Here we start with a speedy minimal descr
 
     # Install dependencies with your conda's pip 
 
-    pip install numpy torch scipy virtualenv psutil pandas tabulate mpi4py Cython
+    python -m pip install numpy torch scipy virtualenv psutil pandas tabulate mpi4py Cython
 
     # Clone the LAMMPS repo
 
@@ -48,32 +48,32 @@ Set the following environment variables so that your Python can find LAMMPS::
     LAMMPS_DIR=/path/to/lammps
     export LD_LIBRARY_PATH=$LAMMPS_DIR/build-fitsnap:$LD_LIBRARY_PATH # Use DYLD_LIBRARY_PATH for MacOS
     export PYTHONPATH=$LAMMPS_DIR/python:$PYTHONPATH
-    SITE_PACKAGES_DIR=`python -c "import site; print(site.getsitepackages()[0])"`
-    export PYTHONPATH=${SITE_PACKAGES_DIR}:$PYTHONPATH # So that ML-IAP package can find torch
 
 Alternatively to setting environment variables, symbolic links to these paths are also appropriate.
 
 To make sure installs and paths are working, please see `LAMMPS Installation docs <Installation.html#lammps-installation>`__.
 
-Now we are ready to fit potentials with FitSNAP, and run MD with those potentials in LAMMPS. Get 
-FitSNAP with::
+Get FitSNAP with::
 
     cd /path/to/where/FitSNAP/will/be
     git clone https://github.com/FitSNAP/FitSNAP
-    FITSNAP_DIR=/path/to/FitSNAP
-    export PYTHONPATH=$FITSNAP_DIR/python:$PYTHONPATH
 
 Fit a neural network for tantalum::
 
+    FITSNAP_DIR=/path/to/FitSNAP
+    export PYTHONPATH=$FITSNAP_DIR:$PYTHONPATH # So you can run FitSNAP as executable
     cd $FITSNAP_DIR/examples/Ta_PyTorch_NN
     python -m fitsnap3 Ta-example.in --overwrite
 
 Run high-performance MD with this neural network potential::
 
+    SITE_PACKAGES_DIR=`python -c "import site; print(site.getsitepackages()[0])"`
+    export PYTHONPATH=${SITE_PACKAGES_DIR}:$PYTHONPATH # So that ML-IAP package can find torch for MD
     cd MD
     mpirun -np 4 ${LAMMPS_DIR}/fitsnap-build/lmp < in.run
 
-More details on setting up input scripts for NN fitting are given below.
+More details on setting up input scripts for NN fitting are given below. If you want instructions on 
+getting set up with a cluster, please see `Quick Instructions <Quick.html>`__.
 
 Fitting Neural Network Potentials
 ---------------------------------
@@ -93,7 +93,6 @@ which for the tantalum example looks like::
     force_weight = 1.0
     training_fraction = 1.0
     multi_element_option = 1
-    num_elements = 1
 
 We must also add a :code:`nonlinear = 1` key in the :code:`CALCULATOR` section, and set 
 :code:`solver = PYTORCH` in the :code:`SOLVER` section. Now the input script is ready to fit a 
@@ -142,9 +141,6 @@ The :code:`PYTORCH` section keys are explained in more detail below.
     - 1: All element types share the same network. Descriptors may still be different per type.
     - 2: Each element type has its own network.
     - 3: (Coming soon) One-hot encoding of element types, where each type shares the same network.
-
-- :code:`num_elements` number of unique atom elements, or more specifically number of unique 
-  networks.
 
 - :code:`manual_seed_flag` set to 0 by default, can set to 1 if want to force a random seed which is
   useful for debugging purposes.
@@ -226,18 +222,18 @@ Training Performance
 --------------------
 
 As seen in the :code:`Ta_Pytorch_NN` example, fitting to ~300 configs (each with ~12 atoms) takes 
-about ~0.5 s/epoch. The number of epochs required, and therefore total time of your fit, will depend 
-on the size of your dataset *and* the :code:`batch_size`. For example, the :code:`Ta_Pytorch_NN` 
+about ~0.2 s/epoch. The number of epochs required, and therefore total time of your fit, will depend 
+on the size of your dataset *and* the :code:`batch_size`. For example, the :code:`Ta_Pytorch_NN` example
 might take ~200 epochs to fully converge (see :code:`loss_vs_epochs.dat`). In this example, however, 
 we used :code:`batch_size=4`, meaning that each epoch involved :code:`~300/4 = ~75` gradient descent 
 minimizations as we cycled through batches. For much larger datasets, the network will experience 
 more cycles through the batches with each epoch, and therefore may require less epochs to reach 
 the same convergence.
 
-For data sets of ~10,000 configs and ~50 atoms per config, training will take ~12-24 hours, or about 
-20 minutes per epoch. 
+For data sets of ~10,000 configs and ~50 atoms per config, training will take ~1 hour, or about 
+20 minutes per epoch. This can consume about ~20 GB of RAM.
 
-We do not recommend using datasets much larger than this since training may take days/weeks.
+Computational scaling is *roughly* O(N) where N is the total number of atoms in the training set.
 
 Mini-batch network training is embarassingly parallel up to the batch size, but currently FitSNAP 
 does not support parallelized NN training.

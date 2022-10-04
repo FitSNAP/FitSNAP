@@ -9,7 +9,6 @@ class Calculator(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        print("CALCULATOR IO ----------")
         self.pt = ParallelTools()
         self.allowedkeys = ['calculator', 'energy', 'per_atom_energy', 'force', 'stress', 'nonlinear']
         self._check_section()

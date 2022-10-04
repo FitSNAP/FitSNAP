@@ -1,0 +1,394 @@
+import sys
+from fitsnap3lib.solvers.solver import Solver
+from fitsnap3lib.parallel_tools import ParallelTools
+from fitsnap3lib.io.input import Config
+from time import time
+import numpy as np
+import psutil
+
+#config = Config()
+#pt = ParallelTools()
+
+#from fitsnap3lib.lib.neural_networks.pytorch import FitTorch, create_torch_network
+from fitsnap3lib.lib.neural_networks.pairwise import FitTorch, create_torch_network
+from fitsnap3lib.tools.custom.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
+from fitsnap3lib.tools.configuration import Configuration
+import torch
+
+class NETWORK(Solver):
+    """
+    A class to use custom networks
+
+    ...
+
+    Attributes
+    ----------
+    optimizer : torch.optim.Adam
+        Torch Adam optimization object
+
+    model : torch.nn.Module
+        Network model that maps descriptors to a per atom attribute
+
+    loss_function : torch.loss.MSELoss
+        Mean squared error loss function
+
+    learning_rate: float
+        Learning rate for gradient descent
+
+    scheduler: torch.optim.lr_scheduler.ReduceLROnPlateau
+        Learning rate scheduler
+
+    device : torch.nn.Module (None)
+        Accelerator device
+
+    training_data: torch.utils.data.Dataset
+        Torch dataset for loading in pieces of the A matrix
+
+    training_loader: torch.utils.data.DataLoader
+        Data loader for loading in datasets
+
+    Methods
+    -------
+    create_datasets():
+        Creates the dataset to be used for training and the data loader for the batch system.
+
+    perform_fit():
+        Performs the pytorch fitting for a lammps potential
+    """
+
+    def __init__(self, name):
+        """
+        Initializes attributes for the pytorch solver.
+
+            Parameters:
+                name : Name of solver class
+
+        """
+        super().__init__(name, linear=False)
+
+        self.pt = ParallelTools()
+        self.config = Config()
+
+        self.global_weight_bool = self.config.sections['NETWORK'].global_weight_bool
+        self.energy_weight = self.config.sections['NETWORK'].energy_weight
+        self.force_weight = self.config.sections['NETWORK'].force_weight
+
+        self.global_fraction_bool = self.config.sections['NETWORK'].global_fraction_bool
+        self.training_fraction = self.config.sections['NETWORK'].training_fraction
+
+        self.multi_element_option = self.config.sections["NETWORK"].multi_element_option
+        if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
+            self.num_elements = self.config.sections["CUSTOM"].numtypes
+            self.num_desc_per_element = self.config.sections["CUSTOM"].num_descriptors/self.num_elements
+            self.num_desc = self.config.sections["CUSTOM"].num_descriptors
+
+        self.dtype = self.config.sections["NETWORK"].dtype
+        self.layer_sizes = self.config.sections["NETWORK"].layer_sizes
+        if self.layer_sizes[0] == "num_desc":
+            #assert (Section.num_desc % self.num_elements == 0)
+            self.layer_sizes[0] = int(self.num_desc)
+        self.layer_sizes = [int(layer_size) for layer_size in self.layer_sizes]
+
+        # create list of networks based on multi-element option
+
+        self.networks = []
+        if (self.multi_element_option==1):
+            self.networks.append(create_torch_network(self.layer_sizes))
+        elif (self.multi_element_option==2):
+            for t in range(self.num_elements):
+                self.networks.append(create_torch_network(self.layer_sizes))
+
+        self.optimizer = None
+        self.model = FitTorch(self.networks, #config.sections["PYTORCH"].networks,
+                              self.num_desc,
+                              self.energy_weight,
+                              self.force_weight,
+                              self.num_elements,
+                              self.multi_element_option,
+                              self.dtype)
+        self.loss_function = torch.nn.MSELoss()
+        self.learning_rate = self.config.sections["NETWORK"].learning_rate
+        if self.config.sections['NETWORK'].save_state_input is not None:
+            try:
+                self.model.load_lammps_torch(self.config.sections['NETWORK'].save_state_input)
+            except AttributeError:
+                self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+                save_state_dict = torch.load(self.config.sections['NETWORK'].save_state_input)
+                self.model.load_state_dict(save_state_dict["model_state_dict"])
+                self.optimizer.load_state_dict(save_state_dict["optimizer_state_dict"])
+        if self.optimizer is None:
+            parameter_list = [{'params': self.model.parameters()}]
+            self.optimizer = torch.optim.Adam(parameter_list, lr=self.learning_rate)
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
+                                                                    mode='min',
+                                                                    factor=0.5,
+                                                                    patience=49,
+                                                                    verbose=True,
+                                                                    threshold=0.0001,
+                                                                    threshold_mode='abs')
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # self.device = "cpu"
+        self.pt.single_print("Pytorch device is set to", self.device)
+        self.model = self.model.to(self.device)
+        self.total_data = None
+        self.training_data = None
+        self.validation_data = None
+        self.training_loader = None
+
+    def create_datasets(self):
+        """
+        Creates the dataset to be used for training and the data loader for the batch system.
+        """
+
+        # TODO: when only fitting to energy, we don't need all this extra data, and could save 
+        # resources by only fitting some configs to forces. 
+
+        self.configs = [Configuration(int(natoms)) for natoms in self.pt.fitsnap_dict['NumAtoms']]
+
+        # add descriptors and atom types
+
+        indx_natoms_low = 0
+        indx_forces_low = 0
+        indx_neighlist_low = 0
+        for i, config in enumerate(self.configs):
+            
+            indx_natoms_high = indx_natoms_low + config.natoms
+            indx_forces_high = indx_forces_low + 3*config.natoms
+            nrows_neighlist = int(self.pt.fitsnap_dict["NumNeighs"][i])
+            indx_neighlist_high = indx_neighlist_low + nrows_neighlist
+
+            # 'a' contains per-atom quantities
+
+            config.types = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high,0] - 1 # start types at zero
+            config.numneighs = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high,1]
+
+            # 'b' contains per-config quantities
+
+            config.energy = self.pt.shared_arrays['b'].array[i]
+            config.weights = self.pt.shared_arrays['w'].array[i]
+
+            # 'c' contains per-atom 3-vector quantities in 1D form
+
+            config.forces = self.pt.shared_arrays['c'].array[indx_forces_low:indx_forces_high]
+            config.positions = self.pt.shared_arrays['x'].array[indx_forces_low:indx_forces_high]
+
+            # dictionaries contain per-config quantities
+
+            config.filename = self.pt.fitsnap_dict['Configs'][i]
+            config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
+            
+            # other shared arrays contain per-atom per-neighbor quantities or others
+
+            config.neighlist = self.pt.shared_arrays['neighlist'].array[indx_neighlist_low:indx_neighlist_high]
+
+            indx_natoms_low += config.natoms
+            indx_forces_low += 3*config.natoms
+            indx_neighlist_low += nrows_neighlist
+
+        # check that we make assignments (not copies) of data, to save memory
+        
+        assert(np.shares_memory(self.configs[0].neighlist, self.pt.shared_arrays['neighlist'].array))
+
+        # convert to data loader form
+
+        self.total_data = InRAMDatasetPyTorch(self.configs)
+
+        # randomly shuffle and split into training/validation data if using global fractions
+
+        if (self.global_fraction_bool):
+
+            if (self.training_fraction == 0.0):
+                raise Exception("Training fraction must be > 0.0 for now, later we might implement 0.0 training fraction for testing on a test set")
+            if ( (self.training_fraction > 1.0) or (self.training_fraction < 0.0) ):
+                raise Exception("Training fraction cannot be > 1.0 or < 0.0")
+
+            self.train_size = int(self.training_fraction * len(self.total_data))
+            self.test_size = len(self.total_data) - self.train_size
+            self.training_data, self.validation_data = \
+                torch.utils.data.random_split(self.total_data, 
+                                              [self.train_size, self.test_size])
+
+        else: 
+
+            # we are using group training/testing fractions
+
+            training_bool_indices = [not elem for elem in self.pt.fitsnap_dict['Testing']]
+            training_indices = [i for i, x in enumerate(training_bool_indices) if x]
+            testing_indices = [i for i, x in enumerate(training_bool_indices) if not x]
+            self.training_data = torch.utils.data.Subset(self.total_data, training_indices)
+            self.validation_data = torch.utils.data.Subset(self.total_data, testing_indices)
+
+        # make training and validation data loaders for batch training
+        # TODO: make shuffling=True an option; this shuffles data every epoch, could give more robust fits.
+
+        self.training_loader = DataLoader(self.training_data,
+                                          batch_size=self.config.sections["NETWORK"].batch_size,
+                                          shuffle=False, #True
+                                          collate_fn=torch_collate,
+                                          num_workers=0)
+        self.validation_loader = DataLoader(self.validation_data,
+                                          batch_size=self.config.sections["NETWORK"].batch_size,
+                                          shuffle=False, #True
+                                          collate_fn=torch_collate,
+                                          num_workers=0)
+
+    def perform_fit(self):
+        """
+        Performs the pytorch fitting for a lammps potential
+        """
+
+        assert (self.pt._rank==0)
+        self.create_datasets()
+
+        if self.config.sections['NETWORK'].save_state_input is None:
+
+            # standardization
+            # need to perform on all network types in the model
+            # TODO for pairwise networks: move this somewhere else, since we don't yet have the descriptors.
+            # TODO perhaps move this to wherever we calculate the descriptors?
+            # TODO we should only have to calculate pairwise descriptors once in order to do this.
+            # TODO only standardize the descriptors, not the derivatives
+
+            #inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
+            #mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
+            state_dict = self.model.state_dict()
+
+            # look for the first layer for all types of networks, these are keys like
+            # network_architecture0.0.weight and network_architecture0.0.bias
+            # for the first network, and
+            # network_architecture1.0.weight and network_architecture0.1.bias for the next,
+            # and so forth
+
+            ntypes = self.num_elements
+            num_networks = len(self.networks)
+            keys = [*state_dict.keys()]
+            for t in range(0,num_networks):
+                first_layer_weight = "network_architecture"+str(t)+".0.weight"
+                first_layer_bias = "network_architecture"+str(t)+".0.bias"
+                #state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
+                #state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
+
+            # load the new state_dict with the standardized weights
+            
+            self.model.load_state_dict(state_dict)
+
+        train_losses_epochs = []
+        val_losses_epochs = []
+        # lists for storing training energies and forces
+        target_force_plot = []
+        model_force_plot = []
+        target_energy_plot = []
+        model_energy_plot = []
+        # lists for storing validation energies and forces
+        target_force_plot_val = []
+        model_force_plot_val = []
+        target_energy_plot_val = []
+        model_energy_plot_val = []
+        natoms_per_config = [] # stores natoms per config for calculating eV/atom errors later.
+        for epoch in range(self.config.sections['NETWORK'].num_epochs):
+            print(f"----- epoch: {epoch}")
+
+    def evaluate_configs(self, option = 1, standardize_bool = True, dtype=torch.float64):
+        """
+        Evaluates energies and forces on configs for testing purposes. 
+
+        Attributes
+        ----------
+        option : int
+            1 - evaluate energies/forces for all configs separately
+            2 - evaluate energies/forces using the dataloader/batch procedure
+
+        standardize_bool : bool
+            True - Standardize weights
+            False - Do not standardize weights, useful if you are comparing inputs on a previously
+                    standardized model
+
+        dtype : torch.dtype
+            Optional override of the global dtype
+        """
+
+        print("^^^^^ evaluate config")
+        standardize_bool = True # TODO fix this later
+        @self.pt.sub_rank_zero
+        def decorated_evaluate_configs():
+            #self.create_datasets()
+
+            if (standardize_bool):
+                if self.config.sections['NETWORK'].save_state_input is None:
+
+                    # standardization
+                    # need to perform on all network types in the model
+                    # TODO for pairwise networks: move this somewhere else, since we don't yet have the descriptors.
+                    # TODO perhaps move this to wherever we calculate the descriptors?
+                    # TODO we should only have to calculate pairwise descriptors once in order to do this.
+                    # TODO only standardize the descriptors, not the derivatives
+
+                    #inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
+                    #mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
+                    state_dict = self.model.state_dict()
+
+                    # look for the first layer for all types of networks, these are keys like
+                    # network_architecture0.0.weight and network_architecture0.0.bias
+                    # for the first network, and
+                    # network_architecture1.0.weight and network_architecture0.1.bias for the next,
+                    # and so forth
+
+                    ntypes = self.num_elements
+                    num_networks = len(self.networks)
+                    keys = [*state_dict.keys()]
+                    for t in range(0,num_networks):
+                        first_layer_weight = "network_architecture"+str(t)+".0.weight"
+                        first_layer_bias = "network_architecture"+str(t)+".0.bias"
+                        #state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
+                        #state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
+
+                    # load the new state_dict with the standardized weights
+                    
+                    self.model.load_state_dict(state_dict)
+
+            # only evaluate, no weight gradients
+
+            self.model.eval()
+
+            # for evaluating single configs separately
+
+            if (option==1):
+
+                energies_configs = []
+                forces_configs = []
+                for config in self.configs:
+                  
+                    positions = torch.tensor(config.positions).requires_grad_(True)
+                    atom_types = torch.tensor(config.types).long()
+                    target = torch.tensor(config.energy).reshape(-1)
+                    # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
+                    weights = torch.tensor(config.weights[None,:])
+                    target_forces = torch.tensor(config.forces)
+                    num_atoms = torch.tensor(config.natoms)
+                    neighlist = torch.tensor(config.neighlist).long()
+
+                    # convert quantities to desired dtype
+              
+                    positions = positions.to(dtype)
+                    target = target.to(dtype)
+                    weights = weights.to(dtype)
+                    target_forces = target_forces.to(dtype)
+
+                    # make indices upon which to contract per-atom energies for this config
+
+                    config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
+                    indices = torch.repeat_interleave(config_indices, num_atoms)
+
+                    print("^^^^^ evaluate_configus quantities:")
+                    print(positions.size())
+                    print(neighlist.size())
+
+                    (energies,forces) = self.model(positions, neighlist, indices, num_atoms, 
+                                                  atom_types, self.device, dtype)
+                    energies_configs.append(energies)
+                    forces_configs.append(forces)
+
+                return(energies_configs, forces_configs)
+
+        decorated_evaluate_configs()

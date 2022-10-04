@@ -14,5 +14,14 @@ class Configuration():
         self.descriptors = None
         self.types = None
         self.forces = None
+
+        # dgrad quantities are used for traditional descriptor-based networks
+
         self.dgrad = None
         self.dgrad_indices = None
+
+        # neighbor list is used for custom networks
+
+        self.neighlist = None
+        self.numneighs = None
+        self.positions = None

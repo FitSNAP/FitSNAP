@@ -162,6 +162,7 @@ class NETWORK(Solver):
 
             config.types = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high,0] - 1 # start types at zero
             config.numneighs = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high,1]
+            config.x = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high, 2:]
 
             # 'b' contains per-config quantities
 
@@ -180,7 +181,8 @@ class NETWORK(Solver):
             
             # other shared arrays contain per-atom per-neighbor quantities or others
 
-            config.neighlist = self.pt.shared_arrays['neighlist'].array[indx_neighlist_low:indx_neighlist_high]
+            config.neighlist = self.pt.shared_arrays['neighlist'].array[indx_neighlist_low:indx_neighlist_high,0:2]
+            config.xneigh = self.pt.shared_arrays['xneigh'].array[indx_neighlist_low:indx_neighlist_high, :]
 
             indx_natoms_low += config.natoms
             indx_forces_low += 3*config.natoms
@@ -359,7 +361,9 @@ class NETWORK(Solver):
                 forces_configs = []
                 for config in self.configs:
                   
-                    positions = torch.tensor(config.positions).requires_grad_(True)
+                    #positions = torch.tensor(config.positions).requires_grad_(True)
+                    positions = torch.tensor(config.x).requires_grad_(True)
+                    xneigh = torch.tensor(config.xneigh)
                     atom_types = torch.tensor(config.types).long()
                     target = torch.tensor(config.energy).reshape(-1)
                     # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
@@ -378,17 +382,24 @@ class NETWORK(Solver):
                     # make indices upon which to contract per-atom energies for this config
 
                     config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
-                    indices = torch.repeat_interleave(config_indices, num_atoms)
+                    #indices = torch.repeat_interleave(config_indices, num_atoms)
+                    indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
 
-                    print("^^^^^ evaluate_configus quantities:")
-                    print(positions.size())
-                    print(neighlist.size())
+                    #print("^^^^^ evaluate_configus quantities:")
+                    #print(positions.size())
+                    #print(neighlist.size())
+                    #print(num_atoms.unsqueeze(0).size())
+                    
+                    # need to unsqueeze num_atoms to get a tensor of definable size
 
-                    (energies,forces) = self.model(positions, neighlist, indices, num_atoms, 
+                    (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms.unsqueeze(0), 
                                                   atom_types, self.device, dtype)
+
                     energies_configs.append(energies)
                     forces_configs.append(forces)
 
                 return(energies_configs, forces_configs)
 
-        decorated_evaluate_configs()
+        (energies, forces) = decorated_evaluate_configs()
+
+        return(energies, forces)

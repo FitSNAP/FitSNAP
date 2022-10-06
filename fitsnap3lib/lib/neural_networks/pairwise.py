@@ -1,6 +1,7 @@
 import torch
 from torch import from_numpy
 from torch.nn import Parameter
+import math
 """
 Try to import mliap package after: https://github.com/lammps/lammps/pull/3388
 See related bug: https://github.com/lammps/lammps/issues/3204
@@ -94,7 +95,123 @@ class FitTorch(torch.nn.Module):
         if (force_weight==0.0):
             self.force_bool = False
 
-    def forward(self, x, neighlist, indices, atoms_per_structure, types, device, dtype=torch.float32):
+    def calculate_rij(self, x, neighlist, xneigh):
+        """
+        Calculate radial distance between all pairs
+
+        Attributes
+        ----------
+
+        x: torch.Tensor.float
+            Array of positions for this batch
+        
+        neighlist: torch.Tensor.long
+            Sparse neighlist for this batch
+
+        xneigh: torch.Tensor.float
+            Array of neighboring positions (ghost atoms) for this batch, 
+            lined up with neighlist[:,1]
+
+        Returns
+        -------
+
+        rij: torch.Tensor.float
+            Pairwise distance tensor with size (number_neigh, 1)
+        """
+
+        # calculate all pairwise distances
+
+        diff = x[neighlist[:,0]] - xneigh
+        rij = torch.linalg.norm(diff, dim=1)
+
+        rij = rij.unsqueeze(1)        
+
+        return rij
+
+    def calculate_bessel(self, rij, n):
+        """
+        Calculate radial bessel functions for all pairs
+
+        Attributes
+        ----------
+
+        rij: torch.Tensor.float
+            Pairwise distance tensor with size (number_neigh, 1)
+
+        n: torch.Tensor.float
+            Integer in float form representing Bessel radial parameter n
+
+        Returns
+        -------
+
+        rbf: torch.Tensor.float
+            Radial Bessel function calculation for base n, has size (number_neigh, 1)
+        """
+
+        # calculate Bessel
+
+        c = 3.0 # cutoff
+        pi = torch.tensor(math.pi)
+        two_over_c = torch.tensor(2./c)
+        rbf = torch.div(torch.sqrt(two_over_c)*torch.sin(((n*pi)/c)*rij), rij)     
+
+        return rbf
+
+    def radial_bessel_basis(self, x, neighlist, xneigh):
+        """
+        Calculate radial Bessel basis functions.
+
+        Attributes
+        ----------
+
+        x: torch.Tensor.float
+            Array of positions for this batch
+        
+        neighlist: torch.Tensor.long
+            Sparse neighlist for this batch
+
+
+        """
+
+        num_rbf = 3 # number of radial basis functions
+                    # e.g. 3 includes n = 1,2,3
+
+        rij = self.calculate_rij(x, neighlist, xneigh)
+
+        basis = torch.cat([self.calculate_bessel(rij, n) for n in range(1,num_rbf+1)], dim=1)
+
+        """
+        # calculate all pairwise distances
+
+        diff = x[neighlist[:,0]] - xneigh
+        rij = torch.linalg.norm(diff, dim=1)
+
+        print(neighlist[0:7,0])
+
+        print(diff[0:6,:])
+        print(diff[0:6,0])
+        print(rij[0:6])
+        manual_derivative = torch.div(diff[0:6,0], rij[0:6])
+        summ = torch.sum(manual_derivative)
+        print(summ)
+
+        c = 5.0 # cutoff
+        num_rbf = 3 # number of radial bessel basis functions
+        #print(rij.size())
+        #print(rij.unsqueeze(1).size())
+
+        rij_unsqueezed = rij.unsqueeze(1)
+        print(rij_unsqueezed.size())
+
+
+        basis = rij
+
+        #test = x*2
+        """
+
+        return basis
+
+    def forward(self, x, neighlist, xneigh, indices, atoms_per_structure, types, device, dtype=torch.float32):
         """
         Forward pass through the PyTorch network model, calculating both energies and forces.
 
@@ -124,115 +241,46 @@ class FitTorch(torch.nn.Module):
 
         """
 
-        print("^^^^^ pairwise!")
+        #print("^^^^^ pairwise!")
+        #print(neighlist)
 
-        assert(False)
+        # construct Bessel basis
 
-        if (self.multi_element_option==1):
-            per_atom_energies = self.network_architecture0(x)
-   
-        elif (self.multi_element_option==2):
-            # Working, but not ideal due to stacking
-            #atom_indices = torch.arange(x.size()[0])
-            #per_atom_energies = torch.stack([self.networks[i](x) 
-            #                                 for i in range(self.n_elem)])[types,atom_indices]
+        rbf = self.radial_bessel_basis(x,neighlist, xneigh)
+        assert(rbf.size()[0] == neighlist.size()[0])
 
-            # Slightly slower, but more general
+        # this basis needs to be input to a network for each pair
 
-            per_atom_energies = torch.zeros(types.size(dim=0), dtype=dtype)
-            given_elems, elem_indices = torch.unique(types, return_inverse=True)
-            for i, elem in enumerate(given_elems):
-              per_atom_energies[elem_indices == i] = self.networks[elem](x[elem_indices == i]).flatten()
+        #print(rbf.size())
+        #print(self.networks[0])
 
-        # calculate energies
+        # calculate pairwise energies
 
-        if (self.energy_bool):
-            predicted_energy_total = torch.zeros(atoms_per_structure.size(), dtype=dtype).to(device)
-            predicted_energy_total.index_add_(0, indices, per_atom_energies.squeeze())
-        else:
-            predicted_energy_total = None
+        eij = self.networks[0](rbf)
+        #print(eij.squeeze().size())
 
-        # calculate forces
+        # calculate energy per config
+        #print(indices)
+        predicted_energy_total = torch.zeros(atoms_per_structure.size(), dtype=dtype).to(device)
+        #print(predicted_energy_total.size())
+        predicted_energy_total.index_add_(0, indices, eij.squeeze())
+        predicted_energy_total = 100.*predicted_energy_total
 
-        if (self.force_bool):
-            nd = x.size()[1] # number of descriptors
-            natoms = atoms_per_structure.sum() # total number of atoms in this batch
-    
-            # boolean indices used to properly index descriptor gradients
+        #print(predicted_energy_total.size())
+        #print(predicted_energy_total)
 
-            x_indices_bool = xd_indx[:,2]==0
-            y_indices_bool = xd_indx[:,2]==1
-            z_indices_bool = xd_indx[:,2]==2
+        # calculate spatial gradients
 
-            # neighbors i of atom j
+        gradients_wrt_x = torch.autograd.grad(predicted_energy_total, 
+                                    x, 
+                                    grad_outputs=torch.ones_like(predicted_energy_total), 
+                                    create_graph=True)[0]
 
-            #neigh_indices_x = xd_indx[x_indices_bool,0]
-            #neigh_indices_y = xd_indx[y_indices_bool,0] 
-            #neigh_indices_z = xd_indx[z_indices_bool,0]
-            neigh_indices_x = unique_i[x_indices_bool]
-            neigh_indices_y = unique_i[y_indices_bool] 
-            neigh_indices_z = unique_i[z_indices_bool]
+        #print(gradients_wrt_x.size())
 
-            dEdD = torch.autograd.grad(per_atom_energies, 
-                                       x, 
-                                       grad_outputs=torch.ones_like(per_atom_energies), 
-                                       create_graph=True)[0]
+        # force is negative gradient
 
-            # extract proper dE/dD values to align with neighbors i of atoms j
- 
-            dEdD_x = dEdD[neigh_indices_x, :]
-            dEdD_y = dEdD[neigh_indices_y, :]
-            dEdD_z = dEdD[neigh_indices_z, :]
-
-            dDdRx = xd[x_indices_bool] 
-            dDdRy = xd[y_indices_bool] 
-            dDdRz = xd[z_indices_bool] 
-
-            # elementwise multiplication of dDdR and dEdD
-
-            elementwise_x = torch.mul(dDdRx, dEdD_x) 
-            elementwise_y = torch.mul(dDdRy, dEdD_y) 
-            elementwise_z = torch.mul(dDdRz, dEdD_z) 
-
-            # contract these elementwise components along rows with indices given by unique_j
-
-            fx_components = torch.zeros(atoms_per_structure.sum(),nd, dtype=dtype).to(device) 
-            fy_components = torch.zeros(atoms_per_structure.sum(),nd, dtype=dtype).to(device) 
-            fz_components = torch.zeros(atoms_per_structure.sum(),nd, dtype=dtype).to(device) 
-
-            # contract over unique j indices, which has same number of rows as dgrad 
-
-            contracted_x = fx_components.index_add_(0,unique_j[x_indices_bool],elementwise_x) 
-            contracted_y = fy_components.index_add_(0,unique_j[y_indices_bool],elementwise_y) 
-            contracted_z = fz_components.index_add_(0,unique_j[z_indices_bool],elementwise_z) 
-
-            # sum along bispectrum components to get force on each atom
-
-            predicted_fx = torch.sum(contracted_x, dim=1) 
-            predicted_fy = torch.sum(contracted_y, dim=1) 
-            predicted_fz = torch.sum(contracted_z, dim=1) 
-
-            # reshape to get 2D tensor
-
-            predicted_fx = torch.reshape(predicted_fx, (natoms,1)) 
-            predicted_fy = torch.reshape(predicted_fy, (natoms,1)) 
-            predicted_fz = torch.reshape(predicted_fz, (natoms,1)) 
-
-            # check that number of rows is equal to number of atoms
-
-            assert predicted_fx.size()[0] == natoms
-
-            # create a 3Nx1 array
-
-            predicted_forces = torch.cat((predicted_fx,predicted_fy,predicted_fz), dim=1) 
-
-            # don't need to multiply by -1 since compute snap already gives us negative derivatives
-
-            predicted_forces = torch.flatten(predicted_forces)
-            assert predicted_forces.size()[0] == 3*natoms
-
-        else:
-            predicted_forces = None
+        predicted_forces = -1.0*gradients_wrt_x
 
         return (predicted_energy_total, predicted_forces)
 

@@ -99,7 +99,13 @@ def test_fd_single_elem():
 
                   force_fd = -1.0*(energies1[m] - energies2[m])/(2.*h)
                   force_fd = force_fd.item()
+
+                  print(force_fd)
+                  force_model = forces_model[m][i][a].item()
+                  print(force_model)
+                  assert(False)
                   force_indx = 3*i + a 
+
                   force_model = forces_model[m][force_indx].item()
                   percent_error = ((force_model - force_fd)/force_model)*100.
                   percent_errors.append(percent_error)

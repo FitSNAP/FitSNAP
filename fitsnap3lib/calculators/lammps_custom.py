@@ -127,9 +127,17 @@ class LammpsCustom(LammpsBase):
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
         assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
 
-        # Extract positions
+        # extract positions
+
         lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
-        # Extract types
+        ptr_pos = self._lmp.extract_atom('x')
+        #nlocal = self._lmp.extract_global("nlocal")
+        #print(f"nlocal: {nlocal}")
+        #for i in range(nlocal+5):
+        #    print("(x,y,z) = (", ptr_pos[i][0], ptr_pos[i][1], ptr_pos[i][2], ")")
+
+        # extract types
+
         lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
         lmp_volume = self._lmp.get_thermo("vol")
 
@@ -160,6 +168,7 @@ class LammpsCustom(LammpsBase):
         number_of_neighs = 0 # number of neighs for this config
         num_neighs_per_atom = []
         neighlist = []
+        xneighs = []
         for i in range(0,nl.size):
             idx, nlist  = nl.get(i)
             #print("\natom {} with ID {} has {} neighbors:".format(idx,tags[idx],nlist.size))
@@ -168,7 +177,9 @@ class LammpsCustom(LammpsBase):
                 for n in np.nditer(nlist):
                     num_neighs_i += 1
                     #print("  atom {} with ID {}".format(n,tags[n]))
-                    neighlist.append([tags[idx], tags[n]])
+                    #print(f" ptr_pos[{n}][0]: {ptr_pos[n][0]}")
+                    neighlist.append([tags[idx], tags[n]]) #, ptr_pos[n][0], ptr_pos[n][1], ptr_pos[n][2]])
+                    xneighs.append([ptr_pos[n][0], ptr_pos[n][1], ptr_pos[n][2]])
 
             num_neighs_per_atom.append(num_neighs_i)
             number_of_neighs += num_neighs_i
@@ -176,11 +187,13 @@ class LammpsCustom(LammpsBase):
         num_neighs_per_atom = np.array(num_neighs_per_atom)
         assert(np.sum(num_neighs_per_atom) == number_of_neighs)
         neighlist = np.array(neighlist, dtype=int) - 1 # subtract 1 to get indices starting from 0
+        xneighs = np.array(xneighs)
 
         # populate the per-atom array 'a'
 
         self.pt.shared_arrays['a'].array[index:index+num_atoms,0] = lmp_types
         self.pt.shared_arrays['a'].array[index:index+num_atoms,1] = num_neighs_per_atom
+        self.pt.shared_arrays['a'].array[index:index+num_atoms,2:] = self._data["Positions"]
         index += num_atoms
 
         # populate the per-config arrays 'b' and 'w'
@@ -200,6 +213,7 @@ class LammpsCustom(LammpsBase):
 
         nrows_neighlist = number_of_neighs
         self.pt.shared_arrays['neighlist'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = neighlist
+        self.pt.shared_arrays['xneigh'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = xneighs
         #print(self.pt.shared_arrays['neighlist'].array[index_neighlist:(index_neighlist+nrows_neighlist)])
         index_neighlist += nrows_neighlist
 

@@ -147,15 +147,20 @@ class Calculator:
                 output.screen("Warning: I hope you know what you are doing!")
 
             # create shared arrays
-
+            a_width = 5
+            neighlist_width = 2 # i j 
+            xneigh_width = 3 # xj yj zj, with PBC corrections
             self.pt.create_shared_array('a', a_len, a_width, 
                                         tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('neighlist', neighlist_len, neighlist_width, 
+                                        tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('xneigh', neighlist_len, xneigh_width, 
                                         tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('x', c_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('positions', a_len, 3, tm=self.config.sections["SOLVER"].true_multinode)
 
             if self.config.sections["CALCULATOR"].force:
                 self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)

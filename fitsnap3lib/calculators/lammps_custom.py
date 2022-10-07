@@ -1,6 +1,7 @@
 from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np
 from fitsnap3lib.parallel_tools import ParallelTools, DistributedList
 from fitsnap3lib.io.input import Config
+from fitsnap3lib.lib.neural_networks.descriptors.bessel import Bessel
 import numpy as np
 
 
@@ -19,6 +20,8 @@ class LammpsCustom(LammpsBase):
         self._lmp = None
         self._row_index = 0
         self.pt.check_lammps()
+
+        self.bessel = Bessel() # for calculating Bessel descriptors
 
     def get_width(self):
         """
@@ -117,6 +120,18 @@ class LammpsCustom(LammpsBase):
         self._lmp.command(command)
         """
 
+    def calculate_descriptors(self,x,neighlist,xneigh):
+        """
+        Calculate descriptors for network standardization (need mean and std)
+        This is used in _collect_lammps_nonlinear to calculate pairwise descriptors for a single 
+        config.
+        """
+
+        basis = self.bessel.numpy_radial_bessel_basis(x, neighlist, xneigh)
+
+        return basis
+
+
     def _collect_lammps_nonlinear(self):
 
         num_atoms = self._data["NumAtoms"]
@@ -214,7 +229,9 @@ class LammpsCustom(LammpsBase):
         nrows_neighlist = number_of_neighs
         self.pt.shared_arrays['neighlist'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = neighlist
         self.pt.shared_arrays['xneigh'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = xneighs
-        #print(self.pt.shared_arrays['neighlist'].array[index_neighlist:(index_neighlist+nrows_neighlist)])
+        # calculate descriptors for standardization
+        descriptors = self.calculate_descriptors(self._data["Positions"], neighlist, xneighs)
+        self.pt.shared_arrays['descriptors'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = descriptors
         index_neighlist += nrows_neighlist
 
         # populate the fitsnap dicts
@@ -284,39 +301,3 @@ class LammpsCustom(LammpsBase):
         natoms_sliced = self.pt.shared_arrays['number_of_atoms'].sliced_array[self._i]
         assert(natoms_sliced==num_atoms)
         self.pt.shared_arrays['number_of_neighs_scrape'].sliced_array[self._i] = number_of_neighs
-
-        #print(self.pt.shared_arrays['number_of_neighs_scrape'].array)
-
-        #assert(False)
-        """
-        # extract SNAP data, including reference potential data
-
-        bik_rows = 1
-        if self.config.sections['BISPECTRUM'].bikflag:
-            bik_rows = num_atoms
-        nrows_energy = bik_rows
-        ndim_force = 3
-        ndim_virial = 6
-        nrows_virial = ndim_virial
-        lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, None)
-
-        ncols_bispectrum = n_coeff + 3
-        ncols_reference = 0
-        nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-1 #6
-        dgrad = lmp_snap[num_atoms:(num_atoms+nrows_dgrad), 3:(n_coeff+3)]
-
-        # strip zero dgrad components (almost equivalent to pruning neighborlist)
-         
-        nonzero_rows = lmp_snap[num_atoms:(num_atoms+nrows_dgrad),3:(n_coeff+3)] != 0.0
-        nonzero_rows = np.any(nonzero_rows, axis=1)
-        dgrad = dgrad[nonzero_rows, :]
-        nrows_dgrad = np.shape(dgrad)[0]
-        
-        #self.dgradrows[self._i] = nrows_dgrad # no need to store this in a single proc, use a shared array instead
-
-        # check that number of atoms here is equal to number of atoms in the sliced array
-
-        natoms_sliced = self.pt.shared_arrays['number_of_atoms'].sliced_array[self._i]
-        assert(natoms_sliced==num_atoms)
-        self.pt.shared_arrays['number_of_dgrad_rows'].sliced_array[self._i] = nrows_dgrad
-        """

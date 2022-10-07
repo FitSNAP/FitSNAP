@@ -16,5 +16,6 @@ class Custom(Section):
             self.type_mapping[atom_type] = i+1
         #print(self.type_mapping)
         self.num_descriptors = self.get_value("CUSTOM", "num_descriptors", "3", "int")
+        self.cutoff = self.get_value("CUSTOM", "cutoff", "3.0", "float")
 
         self.delete()

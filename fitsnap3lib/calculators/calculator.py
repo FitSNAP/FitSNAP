@@ -161,6 +161,12 @@ class Calculator:
             self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('positions', a_len, 3, tm=self.config.sections["SOLVER"].true_multinode)
+            
+            # also need descriptors for network standardization
+            # for pairwise networks, there are num_neigh*num_descriptors total descriptors to store
+            # TODO: if statement here to catch possibilities for custom networks, e.g. nonpairwise descriptors, etc.
+
+            self.pt.create_shared_array('descriptors', neighlist_len, self.config.sections['CUSTOM'].num_descriptors)
 
             if self.config.sections["CALCULATOR"].force:
                 self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)

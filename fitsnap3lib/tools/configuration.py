@@ -23,7 +23,7 @@ class Configuration():
         # neighbor list is used for custom networks
 
         self.neighlist = None
-        self.numneighs = None
+        self.numneigh = None
         self.positions = None # 1D 3N 
         self.x = None # Nx3
         self.xneigh = None # neighbor positions lined up with neighlist[:,1]

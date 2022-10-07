@@ -2,6 +2,7 @@ import torch
 from torch import from_numpy
 from torch.nn import Parameter
 import math
+from fitsnap3lib.lib.neural_networks.descriptors.bessel import Bessel
 """
 Try to import mliap package after: https://github.com/lammps/lammps/pull/3388
 See related bug: https://github.com/lammps/lammps/issues/3204
@@ -84,7 +85,7 @@ class FitTorch(torch.nn.Module):
         # for param_tensor in self.state_dict():
         #     print(param_tensor, "\t", self.state_dict()[param_tensor].size())   
          
-        self.desc_len = descriptor_count
+        self.num_descriptors = descriptor_count
         self.n_elem = n_elements
         self.multi_element_option = multi_element_option
 
@@ -95,123 +96,9 @@ class FitTorch(torch.nn.Module):
         if (force_weight==0.0):
             self.force_bool = False
 
-    def calculate_rij(self, x, neighlist, xneigh):
-        """
-        Calculate radial distance between all pairs
+        self.bessel = Bessel() # Bessel object provides functions to calculate descriptors
 
-        Attributes
-        ----------
-
-        x: torch.Tensor.float
-            Array of positions for this batch
-        
-        neighlist: torch.Tensor.long
-            Sparse neighlist for this batch
-
-        xneigh: torch.Tensor.float
-            Array of neighboring positions (ghost atoms) for this batch, 
-            lined up with neighlist[:,1]
-
-        Returns
-        -------
-
-        rij: torch.Tensor.float
-            Pairwise distance tensor with size (number_neigh, 1)
-        """
-
-        # calculate all pairwise distances
-
-        diff = x[neighlist[:,0]] - xneigh
-        rij = torch.linalg.norm(diff, dim=1)
-
-        rij = rij.unsqueeze(1)        
-
-        return rij
-
-    def calculate_bessel(self, rij, n):
-        """
-        Calculate radial bessel functions for all pairs
-
-        Attributes
-        ----------
-
-        rij: torch.Tensor.float
-            Pairwise distance tensor with size (number_neigh, 1)
-
-        n: torch.Tensor.float
-            Integer in float form representing Bessel radial parameter n
-
-        Returns
-        -------
-
-        rbf: torch.Tensor.float
-            Radial Bessel function calculation for base n, has size (number_neigh, 1)
-        """
-
-        # calculate Bessel
-
-        c = 3.0 # cutoff
-        pi = torch.tensor(math.pi)
-        two_over_c = torch.tensor(2./c)
-        rbf = torch.div(torch.sqrt(two_over_c)*torch.sin(((n*pi)/c)*rij), rij)     
-
-        return rbf
-
-    def radial_bessel_basis(self, x, neighlist, xneigh):
-        """
-        Calculate radial Bessel basis functions.
-
-        Attributes
-        ----------
-
-        x: torch.Tensor.float
-            Array of positions for this batch
-        
-        neighlist: torch.Tensor.long
-            Sparse neighlist for this batch
-
-
-        """
-
-        num_rbf = 3 # number of radial basis functions
-                    # e.g. 3 includes n = 1,2,3
-
-        rij = self.calculate_rij(x, neighlist, xneigh)
-
-        basis = torch.cat([self.calculate_bessel(rij, n) for n in range(1,num_rbf+1)], dim=1)
-
-        """
-        # calculate all pairwise distances
-
-        diff = x[neighlist[:,0]] - xneigh
-        rij = torch.linalg.norm(diff, dim=1)
-
-        print(neighlist[0:7,0])
-
-        print(diff[0:6,:])
-        print(diff[0:6,0])
-        print(rij[0:6])
-        manual_derivative = torch.div(diff[0:6,0], rij[0:6])
-        summ = torch.sum(manual_derivative)
-        print(summ)
-
-        c = 5.0 # cutoff
-        num_rbf = 3 # number of radial bessel basis functions
-        #print(rij.size())
-        #print(rij.unsqueeze(1).size())
-
-        rij_unsqueezed = rij.unsqueeze(1)
-        print(rij_unsqueezed.size())
-
-
-        basis = rij
-
-        #test = x*2
-        """
-
-        return basis
-
-    def forward(self, x, neighlist, xneigh, indices, atoms_per_structure, types, device, dtype=torch.float32):
+    def forward(self, x, neighlist, xneigh, indices, atoms_per_structure, types, unique_i, device, dtype=torch.float32):
         """
         Forward pass through the PyTorch network model, calculating both energies and forces.
 
@@ -225,13 +112,15 @@ class FitTorch(torch.nn.Module):
             Sparse neighlist for this batch
 
         indices: torch.Tensor.long
-            Array of indices upon which to contract per atom energies, for this batch
+            Array of indices upon which to contract pairwise energies, for this batch
 
         atoms_per_structure: torch.Tensor.long
             Number of atoms per configuration for this batch
 
         types: torch.Tensor.long
             Atom types starting from 0, for this batch
+
+        unique_i: atoms i for all atoms in this batch indexed starting from 0 to (natoms_batch-1)
         
         dtype: torch.float32
             Data type used for torch tensors, default is torch.float32 for easy training, but we set 
@@ -241,33 +130,20 @@ class FitTorch(torch.nn.Module):
 
         """
 
-        #print("^^^^^ pairwise!")
-        #print(neighlist)
-
         # construct Bessel basis
 
-        rbf = self.radial_bessel_basis(x,neighlist, xneigh)
+        #rbf = self.radial_bessel_basis(x,neighlist, xneigh)
+        rbf = self.bessel.radial_bessel_basis(x, neighlist, unique_i, xneigh)
         assert(rbf.size()[0] == neighlist.size()[0])
 
         # this basis needs to be input to a network for each pair
-
-        #print(rbf.size())
-        #print(self.networks[0])
-
         # calculate pairwise energies
 
         eij = self.networks[0](rbf)
-        #print(eij.squeeze().size())
 
         # calculate energy per config
-        #print(indices)
         predicted_energy_total = torch.zeros(atoms_per_structure.size(), dtype=dtype).to(device)
-        #print(predicted_energy_total.size())
         predicted_energy_total.index_add_(0, indices, eij.squeeze())
-        predicted_energy_total = 100.*predicted_energy_total
-
-        #print(predicted_energy_total.size())
-        #print(predicted_energy_total)
 
         # calculate spatial gradients
 
@@ -276,11 +152,16 @@ class FitTorch(torch.nn.Module):
                                     grad_outputs=torch.ones_like(predicted_energy_total), 
                                     create_graph=True)[0]
 
-        #print(gradients_wrt_x.size())
+        assert(gradients_wrt_x.size() == x.size())
 
         # force is negative gradient
 
         predicted_forces = -1.0*gradients_wrt_x
+
+        # TODO for now we divide energy by 2, to fix this we need to incorporate the LAMMPS 
+        # neighlist-transformed positions in the forward pass
+
+        predicted_energy_total = 0.5*predicted_energy_total
 
         return (predicted_energy_total, predicted_forces)
 
@@ -328,7 +209,7 @@ class FitTorch(torch.nn.Module):
         else:
             print("Multi element, saving model with ElemwiseModels ML-IAP wrapper")
             model = ElemwiseModels(self.networks, self.n_elem)
-        linked_model = TorchWrapper(model, n_descriptors=self.desc_len, n_elements=self.n_elem)
+        linked_model = TorchWrapper(model, n_descriptors=self.num_descriptors, n_elements=self.n_elem)
         torch.save(linked_model, filename)
         
 

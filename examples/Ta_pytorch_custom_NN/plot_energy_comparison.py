@@ -15,7 +15,7 @@ plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 dat = np.loadtxt("energy_comparison.dat")
 dat_val = np.loadtxt("energy_comparison_val.dat")
 
-lims = [-100, 100]
+lims = [-25, 25]
 plt.plot(dat[:,0], dat[:,1], 'bo')
 plt.plot(dat_val[:,0], dat_val[:,1], 'ro')
 plt.plot(lims, lims, 'k-')

@@ -525,7 +525,7 @@ class NETWORK(Solver):
         
         self.fit = None
 
-    def evaluate_configs(self, option = 1, standardize_bool = True, dtype=torch.float64):
+    def evaluate_configs(self, config_index=0, option = 1, evaluate_all = False, standardize_bool = True, dtype=torch.float64):
         """
         Evaluates energies and forces on configs for testing purposes. 
 
@@ -591,10 +591,60 @@ class NETWORK(Solver):
 
             if (option==1):
 
-                energies_configs = []
-                forces_configs = []
-                for config in self.configs:
+                if (evaluate_all):
+
+                    print("^^^^^ EVALUATING ALL")
+
+                    energies_configs = []
+                    forces_configs = []
+                    #config=self.configs[config_index]
+
+                    #print(f"^^^^^ {config.filename}")
+                    for config in self.configs:
+                      
+                        #positions = torch.tensor(config.positions).requires_grad_(True)
+                        positions = torch.tensor(config.x).requires_grad_(True)
+                        xneigh = torch.tensor(config.xneigh)
+                        atom_types = torch.tensor(config.types).long()
+                        target = torch.tensor(config.energy).reshape(-1)
+                        # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
+                        weights = torch.tensor(config.weights[None,:])
+                        target_forces = torch.tensor(config.forces)
+                        num_atoms = torch.tensor(config.natoms)
+                        neighlist = torch.tensor(config.neighlist).long()
+
+                        # convert quantities to desired dtype
                   
+                        positions = positions.to(dtype)
+                        target = target.to(dtype)
+                        weights = weights.to(dtype)
+                        target_forces = target_forces.to(dtype)
+
+                        # make indices upon which to contract per-atom energies for this config
+
+                        config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
+                        #indices = torch.repeat_interleave(config_indices, num_atoms)
+                        indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
+                        unique_i = neighlist[:,0]
+                        
+                        # need to unsqueeze num_atoms to get a tensor of definable size
+
+                        (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms.unsqueeze(0), 
+                                                      atom_types, unique_i, self.device, dtype)
+
+                        energies_configs.append(energies)
+                        forces_configs.append(forces)
+
+                    return(energies_configs, forces_configs)
+
+                else:
+                    energies_configs = []
+                    forces_configs = []
+                    config=self.configs[config_index]
+
+                    #print(f"^^^^^ {config.filename}")
+                    #for config in self.configs:
+                      
                     #positions = torch.tensor(config.positions).requires_grad_(True)
                     positions = torch.tensor(config.x).requires_grad_(True)
                     xneigh = torch.tensor(config.xneigh)
@@ -618,16 +668,17 @@ class NETWORK(Solver):
                     config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
                     #indices = torch.repeat_interleave(config_indices, num_atoms)
                     indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
+                    unique_i = neighlist[:,0]
                     
                     # need to unsqueeze num_atoms to get a tensor of definable size
 
                     (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms.unsqueeze(0), 
-                                                  atom_types, self.device, dtype)
+                                                  atom_types, unique_i, self.device, dtype)
 
                     energies_configs.append(energies)
                     forces_configs.append(forces)
 
-                return(energies_configs, forces_configs)
+                    return(energies_configs, forces_configs)
 
         (energies, forces) = decorated_evaluate_configs()
 

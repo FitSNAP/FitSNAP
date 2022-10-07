@@ -105,6 +105,40 @@ class Bessel():
 
         return basis
 
+    def cutoff_function(self, x, neighlist, unique_i, xneigh):
+        """
+        Calculate cutoff function for all rij
+
+        Attributes
+        ----------
+
+        x: torch.Tensor.float
+            Array of positions for this batch
+        
+        neighlist: torch.Tensor.long
+            Sparse neighlist for this batch
+
+        unique_i: atoms i for all atoms in this batch indexed starting from 0 to (natoms_batch-1)
+
+        xneigh: torch.Tensor.float
+            positions of neighbors corresponding to indices j in neighlist
+        """
+
+        num_rbf = self.num_descriptors # number of radial basis functions
+                                       # e.g. 3 includes n = 1,2,3
+
+        rij = self.calculate_rij(x, neighlist, unique_i, xneigh)
+
+        c = self.cutoff #3.0 # cutoff
+        pi = torch.tensor(math.pi)
+
+        #function = 0.5 - 0.5*torch.sin(pi_over_two*((rij-R)/D))
+        function = 0.5 + 0.5*torch.cos(pi*(rij-0)/(c-0))
+
+        return function
+
+
+
     def numpy_calculate_rij(self, x, neighlist, xneigh):
         """
         Calculate radial distance between all pairs
@@ -190,6 +224,9 @@ class Bessel():
                                        # e.g. 3 includes n = 1,2,3
 
         rij = self.numpy_calculate_rij(x,neighlist,xneigh)
+
+        #print(neighlist)
+        #print(rij)
 
         basis = np.concatenate([self.numpy_calculate_bessel(rij, n) for n in range(1,num_rbf+1)], axis=1)
         #basis = np.vstack([self.numpy_calculate_bessel(rij, n) for n in range(1,num_rbf+1)])

@@ -131,15 +131,21 @@ class FitTorch(torch.nn.Module):
         """
 
         # construct Bessel basis
-
         #rbf = self.radial_bessel_basis(x,neighlist, xneigh)
+        #print(neighlist)
         rbf = self.bessel.radial_bessel_basis(x, neighlist, unique_i, xneigh)
+        #print(rbf)
         assert(rbf.size()[0] == neighlist.size()[0])
 
         # this basis needs to be input to a network for each pair
         # calculate pairwise energies
 
         eij = self.networks[0](rbf)
+
+        cutoff_functions = self.bessel.cutoff_function(x, neighlist, unique_i, xneigh)
+
+        assert(cutoff_functions.size() == eij.size())
+        eij = torch.mul(eij,cutoff_functions)
 
         # calculate energy per config
         predicted_energy_total = torch.zeros(atoms_per_structure.size(), dtype=dtype).to(device)

@@ -204,11 +204,16 @@ class LammpsCustom(LammpsBase):
         neighlist = np.array(neighlist, dtype=int) - 1 # subtract 1 to get indices starting from 0
         xneighs = np.array(xneighs)
 
+        #if (index_b==0):
+        #    print(lmp_pos)
+        #    print(neighlist)
+        #    print(self.bessel.numpy_calculate_rij(lmp_pos, neighlist, xneighs))
+
         # populate the per-atom array 'a'
 
         self.pt.shared_arrays['a'].array[index:index+num_atoms,0] = lmp_types
         self.pt.shared_arrays['a'].array[index:index+num_atoms,1] = num_neighs_per_atom
-        self.pt.shared_arrays['a'].array[index:index+num_atoms,2:] = self._data["Positions"]
+        self.pt.shared_arrays['a'].array[index:index+num_atoms,2:] = lmp_pos #self._data["Positions"]
         index += num_atoms
 
         # populate the per-config arrays 'b' and 'w'

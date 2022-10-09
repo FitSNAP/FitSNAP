@@ -28,7 +28,6 @@ pt = ParallelTools()
 
 def new_section(section, config, args):
     """Section Factory"""
-    print(f"^^^^^ io.sections.section_factory.new_section section: {section}")
     instance = search(section)
     try:
         instance.__init__(section, config, args)

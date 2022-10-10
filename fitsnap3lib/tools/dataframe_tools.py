@@ -451,7 +451,6 @@ class DataframeTools():
             filtered_groups = list(compress(groups.tolist(), testing_force_row_indices))
             #print(len(filtered_groups))
             assert (len(filtered_groups) == len(truths))
-            print(filtered_groups[0])
             unique_groups_set = set()
             for x in filtered_groups:
                 unique_groups_set.add(x)
@@ -494,3 +493,22 @@ class DataframeTools():
                 plt.legend(fancybox=True, framealpha=0.5, handles = legend_handle, bbox_to_anchor=(1.04, 1), loc="upper left")
                 #plt.tight_layout(rect=[0, 0, 1, 0.8])
             plt.savefig("force_agreement.png", bbox_inches="tight", dpi=500)
+
+    def plot_tsne(self, num_descriptors, point_size=0.05):
+        from sklearn.manifold import TSNE
+        from matplotlib.lines import Line2D 
+        tsne = TSNE()
+
+        numeric_df = self.df.iloc[:,0:num_descriptors+1] #whatever your number of A matrix columns is
+        label_df = self.df['Groups']
+
+        X = numeric_df.to_numpy()
+        X_embedded = tsne.fit_transform(X)
+
+        cmap = plt.cm.get_cmap('tab20')
+        legend_elements = [Line2D([0], [0], marker='o', color=cmap(i), label=label_df.astype('category').cat.categories[i], markersize=15) for i in range(0,max(label_df.astype('category').cat.codes+1))]
+
+        fig, ax = plt.subplots(constrained_layout=True)
+        plt.scatter(X_embedded[:,0], X_embedded[:,1], c = cmap(label_df.astype('category').cat.codes.to_numpy()), s=point_size)
+        ax.legend(handles=legend_elements, loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.savefig("per-atom-descriptor-TSNE.png")

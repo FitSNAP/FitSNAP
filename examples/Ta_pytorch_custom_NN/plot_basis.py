@@ -44,14 +44,16 @@ def calculate_bessel(r, n, rc):
 
     return rbf
 
-rc = 3
+rc = 4.2
 r = np.linspace(0.0001,rc,100)
+h = r[1]-r[0]
 r = np.expand_dims(r, axis=1)
-num_rbf = 8
+num_rbf = 3
 basis = np.concatenate([calculate_bessel(r, n, rc) for n in range(1,num_rbf+1)], axis=1)
 
 print(np.shape(basis))
-
+print(basis)
+print(f"h: {h}")
 
 fig, ax = plt.subplots()
 for i in range(0,num_rbf):
@@ -61,5 +63,6 @@ ax.set(xlabel='Radius r (A)', ylabel='B(r)',
        title='Radial Bessel Basis')
 ax.grid()
 
+fig.show()
 fig.savefig("basis.png", dpi=500)
 plt.show()

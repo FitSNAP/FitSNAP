@@ -43,12 +43,12 @@ class DataframeTools():
         """
         if(isinstance(dataframe, str)):
             self.dftype = "file"
-        elif(type(dataframe)=='pickled_whatever'):
-            print(dataframe)
+            self.dataframe = dataframe
+        elif(type(dataframe)==pd.core.frame.DataFrame):
+            self.dtype = "df"
+            self.df = dataframe
         else:
-            raise ValueError('Dataframe must be str or pickled Pandas dataframe')
-
-        self.dataframe = dataframe
+            raise ValueError('Dataframe must be filename of pickled pd dataframe or pd.core.frame.DataFrame')
 
     def get_cmap(self, n, name='hsv'):
         '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 

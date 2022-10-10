@@ -33,16 +33,12 @@ class LammpsTools():
     
     test_dir: str
         filename/location of test directory to read test data from
-
-    quantity: str
-        "Energy" or "Force"
     """
-    def __init__(self, pairstyle, input_script, test_dir, quantity):
+    def __init__(self, pairstyle, input_script, test_dir):
 
         self.pairstyle = pairstyle
         self.input_script = input_script
         self.test_dir = test_dir
-        self.quantity = quantity
 
         self.pt = ParallelTools()
         self.pt.check_fitsnap_exist = False
@@ -120,7 +116,7 @@ class LammpsTools():
             forces_test_all.append(forces_test)
             energies_test_all.append(energy_test)
 
-            # append groups to identify quantities
+            # append groups to help identify energy and force quantities
             groups_all.append(calc._data["Group"])
             groups_forces_all.extend(num_atoms*3*[calc._data["Group"]])
 

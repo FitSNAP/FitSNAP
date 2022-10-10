@@ -356,12 +356,12 @@ class DataframeTools():
             filtered_groups = list(compress(groups.tolist(), test_row_indices))
             #print(len(filtered_groups))
             assert (len(filtered_groups) == len(truths))
-            print(filtered_groups[0])
+            #print(filtered_groups[0])
             unique_groups_set = set()
             for x in filtered_groups:
                 unique_groups_set.add(x)
             unique_groups = sorted(list(unique_groups_set)) #set(filtered_groups))
-            print(unique_groups)
+            #print(unique_groups)
             #print(unique_groups.sort(key=len))
             cmap = self.get_cmap(n=len(unique_groups), name='gist_rainbow')
             cmap = [cmap(i) for i in range(0,len(unique_groups))]
@@ -396,7 +396,10 @@ class DataframeTools():
                 plt.ylabel(r"Absolute error (eV/atom)")
             elif(mode=="Linear"):
                 plt.scatter(truths, preds, c=colors, marker='o',alpha=0.5)
-                plt.axline((0, 0.5), slope=1.0, color="black")
+                min_val = np.min(truths)
+                max_val = np.max(truths)
+                lims = [min_val, max_val]
+                plt.plot(lims, lims, 'k-')
                 plt.xlabel(r"Target energy (eV/atom)")
                 plt.ylabel(r"Model energy (eV/atom)")
 
@@ -453,7 +456,7 @@ class DataframeTools():
             for x in filtered_groups:
                 unique_groups_set.add(x)
             unique_groups = sorted(list(unique_groups_set)) #set(filtered_groups))
-            print(unique_groups)
+            #print(unique_groups)
             #print(unique_groups.sort(key=len))
             cmap = self.get_cmap(n=len(unique_groups), name='gist_rainbow')
             cmap = [cmap(i) for i in range(0,len(unique_groups))]
@@ -478,7 +481,10 @@ class DataframeTools():
                 plt.ylabel(r"Absolute error (eV/$\AA$)")
             elif(mode=="Linear"):
                 plt.scatter(truths, preds, c=colors, marker='o',alpha=0.5)
-                plt.axline((0, 0.5), slope=1.0, color="black")
+                min_val = np.min(truths)
+                max_val = np.max(truths)
+                lims = [min_val, max_val]
+                plt.plot(lims, lims, 'k-')
                 plt.xlabel(r"Target force (eV/$\AA$)")
                 plt.ylabel(r"Model force (eV/$\AA$)")
 

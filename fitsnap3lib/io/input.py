@@ -118,7 +118,6 @@ class Config(metaclass=Singleton):
         self.set_sections(tmp_config)
 
     def set_sections(self, tmp_config):
-        print("^^^^^ io.input.set_sections")
         sections = tmp_config.sections()
         for section in sections:
             if section == "TEMPLATE":

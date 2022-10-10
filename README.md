@@ -3,7 +3,7 @@
 <img width="300" alt="FitSNAP" src="https://github.com/rohskopf/FitSNAP/blob/master/FitSNAP.png">
 
 
-[![FitSNAP Pytests](https://github.com/rohskopf/FitSNAP/actions/workflows/pytests.yaml/badge.svg?branch=master)](https://github.com/rohskopf/FitSNAP/actions/workflows/pytests.yaml)
+[![FitSNAP Pytests](https://github.com/FitSNAP/FitSNAP/actions/workflows/pytests.yaml/badge.svg?branch=master)](https://github.com/FitSNAP/FitSNAP/actions/workflows/pytests.yaml)
 
 A Python package for machine learning potentials with [LAMMPS](https://github.com/lammps/lammps).
 

@@ -38,9 +38,6 @@ class Bessel():
             Pairwise distance tensor with size (number_neigh, 1)
         """
 
-        # calculate all pairwise distances
-
-        #diff = x[neighlist[:,0]] - xneigh
         diff = x[unique_i] - xneigh
         rij = torch.linalg.norm(diff, dim=1)
 
@@ -68,9 +65,7 @@ class Bessel():
             Radial Bessel function for base n with size (number_neigh, 1)
         """
 
-        # calculate Bessel
-
-        c = self.cutoff #3.0 # cutoff
+        c = self.cutoff
         pi = torch.tensor(math.pi)
         two_over_c = torch.tensor(2./c)
         rbf = torch.div(torch.sqrt(two_over_c)*torch.sin(((n*pi)/c)*rij), rij)     
@@ -163,8 +158,6 @@ class Bessel():
             Pairwise distance tensor with size (number_neigh, 1)
         """
 
-        # calculate all pairwise distances
-
         diff = x[neighlist[:,0]] - xneigh
         rij = np.linalg.norm(diff, axis=1)    
 
@@ -192,14 +185,10 @@ class Bessel():
             Radial Bessel function for base n with size (number_neigh, 1)
         """
 
-        # calculate Bessel
-
-        c = self.cutoff #3.0 # cutoff
+        c = self.cutoff
         pi = math.pi
         two_over_c = 2./c
         rbf = np.divide(np.sqrt(two_over_c)*np.sin(((n*pi)/c)*rij), rij)    
-
-        #print(np.shape(rbf)) 
 
         return rbf
 
@@ -224,9 +213,6 @@ class Bessel():
                                        # e.g. 3 includes n = 1,2,3
 
         rij = self.numpy_calculate_rij(x,neighlist,xneigh)
-
-        #print(neighlist)
-        #print(rij)
 
         basis = np.concatenate([self.numpy_calculate_bessel(rij, n) for n in range(1,num_rbf+1)], axis=1)
         #basis = np.vstack([self.numpy_calculate_bessel(rij, n) for n in range(1,num_rbf+1)])

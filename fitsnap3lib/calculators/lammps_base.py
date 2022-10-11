@@ -29,8 +29,10 @@ class LammpsBase(Calculator):
         ----------
         nconfigs : int 
             number of configs on this proc
+
         pt.shared_arrays['number_of_dgradrows'] : np array
             number of dgrad rows per config, organized like the other shared arrays in calculator.py
+            
         pt.shared_arrays['number_of_neighs'] : np array
             number of neighbors per config, organized like the other shared arrays in calculator.py
         """
@@ -116,7 +118,6 @@ class LammpsBase(Calculator):
 
     def _initialize_lammps(self, printlammps=0):
         self._lmp = self.pt.initialize_lammps(self.config.args.lammpslog, printlammps)
-        #self._lmp.command("newton off")
 
     def _set_structure(self):
         self._lmp.command("clear")

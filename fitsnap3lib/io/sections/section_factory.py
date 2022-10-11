@@ -38,7 +38,6 @@ def new_section(section, config, args):
 
 def search(section):
     instance = None
-    #print(f"^^^^^ Section.__subclasses__: {Section.__subclasses__()}")
     for cls in Section.__subclasses__():
         if cls.__name__.lower() == section.lower():
             instance = Section.__new__(cls)

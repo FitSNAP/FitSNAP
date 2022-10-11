@@ -14,9 +14,6 @@ Alternatively, some people use more strict envelope functions on the descriptors
 think this is a great idea for NNs because we have bias parameters that can give a contribution 
 by simply having an atom move in and out of a neighbor list, regardless of being close at the 
 boundary.
-
-TODO: We have wrongly signed forces for some atoms, e.g. see
-      m i a f_fd f_model: 9 1 0 0.07749767956255482 -0.07749768041733299
 """
 
 import sys
@@ -70,14 +67,12 @@ def test_fd_single_elem():
     config.sections['NETWORK'].manual_seed_flag = 1
     config.sections['NETWORK'].dtype = torch.float64
     # only perform calculations on displaced BCC structures
-    """
-    config.sections['GROUPS'].group_table = {'Elastic_BCC': \
+    config.sections['GROUPS'].group_table = {'Displaced_BCC': \
         {'training_size': 1.0, \
         'testing_size': 0.0, \
         'eweight': 100.0, \
         'fweight': 1.0, \
         'vweight': 1e-08}}
-    """
     # create a fitsnap object
     from fitsnap3lib.fitsnap import FitSnap
     snap = FitSnap()
@@ -104,13 +99,13 @@ def test_fd_single_elem():
     start_indx = 0
 
     errors = []
-    #for m in range(random_indx,random_indx+10):
-    for m in range(start_indx, len(snap.data)):
+    for m in range(random_indx,random_indx+1):
+    #for m in range(start_indx, len(snap.data)):
     #for m in range(3,4):
-        #for i in range(0,snap.data[m]['NumAtoms']):
-        for i in range(1,2):
-              #for a in range(0,3):
-              for a in range(0,1):
+        for i in range(0,snap.data[m]['NumAtoms']):
+        #for i in range(1,2):
+              for a in range(0,3):
+              #for a in range(0,1):
                   natoms = snap.data[m]['NumAtoms']
 
                   # calculate model energy with +h (energy1)
@@ -141,17 +136,9 @@ def test_fd_single_elem():
 
                   # calculate and compare finite difference force
 
-                  #print(f"energies1 energies2: {energies1[0]} {energies2[0]}")
                   force_fd = -1.0*(energies1[0] - energies2[0])/(2.*h)
                   force_fd = force_fd.item()
-
-                  #print(force_fd)
                   force_model = forces_model[m][i][a].item()
-                  #print(force_model)
-                  #assert(False)
-                  #force_indx = 3*i + a 
-                  #force_model = forces_model[m][force_indx].item()
-                  #percent_error = ((force_model - force_fd)/force_model)*100.
                   error = force_model - force_fd
 
                   print(snap.data[m]['File'])
@@ -177,16 +164,17 @@ def test_fd_single_elem():
 
     #print(errors)
 
-    """
-    hist, bins = np.histogram(errors, bins=50)
+    
+    hist, bins = np.histogram(errors, bins=10)
     logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
     plt.hist(errors, bins=logbins)
     plt.xscale('log')
     plt.xlim((1e-12,1e4))
     plt.xlabel(r'Absolute difference (eV/$\AA$)')
-    plt.ylabel("Count")
+    plt.ylabel("Distribution")
+    plt.yticks([])
     plt.savefig("force_check.png", dpi=500)
-    """
+    
 
     assert(mean_err < 0.001 and max_err < 0.1)
 

@@ -18,12 +18,6 @@ class NETWORK(Section):
         self._check_if_used("SOLVER", "solver", "SVD")
 
         self.layer_sizes = self.get_value('NETWORK', "layer_sizes", "num_desc 512 512 1").split()
-        #self.num_elements = self.get_value("PYTORCH", "num_elements", "2", "int")
-        # Section.num_desc is summed over all element types, e.g. twojmax=6 and ntypes=2 gives
-        # 60 descriptors, but our per-atom networks should only have 30 descriptors, so here
-        # we divide by number of types in solvers/pytorch.py
-        # this therefore requires that all atom types have the same number of descriptors, but
-        # can easily be changed later
         self.learning_rate = self.get_value('NETWORK', "learning_rate", "1.0E-2", "float")
         self.num_epochs = self.get_value('NETWORK', "num_epochs", "10", "int")
         self.batch_size = self.get_value('NETWORK', "batch_size", "4", "int")
@@ -63,15 +57,5 @@ class NETWORK(Section):
             if (self.pt._rank==0):
                 print("----- manual_seed_flag=1: Setting random seed to 0 for debugging.")
             torch.manual_seed(0)
-
-        # create list of networks based on multi-element option
-        """
-        self.networks = []
-        if (self.multi_element_option==1):
-            self.networks.append(create_torch_network(self.layer_sizes))
-        elif (self.multi_element_option==2):
-            for t in range(self.num_elements):
-                self.networks.append(create_torch_network(self.layer_sizes))
-        """
         
         self.delete()

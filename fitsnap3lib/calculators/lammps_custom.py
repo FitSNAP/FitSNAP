@@ -8,7 +8,6 @@ import numpy as np
 #config = Config()
 #pt = ParallelTools()
 
-
 class LammpsCustom(LammpsBase):
 
     def __init__(self, name):
@@ -37,24 +36,7 @@ class LammpsCustom(LammpsBase):
     
     def _prepare_lammps(self):
         self._set_structure()
-        # this is super clean when there is only one value per key, needs reworking
-        #        self._set_variables(**_lammps_variables(config.sections["BISPECTRUM"].__dict__))
-
-        # needs reworking when lammps will accept variable 2J
-        #self._lmp.command(f"variable twojmax equal {max(self.config.sections['BISPECTRUM'].twojmax)}")
-        #self._lmp.command(f"variable rcutfac equal {self.config.sections['BISPECTRUM'].rcutfac}")
-        #self._lmp.command(f"variable rfac0 equal {self.config.sections['BISPECTRUM'].rfac0}")
-        #        self._lmp.command(f"variable rmin0 equal {config.sections['BISPECTRUM'].rmin0}")
-
-        """
-        for i, j in enumerate(self.config.sections["BISPECTRUM"].wj):
-            self._lmp.command(f"variable wj{i + 1} equal {j}")
-
-        for i, j in enumerate(self.config.sections["BISPECTRUM"].radelem):
-            self._lmp.command(f"variable radelem{i + 1} equal {j}")
-        """
         for line in self.config.sections["REFERENCE"].lmp_pairdecl:
-            #print(line.lower())
             self._lmp.command(line.lower())
         
 
@@ -70,55 +52,7 @@ class LammpsCustom(LammpsBase):
         self._create_atoms_helper(type_mapping=self.config.sections["CUSTOM"].type_mapping)
 
     def _set_computes(self):
-        numtypes = self.config.sections['CUSTOM'].numtypes
-        #command = "atom_modify map array sort 1 1000.0\n"
-        #self._lmp.command(command)
-        """
-        radelem = " ".join([f"${{radelem{i}}}" for i in range(1, numtypes + 1)])
-        wj = " ".join([f"${{wj{i}}}" for i in range(1, numtypes + 1)])
-
-        kw_options = {
-            k: self.config.sections["BISPECTRUM"].__dict__[v]
-            for k, v in
-            {
-                "rmin0": "rmin0",
-                "bzeroflag": "bzeroflag",
-                "quadraticflag": "quadraticflag",
-                "switchflag": "switchflag",
-                "chem": "chemflag",
-                "bnormflag": "bnormflag",
-                "wselfallflag": "wselfallflag",
-                "bikflag": "bikflag",
-                "switchinnerflag": "switchinnerflag",
-                "switchflag": "switchflag",
-                "sinner": "sinner",
-                "dinner": "dinner",
-                "dgradflag": "dgradflag",
-            }.items()
-            if v in self.config.sections["BISPECTRUM"].__dict__
-        }
-        """
-
-        # remove input dictionary keywords if they are not used, to avoid version problems
-        """
-        if kw_options["chem"] == 0:
-            kw_options.pop("chem")
-        if kw_options["bikflag"] == 0:
-            kw_options.pop("bikflag")
-        if kw_options["switchinnerflag"] == 0:
-            kw_options.pop("switchinnerflag")
-        if kw_options["dgradflag"] == 0:
-            kw_options.pop("dgradflag")
-        kw_options["rmin0"] = self.config.sections["BISPECTRUM"].rmin0
-        kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
-        kwargs = " ".join(kw_substrings)
-
-        # everything is handled by LAMMPS compute snap
-
-        base_snap = "compute snap all snap ${rcutfac} ${rfac0} ${twojmax}"
-        command = f"{base_snap} {radelem} {wj} {kwargs}"
-        self._lmp.command(command)
-        """
+        pass
 
     def calculate_descriptors(self,x,neighlist,xneigh):
         """
@@ -146,10 +80,6 @@ class LammpsCustom(LammpsBase):
 
         lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
         ptr_pos = self._lmp.extract_atom('x')
-        #nlocal = self._lmp.extract_global("nlocal")
-        #print(f"nlocal: {nlocal}")
-        #for i in range(nlocal+5):
-        #    print("(x,y,z) = (", ptr_pos[i][0], ptr_pos[i][1], ptr_pos[i][2], ")")
 
         # extract types
 
@@ -191,8 +121,6 @@ class LammpsCustom(LammpsBase):
             if nlist.size > 0:
                 for n in np.nditer(nlist):
                     num_neighs_i += 1
-                    #print("  atom {} with ID {}".format(n,tags[n]))
-                    #print(f" ptr_pos[{n}][0]: {ptr_pos[n][0]}")
                     neighlist.append([tags[idx], tags[n]]) #, ptr_pos[n][0], ptr_pos[n][1], ptr_pos[n][2]])
                     xneighs.append([ptr_pos[n][0], ptr_pos[n][1], ptr_pos[n][2]])
 
@@ -203,11 +131,6 @@ class LammpsCustom(LammpsBase):
         assert(np.sum(num_neighs_per_atom) == number_of_neighs)
         neighlist = np.array(neighlist, dtype=int) - 1 # subtract 1 to get indices starting from 0
         xneighs = np.array(xneighs)
-
-        #if (index_b==0):
-        #    print(lmp_pos)
-        #    print(neighlist)
-        #    print(self.bessel.numpy_calculate_rij(lmp_pos, neighlist, xneighs))
 
         # populate the per-atom array 'a'
 
@@ -284,9 +207,7 @@ class LammpsCustom(LammpsBase):
         # look up the neighbor list
         nlidx = self._lmp.find_pair_neighlist('zero')
         nl = self._lmp.numpy.get_neighlist(nlidx)
-        #print(nl)
         tags = self._lmp.extract_atom('id')
-        #print("half neighbor list with {} entries".format(nl.size))
         # print neighbor list contents
         number_of_neighs = 0
         num_neighs_per_atom = []

@@ -27,9 +27,9 @@ W = 0.0
 Be = 0.0
 
 [PYTORCH]
-layer_sizes = num_desc 60 60 1
-learning_rate = 1e-4 
-num_epochs = 2
+layer_sizes = num_desc 32 16 8 1
+learning_rate = 1.5e-4 
+num_epochs = 20
 batch_size = 4
 save_state_output = WBe_Pytorch.pt
 energy_weight = 1e-2
@@ -68,7 +68,12 @@ group_sections = name training_size testing_size eweight fweight vweight
 group_types = str float float float float float
 smartweights = 0
 random_sampling = 1
-DFT_MD_300K              = 1.0 0.0 436.46713269739    25.9225848378898 1.0e-12
+Elast_BCC_Shear         = 1.0 0.0 178.350842653746  793.596683274656 1.0e-12
+Elast_BCC_Vol           = 1.0 0.0 178.350842653746 1553.7039315755 1.0e-12
+EOS_BCC                 = 1.0 0.0 338.213923534691 1553.7039315755 1.0e-12
+Liquids                 = 1.0 0.0   0.0353125583595375 25.9225848378898 1.0e-12
+DFT_MD_1000K            = 1.0 0.0  44.162042355268    0.00227087929058201 1.0e-12
+DFT_MD_300K             = 1.0 0.0  44.162042355268    0.00227087929058201 1.0e-12
 
 [EXTRAS]
 dump_descriptors = 0

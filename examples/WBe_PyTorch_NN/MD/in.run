@@ -2,8 +2,8 @@
 
 # Initialize simulation
 
-variable nsteps index 20000
-variable nrep equal 6
+variable nsteps index 1000
+variable nrep equal 3
 variable a equal 3.1803
 units           metal
 
@@ -22,7 +22,7 @@ create_atoms    1 box
 mass 1 183.84
 mass 2 9.012182
 
-set     group all type/fraction 2 0.05 3590153 # Change 5% of W to He
+set     group all type/fraction 2 0.03 3590153 # Change 0% of W to Be
 group   tungsten         type 1
 group   beryllium        type 2
 
@@ -77,7 +77,7 @@ neigh_modify once no every 1 delay 0 check yes
 # Run MD
 
 dump 1 all xyz 100 dump.xyz
-velocity all create 300.0 101011 rot yes mom yes #loop geom
+velocity all create 2000.0 101011 rot yes mom yes #loop geom
 #fix 1 all nvt temp 6000.0 12000.0 0.05
 fix 1 all nve
 run             ${nsteps}

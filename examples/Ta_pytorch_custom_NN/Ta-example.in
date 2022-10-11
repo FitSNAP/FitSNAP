@@ -6,7 +6,7 @@ num_descriptors = 8 # number of descriptors for each pair
 cutoff = 6
 
 [CALCULATOR]
-calculator = LAMMPSCUSTOM #LAMMPSSNAP
+calculator = LAMMPSCUSTOM 
 energy = 1
 per_atom_energy = 1
 force = 1
@@ -17,7 +17,7 @@ nonlinear = 1
 Ta = 0.0
 
 [NETWORK]
-layer_sizes = num_desc 16 8 1 #1000 1000 8 1
+layer_sizes = num_desc 16 8 1 
 learning_rate = 1.5e-3
 num_epochs = 100
 batch_size = 4 # 363 configs in entire set
@@ -28,7 +28,7 @@ training_fraction = 0.7
 manual_seed_flag = 1
 
 [SOLVER]
-solver = NETWORK #PYTORCH
+solver = NETWORK 
 compute_testerrs = 1
 detailed_errors = 1
 
@@ -45,9 +45,8 @@ potential = Ta_pot
 [REFERENCE]
 units = metal
 atom_style = atomic
-pair_style = zero 6 full #zbl 4.0 4.8
-pair_coeff = * * #zero
-#pair_coeff2 = * * zbl 73 73
+pair_style = zero 6 full 
+pair_coeff = * * 
 
 [GROUPS]
 # name size eweight fweight vweight

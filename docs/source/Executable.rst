@@ -109,3 +109,31 @@ If you want to add new descriptor settings for LAMMPS, e.g. in the :code:`BISPEC
 the format in :code:`io/sections/calculator_sections/bispectrum.py`. Then make sure that the new compute 
 setting is used in :code:`calculators/lammps_snap.py` in the :code:`_set_computes` function. 
 
+Adding your own Calculator
+--------------------------
+
+- Add a new file like :code:`my_calculator.py` in :code:`fitsnap3lib/io/sections/calculator_sections`. 
+  Take inspiration from the given :code:`basic_calculator.py` file. 
+- Now add the import for this new calculator in :code:`fitsnap3lib/io/sections/section_factory`. 
+  Your new sub class should show up in the :code:`Sections.__subclasses__()` method. 
+- Your new calculator needs a `types` attribute so that :code:`io.sections.eshift` can assign eshifts 
+  to types. Add the necessary if statement to :code:`io.sections.eshift`.
+- Add your calculator keyword name (this looks like :code:`calculator=LAMMPSMYCALCULATOR`) in 
+  :code:`calculators.calculator_factory`, in the import section at the top. 
+- Obviously, now we also need a LammpsMycalculator subclass of the calculator class. Add this in 
+  :code:`calculators.lammps_mycalculator`
+- Edit the :code:`create_a` function in :code:`calculator.py` to allocate data necessary for your 
+  calculator. Currently the :code:`a` array is for per-atom quantities in all configs, the :code:`b` 
+  array is for per-config quantities like energy, the `c` matrix is for per-atom 3-vectors like 
+  position and velocity. Other arrays like :code:`dgrad` can be natoms*neighbors. 
+
+Adding your own Model/Solver
+----------------------------
+
+- Add a new file like :code:`mysolver.py` in :code:`fitsnap3lib/io/sections/solver_sections`.
+- Add :code:`from fitsnap3lib.io.sections.solver_sections.mysolver import MYSOLVER` to header of 
+  :code:`section_factory`.
+- Import your new solver at the header of :code:`fitsnap3lib.solvers.solver_factory`
+- You will need to declare :code:`solver = MYSOLVER` in the :code:`[SOLVER]` section of the input 
+  script, similar to adding a new Calculator. 
+

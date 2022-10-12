@@ -29,9 +29,16 @@ class LammpsBase(Calculator):
         ----------
         nconfigs : int 
             number of configs on this proc
+
+        pt.shared_arrays['number_of_dgradrows'] : np array
+            number of dgrad rows per config, organized like the other shared arrays in calculator.py
+            
+        pt.shared_arrays['number_of_neighs'] : np array
+            number of neighbors per config, organized like the other shared arrays in calculator.py
         """
         self.dgradrows = np.zeros(nconfigs).astype(int)
         self.pt.create_shared_array('number_of_dgradrows', nconfigs, tm=self.config.sections["SOLVER"].true_multinode)
+        self.pt.create_shared_array('number_of_neighs', nconfigs, tm=self.config.sections["SOLVER"].true_multinode)
         self.nconfigs = nconfigs
 
     def preprocess_configs(self, data, i):

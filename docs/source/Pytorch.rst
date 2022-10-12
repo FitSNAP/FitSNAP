@@ -41,7 +41,8 @@ for more details on installing LAMMPS. Here we start with a speedy minimal descr
     make
     make install-python
 
-To add these extra :code:`-D` flags in :code:`ccmake`, go to the Advanced Options section.
+To add these extra :code:`-D` flags in :code:`ccmake`, go to the Advanced Options section in 
+:code:`ccmake`.
 
 Set the following environment variables so that your Python can find LAMMPS::
 
@@ -51,7 +52,15 @@ Set the following environment variables so that your Python can find LAMMPS::
 
 Alternatively to setting environment variables, symbolic links to these paths are also appropriate.
 
-To make sure installs and paths are working, please see `LAMMPS Installation docs <Installation.html#lammps-installation>`__.
+**Before proceeding, make sure your LAMMPS-Python interface is working** by doing the following in 
+your Python interpreter::
+
+    import lammps
+    lmp = lammps.lammps()
+
+**If this gives no errors, proceed further. Otherwise, please take more time to install LAMMPS with 
+Python properly on your system.** See `LAMMPS Installation docs <Installation.html#lammps-installation>`__ 
+for more info.
 
 Get FitSNAP with::
 
@@ -231,7 +240,7 @@ more cycles through the batches with each epoch, and therefore may require less 
 the same convergence.
 
 For data sets of ~10,000 configs and ~50 atoms per config, training will take ~1 hour, or about 
-20 minutes per epoch. This can consume about ~20 GB of RAM.
+20 seconds per epoch. This can consume about ~20 GB of RAM.
 
 Computational scaling is *roughly* O(N) where N is the total number of atoms in the training set.
 
@@ -244,7 +253,7 @@ GPU Acceleration
 FitSNAP supports GPU acceleration via PyTorch. With small batch sizes, however, most of the benefit 
 of GPU parallelization comes from evaluating the NN model and calculating gradients. You will not see 
 a large benefit of GPUs using a small batch size unless you have a large NN model (e.g. > 1 million 
-parameters). If you have a small model, you may see a speedup on GPUs using a large enough batch size, 
-but this has not been tested.
+parameters). If you have a small model, you will see a speedup on GPUs using a large enough batch 
+size.
 
 

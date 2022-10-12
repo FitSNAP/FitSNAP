@@ -109,6 +109,91 @@ class Calculator:
             self.pt.add_2_fitsnap("NumDgradRows", DistributedList(self.nconfigs))
             self.pt.add_2_fitsnap("Testing", DistributedList(self.nconfigs))
 
+        # get data arrays for network solvers
+
+        elif (self.config.sections["SOLVER"].solver == "NETWORK"):
+
+            a_len = 0 # per-atom quantities (types, numneighs) for all configs
+            b_len = 0 # number reference energies for all configs
+            c_len = 0 # number of reference forces for all configs
+            c_width = 0 # 3 if fitting to forces
+            neighlist_len = 0 # number of neighbors for all configs
+
+            a_len += self.number_of_atoms # total number of atoms in all configs
+            neighlist_len += self.pt.shared_arrays["number_of_neighs_scrape"].array.sum()
+
+            if self.config.sections["CALCULATOR"].energy:
+                b_len += self.number_of_files_per_node # total number of configs
+
+            if self.config.sections["CALCULATOR"].force:
+                c_len += 3*self.number_of_atoms
+
+#            # stress fitting not supported yet.
+#            if config.sections["CALCULATOR"].stress:
+#                a_len += self.number_of_files_per_node * 6
+#                b_len += self.number_of_files_per_node * 6
+
+            a_width = 2 # types and numneighs
+            neighlist_width = self.get_width()
+            assert isinstance(neighlist_width, int)
+
+            # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
+            a_size = (neighlist_len * neighlist_width + 2 * c_len * c_width) * double_size
+            output.screen(">>> Matrix of data takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+                          "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
+            if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
+                raise MemoryError("The data memory larger than 50% of your RAM. \n Aborting...!")
+            elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
+                output.screen("Warning: I hope you know what you are doing!")
+
+            # create shared arrays
+            a_width = 5
+            neighlist_width = 2 # i j 
+            xneigh_width = 3 # xj yj zj, with PBC corrections
+            self.pt.create_shared_array('a', a_len, a_width, 
+                                        tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('neighlist', neighlist_len, neighlist_width, 
+                                        tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('xneigh', neighlist_len, xneigh_width, 
+                                        tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('x', c_len, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('positions', a_len, 3, tm=self.config.sections["SOLVER"].true_multinode)
+            
+            # also need descriptors for network standardization
+            # for pairwise networks, there are num_neigh*num_descriptors total descriptors to store
+            # TODO: if statement here to catch possibilities for custom networks, e.g. nonpairwise descriptors, etc.
+
+            self.pt.create_shared_array('descriptors', neighlist_len, self.config.sections['CUSTOM'].num_descriptors)
+
+            if self.config.sections["CALCULATOR"].force:
+                self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
+
+            # make an index for which the 'a' array starts on a particular proc
+            self.pt.new_slice_a()
+            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0] 
+            # make an index for which the 'b' array starts on a particular proc
+            self.pt.new_slice_b()
+            self.shared_index_b = self.pt.fitsnap_dict["sub_b_indices"][0] 
+            # make an index for which the 'c' array starts on a particular proc
+            self.pt.new_slice_c()
+            self.shared_index_c = self.pt.fitsnap_dict["sub_c_indices"][0] 
+            #self.pt.new_slice_t() # atom types
+            # make an index for which the 'neighlist' array starts on a particular proc
+            self.pt.new_slice_neighlist()
+            self.shared_index_neighlist = self.pt.fitsnap_dict["sub_neighlist_indices"][0] 
+
+            # create fitsnap dicts - distributed lists of size nconfig per proc
+            # these later get gathered on the root proc in calculator.gather_distributed_lists
+
+            self.pt.add_2_fitsnap("Groups", DistributedList(self.nconfigs))
+            self.pt.add_2_fitsnap("Configs", DistributedList(self.nconfigs))
+            self.pt.add_2_fitsnap("NumAtoms", DistributedList(self.nconfigs))
+            self.pt.add_2_fitsnap("NumNeighs", DistributedList(self.nconfigs))
+            self.pt.add_2_fitsnap("Testing", DistributedList(self.nconfigs))
+
         # get data arrays for linear solvers
 
         else:

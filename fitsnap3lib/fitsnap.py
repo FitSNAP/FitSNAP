@@ -136,12 +136,10 @@ class FitSnap:
                 return
             elif self.fit is None:
 
-                # Perform nonlinear fitting on 1 proc only
-
                 if self.solver.linear:
                     self.solver.perform_fit()
                 else:
-
+                    # Perform nonlinear fitting on 1 proc only
                     if(self.pt._rank==0):
                         self.solver.perform_fit()
             else:

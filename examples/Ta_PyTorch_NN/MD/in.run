@@ -1,6 +1,6 @@
 # Initialize simulation
 
-variable nsteps index 10000
+variable nsteps index 1000
 variable nrep equal 4
 variable a equal 3.316
 units           metal
@@ -21,13 +21,6 @@ create_atoms    1 box
 mass 1 180.88
 
 # choose potential
-
-# include Ta.pytorch.mliap
-
-# DATE: 2014-09-05 UNITS: metal CONTRIBUTOR: Aidan Thompson athomps@sandia.gov CITATION: Thompson, Swiler, Trott, Foiles and Tucker, arxiv.org, 1409.3880 (2014)
-
-# Definition of SNAP potential Ta
-# Assumes 1 LAMMPS atom type
 
 variable zblcutinner equal 4
 variable zblcutouter equal 4.8

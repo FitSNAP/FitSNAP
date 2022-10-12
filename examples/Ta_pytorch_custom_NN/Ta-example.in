@@ -1,0 +1,76 @@
+[CUSTOM]
+numAtoms = 1
+numTypes = 1
+type = Ta
+num_descriptors = 8 # number of descriptors for each pair
+cutoff = 6
+
+[CALCULATOR]
+calculator = LAMMPSCUSTOM 
+energy = 1
+per_atom_energy = 1
+force = 1
+stress = 0
+nonlinear = 1
+
+[ESHIFT]
+Ta = 0.0
+
+[NETWORK]
+layer_sizes = num_desc 16 8 1 
+learning_rate = 1.5e-3
+num_epochs = 100
+batch_size = 4 # 363 configs in entire set
+save_state_output = Ta_Pytorch.pt
+energy_weight = 1e-5
+force_weight = 1.0
+training_fraction = 0.7
+manual_seed_flag = 1
+
+[SOLVER]
+solver = NETWORK 
+compute_testerrs = 1
+detailed_errors = 1
+
+[SCRAPER]
+scraper = JSON
+
+[PATH]
+dataPath = ../Ta_Linear_JCP2014/JSON
+
+[OUTFILE]
+metrics = Ta_metrics.md
+potential = Ta_pot
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = zero 6 full 
+pair_coeff = * * 
+
+[GROUPS]
+# name size eweight fweight vweight
+group_sections = name training_size testing_size eweight fweight vweight
+group_types = str float float float float float
+smartweights = 0
+random_sampling = 0
+Displaced_A15 =  1.0    0.0       100             1               1.00E-08
+Displaced_BCC =  1.0    0.0       100             1               1.00E-08
+Displaced_FCC =  1.0    0.0       100             1               1.00E-08
+Elastic_BCC   =  1.0    0.0     1.00E-08        1.00E-08        0.0001
+Elastic_FCC   =  1.0    0.0     1.00E-09        1.00E-09        1.00E-09
+GSF_110       =  1.0    0.0      100             1               1.00E-08
+GSF_112       =  1.0    0.0      100             1               1.00E-08
+Liquid        =  1.0    0.0       4.67E+02        1               1.00E-08
+Surface       =  1.0    0.0       100             1               1.00E-08
+Volume_A15    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
+Volume_BCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
+Volume_FCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
+
+[EXTRAS]
+dump_descriptors = 1
+dump_truth = 1
+dump_weights = 1
+
+[MEMORY]
+override = 0

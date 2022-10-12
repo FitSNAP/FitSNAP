@@ -62,7 +62,7 @@ def test_fd_single_elem():
 
     # chose a random config to test against
 
-    random_indx = random.randint(0, len(snap.data)-1)
+    random_indx = 0 #random.randint(0, len(snap.data)-1)
 
     percent_errors = []
     for m in range(random_indx,random_indx+1):
@@ -101,7 +101,7 @@ def test_fd_single_elem():
                   force_fd = force_fd.item()
                   force_indx = 3*i + a 
                   force_model = forces_model[m][force_indx].item()
-                  percent_error = ((force_model - force_fd)/force_model)*100.
+                  percent_error = abs(force_model - force_fd) #((force_model - force_fd)/force_model)*100.
                   percent_errors.append(percent_error)
 
                   # return position back to normal
@@ -168,7 +168,7 @@ def test_fd_multi_elem():
 
     # chose a random config to test against
 
-    random_indx = random.randint(0, len(snap.data)-1)
+    random_indx = 0 #random.randint(0, len(snap.data)-1)
 
     percent_errors = []
     for m in range(random_indx,random_indx+1):
@@ -206,7 +206,7 @@ def test_fd_multi_elem():
                   force_fd = force_fd.item()
                   force_indx = 3*i + a 
                   force_model = forces_model[m][force_indx].item()
-                  percent_error = ((force_model - force_fd)/force_model)*100.
+                  percent_error = abs(force_model - force_fd) #((force_model - force_fd)/force_model)*100.
                   assert(percent_error < 0.1) # nice assertion to have for all forces
                   percent_errors.append(percent_error)
 

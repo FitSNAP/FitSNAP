@@ -500,7 +500,13 @@ class ParallelTools(metaclass=Singleton):
             raise IndexError("{} not found in shared objects".format(name))
 
     def new_slice_a(self):
-        """ create array to show which sub a matrix indices belong to which proc """
+        """ 
+        create array to show which sub a matrix indices belong to which proc 
+        For linear solvers, the A matrix may be composed of either summed per-atom descriptors OR 
+        per-atom descriptors.
+        For nonlinear solvers, the A matrix is composed of per-atom quantities like bispectrum 
+        components, etc.
+        """
         nof = len(self.shared_arrays["number_of_atoms"].array)
         #print(f"----- nof: {nof} in parallel_tools.py")
         if self._sub_rank != 0:
@@ -673,6 +679,39 @@ class ParallelTools(metaclass=Singleton):
         self.add_2_fitsnap("sub_dgrad_indices", indices)
         self._bcast_fitsnap("sub_dgrad_indices")
         self.fitsnap_dict["sub_dgrad_indices"] = indices[self._sub_rank]
+
+    def new_slice_neighlist(self):
+        """ create array to show which sub neighlist matrix indices belong to which proc """
+        nof = len(self.shared_arrays["number_of_atoms"].array)
+        #print(f"--- nof: {nof} in parallel_tools.py new_slice_neighlist")
+        if self._sub_rank != 0:
+            # wait for head proc on node to fill indices
+            self._bcast_fitsnap("sub_neighlist_size")
+            self.fitsnap_dict["sub_neighlist_size"] = int(self.fitsnap_dict["sub_neighlist_size"][self._sub_rank])
+            self._bcast_fitsnap("sub_neighlist_indices")
+            self.fitsnap_dict["sub_neighlist_indices"] = self.fitsnap_dict["sub_neighlist_indices"][self._sub_rank]
+            return
+        sub_neighlist_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+
+        for i in range(nof):
+            proc_number = i % self._sub_size
+            natoms = self.shared_arrays["number_of_atoms"].array[i]
+            sub_neighlist_sizes[proc_number] += self.shared_arrays["number_of_neighs_scrape"].array[i]
+        assert sum(sub_neighlist_sizes) == len(self.shared_arrays['neighlist'].array)
+        # sub sizes
+        self.add_2_fitsnap("sub_neighlist_size", sub_neighlist_sizes)
+        self._bcast_fitsnap("sub_neighlist_size")
+        self.fitsnap_dict["sub_neighlist_size"] = sub_neighlist_sizes[self._sub_rank]
+
+        count = 0
+        indices = np.zeros((self._sub_size, 2), dtype=np.int)
+        for i, value in enumerate(sub_neighlist_sizes):
+            indices[i] = count, count+value-1
+            count += value
+        # sub indices
+        self.add_2_fitsnap("sub_neighlist_indices", indices)
+        self._bcast_fitsnap("sub_neighlist_indices")
+        self.fitsnap_dict["sub_neighlist_indices"] = indices[self._sub_rank]
 
     @stub_check
     def combine_coeffs(self, coeff):

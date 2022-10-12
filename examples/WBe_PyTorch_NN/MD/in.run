@@ -3,7 +3,7 @@
 # Initialize simulation
 
 variable nsteps index 1000
-variable nrep equal 3
+variable nrep equal 4
 variable a equal 3.1803
 units           metal
 
@@ -22,7 +22,7 @@ create_atoms    1 box
 mass 1 183.84
 mass 2 9.012182
 
-set     group all type/fraction 2 0.03 3590153 # Change 0% of W to Be
+set     group all type/fraction 2 0.01 359015 # Change 1% of W to Be
 group   tungsten         type 1
 group   beryllium        type 2
 
@@ -65,7 +65,7 @@ compute  str all reduce sum c_satom[1] c_satom[2] c_satom[3]
 variable press equal (c_str[1]+c_str[2]+c_str[3])/(3*vol)
 
 thermo_style    custom step temp epair c_energy etotal press v_press
-thermo          10
+thermo          100
 thermo_modify norm yes
 
 # Set up NVE run

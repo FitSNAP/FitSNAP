@@ -75,10 +75,10 @@ group_sections = name training_size testing_size eweight fweight vweight
 group_types = str float float float float float
 smartweights = 0
 random_sampling = 0
-vasp2json = 0
+vasp2json = 1
 smallDefects_aa = 		0.75  0.25  5319411.52359161  	12160.2964901219 	1.0e-12
-# Defects_aP = 		0.01  0.99 	280933.371566026    3618.73557864646  	1.0e-12
-# Defects_iP  = 		1.0  0.0 	669131.752996794  	5805.68960393981  	1.0e-12
+Defects_aP = 		0.01  0.99 	280933.371566026    3618.73557864646  	1.0e-12
+Defects_iP  = 		1.0  0.0 	669131.752996794  	5805.68960393981  	1.0e-12
 # aa = 		        1.0  0.0	5319411.52359161	12160.2964901219 	1.0e-12
 
 [EXTRAS]

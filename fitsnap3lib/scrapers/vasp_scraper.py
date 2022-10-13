@@ -49,7 +49,8 @@ class Vasp(Scraper):
         ## Grab test|train split
         self.group_dict = {k: config.sections['GROUPS'].group_types[i] for i, k in enumerate(config.sections['GROUPS'].group_sections)}
         for group in self.group_table:
-            print("MEG group sellf.group_table", group)
+            # print("MEG group sellf.group_table", group)
+            print("MEG group sellf.group_table")
             training_size = None
             if 'size' in self.group_table[group]:
                 training_size = self.group_table[group]['size']
@@ -80,12 +81,17 @@ class Vasp(Scraper):
             else:
                 try:
                     for outcar in self.files[file_base]:
+                        ## Open file
                         with open(outcar, 'r') as fp:
                             lines = fp.readlines()
                         nlines = len(lines)
+
+                        ## Use ion loop text to partition ionic steps
                         ion_loop_text = 'aborting loop because EDIFF is reached'
                         start_idx_loops = [i for i, line in enumerate(lines) if ion_loop_text in line]
                         end_idx_loops = [i for i in start_idx_loops[1:]] + [nlines]
+
+                        ## Grab potcar and element info
                         header_lines = lines[:start_idx_loops[0]]
                         potcar_elements, ions_per_type = self.parse_outcar_header(header_lines)
 
@@ -97,7 +103,7 @@ class Vasp(Scraper):
                                           lines[start_idx_loops[i]:end_idx_loops[i]])
                                          for i in range(0, len(start_idx_loops))]
                         print("MEG outcar config len", len(outcar_tuples))
-                        print("MEG outcar tupel len", len(outcar_tuples[3]))
+                        print("MEG outcar tupel len", len(outcar_tuples), len(outcar_tuples[3]))
                         self.configs[group].extend(outcar_tuples)
                         print("MEG group, group len, single tuple check")
                         print(group, len(self.configs[group]), len(self.configs[group][0]))
@@ -108,6 +114,7 @@ class Vasp(Scraper):
             if config.sections["GROUPS"].random_sampling:
                 random.shuffle(self.configs[group], pt.get_seed)
             nconfigs = len(self.configs[group])
+            print('test self.configs type 117', type(self.configs))
 
             ## Assign configurations to train/test groups
             ## check_train_test_sizes() confirms that training_size > 0 and
@@ -142,27 +149,28 @@ class Vasp(Scraper):
             for i in range(testing_configs):
                 self.tests[group].append(self.configs[group].pop())
 
+            print('test self.configs type 152', type(self.configs))
             ## TODO propagate change of variable from "_size" to "_configs" or something similar
             self.group_table[group]['training_size'] = training_configs
             self.group_table[group]['testing_size'] = testing_configs
             # self.files[folder] = natsorted(self.files[folder])
-            print('MEG end VASP scrape_groups()')
+            print('MEG end VASP scrape_groups()', type(self.configs))
 
     def scrape_configs(self):
         """Generate and send (mutable) data to send to fitsnap"""
-        print("MEG scrape_configs len", len(self.configs))
+        print("MEG scrape_configs len", len(self.configs), type(self.configs))
         # DATA: outcar_tuples = [(outcar, potcar_elements, ions_per_type,
                           # lines[start_idx_loops[i]:end_idx_loops[i]])
                          # for i in range(0, len(start_idx_loops))
 
         ## TODO implement scraper on "lines"
-
         for config in self.configs:
-            print("MEG in scrape_config, config len", len(config))
-            print(config)
-            exit()
-            filename, potcar_elements, ions_per_type, lines = config
-        print(filename, potcar_elements, ions_per_type)
+            print("MEG in scrape_config, config len", config[-1])
+            filename, potcar_elements, ions_per_type, lines = config[0]
+            group = config[1]
+            num_lines = len(lines)
+        print(filename, potcar_elements, ions_per_type, num_lines)
+        print("GAH")
 
         # print(self.configs[0])
         exit()

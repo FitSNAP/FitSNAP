@@ -4,7 +4,7 @@ from json import loads
 from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.io.output import output
 from copy import copy
-import os, random, glob, json ## TODO clean up once done
+import os, random, glob, json, datetime ## TODO clean up once done
 import numpy as np
 
 
@@ -95,7 +95,7 @@ class Vasp(Scraper):
                         ## parent data (i.e. filename, potcar and ion data)
                         ## but separated for each iteration (idx loops on 'lines')
                         ## TODO as in scrape_outcar, will need to check each config for completeness!
-                        outcar_tuples = [(outcar, potcar_elements, ions_per_type,
+                        outcar_tuples = [(outcar, i, potcar_elements, ions_per_type,
                                           lines[start_idx_loops[i]:end_idx_loops[i]])
                                          for i in range(0, len(start_idx_loops))]
                         self.configs[group].extend(outcar_tuples)
@@ -153,12 +153,21 @@ class Vasp(Scraper):
 
         ## TODO implement scraper on "lines"
         all_data = []
-        for config in self.configs:
-            filename, potcar_elements, ions_per_type, lines = config[0]
-            group = config[1]
+        for outcar_config in self.configs:
+            filename, config_num, potcar_elements, ions_per_type, lines = outcar_config[0]
+            group = outcar_config[1]
             num_lines = len(lines)
-            data = self.parse_outcar_config(lines,potcar_elements, ions_per_type)
+            data = self.parse_outcar_config(lines, potcar_elements, ions_per_type)
             all_data.append(data)
+
+            ## TODO let user decide whetehr to write vasp2json
+            # if self.vasp2json:
+            if 1:
+                # outcar_name, outcar_data, json_path, json_filestem, file_num
+                json_path = f'JSON/{group}'
+                if not os.path.exists(json_path):
+                    os.mkdir(json_path)
+                self.write_json(filename, data, json_path, config_num)
         return all_data
 
     def parse_outcar_config(self,lines,list_atom_types,ions_per_type):
@@ -185,8 +194,7 @@ class Vasp(Scraper):
 
         ## Index lines of file containing JSON data
         section_idxs = []
-        list_atom_types, atom_coords, atom_forces, stress_component, all_lattice, total_energie  = \
-            [], None, None, None, None, None
+        atom_coords, atom_forces, stress_component, all_lattice, total_energie  = None, None, None, None, None
 
         natoms = sum(ions_per_type)
 
@@ -411,11 +419,14 @@ class Vasp(Scraper):
                         f"\t\tSee {self.log_file} for more details.\n")
 
 
-    ## TODO decouple data from writing of JSONs
-    def write_json(self, outcar_name, outcar_data, json_filestem, file_num):
+    ## TODO create naming scheme
+    def write_json(self, outcar_name, outcar_data, json_path, config_num):
         ## Credit for next section goes to Mary Alice Cusentino's VASP2JSON script!
-        json_file = f"{json_filestem}_{file_num}.json"
-        self.comment_line += outcar_name
+        file_num = config_num + 1
+        json_filestem = outcar_name.replace('/','_').replace('_OUTCAR','')
+        json_file = f"{json_path}/{json_filestem}_{file_num}.json"
+        dt = datetime.datetime.now().strftime('%B %d %Y %I:%M%p')
+        comment_line = f'# Generated on {dt} from: {os.getcwd()}/{outcar_name}'
 
         allDataHeader = {}
         allDataHeader['Data'] = [outcar_data]
@@ -433,7 +444,7 @@ class Vasp(Scraper):
         ## Write rando comment line at start or scrape_configs crashes
         ## TODO ... (do we really need the comment line? It breaks the JSON format)
         with open(json_file, "w") as f:
-            f.write(self.comment_line + "\n")
+            f.write(comment_line + "\n")
 
         ## Write actual JSON object
         with open(json_file, "a+") as f:

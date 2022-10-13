@@ -1,16 +1,16 @@
 Run FitSNAP
 ===========
 
+**If you want to get started immediately with interactive examples**, please see our 
+`Colab Python notebook tutorial <tutorialnotebook_>`_
+
+.. _tutorialnotebook: https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb
+
 There are two ways to run FitSNAP: (1) the python executable or (2) as a python library. The 
 executable version is reserved for the most basic operation of fitting on a dataset, where data
 is scraped from a directory, configurations are input to LAMMPS to calculate descriptors, and the 
 machine learning problem is solved. The python library provides more flexibility and allows one to
 modify the steps in that fitting process.
-
-**If you want to get started immediately with interactive examples**, please see our 
-`Colab Python notebook tutorial <tutorialnotebook_>`_
-
-.. _tutorialnotebook: https://github.com/FitSNAP/FitSNAP/blob/master/tutorial.ipynb
 
 .. _Run Executable:
 
@@ -228,6 +228,8 @@ calculate.
 
 - :code:`per_atom_energy` is 0 or 1, determining whether to use per-atom energy descriptors in 
   association with :code:`bikflag = 1`
+
+- :code:`nonlinear` is 0 or 1, and should be 1 if using nonlinear solvers such as PyTorch models. 
 
 [ESHIFT]
 ^^^^^^^^

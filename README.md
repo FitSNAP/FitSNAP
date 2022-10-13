@@ -9,7 +9,7 @@ A Python package for machine learning potentials with [LAMMPS](https://github.co
 
 **Documentation page:** [https://fitsnap.github.io](https://fitsnap.github.io)
 
-**Colab Python notebook tutorial:** [https://github.com/FitSNAP/FitSNAP/blob/master/tutorial.ipynb](https://github.com/FitSNAP/FitSNAP/blob/master/tutorial.ipynb)
+**Colab Python notebook tutorial:** [https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/custom-networks/tutorial.ipynb](https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb)
 
 _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
 ##

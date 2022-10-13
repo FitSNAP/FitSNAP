@@ -8,7 +8,11 @@ Welcome to FitSNAP's documentation!
 
 **FitSNAP** is a molecular machine learning package for LAMMPS. 
 
-https://github.com/FitSNAP/FitSNAP
+**Wanna get started ASAP?**  Check out our `Colab Python notebook tutorial <tutorialnotebook_>`_
+
+**GitHub repo:** https://github.com/FitSNAP/FitSNAP
+
+.. _tutorialnotebook: https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb
 
 Indices and tables
 ==================

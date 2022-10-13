@@ -35,8 +35,6 @@ class Vasp(Scraper):
             pass
 
     def scrape_groups(self):
-        print("MEG in vasp_scrape.scrape_groups")
-
         ## skipped some parts of Charlie's XYZ code here
 
         ### Locate all OUTCARs in datapath
@@ -49,8 +47,6 @@ class Vasp(Scraper):
         ## Grab test|train split
         self.group_dict = {k: config.sections['GROUPS'].group_types[i] for i, k in enumerate(config.sections['GROUPS'].group_sections)}
         for group in self.group_table:
-            # print("MEG group sellf.group_table", group)
-            print("MEG group sellf.group_table")
             training_size = None
             if 'size' in self.group_table[group]:
                 training_size = self.group_table[group]['size']
@@ -102,11 +98,7 @@ class Vasp(Scraper):
                         outcar_tuples = [(outcar, potcar_elements, ions_per_type,
                                           lines[start_idx_loops[i]:end_idx_loops[i]])
                                          for i in range(0, len(start_idx_loops))]
-                        print("MEG outcar config len", len(outcar_tuples))
-                        print("MEG outcar tupel len", len(outcar_tuples), len(outcar_tuples[3]))
                         self.configs[group].extend(outcar_tuples)
-                        print("MEG group, group len, single tuple check")
-                        print(group, len(self.configs[group]), len(self.configs[group][0]))
                 except IndexError:
                     self.configs[file_base].pop(-1)
 
@@ -114,7 +106,6 @@ class Vasp(Scraper):
             if config.sections["GROUPS"].random_sampling:
                 random.shuffle(self.configs[group], pt.get_seed)
             nconfigs = len(self.configs[group])
-            print('test self.configs type 117', type(self.configs))
 
             ## Assign configurations to train/test groups
             ## check_train_test_sizes() confirms that training_size > 0 and
@@ -149,56 +140,110 @@ class Vasp(Scraper):
             for i in range(testing_configs):
                 self.tests[group].append(self.configs[group].pop())
 
-            print('test self.configs type 152', type(self.configs))
             ## TODO propagate change of variable from "_size" to "_configs" or something similar
             self.group_table[group]['training_size'] = training_configs
             self.group_table[group]['testing_size'] = testing_configs
             # self.files[folder] = natsorted(self.files[folder])
-            print('MEG end VASP scrape_groups()', type(self.configs))
 
     def scrape_configs(self):
         """Generate and send (mutable) data to send to fitsnap"""
-        print("MEG scrape_configs len", len(self.configs), type(self.configs))
         # DATA: outcar_tuples = [(outcar, potcar_elements, ions_per_type,
                           # lines[start_idx_loops[i]:end_idx_loops[i]])
                          # for i in range(0, len(start_idx_loops))
 
         ## TODO implement scraper on "lines"
+        all_data = []
         for config in self.configs:
-            print("MEG in scrape_config, config len", config[-1])
             filename, potcar_elements, ions_per_type, lines = config[0]
             group = config[1]
             num_lines = len(lines)
-        print(filename, potcar_elements, ions_per_type, num_lines)
-        print("GAH")
+            data = self.parse_outcar_config(lines,potcar_elements, ions_per_type)
+            all_data.append(data)
+        return all_data
 
-        # print(self.configs[0])
-        exit()
-        # self.conversions = copy(self.default_conversions)
-        # print("MEG self.outcars_per_group")
-        # print(self.outcars_per_group.items())
-        # for group, outcars in self.outcars_per_group.items():
-        #     print(group, outcars)
-        #     for i, outcar in enumerate(outcars):
-        #         pt.single_print(f"Reading: {outcar}")
-        #         data_outcar_configs, num_configs = self.scrape_outcar(outcar)
-        #
-        #         ## check that extracted OUTCAR data is complete
-        #         for n, data in enumerate(data_outcar_configs):
-        #             if any([True if val is None else False for val in data.values()]):
-        #                 pt.single_print(
-        #                     f"!!WARNING: OUTCAR file is missing data: {outcar} \n")
-        #                 self.bad_configs[group] = self.bad_configs[group] + [outcar]
-        #             else:
-        #                 self.all_data.append(data)
-        print("MEG len self.all_data", len(self.all_data))
-        return self.all_data
+    def parse_outcar_config(self,lines,list_atom_types,ions_per_type):
+        ## TODO clean up syntax to match FitSNAP3
+        ## TODO clean up variable names to match input, increase clarity
+        ## LIST SECTION_MARKERS AND RELATED FUNCTIONS ARE HARD-CODED!!
+        ## DO NOT CHANGE UNLESS YOU KNOW WHAT YOU'RE DOING!!
+
+        # with open('/home/megmcca/test_outcar_config.txt', 'w') as f:
+        #     for row in lines:
+        #         f.write(row)
+
+        section_markers = [
+            'FORCE on cell',
+            'direct lattice vectors',
+            'TOTAL-FORCE (eV/Angst)',
+            'FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)',
+        ]
+
+        idx_stress_vects = 0 # 4
+        idx_lattice_vects = 1 # 5
+        idx_force_vects = 2 # 6
+        idx_energie = 3 # 7
+
+        ## Index lines of file containing JSON data
+        section_idxs = []
+        list_atom_types, atom_coords, atom_forces, stress_component, all_lattice, total_energie  = \
+            [], None, None, None, None, None
+
+        natoms = sum(ions_per_type)
+
+        ## Search entire file to create indices for each section
+        ## TODO: current weakness is that if one section marker missing, we'll get one-off errors, need to make sure that can't happen (exit gracefully or set OUTCAR aside)
+        for i, line in enumerate(lines):
+            ## TODO refactor - probably a smarter/faster way to do the "line_test" part...
+            line_test = [True if sm in line else False for sm in section_markers]
+            if any(line_test):
+                test_idx = [n for n, b in enumerate(line_test) if b][0]
+                section_idxs.append(i)
+
+        ## Create data dict for this config, with global information already included
+        data = {}
+        data['AtomTypes'] = list_atom_types  ## orig in poscar, done
+        data['NumAtoms'] = natoms  ## orig in poscar, done
+
+        ## Lattice vectors in real space
+        ## Note: index to initial lattice vector output (POSCAR) in OUTCAR has already been removed.
+        ## Actual vector starts one line after that, and has 3 lines
+        lidx_last_lattice0 = section_idxs[idx_lattice_vects] + 1
+        lidx_last_lattice1 = lidx_last_lattice0 + 3
+        lines_last_lattice = lines[lidx_last_lattice0:lidx_last_lattice1]
+        all_lattice = self.get_direct_lattice(lines_last_lattice)
+
+        ## Stresses
+        lidx_stresses = section_idxs[idx_stress_vects] + 14
+        line_stresses = lines[lidx_stresses]
+        stress_component = self.get_stresses(line_stresses)
+
+        ## Atom coordinates and forces
+        lidx_forces0 = section_idxs[idx_force_vects] + 2
+        lidx_forces1 = lidx_forces0 + natoms
+        lines_forces = lines[lidx_forces0:lidx_forces1]
+        atom_coords, atom_forces = self.get_forces(lines_forces)
+
+        ## Energie :-)
+        ## We are getting the value without entropy
+        lidx_energie = section_idxs[idx_energie] + 4
+        line_energie = lines[lidx_energie]
+        total_energie = self.get_energie(line_energie)
+
+        # Here is where all the data is put together since the energy value is the last
+        # one listed in each configuration.  After this, all these values will be overwritten
+        # once the next configuration appears in the sequence when parsing
+        data['Positions'] = atom_coords
+        data['Forces'] = atom_forces
+        data['Stress'] = stress_component
+        data['Lattice'] = all_lattice
+        data['Energy'] = total_energie
+
+        return data
 
     def parse_outcar_header(self, header):
         ## These searches replace the POSCAR and POTCAR, and also check IBRION for AIMD runs
         lines_vrhfin, lines_ions_per_type = [], []
         potcar_elements, ions_per_type = [], []
-        natoms = None
         # line_ibrion, is_aimd = "", False
 
         for line in header:
@@ -232,23 +277,6 @@ class Vasp(Scraper):
     def vasp_namer(self):
         ## Tryiing to think of a clever naming scheme so that users can trace back where they got the file
         return
-
-
-
-        # line_ibrion = [i for i, line in enumerate(header) if "IBRION" in line][0]
-        # line1 = line_ibrion.split()
-        # idx_equals = line1.index("=")
-        # probably_ibrion = line1[idx_equals + 1]
-        # if probably_ibrion.isdigit():
-        #     if probably_ibrion == "0":
-        #         is_aimd = True  ## https://www.vasp.at/wiki/index.php/IBRION
-        #     else:
-        #         is_aimd = False
-        # else:
-        #     print("!!WARNING: incomplete coding with scrape_ibrion, assuming not AIMD for now.")
-        #     is_aimd = False
-
-        return potcar_elements, ions_per_type
 
     def get_vrhfin(self, lines):
         ## Scrapes vrhfin lines to get elements
@@ -428,130 +456,124 @@ class Vasp(Scraper):
     #         outcars = [f for f in all_files if f.endswith("OUTCAR")]
     #         self.outcars_per_group[group].extend(outcars)
 
-    def scrape_outcar0(self, outcar):
-        ## LIST SECTION_MARKERS AND RELATED FUNCTIONS ARE HARD-CODED!!
-        ## DO NOT CHANGE UNLESS YOU KNOW WHAT YOU'RE DOING!!
-        section_markers = [
-            'VRHFIN',  ## replace POSCAR
-            'ions per type',  ## replace POSCAR
-            'IBRION',  ## AIMD check
-            'aborting loop because EDIFF is reached',
-            'FORCE on cell',
-            'direct lattice vectors',
-            'TOTAL-FORCE (eV/Angst)',
-            'FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)',
-        ]
-        idx_vrhfin = 0
-        idx_ions_per_type = 1
-        idx_ibrion = 2
-        idx_ion_steps = 3
-        idx_stress_vects = 4
-        idx_lattice_vects = 5
-        idx_force_vects = 6
-        idx_energie = 7
+    # def scrape_outcar0(self, outcar):
+    #     ## LIST SECTION_MARKERS AND RELATED FUNCTIONS ARE HARD-CODED!!
+    #     ## DO NOT CHANGE UNLESS YOU KNOW WHAT YOU'RE DOING!!
+    #     section_markers = [
+    #         'VRHFIN',  ## replace POSCAR
+    #         'ions per type',  ## replace POSCAR
+    #         'IBRION',  ## AIMD check
+    #         'aborting loop because EDIFF is reached',
+    #         'FORCE on cell',
+    #         'direct lattice vectors',
+    #         'TOTAL-FORCE (eV/Angst)',
+    #         'FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)',
+    #     ]
+    #     idx_vrhfin = 0
+    #     idx_ions_per_type = 1
+    #     idx_ibrion = 2
+    #     idx_ion_steps = 3
+    #     idx_stress_vects = 4
+    #     idx_lattice_vects = 5
+    #     idx_force_vects = 6
+    #     idx_energie = 7
 
-        ## Index lines of file containing JSON data
-        section_idxs = [[] for _ in range(0, len(section_markers))]
-        list_atom_types, atom_coords, atom_forces, stress_component, all_lattice, total_energie, natoms = \
-            [], None, None, None, None, None, None
+    #     ## Index lines of file containing JSON data
+    #     section_idxs = [[] for _ in range(0, len(section_markers))]
+    #     list_atom_types, atom_coords, atom_forces, stress_component, all_lattice, total_energie, natoms = \
+    #         [], None, None, None, None, None, None
 
-        ## Read in file and gather section marker indices
-        with open(outcar, "r") as f:
-            lines = f.readlines()
+    #     ## Read in file and gather section marker indices
+    #     with open(outcar, "r") as f:
+    #         lines = f.readlines()
 
-        ## Search entire file to create indices for each section
-        for i, line in enumerate(lines):
-            ## TODO refactor - probably a smarter/faster way to do the "line_test" part...
-            line_test = [True if sm in line else False for sm in section_markers]
-            if any(line_test):
-                test_idx = [n for n, b in enumerate(line_test) if b][0]
-                section_idxs[test_idx].append(i)
+    #     ## Search entire file to create indices for each section
+    #     for i, line in enumerate(lines):
+    #         ## TODO refactor - probably a smarter/faster way to do the "line_test" part...
+    #         line_test = [True if sm in line else False for sm in section_markers]
+    #         if any(line_test):
+    #             test_idx = [n for n, b in enumerate(line_test) if b][0]
+    #             section_idxs[test_idx].append(i)
 
-        ## Ignore initial lattice section (which is the static POSCAR)
-        section_idxs[idx_lattice_vects] = section_idxs[idx_lattice_vects][1:]
+    #     ## Ignore initial lattice section (which is the static POSCAR)
+    #     section_idxs[idx_lattice_vects] = section_idxs[idx_lattice_vects][1:]
 
-        ## Find number of configurations in OUTCAR (e.g. for relaxations, AIMD)
-        num_ion_steps_in_outcar = len(section_idxs[idx_ion_steps])
-        pt.single_print(f"\t{num_ion_steps_in_outcar} ionic steps found in OUTCAR. Processing...")
-        smallest_section = num_ion_steps_in_outcar
-        for n, section in enumerate(section_idxs[3:]):
-            # m = n + 3  ## shift enumeration to match section_idxs
-            ion_steps_found_in_section = len(section)
-            if ion_steps_found_in_section < smallest_section:
-                smallest_section = ion_steps_found_in_section
+    #     ## Find number of configurations in OUTCAR (e.g. for relaxations, AIMD)
+    #     num_ion_steps_in_outcar = len(section_idxs[idx_ion_steps])
+    #     pt.single_print(f"\t{num_ion_steps_in_outcar} ionic steps found in OUTCAR. Processing...")
+    #     smallest_section = num_ion_steps_in_outcar
+    #     for n, section in enumerate(section_idxs[3:]):
+    #         # m = n + 3  ## shift enumeration to match section_idxs
+    #         ion_steps_found_in_section = len(section)
+    #         if ion_steps_found_in_section < smallest_section:
+    #             smallest_section = ion_steps_found_in_section
 
-        ## If run was cut short, collect only complete sets of data by fixing lengths of section_idxs
-        if smallest_section != num_ion_steps_in_outcar:
-            pt.single_print(f"\t!WARNING: current OUTCAR may be incomplete. "
-                            f"{smallest_section} complete ionic steps found instead of {num_ion_steps_in_outcar}.\n"
-                            f"\t!WARNING: Processing {smallest_section} ionic steps...")
-            for n, section in enumerate(section_idxs[3:]):
-                m = n + 3  ## shift enumeration to match section_idxs
-                section_idxs[m] = section[:smallest_section]
-        num_configs = smallest_section
+    #     ## If run was cut short, collect only complete sets of data by fixing lengths of section_idxs
+    #     if smallest_section != num_ion_steps_in_outcar:
+    #         pt.single_print(f"\t!WARNING: current OUTCAR may be incomplete. "
+    #                         f"{smallest_section} complete ionic steps found instead of {num_ion_steps_in_outcar}.\n"
+    #                         f"\t!WARNING: Processing {smallest_section} ionic steps...")
+    #         for n, section in enumerate(section_idxs[3:]):
+    #             m = n + 3  ## shift enumeration to match section_idxs
+    #             section_idxs[m] = section[:smallest_section]
+    #     num_configs = smallest_section
 
-        ## Scrapes to get element list, natoms, and list of atom types
-        lines_vrhfin = [lines[i] for i in section_idxs[idx_vrhfin]]
-        elements = self.get_vrhfin(lines_vrhfin)
+    #     ## Scrapes to get element list, natoms, and list of atom types
+    #     lines_vrhfin = [lines[i] for i in section_idxs[idx_vrhfin]]
+    #     elements = self.get_vrhfin(lines_vrhfin)
 
-        lines_ions_per_type = [lines[i] for i in section_idxs[idx_ions_per_type]]
-        ions_per_type = self.get_ions_per_type(lines_ions_per_type)
+    #     lines_ions_per_type = [lines[i] for i in section_idxs[idx_ions_per_type]]
+    #     ions_per_type = self.get_ions_per_type(lines_ions_per_type)
 
-        ## Check if IBRION > -1 (AIMD run), this changes how following configs are treated
-        line_ibrion = lines[section_idxs[idx_ibrion][0]]
-        is_aimd = self.get_ibrion(line_ibrion)
+    #     ## Check if IBRION > -1 (AIMD run), this changes how following configs are treated
+    #     line_ibrion = lines[section_idxs[idx_ibrion][0]]
+    #     is_aimd = self.get_ibrion(line_ibrion)
 
-        list_atom_types0 = [(f"{elements[i]} " * ions_per_type[i]).strip().split() for i in range(0, len(elements))]
-        list_atom_types = sum(list_atom_types0, [])
-        natoms = len(list_atom_types)
+    #     list_atom_types0 = [(f"{elements[i]} " * ions_per_type[i]).strip().split() for i in range(0, len(elements))]
+    #     list_atom_types = sum(list_atom_types0, [])
+    #     natoms = len(list_atom_types)
 
-        all_outcar_configs = []
-        for n, step_idx in enumerate(section_idxs[idx_ion_steps]):
-            ## Create data dict for this config, with global information already included
-            data = {}
-            data['AtomTypes'] = list_atom_types  ## orig in poscar, done
-            data['NumAtoms'] = natoms  ## orig in poscar, done
+    #     all_outcar_configs = []
+    #     for n, step_idx in enumerate(section_idxs[idx_ion_steps]):
+    #         ## Create data dict for this config, with global information already included
+    #         data = {}
+    #         data['AtomTypes'] = list_atom_types  ## orig in poscar, done
+    #         data['NumAtoms'] = natoms  ## orig in poscar, done
 
-            ## Lattice vectors in real space
-            ## Note: index to initial lattice vector output (POSCAR) in OUTCAR has already been removed.
-            ## Actual vector starts one line after that, and has 3 lines
-            lidx_last_lattice0 = section_idxs[idx_lattice_vects][n] + 1
-            lidx_last_lattice1 = lidx_last_lattice0 + 3
-            lines_last_lattice = lines[lidx_last_lattice0:lidx_last_lattice1]
-            all_lattice = self.get_direct_lattice(lines_last_lattice)
+    #         ## Lattice vectors in real space
+    #         ## Note: index to initial lattice vector output (POSCAR) in OUTCAR has already been removed.
+    #         ## Actual vector starts one line after that, and has 3 lines
+    #         lidx_last_lattice0 = section_idxs[idx_lattice_vects][n] + 1
+    #         lidx_last_lattice1 = lidx_last_lattice0 + 3
+    #         lines_last_lattice = lines[lidx_last_lattice0:lidx_last_lattice1]
+    #         all_lattice = self.get_direct_lattice(lines_last_lattice)
 
-            ## Stresses
-            lidx_stresses = section_idxs[idx_stress_vects][n] + 14
-            line_stresses = lines[lidx_stresses]
-            stress_component = self.get_stresses(line_stresses)
+    #         ## Stresses
+    #         lidx_stresses = section_idxs[idx_stress_vects][n] + 14
+    #         line_stresses = lines[lidx_stresses]
+    #         stress_component = self.get_stresses(line_stresses)
 
-            ## Atom coordinates and forces
-            lidx_forces0 = section_idxs[idx_force_vects][n] + 2
-            lidx_forces1 = lidx_forces0 + natoms
-            lines_forces = lines[lidx_forces0:lidx_forces1]
-            atom_coords, atom_forces = self.get_forces(lines_forces)
+    #         ## Atom coordinates and forces
+    #         lidx_forces0 = section_idxs[idx_force_vects][n] + 2
+    #         lidx_forces1 = lidx_forces0 + natoms
+    #         lines_forces = lines[lidx_forces0:lidx_forces1]
+    #         atom_coords, atom_forces = self.get_forces(lines_forces)
 
-            ## Energie :-)
-            ## We are getting the value without entropy
-            lidx_energie = section_idxs[idx_energie][n] + 4
-            line_energie = lines[lidx_energie]
-            total_energie = self.get_energie(line_energie)
+    #         ## Energie :-)
+    #         ## We are getting the value without entropy
+    #         lidx_energie = section_idxs[idx_energie][n] + 4
+    #         line_energie = lines[lidx_energie]
+    #         total_energie = self.get_energie(line_energie)
 
-            # Here is where all the data is put together since the energy value is the last
-            # one listed in each configuration.  After this, all these values will be overwritten
-            # once the next configuration appears in the sequence when parsing
+    #         # Here is where all the data is put together since the energy value is the last
+    #         # one listed in each configuration.  After this, all these values will be overwritten
+    #         # once the next configuration appears in the sequence when parsing
 
-            data['Positions'] = atom_coords
-            data['Forces'] = atom_forces
-            data['Stress'] = stress_component
-            data['Lattice'] = all_lattice
-            data['Energy'] = total_energie
+    #         data['Positions'] = atom_coords
+    #         data['Forces'] = atom_forces
+    #         data['Stress'] = stress_component
+    #         data['Lattice'] = all_lattice
+    #         data['Energy'] = total_energie
 
-            all_outcar_configs.append(data)
-        return all_outcar_configs, num_configs
-
-
-
-        
-
-
+    #         all_outcar_configs.append(data)
+    #     return all_outcar_configs, num_configs

@@ -88,6 +88,7 @@ class Section:
         return name
 
     def _check_if_used(self, from_sec, sec_type, default, name=None):
+        print(f"^^^^ name: {name}")
         if not name:
             name = self.__class__.__name__
         if self.get_value(from_sec, sec_type, default).upper() != name.upper():

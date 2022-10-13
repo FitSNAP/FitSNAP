@@ -264,7 +264,9 @@ to where we run the FitSNAP executable, this section looks like::
 
 This section declares the names of output files.
 
-- :code:`scraper` is either :code:`JSON` or :code:`XYZ`
+- :code:`metrics` gives the name of the error metrics markdown file.
+
+- :code:`potential` gives the prefix of the LAMMPS-ready potential files to dump.
 
 [REFERENCE]
 ^^^^^^^^^^^
@@ -279,6 +281,14 @@ from the target *ab initio* training data. We also declare units in this section
 
 - :code:`atom_style` the atom style used by the LAMMPS pair style you wish to overlay, see 
   `LAMMPS atom style docs <lammpsatomstyle_>`_ for more info. 
+
+The minimum working reference potential setup involves not using a reference potential at all, where 
+the reference section would look like (using metal units)::
+
+    [REFERENCE]
+    units = metal
+    pair_style = zero 10.0
+    pair_coeff = * *
 
 The rest of the keywords are associated with the particular LAMMPS pair style you wish to use. 
 
@@ -319,11 +329,25 @@ Other available grouplist columns through the group_sections keyword are:
 
 A few examples are found in the :code:`fitsnap/examples` directory.
 
+[EXTRAS]
+^^^^^^^^
+
+This section contains keywords on optional info to dump. By default, linear models output error 
+metric markdown files that should be sufficient in most cases. In more detailed errors are required, 
+please see the output Pandas dataframe :code:`FitSNAP.df`. Examples and library tools for analyzing 
+this dataframe are found in our `Colab Python notebook tutorial <tutorialnotebook_>`_.
+
+[MEMORY]
+^^^^^^^^
+
+This section contains keywords for dealing with memory. We recommend using defaults. 
+
 Library
 -------
 
 FitSNAP may also be run through the library interface. The `GitHub repo examples <libexamples_>`_ 
-may help set up scripts for your needs.
+may help set up scripts for your needs. More useful library functionality is found in our 
+`Colab Python notebook tutorial <tutorialnotebook_>`_.
 
 .. _libexamples: https://github.com/FitSNAP/FitSNAP/tree/master/examples/library
 

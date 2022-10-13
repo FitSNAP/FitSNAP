@@ -11,18 +11,17 @@ plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
-#plt.rcParams['text.usetex'] = True
 
-dat = np.loadtxt("loss_vs_epochs.dat")
+dat = np.loadtxt("energy_comparison.dat")
+dat_val = np.loadtxt("energy_comparison_val.dat")
 
-#lims = [-6, 6]
-plt.plot(dat[:,0], dat[:,1], 'b-', linewidth=3)
-plt.plot(dat[:,0], dat[:,2], 'r-', linewidth=3)
-#plt.plot(lims, lims, 'k-')
-plt.xlabel("Epochs")
-plt.ylabel(r'Loss function')
-plt.yscale('log')
-plt.legend(["Train", "Validation"])
-#plt.xlim(lims[0], lims[1])
-#plt.ylim(lims[0], lims[1])
-plt.savefig("error_vs_epochs.png", dpi=500)
+lims = [-100, 100]
+plt.plot(dat[:,0], dat[:,1], 'bo')
+plt.plot(dat_val[:,0], dat_val[:,1], 'ro')
+plt.plot(lims, lims, 'k-')
+plt.legend(["Train", "Validation", "Ideal"])
+plt.xlabel("Model energy (eV/atom)")
+plt.ylabel("Target energy (eV/atom)")
+plt.xlim(lims[0], lims[1])
+plt.ylim(lims[0], lims[1])
+plt.savefig("energy_comparison.png", dpi=500)

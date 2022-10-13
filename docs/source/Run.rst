@@ -7,6 +7,11 @@ is scraped from a directory, configurations are input to LAMMPS to calculate des
 machine learning problem is solved. The python library provides more flexibility and allows one to
 modify the steps in that fitting process.
 
+**If you want to get started immediately with interactive examples**, please see our 
+`Colab Python notebook tutorial <tutorialnotebook_>`_
+
+.. _tutorialnotebook: https://github.com/FitSNAP/FitSNAP/blob/master/tutorial.ipynb
+
 .. _Run Executable:
 
 Executable
@@ -134,15 +139,115 @@ We explain the sections and their keys in more detail below.
 [BISPECTRUM]
 ^^^^^^^^^^^^
 
+This section contains settings for the SNAP bispectrum descriptors from `Thompson et. al. <snappaper_>`_
+
+.. _snappaper: https://www.sciencedirect.com/science/article/pii/S0021999114008353
+
+- :code:`numTypes` number of atom types in your set of configurations located in `the [PATH] section <Run.html#path>`__
+
+- :code:`type` contains a list of element type symbols, one for each type. Make sure these are 
+  ordered correctly, e.g. if you have a LAMMPS type 1 atom that is :code:`Ga`, and LAMMPS type 2 
+  atoms are :code:`N`, list this as :code:`Ga N`.
+
+The remaining keywords are thoroughly explained in the `LAMMPS docs on computing SNAP descriptors <lammpssnap_>`_ 
+but we will give an overview here. **These are hyperparameters that *could* be optimized for your 
+specific system, but this is not a requirement. You may also use the default values, or values used 
+in our examples, which are often well behaved for other systems.**
+
+- :code:`twojmax` determines the number of bispectrum coefficients for each element type. Give an 
+  argument for each element type, e.g. for two element types we may use :code:`6 6` declaring 
+  :code:`twojmax = 6` for each type. Higher :code:`twojmax` increases the number of bispectrum 
+  components for each atom, thus potentially giving more accuracy at an increased cost. We recommend 
+  using a :code:`twojmax` of 4, 6, or 8. This corresponds to 14, 30, and 55 bispectrum components, 
+  respectively. Default value is 6. 
+
+- :code:`rcutfac` is a cutoff radius parameter. One value is used for all element types. We recommend 
+  a cutoff between 4 and 5 for most systems. Default value is 4.67. 
+
+- :code:`rfac0` is a parameter used in distance to angle conversion, between 0 and 1. Default value 
+  is 0.99363.
+
+- :code:`rmin0` another parameter used in distance to angle conversion, between 0 and 1. Default value 
+  is 0.
+
+- :code:`wj` list of neighbor weights. Give one argument for each element types, e.g. for two element 
+  types we may use :code:`1.0 0.5` declaring a weight of 1.0 for neighbors of type 1, and 0.5 for 
+  neighbors of type 2. We recommend taking values from the existing multi-element examples.
+
+- :code:`radelem` list of cutoff radii, one for each element type. These values get multiplied by 
+  :code:`rcutfac` to determine the effective cutoff of a particular type.
+
+- :code:`wselfallflag` is 0 or 1, determining whether self-contribution is for elements of a central 
+  atom or for all elements, respectively.
+
+- :code:`chemflag` is 0 or 1, determining whether to use explicit multi-element SNAP descriptors as 
+  explained in `Cusentino et. al. <chemsnappaper_>`_, and used in the InP example. This 
+  increases the number of SNAP descriptors to resolve multi-element environment descriptions, and 
+  therefore comes at an increase in cost but higher accuracy. This option is not required 
+  for multi-element systems; the default value is 0.
+
+- :code:`bzeroflag` is 0 or 1, determining whether or not B0, the bispectrum components of an atom 
+  with no neighbors, are subtracted from the calculated bispectrum components.
+
+- :code:`quadraticflag` is 0 or 1, determining whether or not to use quadratic descriptors in a 
+  linear model, as done by `Wood and Thompson <quadsnappaper_>`_, and illusrated in the 
+  :code:`Ta_Quadratic` example.
+
+The following keywords are necessary for extracting per-atom descriptors and individual derivatives 
+of bispectrum components with respect to neighbors, required for neural network potentials. See more 
+info in `PyTorch Models <Pytorch.html>`__
+
+- :code:`bikflag` is 0 or 1, determining whether to compute per-atom bispectrum descriptors instead 
+  of sums of components for each atom. We do the latter for linear fitting because of the nature of 
+  the linear problem, which saves memory, but per-atom descriptors are required for neural networks. 
+
+- :code:`dgradflag` is 0 or 1, determining whether to compute individual derivatives of descriptors 
+  with respect to neighboring atoms, which is required for neural networks.
+
+.. _lammpssnap: https://docs.lammps.org/compute_sna_atom.html 
+.. _quadsnappaper: https://aip.scitation.org/doi/full/10.1063/1.5017641 
+.. _chemsnappaper: https://www.sciencedirect.com/science/article/pii/S0021999114008353
+
 [CALCULATOR]
 ^^^^^^^^^^^^
+
+This section houses keywords determining which calculator to use, i.e. which descriptors to 
+calculate. 
+
+- :code:`calculator` is the name of the LAMMPS connection for getting descriptors, e.g. for SNAP 
+  descriptors use :code:`LAMMPSSNAP`.
+
+- :code:`energy` is 0 or 1, determining whether to calculate descriptors associated with 
+  energies.
+
+- :code:`force` is 0 or 1, determining whether to calculate descriptor gradients 
+  associated with forces.
+
+- :code:`stress` is 0 or 1, determining whether to calculate descriptors gradients associated with 
+  virial terms for calculating and fitting to stresses.
+
+- :code:`per_atom_energy` is 0 or 1, determining whether to use per-atom energy descriptors in 
+  association with :code:`bikflag = 1`
 
 [ESHIFT]
 ^^^^^^^^
 
+This section declares an energy shift applied to each atom type.
+
 [SOLVER]
 ^^^^^^^^
-.. _PATH:
+
+This section contains keywords associated with specific machine learning solvers. 
+
+- :code:`solver` name of the solver. We recommend using :code:`SVD` for linear solvers and 
+  :code:`PYTORCH` for neural networks. 
+
+[SCRAPER]
+^^^^^^^^^
+
+This section declares which file scraper to use.
+
+- :code:`scraper` is either :code:`JSON` or :code:`XYZ.`
 
 [PATH]
 ^^^^^^
@@ -152,7 +257,33 @@ For example if the training data is in a file called :code:`JSON` in the previou
 to where we run the FitSNAP executable, this section looks like::
 
     [PATH]
-    dataPath = JSON
+    dataPath = ../JSON
+
+[OUTFILE]
+^^^^^^^^^
+
+This section declares the names of output files.
+
+- :code:`scraper` is either :code:`JSON` or :code:`XYZ`
+
+[REFERENCE]
+^^^^^^^^^^^
+
+This section includes settings for an *optional* potential to overlay our machine learned potential 
+with. We call this a "reference potential", which is a pair style defined in LAMMPS. If you choose 
+to use a reference potential, the energies and forces from the reference potential will be subtracted 
+from the target *ab initio* training data. We also declare units in this section.
+
+- :code:`units` declares units used by LAMMPS, see `LAMMPS units docs <lammpsunits_>`_ for more 
+  info. 
+
+- :code:`atom_style` the atom style used by the LAMMPS pair style you wish to overlay, see 
+  `LAMMPS atom style docs <lammpsatomstyle_>`_ for more info. 
+
+The rest of the keywords are associated with the particular LAMMPS pair style you wish to use. 
+
+.. _lammpsunits: https://docs.lammps.org/units.html
+.. _lammpsatomstyle: https://docs.lammps.org/atom_style.html
 
 [GROUPS]
 ^^^^^^^^
@@ -191,8 +322,8 @@ A few examples are found in the :code:`fitsnap/examples` directory.
 Library
 -------
 
-FitSNAP may also be run through the library interface. More documentation coming soon, but for now
-the `GitHub repo examples <libexamples_>`_ may help set up scripts for your needs.
+FitSNAP may also be run through the library interface. The `GitHub repo examples <libexamples_>`_ 
+may help set up scripts for your needs.
 
 .. _libexamples: https://github.com/FitSNAP/FitSNAP/tree/master/examples/library
 

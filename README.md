@@ -9,6 +9,8 @@ A Python package for machine learning potentials with [LAMMPS](https://github.co
 
 **Documentation page:** [https://fitsnap.github.io](https://fitsnap.github.io)
 
+**Colab Python notebook tutorial:** [https://github.com/FitSNAP/FitSNAP/blob/master/tutorial.ipynb](https://github.com/FitSNAP/FitSNAP/blob/master/tutorial.ipynb)
+
 _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
 ##
 
@@ -51,6 +53,9 @@ along with the `compute_pace` files from [https://github.com/jmgoff/lammps-user-
 
 #### Quick install (minimal working environment) using Conda:
 
+WARNING: Conda LAMMPS installation does NOT include ACE, SPIN, or neural network functionality. See 
+the docs for details on how to install the current LAMMPS which has these functionalities.
+
 * Clone this repository to get a FitSNAP directory:\
     `git clone https://github.com/FitSNAP/FitSNAP`
 * Add `path/to/FitSNAP` path to your `PYTHONPATH` environment variable.
@@ -61,8 +66,6 @@ along with the `compute_pace` files from [https://github.com/jmgoff/lammps-user-
 * Install the following packages:\
     `conda install lammps psutil pandas tabulate sphinx sphinx_rtd_theme mpi4py`
 * Periodically `git pull` for code updates
-* WARNING: Conda LAMMPS installation does NOT include ACE, SPIN, or neural network functionality. See 
-the docs for details on how to install the current LAMMPS which has these functionalities. 
 
 #### Running:
 

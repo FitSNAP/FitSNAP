@@ -62,7 +62,7 @@ pair_coeff4 = 2 2 zbl 15 15
 ##      If multiple ionic steps exist in the OUTCAR, each step will be extracted to a single JSON file and labeled
 ##      in sequence.
 ##      The newly-created JSON files have a comment line at the top with the full path to the original scraped
-##      OUTCAR frile.
+##      OUTCAR file.
 ##      vasp2json options:
 ##      overwrite:      (bool) overwrites any currently-existing JSON files in the indicated group folder with
 ##                      the same name as ones being scraped. Default is False.

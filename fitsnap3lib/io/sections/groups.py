@@ -26,7 +26,7 @@ class Groups(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'random_seed', 'BOLTZ']
+        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'random_seed', 'vasp2json','BOLTZ']
 
         # for value_name in config['GROUPS']:
         #     if value_name in allowedkeys: continue
@@ -37,6 +37,7 @@ class Groups(Section):
         self.smartweights = self.get_value("GROUPS", "smartweights", "0", "bool")
         self.random_sampling = self.get_value("GROUPS", "random_sampling", "0", "bool")
         self.random_seed = self.get_value("GROUPS", "random_seed", "0", "float")
+        self.vasp2json = self.get_value("GROUPS", "vasp2json", "0", "bool")
         self.boltz = self.get_value("BISPECTRUM", "BOLTZ", "0", "float")
         _str_2_fun(self.group_types)
         self.group_table = None

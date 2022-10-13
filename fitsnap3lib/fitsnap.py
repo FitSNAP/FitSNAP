@@ -86,8 +86,9 @@ class FitSnap:
         if self.config.sections["EXTRAS"].only_test:
             self.fit = output.read_fit()
 
-        if (self.config.sections['CALCULATOR'].nonlinear and (self.pt.lammps_version <= 20220915) ):
-            raise Exception(f"Please upgrade LAMMPS to 2022-09-15 or later to use nonlinear solvers.")
+        if (hasattr(self.pt, "lammps_version")):
+          if (self.config.sections['CALCULATOR'].nonlinear and (self.pt.lammps_version < 20220915) ):
+              raise Exception(f"Please upgrade LAMMPS to 2022-09-15 or later to use nonlinear solvers.")
        
     #@pt.single_timeit 
     def scrape_configs(self):

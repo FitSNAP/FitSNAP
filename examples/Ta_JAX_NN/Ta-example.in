@@ -19,6 +19,7 @@ energy = 1
 per_atom_energy = 1
 force = 0
 stress = 0
+nonlinear = 1
 
 [ESHIFT]
 Ta = 0.0

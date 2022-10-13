@@ -162,7 +162,7 @@ in our examples, which are often well behaved for other systems.**
   respectively. Default value is 6. 
 
 - :code:`rcutfac` is a cutoff radius parameter. One value is used for all element types. We recommend 
-  a cutoff between 4 and 5 for most systems. Default value is 4.67. 
+  a cutoff between 4 and 5 Angstroms for most systems. Default value is 4.67 Angstroms. 
 
 - :code:`rfac0` is a parameter used in distance to angle conversion, between 0 and 1. Default value 
   is 0.99363.
@@ -247,7 +247,7 @@ This section contains keywords associated with specific machine learning solvers
 [SCRAPER]
 ^^^^^^^^^
 
-This section declares which file scraper to use.
+This section declares which file scraper to use for gathering training data.
 
 - :code:`scraper` is either :code:`JSON` or :code:`XYZ.`
 

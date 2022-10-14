@@ -4,13 +4,16 @@
 # a JSON file(s) that can then be read into fitSNAP.  To run this script, you will need to specify an OUTCAR file, and
 # the name of the JSON file(s) that will be output in the command line  --->  python VASP2JSON.py myOUTCARfile myJSONfile
 
-import sys, os
+import sys
 import json
 
 OUTCAR_file = sys.argv[1]
 JSON_file = str(sys.argv[2])
 
-write_unconverged_steps_anyway = False
+# Allow unconverged structures to be written to JSON (default: False)
+write_unconverged_steps_anyway = False  
+# Stop program crashing due to incomplete writing of configurations (default: False)
+ignore_incomplete_configs = False
 
 def write_json(data, jsonfilename):
     """
@@ -111,22 +114,52 @@ for i, line in enumerate(lines):
         stress_ally = [stress_xy, stress_yy, stress_yz]
         stress_allz = [stress_zx, stress_yz, stress_zz]
         stress_component = [stress_allx, stress_ally, stress_allz]
+
     # Look for positions and forces for configuration
+    # Make sure that all atomms have coordinates and forces
+    # Otherwise, crash and let user know
     elif "TOTAL-FORCE (eV/Angst)" in line:
 
-        atom_cords = []
-        atom_force = []
-        for count in range(0, natoms):
-            x_cord, y_cord, z_cord, f_x, f_y, f_z = [
-                float(val) for val in lines[i + 2 + count].split()[0:6]
-            ]
+        atom_coords = []
+        atom_forces = []
+        is_complete_config = True
+        last_atom_idx = i + 1 + natoms
+        last_atom_line = lines[last_atom_idx]
+        check_last_atom = [s.strip() for s in last_atom_line.split()]
+        has_digits = all([True if c.isdigit() or c == '.' or c == '-' else False for c in check_last_atom[0]])
+        if len(check_last_atom) == 6 and has_digits:
+            for count in range(0, natoms):
+                x_coord, y_coord, z_coord, f_x, f_y, f_z = [
+                    float(val) for val in lines[i + 2 + count].split()[0:6]]
+                coordinates = [x_coord, y_coord, z_coord]
+                forces = [f_x, f_y, f_z]
 
-            coordinates = [x_cord, y_cord, z_cord]
-            forces = [f_x, f_y, f_z]
-
-            atom_cords.append(coordinates)
-            atom_force.append(forces)
-
+                atom_coords.append(coordinates)
+                atom_forces.append(forces)
+            else:
+                atom_coords.append(None)
+                atom_forces.append(None)
+        else:
+            is_complete_config = False
+            if not ignore_incomplete_configs:
+                raise Exception('!!ERROR: OUTCAR step incomplete!!' \
+                    '\n!!Not all atom coordinates/forces were written to a configuration' 
+                    '\n!!Please check the OUTCAR for incomplete steps and adjust, or toggle variable "ignore_incomplete_configs" to True'
+                    '\n!!(not recommended as you may miss future incomplete steps)' 
+                    f'\n!!\tConfiguration number: {outcar_config_number}' 
+                    f'\n!!\tLine number of error: {last_atom_idx}' 
+                    f'\n!!\tExpected atom coordinates and forces, found: {last_atom_line}' 
+                    '\n')
+            else:
+                print('!!WARNING: OUTCAR step incomplete!!'
+                    '\n!!Not all atom coordinates/coordinates were written to a configuration'
+                    '\n!!Variable "ignore_incomplete_configs" is toggled to True'
+                    '\n!!Note that this may result in missing training set data (e.g., missing final converged structures)'
+                    f'\n!!\tConfiguration number: {outcar_config_number}'
+                    f'\n!!\tLine number of warning: {last_atom_idx}'
+                    f'\n!!\tExpected 6 columns of floats, found: {last_atom_line} '
+                    '\n')
+                
     # Look for total energy of configuration.  Assumes that value is four
     # lines past where FREE ENERGIE OF THE ION-ELECTRON SYSTEM is found
 
@@ -138,8 +171,8 @@ for i, line in enumerate(lines):
         # one listed in each configuration.  After this, all these values will be overwritten
         # once the next configuration appears in the sequence when parsing
 
-        data["Positions"] = atom_cords
-        data["Forces"] = atom_force
+        data["Positions"] = atom_coords
+        data["Forces"] = atom_forces
         data["Stress"] = stress_component
         data["Lattice"] = all_lattice
         data["Energy"] = totalEnergy
@@ -151,13 +184,18 @@ for i, line in enumerate(lines):
         # Specify jsonfilename and put this and data into the write_json function.  All
         # json files should be output now.  The configuration number will be increased by one
         # to keep track of which configuration is associated with which json file.
+        # If an incomplete configuration is discovered, and 'ignore_incomplete_configs' is set 
+        # to True, the below will make sure the json is not written and the code continues to
+        # the next configuration (ionic step).
+        # If an unconverged step is discovered, and 'write_unconverged_steps_anyway' is set 
+        # to True, the json will be written.
 
         jsonfilename = JSON_file + str(outcar_config_number) + ".json"
-
-        if electronic_convergence:
-            write_json(data, jsonfilename)
-        else:
-            if write_unconverged_steps_anyway:
+        if is_complete_config:
+            if electronic_convergence:
                 write_json(data, jsonfilename)
+            else:
+                if write_unconverged_steps_anyway:
+                    write_json(data, jsonfilename)
 
         outcar_config_number = outcar_config_number + 1

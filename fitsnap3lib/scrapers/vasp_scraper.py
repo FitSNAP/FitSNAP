@@ -1,3 +1,4 @@
+import enum
 from fitsnap3lib.scrapers.scrape import Scraper, convert
 from fitsnap3lib.io.input import Config
 from json import loads
@@ -24,15 +25,12 @@ class Vasp(Scraper):
         self.bc_bool = False
         self.infile = config.args.infile
         self.group_table = config.sections["GROUPS"].group_table
-        self.vasp2json = config.sections["GROUPS"].vasp2json
+        self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
 
         ## Before scraping, esnure that user has correct input
-        ## NOTE: i think Logan recently fixed this, check before putting in again
+        ## TODO: Logan recently fixed this, check before putting in again
         # self.check_train_test_sizes()
-        
-        ## If vasp2json enabled:
-        if self.vasp2json:
-            pass
+
 
     def scrape_groups(self):
         ### Locate all OUTCARs in datapath
@@ -84,13 +82,14 @@ class Vasp(Scraper):
 
                     ## Grab potcar and element info
                     header_lines = lines[:start_idx_loops[0]]
-                    potcar_elements, ions_per_type = self.parse_outcar_header(header_lines)
+                    potcar_list, potcar_elements, ions_per_type = self.parse_outcar_header(header_lines)
 
                     ## Each config in a single OUTCAR is assigned the same
                     ## parent data (i.e. filename, potcar and ion data)
                     ## but separated for each iteration (idx loops on 'lines')
-                    ## TODO as in scrape_outcar, will need to check each config for completeness!
-                    outcar_tuples = [(outcar, i, potcar_elements, ions_per_type,
+                    ## Tuple data: outcar file name str, config number int, starting line number (for debug)  int, 
+                    ## potcar list, potcar elements list, number ions per element list, configuration lines list 
+                    outcar_tuples = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type,
                                         lines[start_idx_loops[i]:end_idx_loops[i]])
                                         for i in range(0, len(start_idx_loops))]
                     self.configs[group].extend(outcar_tuples)
@@ -143,27 +142,50 @@ class Vasp(Scraper):
 
     def scrape_configs(self):
         """Generate and send (mutable) data to send to fitsnap"""
-        if self.vasp2json: print("Writing OUTCAR data to JSONs (vasp2json = True)")
         all_outcar_data = []
         for outcar_config in self.configs:
-            outcar_filename, config_num, potcar_elements, ions_per_type, lines = outcar_config[0]
+            outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type, lines = outcar_config[0]
             group = outcar_config[1]
-            outcar_data = self.parse_outcar_config(lines, potcar_elements, ions_per_type)
+            outcar_data = self.parse_outcar_config(lines, potcar_list, potcar_elements, ions_per_type)
+            if type(outcar_data) == tuple:
+                crash_type, crash_line = outcar_data
+                ## TODO sort out 'bad' OUTCARs earlier
+                if not self.vasp_ignore_incomplete:
+                    raise Exception('!!ERROR: OUTCAR step incomplete!!' \
+                        '\n!!Not all atom coordinates/forces were written to a configuration' 
+                        '\n!!Please check the OUTCAR for incomplete steps and adjust, '
+                        '\n!!or toggle variable "vasp_ignore_incomplete" to True'
+                        '\n!!(not recommended as you may miss future incomplete steps)' 
+                        f'\n!!\tOUTCAR location: {outcar_filename}' 
+                        f'\n!!\tConfiguration number: {config_num}' 
+                        f'\n!!\tLine number of error: {start_idx}' 
+                        f'\n!!\tExpected {crash_type}, {crash_line} '
+                        '\n')
+                else:
+                    print('!!WARNING: OUTCAR step incomplete!!'
+                        '\n!!Not all atom coordinates/coordinates were written to a configuration'
+                        '\n!!Variable "vasp_ignore_incomplete" is toggled to True'
+                        '\n!!Note that this may result in missing training set data (e.g., missing final converged structures)'
+                        f'\n!!\tOUTCAR location: {outcar_filename}' 
+                        f'\n!!\tConfiguration number: {config_num}'
+                        f'\n!!\tLine number of warning: {start_idx}'
+                        f'\n!!\tExpected {crash_type}, {crash_line} '
+                        '\n')
+
             all_outcar_data.append(outcar_data)
 
-            if self.vasp2json:
-                # outcar_name, outcar_data, json_path, json_filestem, file_num
-                json_path = f'JSON/{group}'
-                if not os.path.exists(json_path):
-                    os.makedirs(json_path)
-                file_num = config_num + 1
-                json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','')
-                json_filename = f"{json_path}/{json_filestem}_{file_num}.json"
-                if not os.path.exists(json_filename):
-                    self.write_json(json_filename, outcar_filename, outcar_data)
+            # outcar_name, outcar_data, json_path, json_filestem, file_num
+            json_path = f'JSON/{group}'
+            if not os.path.exists(json_path):
+                os.makedirs(json_path)
+            file_num = config_num + 1
+            json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','').replace(f'_{group}','')
+            json_filename = f"{json_path}/{json_filestem}{file_num}.json"
+            if not os.path.exists(json_filename) or 1:
+                self.write_json(json_filename, outcar_filename, outcar_data)
         return all_outcar_data
 
-    def parse_outcar_config(self,lines,list_atom_types,ions_per_type):
+    def parse_outcar_config(self,lines,potcar_list,potcar_elements,ions_per_type):
         ## TODO clean up syntax to match FitSNAP3
         ## TODO clean up variable names to match input, increase clarity
         ## LIST SECTION_MARKERS AND RELATED FUNCTIONS ARE HARD-CODED!!
@@ -176,15 +198,27 @@ class Vasp(Scraper):
             'FREE ENERGIE OF THE ION-ELECTRON SYSTEM (eV)',
         ]
 
+        section_names = [
+            'stresses',
+            'lattice',
+            'coords & forces',
+            'energie',
+        ]
+
         idx_stress_vects = 0 # 4
         idx_lattice_vects = 1 # 5
         idx_force_vects = 2 # 6
         idx_energie = 3 # 7
 
         ## Index lines of file containing JSON data
-        section_idxs = []
+        section_idxs = [None,None,None,None]
         atom_coords, atom_forces, stress_component, all_lattice, total_energie  = None, None, None, None, None
 
+        list_atom_types = []
+        for i, elem in enumerate(potcar_elements):
+            num_repeats = ions_per_type[i]
+            elem_list = [elem.strip()]*num_repeats
+            list_atom_types.extend(elem_list)
         natoms = sum(ions_per_type)
 
         ## Search entire file to create indices for each section
@@ -194,7 +228,15 @@ class Vasp(Scraper):
             line_test = [True if sm in line else False for sm in section_markers]
             if any(line_test):
                 test_idx = [n for n, b in enumerate(line_test) if b][0]
-                section_idxs.append(i)
+                section_idxs[test_idx] = i
+        
+        ## If this config has any sections missing, it is incomplete, return crash
+        missing_sections = [True if i == None else False for i in section_idxs]
+        if any(missing_sections):
+            crash_type = '4 sections'
+            missing_sections_str = 'missing sections: '
+            missing_sections_str += ', '.join([section_names[i] for i, b in enumerate(missing_sections) if b])
+            return (crash_type, missing_sections_str)
 
         ## Create data dict for this config, with global information already included
         data = {}
@@ -219,6 +261,10 @@ class Vasp(Scraper):
         lidx_forces1 = lidx_forces0 + natoms
         lines_forces = lines[lidx_forces0:lidx_forces1]
         atom_coords, atom_forces = self.get_forces(lines_forces)
+        if type(atom_coords) == str:
+            crash_type = 'atom coords, atom forces'
+            crash_atom_coord_line = 'found bad line: ' + atom_coords
+            return (crash_type, crash_atom_coord_line)
 
         ## Energie :-)
         ## We are getting the value without entropy
@@ -234,13 +280,15 @@ class Vasp(Scraper):
         data['Stress'] = stress_component
         data['Lattice'] = all_lattice
         data['Energy'] = total_energie
+        data["computation_code"] = "VASP"
+        data["pseudopotential_information"] = potcar_list
 
         return data
 
     def parse_outcar_header(self, header):
         ## These searches replace the POSCAR and POTCAR, and can also check IBRION for AIMD runs (commented out now)
-        lines_vrhfin, lines_ions_per_type = [], []
-        potcar_elements, ions_per_type = [], []
+        lines_potcar, lines_vrhfin, lines_ions_per_type = [], [],[]
+        potcar_list, potcar_elements, ions_per_type = [], [], []
         # line_ibrion, is_aimd = "", False
 
         for line in header:
@@ -248,8 +296,13 @@ class Vasp(Scraper):
                 lines_vrhfin.append(line)
             elif "ions per type" in line:
                 lines_ions_per_type.append(line)
-            # elif "IBRION" in line:
-            #     line_ibrion = line
+            elif "POTCAR" in line:
+                lines_potcar.append(line)
+                # Look for the ordering of the atom types - grabbing POTCAR filenames first, then atom labels separately because VASP has terribly inconsistent formatting
+                if line.split()[1:] not in potcar_list:  # VASP will have these lines in the OUTCAR twice, and we don't need to append them the second time
+                    potcar_list.append(line.split()[1:])  # each line will look something like ['PAW_PBE', 'Zr_sv_GW', '05Dec2013']
+
+        ## TODO add check that warns user if POSCAR elements and POTCAR order are not the same (if possible)
 
         for line in lines_vrhfin:
             str0 = line.strip().replace("VRHFIN =", "")
@@ -260,7 +313,7 @@ class Vasp(Scraper):
             str0 = line.replace("ions per type = ","").strip()
             ions_per_type = [int(s) for s in str0.split()]
 
-        return potcar_elements, ions_per_type
+        return potcar_list, potcar_elements, ions_per_type
 
     def get_vrhfin(self, lines):
         ## Scrapes vrhfin lines to get elements
@@ -315,6 +368,12 @@ class Vasp(Scraper):
 
     def get_forces(self, lines):
         coords, forces = [], []
+        try:
+            [float(v) for v in lines[-1].split()[:6]]
+        except:
+            print('OUTCAR config did not run to completion! Discarding configuration')
+            return lines[-1],-1 ## returning faulty string for error message
+
         for line in lines:
             x, y, z, fx, fy, fz = [float(v) for v in line.split()[:6]]
             coords.append([x, y, z])
@@ -335,13 +394,13 @@ class Vasp(Scraper):
         comment_line = f'# Generated on {dt} from: {os.getcwd()}/{outcar_filename}'
 
         allDataHeader = {}
-        allDataHeader['Data'] = [outcar_data]
         allDataHeader['EnergyStyle'] = "electronvolt"
         allDataHeader['StressStyle'] = "kB"
         allDataHeader['AtomTypeStyle'] = "chemicalsymbol"
         allDataHeader['PositionsStyle'] = "angstrom"
         allDataHeader['ForcesStyle'] = "electronvoltperangstrom"
         allDataHeader['LatticeStyle'] = "angstrom"
+        allDataHeader['Data'] = [outcar_data]
 
         myDataset = {}
 
@@ -350,8 +409,8 @@ class Vasp(Scraper):
         ## TODO move comment line from front to inside of JSON object
         ## TODO make sure all JSON reading by FitSNAP is compatible with both formats
         # Comment line at top breaks the JSON format and readers complain
-        with open(json_filename, "w") as f:
-            f.write(comment_line + "\n")
+        # with open(json_filename, "w") as f:
+        #     f.write(comment_line + "\n")
 
         ## Write actual JSON object
         with open(json_filename, "a+") as f:

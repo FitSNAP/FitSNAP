@@ -26,6 +26,7 @@ class Vasp(Scraper):
         self.infile = config.args.infile
         self.group_table = config.sections["GROUPS"].group_table
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
+        self.vasp_overwrite_jsons = config.sections["GROUPS"].vasp_overwrite_jsons
 
         ## Before scraping, esnure that user has correct input
         ## TODO: Logan recently fixed this, check before putting in again
@@ -181,7 +182,7 @@ class Vasp(Scraper):
             file_num = config_num + 1
             json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','') #.replace(f'_{group}','')
             json_filename = f"{json_path}/{json_filestem}{file_num}.json"
-            if not os.path.exists(json_filename) or 1:
+            if not os.path.exists(json_filename) or self.vasp_overwrite_jsons:
                 self.write_json(json_filename, outcar_filename, outcar_data)
         return all_outcar_data
 
@@ -413,7 +414,8 @@ class Vasp(Scraper):
         #     f.write(comment_line + "\n")
 
         ## Write actual JSON object
-        with open(json_filename, "a+") as f:
+        # with open(json_filename, "a+") as f: ## with comment line
+        with open(json_filename, "w") as f:
             json.dump(myDataset, f, indent=2, sort_keys=True)
         return
 

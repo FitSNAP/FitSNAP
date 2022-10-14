@@ -156,6 +156,9 @@ for i, line in enumerate(lines):
                     f'\n!!\tLine number of warning: {last_atom_idx}'
                     f'\n!!\tExpected 6 columns of floats, found: {last_atom_line} '
                     '\n')
+
+            if len(atom_forces) < natoms or len(atom_coords) < natoms:
+                is_complete_config = False
                 
     # Look for total energy of configuration.  Assumes that value is four
     # lines past where FREE ENERGIE OF THE ION-ELECTRON SYSTEM is found

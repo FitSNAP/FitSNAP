@@ -266,7 +266,8 @@ to where we run the FitSNAP executable, this section looks like::
 
 This section declares the names of output files.
 
-- :code:`metrics` gives the name of the error metrics markdown file.
+- :code:`metrics` gives the name of the error metrics markdown file. If using LAMMPS metal units, 
+  energy mean absolute errors are in eV and force errors are in eV/Angstrom. 
 
 - :code:`potential` gives the prefix of the LAMMPS-ready potential files to dump.
 
@@ -304,45 +305,64 @@ Each group should be its own sub-irectory in the directory given by the :code:`d
 `the [PATH] section <Run.html#path>`__. There are a few different allowed syntaxes; subdirectory 
 names in the first column is common to all options.
 
-The default grouplist format has five columns and is as follows::
+:code:`group_sections` declares which parameters you want to set for each group of configurations. 
 
-    name  size  eweight  fweight  vweight
-    (STR) (REAL) (REAL)  (REAL)   (REAL)
+For example::
 
-The first column is the name of the subfolder with training data. The second column defines the 
-number of files to be used in training the fit. The last three columns are real numbers defining the 
-weight vector for all configurations in this group::
+    group_sections = name training_size testing_size eweight fweight vweight
 
-    NAME_OF_SUBFOLDER NUMBER_OF_FILES ENERGY_WEIGHT FORCE_WEIGHT VIRIAL_WEIGHT
+means you will supply group names, training size as a decimal fraction, testing size as a decimal 
+fraction, energy weight, force weight, and virial weight, respectively. We must also declare the 
+data types associated with these variables, given by
 
-If the second column is a fraction::
+    group_types = str float float float float float
 
-    (STR) (REAL, <=1.0) (REAL) (REAL) (REAL)
+Then we may declare the group names and parameters associated with them. For a particular group 
+called :code:`Liquid` for example, this looks like::
 
-The second column now defines the fraction of this group to be used in fitting. This will sample at 
-random from the list of files in this group::
+    Liquid        =  1.0    0.0       4.67E+02        1       1.00E-08
 
-    NAME_OF_SUBFOLDER FRACTION_OF_FILES ENERGY_WEIGHT FORCE_WEIGHT VIRIAL_WEIGHT
+where :code:`Liquid` is the name of the group, :code:`1.0` is the training fraction, :code:`0.0` is 
+the testing fraction, :code:`6.47E+02` is the energy weight, :code:`1` is the force weight, and 
+:code:`1.00E-8` is the virial weight.
 
-Other available grouplist columns through the group_sections keyword are:
+Other available keywords are
 
-- :code:`training_size` = size or fraction of total files to be used in training
-- :code:`testing_size` = size or fraction of total files to be used in testing
+- :code:`random_sampling` is 0 or 1. If 1, configurations in the groups are randomly sampled between 
+  their training and testing fractions. 
 
-A few examples are found in the :code:`fitsnap/examples` directory.
+- :code:`smartweights`` is 0 or 1. If 1, we declare statistically distributed weights given your 
+  supplied weights.
+
+A few examples are found in the examples directory.
 
 [EXTRAS]
 ^^^^^^^^
 
 This section contains keywords on optional info to dump. By default, linear models output error 
-metric markdown files that should be sufficient in most cases. In more detailed errors are required, 
-please see the output Pandas dataframe :code:`FitSNAP.df`. Examples and library tools for analyzing 
-this dataframe are found in our `Colab Python notebook tutorial <tutorialnotebook_>`_.
+metric markdown files that should be sufficient in most cases. If more detailed errors are required, 
+please see the output Pandas dataframe :code:`FitSNAP.df` used by linear models. Examples and 
+library tools for analyzing  this dataframe are found in our 
+`Colab Python notebook tutorial <tutorialnotebook_>`_.
 
 [MEMORY]
 ^^^^^^^^
 
 This section contains keywords for dealing with memory. We recommend using defaults. 
+
+Outputs
+-------
+
+FitSNAP outputs include error metrics, detailed errors for each atom, configuration, or groups of 
+configurations, and LAMMPS-ready files for running MD simulations.
+
+Outputs are different for linear and nonlinear models. 
+
+For linear models, please see the `Linear models output section <Linear.html#outputs>`__
+
+For nonlinear models, please see the
+`PyTorch models output section <Pytorch.html#outputs-and-error-calculation>`__. After running a 
+linear model fit, the following outputs will be produced:
 
 Library
 -------

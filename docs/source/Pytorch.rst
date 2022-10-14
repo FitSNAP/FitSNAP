@@ -154,11 +154,73 @@ The :code:`PYTORCH` section keys are explained in more detail below.
 - :code:`manual_seed_flag` set to 0 by default, can set to 1 if want to force a random seed which is
   useful for debugging purposes.
 
+Loss Function
+-------------
+
+When fitting neural network potentials we minimize the sum of weighted energy and force mean squared 
+errors:
+
+.. math::
+
+    \mathcal L = \frac{1}{M} \sum_{m}^{M} \frac{1}{N_m}\{w_m^E [\hat{E}_m(\theta) - E_m]^2 + \frac{w_m^F}{3} \sum_i^{3N_m} [\hat{F}_{mi}(\theta) - F_{mi}]^2 \}
+
+where
+
+- :math:`M` is the number of configurations in the training set.
+
+- :math:`m` indexes a particular configuration.
+
+- :math:`N_m` is the number of atoms for configuration :math:`m`
+
+- :math:`w_m^E` is the energy weight of configuration :math:`m`. These weights can be set by designating 
+  the particular weights in the `[GROUPS] section <Run.html#groups>`__, or by declaring a global 
+  weight in the :code:`[PYTORCH]` section, which will override the group weights. 
+
+- :math:`\theta` represents all the model fitting parameters (e.g. the trainable coefficients in a neural network).
+
+- :math:`\hat{E}_m(\theta)` is the model predicted energy of configuration :math:`m`
+
+- :math:`E_m` is the target *ab initio* energy of configuration :math:`m`, subtracted by the LAMMPS 
+  reference potential declared in the `[REFERENCE] section <Run.html#reference>`__.
+
+- :math:`i` indexes a particular atom
+
+- :math:`w_m^F` is the force weight of configuration :math:`m`. These weights can be set by designating 
+  the particular weights in the `[GROUPS] section <Run.html#groups>`__, or by declaring a global 
+  weight in the :code:`[PYTORCH]` section, which will override the group weights. 
+
+- :math:`\hat{F}_{mi}(\theta)` is the model predicted force on atom :math:`i` in configuration :math:`m`
+
+- :math:`F_{mi}` is the target *ab initio* force on atom :math:`i` in configuration :math:`m`, 
+  subtracted by the LAMMPS reference potential force declared in the 
+  `[REFERENCE] section <Run.html#reference>`__.
+
+This loss also gets evaluated for the validation set for each epoch, so that the screen output looks 
+something like::
+
+    ----- epoch: 0
+    Batch averaged train/val loss: 4.002996124327183 4.072216800280979
+    Epoch time 0.3022959232330322
+    ----- epoch: 1
+    Batch averaged train/val loss: 2.3298445120453835 1.1800143867731094
+    Epoch time 0.2888479232788086
+    ----- epoch: 2
+    Batch averaged train/val loss: 0.6962545616552234 0.8775447851845196
+    Epoch time 0.26888108253479004
+    ----- epoch: 3
+    Batch averaged train/val loss: 0.3671231440966949 0.6234593641545091
+    Epoch time 0.26917600631713867
+
+The first column is the weighted training set loss function, and the second column is the weighted 
+validation set loss function (which is not included in fitting). While the loss function units 
+themselves might not be meaningful for error analysis, we output model predictions and targets for 
+energies and forces in separate files after the fit, as explained below. 
 
 Outputs and Error Calculation
 -----------------------------
 
-FitSNAP outputs include files that aid in error calculation, and files that can be used to restart 
+Unlike linear models, PyTorch models do not output statistics in a dataframe. Instead we output 
+energy and force comparisons in separate files, along with PyTorch models that can be used to restart 
 a fit or even run MD simulations in LAMMPS.
 
 Error/Comparison files
@@ -242,7 +304,9 @@ the same convergence.
 For data sets of ~10,000 configs and ~50 atoms per config, training will take ~1 hour, or about 
 20 seconds per epoch. This can consume about ~20 GB of RAM.
 
-Computational scaling is *roughly* O(N) where N is the total number of atoms in the training set.
+Computational scaling is roughly :code:`O(num_atoms*num_neighs)` where :code:`num_atoms` is the 
+total number of atoms in the training set, and :code:`num_neighs` is the average number of neighbors 
+per atom. 
 
 Mini-batch network training is embarassingly parallel up to the batch size, but currently FitSNAP 
 does not support parallelized NN training.

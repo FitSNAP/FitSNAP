@@ -36,6 +36,7 @@ Indices and tables
    Introduction
    Installation
    Run
+   Linear
    Pytorch
    Uncertainty Quantification
 

@@ -1,7 +1,5 @@
-import enum
 from fitsnap3lib.scrapers.scrape import Scraper, convert
 from fitsnap3lib.io.input import Config
-from json import loads
 from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.io.output import output
 from copy import copy
@@ -139,17 +137,78 @@ class Vasp(Scraper):
             ## TODO propagate change of variable from "_size" to "_configs" or something similar
             self.group_table[group]['training_size'] = training_configs
             self.group_table[group]['testing_size'] = testing_configs
-            # self.files[folder] = natsorted(self.files[folder])
+
 
     def scrape_configs(self):
+        ## TODO clean up as we have already run many of the asertions by this point
+        ## TODO maybe just read JSONs for now...?
+        """ Copied almost directly from json_scraper.py"""
+        all_config_data = self.generate_outcar_data()
+        self.conversions = copy(self.default_conversions)
+        for i, data0 in enumerate(all_config_data):
+            assert len(data0) == 1, "More than one object (dataset) is in this file"
+
+            self.data = data0['Dataset']
+
+            assert len(self.data['Data']) == 1, "More than one configuration in this dataset"
+
+            assert all(k not in self.data for k in self.data["Data"][0].keys()), \
+                "Duplicate keys in dataset and data"
+
+            self.data.update(self.data.pop('Data')[0])  # Move self.data up one level
+
+            for key in self.data:
+                if "Style" in key:
+                    if key.replace("Style", "") in self.conversions:
+                        temp = config.sections["SCRAPER"].properties[key.replace("Style", "")]
+                        temp[1] = self.data[key]
+                        self.conversions[key.replace("Style", "")] = convert(temp)
+
+            for key in config.sections["SCRAPER"].properties:
+                if key in self.data:
+                    self.data[key] = np.asarray(self.data[key])
+
+            natoms = np.shape(self.data["Positions"])[0]
+            pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
+            self.data["QMLattice"] = (self.data["Lattice"] * self.conversions["Lattice"]).T
+            del self.data["Lattice"]  # We will populate this with the lammps-normalized lattice.
+            if "Label" in self.data:
+                del self.data["Label"]  # This comment line is not that useful to keep around.
+
+            if not isinstance(self.data["Energy"], float):
+                self.data["Energy"] = float(self.data["Energy"])
+
+            # Currently, ESHIFT should be in units of your training data (note there is no conversion)
+            if hasattr(config.sections["ESHIFT"], 'eshift'):
+                for atom in self.data["AtomTypes"]:
+                    self.data["Energy"] += config.sections["ESHIFT"].eshift[atom]
+
+            self.data["test_bool"] = self.test_bool[i]
+
+            self.data["Energy"] *= self.conversions["Energy"]
+
+            self._rotate_coords()
+            self._translate_coords()
+
+            self._weighting(natoms)
+
+            self.all_data.append(self.data)
+
+        return self.all_data
+
+
+    def generate_outcar_data(self):
         """Generate and send (mutable) data to send to fitsnap"""
-        all_outcar_data = []
+        
+        all_config_dicts = []
         for outcar_config in self.configs:
+            config_dict = {}
             outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type, lines = outcar_config[0]
             group = outcar_config[1]
-            outcar_data = self.parse_outcar_config(lines, potcar_list, potcar_elements, ions_per_type)
-            if type(outcar_data) == tuple:
-                crash_type, crash_line = outcar_data
+            config_data = self.parse_outcar_config(lines, potcar_list, potcar_elements, ions_per_type)
+            if type(config_data) == tuple:
+                crash_type, crash_line = config_data
+                is_bad_config = True
                 ## TODO sort out 'bad' OUTCARs earlier
                 if not self.vasp_ignore_incomplete:
                     raise Exception('!!ERROR: OUTCAR step incomplete!!' \
@@ -172,8 +231,21 @@ class Vasp(Scraper):
                         f'\n!!\tLine number of warning: {start_idx}'
                         f'\n!!\tExpected {crash_type}, {crash_line} '
                         '\n')
+                    continue
 
-            all_outcar_data.append(outcar_data)
+            config_header = {}
+            config_header['Group'] = group
+            config_header['File'] = outcar_filename
+            config_header['EnergyStyle'] = "electronvolt"
+            config_header['StressStyle'] = "kB"
+            config_header['AtomTypeStyle'] = "chemicalsymbol"
+            config_header['PositionsStyle'] = "angstrom"
+            config_header['ForcesStyle'] = "electronvoltperangstrom"
+            config_header['LatticeStyle'] = "angstrom"
+            config_header['Data'] = [config_data]
+
+            config_dict['Dataset'] = config_header
+            all_config_dicts.append(config_dict)
 
             # outcar_name, outcar_data, json_path, json_filestem, file_num
             json_path = f'JSON/{group}'
@@ -183,8 +255,8 @@ class Vasp(Scraper):
             json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','') #.replace(f'_{group}','')
             json_filename = f"{json_path}/{json_filestem}{file_num}.json"
             if not os.path.exists(json_filename) or self.vasp_overwrite_jsons:
-                self.write_json(json_filename, outcar_filename, outcar_data)
-        return all_outcar_data
+                self.write_json(json_filename, outcar_filename, config_dict)
+        return all_config_dicts
 
     def parse_outcar_config(self,lines,potcar_list,potcar_elements,ions_per_type):
         ## TODO clean up syntax to match FitSNAP3
@@ -283,6 +355,9 @@ class Vasp(Scraper):
         data['Energy'] = total_energie
         data["computation_code"] = "VASP"
         data["pseudopotential_information"] = potcar_list
+
+        ## Clean up (othewrise we get memory errors)
+        del lines
 
         return data
 
@@ -389,23 +464,10 @@ class Vasp(Scraper):
     
 
     ## TODO create naming scheme
-    def write_json(self, json_filename, outcar_filename, outcar_data):
+    def write_json(self, json_filename, outcar_filename, config_dict):
         ## Credit for next section goes to Mary Alice Cusentino's VASP2JSON script!
         dt = datetime.datetime.now().strftime('%B %d %Y %I:%M%p')
         comment_line = f'# Generated on {dt} from: {os.getcwd()}/{outcar_filename}'
-
-        allDataHeader = {}
-        allDataHeader['EnergyStyle'] = "electronvolt"
-        allDataHeader['StressStyle'] = "kB"
-        allDataHeader['AtomTypeStyle'] = "chemicalsymbol"
-        allDataHeader['PositionsStyle'] = "angstrom"
-        allDataHeader['ForcesStyle'] = "electronvoltperangstrom"
-        allDataHeader['LatticeStyle'] = "angstrom"
-        allDataHeader['Data'] = [outcar_data]
-
-        myDataset = {}
-
-        myDataset['Dataset'] = allDataHeader
 
         ## TODO move comment line from front to inside of JSON object
         ## TODO make sure all JSON reading by FitSNAP is compatible with both formats
@@ -416,7 +478,7 @@ class Vasp(Scraper):
         ## Write actual JSON object
         # with open(json_filename, "a+") as f: ## with comment line
         with open(json_filename, "w") as f:
-            json.dump(myDataset, f, indent=2, sort_keys=True)
+            json.dump(config_dict, f, indent=2, sort_keys=True)
         return
 
 
@@ -442,63 +504,63 @@ class Vasp(Scraper):
         ## Tryiing to think of a clever naming scheme so that users can trace back where they got the file
         return
 
-    def generate_FitSNAP_JSONs(self):
-        ## OLD VERSION: keep for naming/JSON-checking scheme
-        new_converted, bad_outcar_not_converted, already_converted = 0, 0, 0
-        json_path = config.sections['PATH'].datapath
-        if not os.path.exists(json_path):
-            os.mkdir(json_path)
-        for group, outcars in self.outcars_per_group.items():
-            ## Check group and group path, create if it doesn't exist
-            json_group_path = json_path + "/" + group
-            if not os.path.exists(json_group_path):
-                os.mkdir(json_group_path)
+    # def generate_FitSNAP_JSONs(self):
+    #     ## OLD VERSION: keep for naming/JSON-checking scheme
+    #     new_converted, bad_outcar_not_converted, already_converted = 0, 0, 0
+    #     json_path = config.sections['PATH'].datapath
+    #     if not os.path.exists(json_path):
+    #         os.mkdir(json_path)
+    #     for group, outcars in self.outcars_per_group.items():
+    #         ## Check group and group path, create if it doesn't exist
+    #         json_group_path = json_path + "/" + group
+    #         if not os.path.exists(json_group_path):
+    #             os.mkdir(json_group_path)
 
-            ## Begin OUTCAR processing
-            for i, outcar in enumerate(outcars):
-                pt.single_print(f"Reading: {outcar}")
-                ## Get OUTCAR directory name for labeling (e.g. default naming scheme, sorting, etc.)
-                outcar_path_stem = outcar.replace("/OUTCAR", "")[outcar.replace("/OUTCAR", "").rfind("/") + 1:]
+    #         ## Begin OUTCAR processing
+    #         for i, outcar in enumerate(outcars):
+    #             pt.single_print(f"Reading: {outcar}")
+    #             ## Get OUTCAR directory name for labeling (e.g. default naming scheme, sorting, etc.)
+    #             outcar_path_stem = outcar.replace("/OUTCAR", "")[outcar.replace("/OUTCAR", "").rfind("/") + 1:]
 
-                ## Create stem for JSON file naming
-                if self.only_label:
-                    json_file_stem = f"{json_group_path}/{self.json_label}{i}"
-                else:
-                    json_file_stem = f"{json_group_path}/{self.json_label}{i}_{outcar_path_stem}"
-                pt.single_print(f"\tNew JSON group path and file name(s): {json_file_stem}_*.json ")
+    #             ## Create stem for JSON file naming
+    #             if self.only_label:
+    #                 json_file_stem = f"{json_group_path}/{self.json_label}{i}"
+    #             else:
+    #                 json_file_stem = f"{json_group_path}/{self.json_label}{i}_{outcar_path_stem}"
+    #             pt.single_print(f"\tNew JSON group path and file name(s): {json_file_stem}_*.json ")
 
-                ## Find existing JSON files
-                json_files = glob(json_file_stem + "*.json")
+    #             ## Find existing JSON files
+    #             json_files = glob(json_file_stem + "*.json")
 
-                ## Begin converting OUTCARs to FitSNAP JSON format
-                ## Credit for next sections goes to Mary Alice Cusentino's VASP2JSON script!
-                if not json_files or self.overwrite:
-                    ## Reading/scraping of outcar
-                    data_outcar_configs, num_configs = self.scrape_outcar(outcar)
+    #             ## Begin converting OUTCARs to FitSNAP JSON format
+    #             ## Credit for next sections goes to Mary Alice Cusentino's VASP2JSON script!
+    #             if not json_files or self.overwrite:
+    #                 ## Reading/scraping of outcar
+    #                 data_outcar_configs, num_configs = self.scrape_outcar(outcar)
 
-                    ## Check that all expected data in configs from OUTCAR is present
-                    for n, data in enumerate(data_outcar_configs):
-                        m = n + 1
-                        if any([True if val is None else False for val in data.values()]):
-                            pt.single_print(
-                                f"!!WARNING: OUTCAR file is missing data: {outcar} \n"
-                                f"!!WARNING: Continuing without writing JSON...\n")
-                            self.bad_configs[group] = self.bad_configs[group] + [outcar]
-                            bad_outcar_not_converted += 1
-                            status = "could_not_convert"
-                        else:
-                            self.write_json(outcar, data, json_file_stem, m)
-                            new_converted += 1
-                            status = "new_converted"
-                else:
-                    already_converted += 1
-                    status = "already_converted"
-                log_info = [group, outcar, outcar_path_stem, json_file_stem, num_configs, status]
-                self.log_data.append(log_info)
+    #                 ## Check that all expected data in configs from OUTCAR is present
+    #                 for n, data in enumerate(data_outcar_configs):
+    #                     m = n + 1
+    #                     if any([True if val is None else False for val in data.values()]):
+    #                         pt.single_print(
+    #                             f"!!WARNING: OUTCAR file is missing data: {outcar} \n"
+    #                             f"!!WARNING: Continuing without writing JSON...\n")
+    #                         self.bad_configs[group] = self.bad_configs[group] + [outcar]
+    #                         bad_outcar_not_converted += 1
+    #                         status = "could_not_convert"
+    #                     else:
+    #                         self.write_json(outcar, data, json_file_stem, m)
+    #                         new_converted += 1
+    #                         status = "new_converted"
+    #             else:
+    #                 already_converted += 1
+    #                 status = "already_converted"
+    #             log_info = [group, outcar, outcar_path_stem, json_file_stem, num_configs, status]
+    #             self.log_data.append(log_info)
 
-        pt.single_print(f"Completed writing JSON files. Summary: \n"
-                        f"\t\t{new_converted} new JSON files created \n"
-                        f"\t\t{already_converted} OUTCARs already converted \n"
-                        f"\t\t{bad_outcar_not_converted} OUTCARs could not be converted \n"
-                        f"\t\tSee {self.log_file} for more details.\n")
+    #     pt.single_print(f"Completed writing JSON files. Summary: \n"
+    #                     f"\t\t{new_converted} new JSON files created \n"
+    #                     f"\t\t{already_converted} OUTCARs already converted \n"
+    #                     f"\t\t{bad_outcar_not_converted} OUTCARs could not be converted \n"
+    #                     f"\t\tSee {self.log_file} for more details.\n")
 

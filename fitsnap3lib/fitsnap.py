@@ -127,7 +127,11 @@ class FitSnap:
             if (self.delete_data):
                 del self.data
             self.calculator.collect_distributed_lists()
-            self.calculator.extras()
+
+            # calculator.extras() has dataframe processing specific to linear solvers only
+            
+            if (self.solver.linear):
+                self.calculator.extras()
 
         decorated_process_configs()
 

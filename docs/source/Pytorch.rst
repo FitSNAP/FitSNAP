@@ -183,15 +183,16 @@ where
 - :math:`E_m` is the target *ab initio* energy of configuration :math:`m`, subtracted by the LAMMPS 
   reference potential declared in the `[REFERENCE] section <Run.html#reference>`__.
 
-- :math:`i` indexes a particular atom
+- :math:`i` indexes a Cartesian index of a single atom; we lump Cartesian indices and atom indices 
+  into a single index here. 
 
 - :math:`w_m^F` is the force weight of configuration :math:`m`. These weights can be set by designating 
   the particular weights in the `[GROUPS] section <Run.html#groups>`__, or by declaring a global 
   weight in the :code:`[PYTORCH]` section, which will override the group weights. 
 
-- :math:`\hat{F}_{mi}(\theta)` is the model predicted force on atom :math:`i` in configuration :math:`m`
+- :math:`\hat{F}_{mi}(\theta)` is a model predicted force component :math:`i` in configuration :math:`m`
 
-- :math:`F_{mi}` is the target *ab initio* force on atom :math:`i` in configuration :math:`m`, 
+- :math:`F_{mi}` is a target *ab initio* force component :math:`i` in configuration :math:`m`, 
   subtracted by the LAMMPS reference potential force declared in the 
   `[REFERENCE] section <Run.html#reference>`__.
 

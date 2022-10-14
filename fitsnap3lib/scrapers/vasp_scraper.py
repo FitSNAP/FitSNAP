@@ -179,7 +179,7 @@ class Vasp(Scraper):
             if not os.path.exists(json_path):
                 os.makedirs(json_path)
             file_num = config_num + 1
-            json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','').replace(f'_{group}','')
+            json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','') #.replace(f'_{group}','')
             json_filename = f"{json_path}/{json_filestem}{file_num}.json"
             if not os.path.exists(json_filename) or 1:
                 self.write_json(json_filename, outcar_filename, outcar_data)

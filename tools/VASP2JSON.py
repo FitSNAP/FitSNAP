@@ -136,9 +136,6 @@ for i, line in enumerate(lines):
 
                 atom_coords.append(coordinates)
                 atom_forces.append(forces)
-            else:
-                atom_coords.append(None)
-                atom_forces.append(None)
         else:
             is_complete_config = False
             if not ignore_incomplete_configs:

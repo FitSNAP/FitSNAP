@@ -4,6 +4,7 @@ from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.io.output import output
 from copy import copy
 import os, random, glob, json, datetime ## TODO clean up once done
+
 import numpy as np
 
 
@@ -27,17 +28,14 @@ class Vasp(Scraper):
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
         self.vasp_overwrite_jsons = config.sections["GROUPS"].vasp_overwrite_jsons
 
-        ## Before scraping, esnure that user has correct input
-        ## TODO: Some
-        # self.check_train_test_sizes()
-
 
     def scrape_groups(self):
         ### Locate all OUTCARs in datapath
         ## TODO rework pathing/glob with os.path.join() to make system agnostic
         glob_asterisks = '/**/*'
-        outcars_base = self.vasppath + glob_asterisks
-        ## TODO make this search user-specify-able
+        outcars_base = os.path.join(self.vasppath, *glob_asterisks.split('/'))
+
+        ## TODO make this search user-specify-able (e.g., OUTCARs have labels/prefixes etc.)
         all_outcars = [f for f in glob.glob(outcars_base,recursive=True) if f.endswith('OUTCAR')]
 
         ## Grab test|train split
@@ -85,46 +83,39 @@ class Vasp(Scraper):
             self.files[file_base] = group_outcars
             self.configs[group] = []  ##TODO ? need this? copied from XYZ
 
-            try:
-                for outcar in self.files[file_base]:
-                    ## Open file
-                    with open(outcar, 'r') as fp:
-                        lines = fp.readlines()
-                    nlines = len(lines)
+            for outcar in self.files[file_base]:
+                ## Open file
+                with open(outcar, 'r') as fp:
+                    lines = fp.readlines()
+                nlines = len(lines)
 
-                    ## Use ion loop text to partition ionic steps
-                    ion_loop_text = 'aborting loop because EDIFF is reached'
-                    start_idx_loops = [i for i, line in enumerate(lines) if ion_loop_text in line]
-                    end_idx_loops = [i for i in start_idx_loops[1:]] + [nlines]
+                ## Use ion loop text to partition ionic steps
+                ion_loop_text = 'aborting loop because EDIFF is reached'
+                start_idx_loops = [i for i, line in enumerate(lines) if ion_loop_text in line]
+                end_idx_loops = [i for i in start_idx_loops[1:]] + [nlines]
 
-                    ## Grab potcar and element info
-                    header_lines = lines[:start_idx_loops[0]]
-                    potcar_list, potcar_elements, ions_per_type = self.parse_outcar_header(header_lines)
+                ## Grab potcar and element info
+                header_lines = lines[:start_idx_loops[0]]
+                potcar_list, potcar_elements, ions_per_type = self.parse_outcar_header(header_lines)
 
-                    ## Each config in a single OUTCAR is assigned the same
-                    ## parent data (i.e. filename, potcar and ion data)
-                    ## but separated for each iteration (idx loops on 'lines')
-                    ## Tuple data: outcar file name str, config number int, starting line number (for debug)  int, 
-                    ## potcar list, potcar elements list, number ions per element list, configuration lines list 
-                    unique_configs = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type,
-                                        lines[start_idx_loops[i]:end_idx_loops[i]])
-                                        for i in range(0, len(start_idx_loops))]
-                    for uc in unique_configs:
-                        config_dict = self.generate_outcar_dict(group, uc)
-                        if config_dict != -1:
-                            self.configs[group].append(config_dict)
-            except IndexError:
-                ## TODO what does this IndexError take care of? (inherited from Charlie's code)
-                self.configs[file_base].pop(-1)
+                ## Each config in a single OUTCAR is assigned the same
+                ## parent data (i.e. filename, potcar and ion data)
+                ## but separated for each iteration (idx loops on 'lines')
+                ## Tuple data: outcar file name str, config number int, starting line number (for debug)  int, 
+                ## potcar list, potcar elements list, number ions per element list, configuration lines list 
+                unique_configs = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type,
+                                    lines[start_idx_loops[i]:end_idx_loops[i]])
+                                    for i in range(0, len(start_idx_loops))]
+                for uc in unique_configs:
+                    config_dict = self.generate_outcar_dict(group, uc)
+                    if config_dict != -1:
+                        self.configs[group].append(config_dict)
 
             if config.sections["GROUPS"].random_sampling:
                 random.shuffle(self.configs[group], pt.get_seed)
             nconfigs = len(self.configs[group])
 
             ## Assign configurations to train/test groups
-            ## check_train_test_sizes() confirms that training_size > 0 and
-            ## that training_size + testing_size = 1.0
-            ## TODO make sure this doesn't conflict with Logan's fix
             if training_size == 1:
                 training_configs = nconfigs
                 testing_configs = 0
@@ -148,21 +139,15 @@ class Vasp(Scraper):
                 self.tests = {}
             self.tests[group] = []
 
-            ## Removed next two lines since we gracefully crash if train/test not OK
-            # for i in range(nconfigs - training_configs - testing_configs):
-            #     self.configs[group].pop()
             for i in range(testing_configs):
                 self.tests[group].append(self.configs[group].pop())
 
-            ## TODO propagate change of variable from "_size" to "_configs" or something similar
             self.group_table[group]['training_size'] = training_configs
             self.group_table[group]['testing_size'] = testing_configs
 
 
     def scrape_configs(self):
         """Generate and send (mutable) data to send to fitsnap"""
-        ## TODO clean up as we have already run many of the asertions by this point
-        ## TODO maybe just read JSONs for now...?
         """ Copied almost exactly from json_scraper.py"""
         self.conversions = copy(self.default_conversions)
         for i, data0 in enumerate(self.configs):
@@ -230,7 +215,6 @@ class Vasp(Scraper):
         if type(config_data) == tuple:
             crash_type, crash_line = config_data
             is_bad_config = True
-            ## TODO sort out 'bad' OUTCARs earlier
             if not self.vasp_ignore_incomplete:
                 raise Exception('!!ERROR: OUTCAR step incomplete!!' \
                     '\n!!Not all atom coordinates/forces were written to a configuration' 
@@ -281,8 +265,6 @@ class Vasp(Scraper):
             return -1
 
     def parse_outcar_config(self,lines,potcar_list,potcar_elements,ions_per_type):
-        ## TODO clean up syntax to match FitSNAP3
-        ## TODO clean up variable names to match input, increase clarity
         ## LIST SECTION_MARKERS AND RELATED FUNCTIONS ARE HARD-CODED!!
         ## DO NOT CHANGE UNLESS YOU KNOW WHAT YOU'RE DOING!!
 
@@ -318,7 +300,6 @@ class Vasp(Scraper):
 
         ## Search entire file to create indices for each section
         for i, line in enumerate(lines):
-            ## TODO refactor - probably a smarter/faster way to do the "line_test" part...
             line_test = [True if sm in line else False for sm in section_markers]
             if any(line_test):
                 test_idx = [n for n, b in enumerate(line_test) if b][0]
@@ -485,10 +466,7 @@ class Vasp(Scraper):
         energie = float(str1)
         return energie
     
-
-    ## TODO create naming scheme
     def write_json(self, json_filename, outcar_filename, config_dict):
-        ## Credit for next section goes to Mary Alice Cusentino's VASP2JSON script!
         dt = datetime.datetime.now().strftime('%B %d %Y %I:%M%p')
         comment_line = f'# Generated on {dt} from: {os.getcwd()}/{outcar_filename}'
 
@@ -520,64 +498,3 @@ class Vasp(Scraper):
     def vasp_namer(self):
         ## Tryiing to think of a clever naming scheme so that users can trace back where they got the file
         return
-
-    # def generate_FitSNAP_JSONs(self):
-    #     ## OLD VERSION: keep for naming/JSON-checking scheme
-    #     new_converted, bad_outcar_not_converted, already_converted = 0, 0, 0
-    #     json_path = config.sections['PATH'].datapath
-    #     if not os.path.exists(json_path):
-    #         os.mkdir(json_path)
-    #     for group, outcars in self.outcars_per_group.items():
-    #         ## Check group and group path, create if it doesn't exist
-    #         json_group_path = json_path + "/" + group
-    #         if not os.path.exists(json_group_path):
-    #             os.mkdir(json_group_path)
-
-    #         ## Begin OUTCAR processing
-    #         for i, outcar in enumerate(outcars):
-    #             pt.single_print(f"Reading: {outcar}")
-    #             ## Get OUTCAR directory name for labeling (e.g. default naming scheme, sorting, etc.)
-    #             outcar_path_stem = outcar.replace("/OUTCAR", "")[outcar.replace("/OUTCAR", "").rfind("/") + 1:]
-
-    #             ## Create stem for JSON file naming
-    #             if self.only_label:
-    #                 json_file_stem = f"{json_group_path}/{self.json_label}{i}"
-    #             else:
-    #                 json_file_stem = f"{json_group_path}/{self.json_label}{i}_{outcar_path_stem}"
-    #             pt.single_print(f"\tNew JSON group path and file name(s): {json_file_stem}_*.json ")
-
-    #             ## Find existing JSON files
-    #             json_files = glob(json_file_stem + "*.json")
-
-    #             ## Begin converting OUTCARs to FitSNAP JSON format
-    #             ## Credit for next sections goes to Mary Alice Cusentino's VASP2JSON script!
-    #             if not json_files or self.overwrite:
-    #                 ## Reading/scraping of outcar
-    #                 data_outcar_configs, num_configs = self.scrape_outcar(outcar)
-
-    #                 ## Check that all expected data in configs from OUTCAR is present
-    #                 for n, data in enumerate(data_outcar_configs):
-    #                     m = n + 1
-    #                     if any([True if val is None else False for val in data.values()]):
-    #                         pt.single_print(
-    #                             f"!!WARNING: OUTCAR file is missing data: {outcar} \n"
-    #                             f"!!WARNING: Continuing without writing JSON...\n")
-    #                         self.bad_configs[group] = self.bad_configs[group] + [outcar]
-    #                         bad_outcar_not_converted += 1
-    #                         status = "could_not_convert"
-    #                     else:
-    #                         self.write_json(outcar, data, json_file_stem, m)
-    #                         new_converted += 1
-    #                         status = "new_converted"
-    #             else:
-    #                 already_converted += 1
-    #                 status = "already_converted"
-    #             log_info = [group, outcar, outcar_path_stem, json_file_stem, num_configs, status]
-    #             self.log_data.append(log_info)
-
-    #     pt.single_print(f"Completed writing JSON files. Summary: \n"
-    #                     f"\t\t{new_converted} new JSON files created \n"
-    #                     f"\t\t{already_converted} OUTCARs already converted \n"
-    #                     f"\t\t{bad_outcar_not_converted} OUTCARs could not be converted \n"
-    #                     f"\t\tSee {self.log_file} for more details.\n")
-

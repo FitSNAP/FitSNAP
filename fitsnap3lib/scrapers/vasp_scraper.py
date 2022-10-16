@@ -22,12 +22,13 @@ class Vasp(Scraper):
         self.all_config_dicts = []
         self.bc_bool = False
         self.infile = config.args.infile
+        self.vasppath = config.sections['PATH'].datapath
         self.group_table = config.sections["GROUPS"].group_table
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
         self.vasp_overwrite_jsons = config.sections["GROUPS"].vasp_overwrite_jsons
 
         ## Before scraping, esnure that user has correct input
-        ## TODO: Logan recently fixed this, check before putting in again
+        ## TODO: Some
         # self.check_train_test_sizes()
 
 
@@ -35,13 +36,23 @@ class Vasp(Scraper):
         ### Locate all OUTCARs in datapath
         ## TODO rework pathing/glob with os.path.join() to make system agnostic
         glob_asterisks = '/**/*'
-        outcars_base = config.sections['PATH'].datapath + glob_asterisks
+        outcars_base = self.vasppath + glob_asterisks
         ## TODO make this search user-specify-able
         all_outcars = [f for f in glob.glob(outcars_base,recursive=True) if f.endswith('OUTCAR')]
 
         ## Grab test|train split
         self.group_dict = {k: config.sections['GROUPS'].group_types[i] for i, k in enumerate(config.sections['GROUPS'].group_sections)}
+
         for group in self.group_table:
+            ## First, check that all group folders exist
+            group_vasppath = f'{self.vasppath}/{group}'
+            if not os.path.exists(group_vasppath):
+                raise Exception('!!ERROR: group folder not detected!!' 
+                    '\n!!Please check that all groups in the input file have an associated group folder' 
+                    f'\n!!\tInput file: {self.infile}'
+                    f'\n!!\tMissing group folder: {group_vasppath}'
+                    '\n')
+
             training_size = None
             if 'size' in self.group_table[group]:
                 training_size = self.group_table[group]['size']
@@ -60,8 +71,15 @@ class Vasp(Scraper):
                 raise ValueError('Please set training size for {}'.format(group))
             
             ## Grab OUTCARS for this training group
-            ## TODO emulate XYZ pop() to ensure items are processed once only
-            group_outcars = [f for f in all_outcars if group in f]
+            ## Test filepath to be sure that unique group name is being matched
+            # group_outcars = [f for f in all_outcars if group == f.replace(self.vasppath,"").replace("/",'&')[1:].split('&')]
+            group_outcars = [f for f in all_outcars if group_vasppath + '/' in f]
+            if len(group_outcars) == 0:
+                raise Exception('!!ERROR: no OUTCARs found in group!!' 
+                    '\n!!Please check that all groups in the input file have at least one file named "OUTCAR"' 
+                    '\n!!in at least one subdirectory of the group folder' 
+                    f'\n!!\tMissing group data root: {group_vasppath}'
+                    '\n')
 
             file_base = os.path.join(config.sections['PATH'].datapath, group)
             self.files[file_base] = group_outcars
@@ -474,13 +492,7 @@ class Vasp(Scraper):
         dt = datetime.datetime.now().strftime('%B %d %Y %I:%M%p')
         comment_line = f'# Generated on {dt} from: {os.getcwd()}/{outcar_filename}'
 
-        ## TODO move comment line from front to inside of JSON object
-        ## TODO make sure all JSON reading by FitSNAP is compatible with both formats
-        # Comment line at top breaks the JSON format and readers complain
-        # with open(json_filename, "w") as f:
-        #     f.write(comment_line + "\n")
-
-        ## Write actual JSON object
+        ## Write JSON object
         # with open(json_filename, "a+") as f: ## with comment line
         with open(json_filename, "w") as f:
             json.dump(config_dict, f, indent=2, sort_keys=True)

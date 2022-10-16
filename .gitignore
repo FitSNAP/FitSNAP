@@ -15,12 +15,12 @@ examples/InP_VASP/_test_JSON
 examples/InP_VASP/output_compare
 examples/InP_VASP/Descriptors.npy
 examples/InP_VASP/FitSNAP.df
-examples/InP_VASP/InP_metrics.md
-examples/InP_VASP/InP_pot.snapcoeff
-examples/InP_VASP/InP_pot.snapparam
+examples/InP_VASP/*InP_metrics*.md
+examples/InP_VASP/*InP_pot*.snapcoeff
+examples/InP_VASP/*InP_pot*.snapparam
 examples/InP_VASP/Truth-Ref.npy
 examples/InP_VASP/Weights.npy
-examples/InP_VASP/log.lammps
+examples/InP_VASP/*log.lammps
 
 # ignoring built test docs
 docs/build/

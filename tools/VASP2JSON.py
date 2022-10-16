@@ -139,7 +139,7 @@ for i, line in enumerate(lines):
         else:
             is_complete_config = False
             if not ignore_incomplete_configs:
-                raise Exception('!!ERROR: OUTCAR step incomplete!!' \
+                raise Exception('!!ERROR: Incomplete OUTCAR configuration found!!' \
                     '\n!!Not all atom coordinates/forces were written to a configuration' 
                     '\n!!Please check the OUTCAR for incomplete steps and adjust, or toggle variable "ignore_incomplete_configs" to True'
                     '\n!!(not recommended as you may miss future incomplete steps)' 
@@ -148,7 +148,7 @@ for i, line in enumerate(lines):
                     f'\n!!\tExpected atom coordinates and forces, found: {last_atom_line}' 
                     '\n')
             else:
-                print('!!WARNING: OUTCAR step incomplete!!'
+                print('!!WARNING: Incomplete OUTCAR configuration found!!'
                     '\n!!Not all atom coordinates/coordinates were written to a configuration'
                     '\n!!Variable "ignore_incomplete_configs" is toggled to True'
                     '\n!!Note that this may result in missing training set data (e.g., missing final converged structures)'

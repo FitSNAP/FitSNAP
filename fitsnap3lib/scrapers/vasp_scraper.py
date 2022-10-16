@@ -107,7 +107,7 @@ class Vasp(Scraper):
                                     lines[start_idx_loops[i]:end_idx_loops[i]])
                                     for i in range(0, len(start_idx_loops))]
                 for uc in unique_configs:
-                    config_dict = self.generate_outcar_dict(group, uc)
+                    config_dict = self.generate_config_dict(group, uc)
                     if config_dict != -1:
                         self.configs[group].append(config_dict)
 
@@ -148,7 +148,6 @@ class Vasp(Scraper):
 
     def scrape_configs(self):
         """Generate and send (mutable) data to send to fitsnap"""
-        """ Copied almost exactly from json_scraper.py"""
         self.conversions = copy(self.default_conversions)
         for i, data0 in enumerate(self.configs):
             data = data0[0]
@@ -203,66 +202,83 @@ class Vasp(Scraper):
 
         return self.all_data
 
-    def generate_outcar_dict(self, group, outcar_config):
+    def generate_config_dict(self, group, outcar_config):
+        """If no JSON has been created, create dictionary for each configuration contained in a single OUTCAR"""
+        """Otherwise, read existing JSON (unless input file variable 'vasp_overwrite_jsons' is toggled to True)"""
+        ## TODO create CSV of converted files and check that (instead of reading OUTCAR again)
         config_dict = {}
         is_bad_config = False
+        has_json = None
         outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type, lines = outcar_config
-        config_data = self.parse_outcar_config(lines, potcar_list, potcar_elements, ions_per_type)
-        if type(config_data) == tuple:
-            crash_type, crash_line = config_data
-            is_bad_config = True
-            if not self.vasp_ignore_incomplete:
-                raise Exception('!!ERROR: OUTCAR step incomplete!!' \
-                    '\n!!Not all atom coordinates/forces were written to a configuration' 
-                    '\n!!Please check the OUTCAR for incomplete steps and adjust, '
-                    '\n!!or toggle variable "vasp_ignore_incomplete" to True'
-                    '\n!!(not recommended as you may miss future incomplete steps)' 
-                    f'\n!!\tOUTCAR location: {outcar_filename}' 
-                    f'\n!!\tConfiguration number: {config_num}' 
-                    f'\n!!\tLine number of error: {start_idx}' 
-                    f'\n!!\tExpected {crash_type}, {crash_line} '
-                    '\n')
-            else:
-                output.screen('!!WARNING: OUTCAR step incomplete!!'
-                    '\n!!Not all atom coordinates/coordinates were written to a configuration'
-                    '\n!!Variable "vasp_ignore_incomplete" is toggled to True'
-                    '\n!!Note that this may result in missing training set data (e.g., missing final converged structures)'
-                    f'\n!!\tOUTCAR location: {outcar_filename}' 
-                    f'\n!!\tConfiguration number: {config_num}'
-                    f'\n!!\tLine number of warning: {start_idx}'
-                    f'\n!!\tExpected {crash_type}, {crash_line} '
-                    '\n')
+        file_num = config_num + 1
 
-        config_header = {}
-        config_header['Group'] = group
-        config_header['File'] = outcar_filename
-        config_header['EnergyStyle'] = "electronvolt"
-        config_header['StressStyle'] = "kB"
-        config_header['AtomTypeStyle'] = "chemicalsymbol"
-        config_header['PositionsStyle'] = "angstrom"
-        config_header['ForcesStyle'] = "electronvoltperangstrom"
-        config_header['LatticeStyle'] = "angstrom"
-        config_header['Data'] = [config_data]
+        ## JSON read/write setup
+        json_path = f'JSON/{group}'
+        json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','') #.replace(f'_{group}','')
+        json_filename = f"{json_path}/{json_filestem}{file_num}.json"
 
-        config_dict['Dataset'] = config_header
+        ## Check if JSON was already created from this OUTCAR
+        if not os.path.exists(json_path):
+            os.makedirs(json_path)
+            has_json = False
+        else:
+            has_json = os.path.exists(json_filename)
 
-        if not is_bad_config:
-            json_path = f'JSON/{group}'
-            if not os.path.exists(json_path):
-                os.makedirs(json_path)
-            file_num = config_num + 1
-            json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','') #.replace(f'_{group}','')
-            json_filename = f"{json_path}/{json_filestem}{file_num}.json"
-            if not os.path.exists(json_filename) or self.vasp_overwrite_jsons:
-                self.write_json(json_filename, outcar_filename, config_dict)
+        if has_json and not self.vasp_overwrite_jsons:
+            with open(json_filename, 'r') as f:
+                config_dict = json.loads(f.read(), parse_constant=True)
             return config_dict
         else:
-            return -1
+            config_data = self.parse_outcar_config(lines, potcar_list, potcar_elements, ions_per_type)
+            if type(config_data) == tuple:
+                crash_type, crash_line = config_data
+                is_bad_config = True
+                if not self.vasp_ignore_incomplete:
+                    raise Exception('!!ERROR: Incomplete OUTCAR configuration found!!' \
+                        '\n!!Not all atom coordinates/forces were written to a configuration' 
+                        '\n!!Please check the OUTCAR for incomplete steps and adjust, '
+                        '\n!!or toggle variable "vasp_ignore_incomplete" to True'
+                        '\n!!(not recommended as you may miss future incomplete steps)' 
+                        f'\n!!\tOUTCAR location: {outcar_filename}' 
+                        f'\n!!\tConfiguration number: {config_num}' 
+                        f'\n!!\tLine number of error: {start_idx}' 
+                        f'\n!!\tExpected {crash_type}, {crash_line} '
+                        '\n')
+                else:
+                    output.screen('!!WARNING: Incomplete OUTCAR configuration found!!'
+                        '\n!!Not all atom coordinates/coordinates were written to a configuration'
+                        '\n!!Variable "vasp_ignore_incomplete" is toggled to True'
+                        '\n!!Note that this may result in missing training set data (e.g., missing final converged structures)'
+                        f'\n!!\tOUTCAR location: {outcar_filename}' 
+                        f'\n!!\tConfiguration number: {config_num}'
+                        f'\n!!\tLine number of warning: {start_idx}'
+                        f'\n!!\tExpected {crash_type}, {crash_line} '
+                        '\n')
+
+            config_header = {}
+            config_header['Group'] = group
+            config_header['File'] = outcar_filename
+            config_header['EnergyStyle'] = "electronvolt"
+            config_header['StressStyle'] = "kB"
+            config_header['AtomTypeStyle'] = "chemicalsymbol"
+            config_header['PositionsStyle'] = "angstrom"
+            config_header['ForcesStyle'] = "electronvoltperangstrom"
+            config_header['LatticeStyle'] = "angstrom"
+            config_header['Data'] = [config_data]
+
+            config_dict['Dataset'] = config_header
+
+            if not is_bad_config:
+                self.write_json(json_filename, outcar_filename, config_dict)
+                return config_dict
+            else:
+                return -1
 
     def parse_outcar_config(self,lines,potcar_list,potcar_elements,ions_per_type):
+        ## Many thanks to Mary Alice Cusentino and Logan Williams for parts of the following code
+        ## Based on the VASP2JSON.py script in the 'tools' directory
         ## LIST SECTION_MARKERS AND RELATED FUNCTIONS ARE HARD-CODED!!
         ## DO NOT CHANGE UNLESS YOU KNOW WHAT YOU'RE DOING!!
-
         section_markers = [
             'FORCE on cell',
             'direct lattice vectors',

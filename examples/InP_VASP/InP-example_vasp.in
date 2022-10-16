@@ -73,13 +73,12 @@ group_sections = name training_size testing_size eweight fweight vweight
 group_types = str float float float float float
 smartweights = 0
 random_sampling = 0
-vasp_overwrite_jsons = 1
+vasp_overwrite_jsons = 0
 vasp_ignore_incomplete = 1
-## Tabbed (bugged out!)
-smallDefects_aa = 	1.0 0.0     5319411.52359161  	12160.2964901219 	1.0e-12
-#Defects_iP  = 		1.0 0.0     669131.752996794  	5805.68960393981  	1.0e-12
-#Defects_aP = 		1 0	0.0     280933.371566026    3618.73557864646  	1.0e-12
-#aa = 		        1.0 0.0     5319411.52359161	12160.2964901219 	1.0e-12
+smallDefects_aa = 	1.0     0.0     5319411.52359161  	12160.2964901219 	1.0e-12
+Defects_iP  = 		1.0     0.0     669131.752996794  	5805.68960393981  	1.0e-12
+Defects_aP = 		1.0	    0.0     280933.371566026    3618.73557864646  	1.0e-12
+#aa = 		        1.0     0.0     5319411.52359161	12160.2964901219 	1.0e-12
 
 [EXTRAS]
 dump_descriptors = 0

@@ -1,6 +1,3 @@
-# ignorming my own gitignore (so it doesn't overwrite upstream FiitSNAP)
-.gitignore
-
 # ignoring run example files
 examples/Ta_Linear_JCP2014/Descriptors.npy
 examples/Ta_Linear_JCP2014/FitSNAP.df
@@ -21,7 +18,8 @@ examples/InP_VASP/*InP_pot*.snapparam
 examples/InP_VASP/Truth-Ref.npy
 examples/InP_VASP/Weights.npy
 examples/InP_VASP/*log.lammps
-
+examples/InP_VASP/InP-example_json.in
+examples/InP_VASP/vJSON
 # ignoring built test docs
 docs/build/
 

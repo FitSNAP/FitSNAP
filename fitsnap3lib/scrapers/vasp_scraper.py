@@ -3,9 +3,11 @@ from fitsnap3lib.io.input import Config
 from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.io.output import output
 from copy import copy
-import os, random, glob, json, datetime ## TODO clean up once done
-
+from glob import glob
+from random import shuffle
+from datetime import datetime
 import numpy as np
+import os, json
 
 
 config = Config()
@@ -31,12 +33,11 @@ class Vasp(Scraper):
 
     def scrape_groups(self):
         ### Locate all OUTCARs in datapath
-        ## TODO rework pathing/glob with os.path.join() to make system agnostic
         glob_asterisks = '/**/*'
         outcars_base = os.path.join(self.vasppath, *glob_asterisks.split('/'))
 
         ## TODO make this search user-specify-able (e.g., OUTCARs have labels/prefixes etc.)
-        all_outcars = [f for f in glob.glob(outcars_base,recursive=True) if f.endswith('OUTCAR')]
+        all_outcars = [f for f in glob(outcars_base,recursive=True) if f.endswith('OUTCAR')]
 
         ## Grab test|train split
         self.group_dict = {k: config.sections['GROUPS'].group_types[i] for i, k in enumerate(config.sections['GROUPS'].group_sections)}
@@ -81,7 +82,7 @@ class Vasp(Scraper):
 
             file_base = os.path.join(config.sections['PATH'].datapath, group)
             self.files[file_base] = group_outcars
-            self.configs[group] = []  ##TODO ? need this? copied from XYZ
+            self.configs[group] = []  
 
             for outcar in self.files[file_base]:
                 ## Open file
@@ -110,9 +111,10 @@ class Vasp(Scraper):
                     config_dict = self.generate_config_dict(group, uc)
                     if config_dict != -1:
                         self.configs[group].append(config_dict)
+                del lines
 
             if config.sections["GROUPS"].random_sampling:
-                random.shuffle(self.configs[group], pt.get_seed)
+                shuffle(self.configs[group], pt.get_seed)
             nconfigs = len(self.configs[group])
 
             ## Assign configurations to train/test groups
@@ -205,7 +207,7 @@ class Vasp(Scraper):
     def generate_config_dict(self, group, outcar_config):
         """If no JSON has been created, create dictionary for each configuration contained in a single OUTCAR"""
         """Otherwise, read existing JSON (unless input file variable 'vasp_overwrite_jsons' is toggled to True)"""
-        ## TODO create CSV of converted files and check that (instead of reading OUTCAR again)
+        ## TODO future: create CSV of converted files and check that (instead of loading full OUTCAR again)
         config_dict = {}
         is_bad_config = False
         has_json = None
@@ -478,9 +480,9 @@ class Vasp(Scraper):
         return energie
     
     def write_json(self, json_filename, outcar_filename, config_dict):
-        dt = datetime.datetime.now().strftime('%B %d %Y %I:%M%p')
+        dt = datetime.now().strftime('%B %d %Y %I:%M%p')
 
-        ## TODO future versions, include generation data in JSON file
+        ## TODO future versions, include generation metadata in JSON file
         comment_line = f'# Generated on {dt} from: {os.getcwd()}/{outcar_filename}'
 
         ## Write JSON object

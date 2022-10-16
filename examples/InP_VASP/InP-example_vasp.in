@@ -1,0 +1,113 @@
+##  VASP scraper directions
+##  =======================
+##  This scraper takes OUTCAR files, extracts all completed ionic steps (called 'configurations'), and creates dictionary objects for each one.
+##  On the first FitSNAP run, the scraper will write JSON files for each configuration and use those for subsequent FitSNAP runs.
+##  This is to save time in file I/O for FitSNAP (OUTCARs have a lot of extra text and can be very large files).
+##
+##      To set up this scraper:
+##          0. Make sure all the OUTCAR files you want to include are named simply OUTCAR. 
+##             Each one MUST be contained in at least one directory but can be at arbitrary directory depth.
+##             This structure was chosen to mirror default VASP input and output structure (i.e., 'all_simulations/unique_simulation_1/.../*CAR')
+##          1. In the [SCRAPER] section, set 'scaper = VASP'
+##          2. Create a *data root directory* in the same place as your FitSNAP input file 
+##                  --> Here, that directory is ./VASP
+##          3. In the [PATH] section, set 'datapath = {your_root_directory}' (in this example, 'VASP')
+##          4. Inside the data root directory (datapath), create one or more *group directories* 
+##                  --> Here, there are 3 groups, 'Defects_aP', 'Defects_iP', and 'smallDefects_aa'
+##          5. Inside of each group directory, place *VASP run directories* that you would like to train on, i.e., 'all_simulations/unique_simulation_1/.../*CAR'
+##                  --> Here, each group has a few different subfolders with OUTCARs, such as './VASP/Defects_aP/type1/OUTCAR'
+##          6. In the [GROUPS] section, add the group directories that you would like to include in your fit 
+##                  --> Here, all three example groups are included, but you only need a single group folder to perform a fit
+##                  --> Please see the FitSNAP documentation to learn more about train/test splitting, group energy and force weights, etc.
+##          7. Run FitSNAP (see other documentation for how to do this)
+##
+##      Expected default scraper output: 
+##          FitSNAP will create a new directory (default vJSON), with FitSNAP-formatted JSON file(s) named after the group and (sub)directories where the OUTCAR was located
+##                  --> Example: if the OUTCAR was found in 'VASP/some_group/subdir1/subdir2/OUTCAR' and has 3 configurations, the JSONs will be named
+##                      'VASP_some_group_subdir1_subdir2_1.json', 'VASP_some_group_subdir1_subdir2_2.json', and 'VASP_some_group_subdir1_subdir2_3.json' 
+##          
+##          The scraper will crash if an OUTCAR configuration is found not to run to completion (for example, a run was interrupted before converging a relaxation)
+##
+##      Optional scraper variables in [GROUPS] section (if not included below, defaut values are used):
+##          vasp_json_pathname (type <str>, default vJSON)
+##                  --> The user can set the new directory name through the variable 'vasp_json_pathname' in the [GROUPS] section
+##          vasp_ignore_incomplete (type <bool>, default False) 
+##                  --> If True or 1, ignore incomplete OUTCAR configurations (warning will still be thrown)
+##                      All other viable configurations will be included in the fit. The configuration number of the incompete one will be skipped over.
+##                      Use with caution! Uncomment 'Defects_iP_crash' group below and set this to False for an example of crash behavior.
+##          vasp_ignore_jsons (type <bool>, default False) 
+##                  --> If True or 1, ignore any created JSONs, forcing the VASP scraper to read all OUTCARs for every FitSNAP run.
+##                      Strongly not recommended, may lead to major slowdowns and/or file I/O issues
+##
+##  Note: This is the first iteration of the VASP scraper. Many improvements are planned and suggestions are very welcome!
+##  Final note: This InP example is meant *only* to show how to use the VASP scraper!
+##              These fits are *not at all* equivalent to the InP SNAP from the InP_JPCA2020 example (limited data)!
+
+[BISPECTRUM]
+numTypes = 2
+twojmax = 6 6
+rcutfac = 1.0
+rfac0 = 0.99363
+rmin0 = 0.0
+wj = 1.0 0.9293160905266721
+radelem = 3.812045629514403 3.829453817954964
+type = In P
+wselfallflag = 1
+chemflag = 1
+bnormflag = 1
+quadraticflag = 0
+bzeroflag = 1
+
+[CALCULATOR]
+calculator = LAMMPSSNAP
+energy = 1
+force = 1
+stress = 1
+
+[ESHIFT]
+In = -1.65967588701534
+P = 4.38159549501534
+
+[SOLVER]
+solver = SVD
+compute_testerrs = 1
+detailed_errors = 1
+
+[SCRAPER]
+## See comments above for explicit instructions on using the VASP scraper.
+scraper = VASP
+
+[PATH]
+dataPath = VASP
+
+[OUTFILE]
+metrics = vasp_InP-subset_metrics.md
+potential = vasp_InP-subset_pot
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.2
+pair_coeff1 = * * zero
+pair_coeff2 = 1 1 zbl 49 49
+pair_coeff3 = 1 2 zbl 49 15
+pair_coeff4 = 2 2 zbl 15 15
+
+[GROUPS]
+group_sections = name training_size testing_size eweight fweight vweight
+group_types = str float float float float float
+smartweights = 0
+random_sampling = 0
+vasp_json_pathname = vJSON
+smallDefects_aa = 	1.0     0.0     5319411.52359161  	12160.2964901219 	1.0e-12
+Defects_aP = 		1.0	    0.0     280933.371566026    3618.73557864646  	1.0e-12
+Defects_iP  = 		1.0     0.0     669131.752996794  	5805.68960393981  	1.0e-12
+# Defects_iP_crash  = 1.0     0.0     669131.752996794  	5805.68960393981  	1.0e-12 ## Example of group with one incomplete run & crash behavior
+
+[EXTRAS]
+dump_descriptors = 0
+dump_truth = 0
+dump_weights = 0
+
+[MEMORY]
+override = 0

@@ -26,7 +26,7 @@ class Groups(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'random_seed', 'BOLTZ']
+        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'random_seed', 'vasp_json_pathname','vasp_ignore_incomplete','vasp_ignore_jsons','BOLTZ']
 
         # for value_name in config['GROUPS']:
         #     if value_name in allowedkeys: continue
@@ -37,6 +37,10 @@ class Groups(Section):
         self.smartweights = self.get_value("GROUPS", "smartweights", "0", "bool")
         self.random_sampling = self.get_value("GROUPS", "random_sampling", "0", "bool")
         self.random_seed = self.get_value("GROUPS", "random_seed", "0", "float")
+        self.random_seed = self.get_value("GROUPS", "random_seed", "0", "float")
+        self.vasp_json_pathname = self.get_value("GROUPS", "vasp_json_pathname", "vJSON", "str")
+        self.vasp_ignore_incomplete = self.get_value("GROUPS", "vasp_ignore_incomplete", "1", "bool")
+        self.vasp_ignore_jsons = self.get_value("GROUPS", "vasp_ignore_jsons", "0", "bool")
         self.boltz = self.get_value("BISPECTRUM", "BOLTZ", "0", "float")
         _str_2_fun(self.group_types)
         self.group_table = None
@@ -44,6 +48,7 @@ class Groups(Section):
             self.read_group_file()
         else:
             self.read_group_config()
+
         # run init methods to populate class
         # delete config and args to rely only on child's members
         self.delete()
@@ -58,6 +63,17 @@ class Groups(Section):
             if k in self.group_table:
                 self.group_table.pop(k)
         for k, v in self.group_table.items():
+            expected_variables = len(self.group_sections[1:]) ## exclude duplicated 'name' column (same as group)
+            found_variables = len(v) 
+
+            if found_variables != expected_variables:
+                ## There is probably a typo somewhere, let user know
+                raise Exception('!!ERROR: Too many group variables found!!' 
+                        '\n!!Check the input file section [GROUP] for extra variables, typos ' 
+                        f'\n!!\tInput file: {self._args.infile}' 
+                        f'\n!!\tGroup line: {k} = {v}' 
+                        f'\n!!\tExpected {expected_variables} columns for settings, found {found_variables}'
+                        '\n')
             self.group_table[k] = {self.group_sections[i+1]: self.group_types[i+1](item) for i, item in enumerate(v)}
 
     def read_group_file(self):

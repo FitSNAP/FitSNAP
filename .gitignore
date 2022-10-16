@@ -15,6 +15,7 @@ examples/InP_VASP/FitSNAP.df
 examples/InP_VASP/*InP_metrics*.md
 examples/InP_VASP/*InP_pot*.snapcoeff
 examples/InP_VASP/*InP_pot*.snapparam
+examples/InP_VASP/*InP-subset*
 examples/InP_VASP/Truth-Ref.npy
 examples/InP_VASP/Weights.npy
 examples/InP_VASP/*log.lammps

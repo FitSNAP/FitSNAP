@@ -234,7 +234,7 @@ class Vasp(Scraper):
                 crash_type, crash_line = config_data
                 is_bad_config = True
                 if not self.vasp_ignore_incomplete:
-                    raise Exception('!!ERROR: Incomplete OUTCAR configuration found!!' \
+                    raise Exception('!!ERROR: Incomplete OUTCAR configuration found!!' 
                         '\n!!Not all atom coordinates/forces were written to a configuration' 
                         '\n!!Please check the OUTCAR for incomplete steps and adjust, '
                         '\n!!or toggle variable "vasp_ignore_incomplete" to True'

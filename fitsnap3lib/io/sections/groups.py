@@ -46,6 +46,7 @@ class Groups(Section):
             self.read_group_file()
         else:
             self.read_group_config()
+
         # run init methods to populate class
         # delete config and args to rely only on child's members
         self.delete()
@@ -60,6 +61,19 @@ class Groups(Section):
             if k in self.group_table:
                 self.group_table.pop(k)
         for k, v in self.group_table.items():
+            expected_variables = len(self.group_sections[1:]) ## exclude duplicated 'name' column (same as group)
+            found_variables = len(v) 
+            print("DEBUG groups.py line 63 k, v, lenv", k, v, found_variables, expected_variables)
+            print(self.group_sections, v)
+
+            if found_variables != expected_variables:
+                ## There is probably a typo somewhere, let user know
+                raise Exception('!!ERROR: Too many group variables found!!' 
+                        '\n!!Check the input file section [GROUP] for extra variables or typos ' 
+                        f'\n!!\tInput file: {self._args.infile}' 
+                        f'\n!!\tGroup line: {k} = {v}' 
+                        f'\n!!\tExpected {expected_variables}, found {found_variables}'
+                        '\n')
             self.group_table[k] = {self.group_sections[i+1]: self.group_types[i+1](item) for i, item in enumerate(v)}
 
     def read_group_file(self):

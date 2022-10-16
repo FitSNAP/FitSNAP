@@ -16,7 +16,6 @@ class Vasp(Scraper):
     def __init__(self, name):
         super().__init__(name)
         pt.single_print("Initializing VASP scraper")
-        self.log_data = []
         self.all_data = []
         self.configs = {}
         self.bad_configs = {}
@@ -25,8 +24,10 @@ class Vasp(Scraper):
         self.infile = config.args.infile
         self.vasppath = config.sections['PATH'].datapath
         self.group_table = config.sections["GROUPS"].group_table
+        self.jsonpath = config.sections['GROUPS'].vasp_json_pathname
+        self.vasp_read_jsons = config.sections['GROUPS'].vasp_read_jsons
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
-        self.vasp_overwrite_jsons = config.sections["GROUPS"].vasp_overwrite_jsons
+        self.vasp_ignore_jsons = config.sections["GROUPS"].vasp_ignore_jsons
 
 
     def scrape_groups(self):
@@ -213,9 +214,9 @@ class Vasp(Scraper):
         file_num = config_num + 1
 
         ## JSON read/write setup
-        json_path = f'JSON/{group}'
+        json_path = f'{self.jsonpath}/{group}'
         json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','') #.replace(f'_{group}','')
-        json_filename = f"{json_path}/{json_filestem}{file_num}.json"
+        json_filename = f"{json_path}/{json_filestem}_{file_num}.json"
 
         ## Check if JSON was already created from this OUTCAR
         if not os.path.exists(json_path):
@@ -224,7 +225,7 @@ class Vasp(Scraper):
         else:
             has_json = os.path.exists(json_filename)
 
-        if has_json and not self.vasp_overwrite_jsons:
+        if has_json and not self.vasp_ignore_jsons:
             with open(json_filename, 'r') as f:
                 config_dict = json.loads(f.read(), parse_constant=True)
             return config_dict
@@ -479,6 +480,8 @@ class Vasp(Scraper):
     
     def write_json(self, json_filename, outcar_filename, config_dict):
         dt = datetime.datetime.now().strftime('%B %d %Y %I:%M%p')
+
+        ## TODO future versions, include generation data in JSON file
         comment_line = f'# Generated on {dt} from: {os.getcwd()}/{outcar_filename}'
 
         ## Write JSON object

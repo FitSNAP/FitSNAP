@@ -13,7 +13,7 @@ pt = ParallelTools()
 
 class Vasp(Scraper):
 
-    def __init__(self, name):
+    def __init__(self, name): 
         super().__init__(name)
         pt.single_print("Initializing VASP scraper")
         self.all_data = []

@@ -17,9 +17,9 @@ class Vasp(Scraper):
         pt.single_print("Initializing VASP scraper")
         self.log_data = []
         self.all_data = []
+        self.configs = {}
         self.bad_configs = {}
-        self.unmatched_groups = {}
-        self.outcars_per_group = {}
+        self.all_config_dicts = []
         self.bc_bool = False
         self.infile = config.args.infile
         self.group_table = config.sections["GROUPS"].group_table
@@ -88,15 +88,17 @@ class Vasp(Scraper):
                     ## but separated for each iteration (idx loops on 'lines')
                     ## Tuple data: outcar file name str, config number int, starting line number (for debug)  int, 
                     ## potcar list, potcar elements list, number ions per element list, configuration lines list 
-                    outcar_tuples = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type,
+                    unique_configs = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type,
                                         lines[start_idx_loops[i]:end_idx_loops[i]])
                                         for i in range(0, len(start_idx_loops))]
-                    self.configs[group].extend(outcar_tuples)
+                    for uc in unique_configs:
+                        config_dict = self.generate_outcar_dict(group, uc)
+                        if config_dict != -1:
+                            self.configs[group].append(config_dict)
             except IndexError:
                 ## TODO what does this IndexError take care of? (inherited from Charlie's code)
                 self.configs[file_base].pop(-1)
 
-              ## TODO fix random sampling!
             if config.sections["GROUPS"].random_sampling:
                 random.shuffle(self.configs[group], pt.get_seed)
             nconfigs = len(self.configs[group])
@@ -140,15 +142,17 @@ class Vasp(Scraper):
 
 
     def scrape_configs(self):
+        """Generate and send (mutable) data to send to fitsnap"""
         ## TODO clean up as we have already run many of the asertions by this point
         ## TODO maybe just read JSONs for now...?
-        """ Copied almost directly from json_scraper.py"""
-        all_config_data = self.generate_outcar_data()
+        """ Copied almost exactly from json_scraper.py"""
         self.conversions = copy(self.default_conversions)
-        for i, data0 in enumerate(all_config_data):
-            assert len(data0) == 1, "More than one object (dataset) is in this file"
+        for i, data0 in enumerate(self.configs):
+            data = data0[0]
+            
+            assert len(data) == 1, "More than one object (dataset) is in this file"
 
-            self.data = data0['Dataset']
+            self.data = data['Dataset']
 
             assert len(self.data['Data']) == 1, "More than one configuration in this dataset"
 
@@ -196,57 +200,55 @@ class Vasp(Scraper):
 
         return self.all_data
 
+    def generate_outcar_dict(self, group, outcar_config):
+        config_dict = {}
+        is_bad_config = False
+        outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type, lines = outcar_config
+        # # group = outcar_config[1]
+        # print(lines)
+        # print(group, outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type)
+        # exit()
+        config_data = self.parse_outcar_config(lines, potcar_list, potcar_elements, ions_per_type)
+        if type(config_data) == tuple:
+            crash_type, crash_line = config_data
+            is_bad_config = True
+            ## TODO sort out 'bad' OUTCARs earlier
+            if not self.vasp_ignore_incomplete:
+                raise Exception('!!ERROR: OUTCAR step incomplete!!' \
+                    '\n!!Not all atom coordinates/forces were written to a configuration' 
+                    '\n!!Please check the OUTCAR for incomplete steps and adjust, '
+                    '\n!!or toggle variable "vasp_ignore_incomplete" to True'
+                    '\n!!(not recommended as you may miss future incomplete steps)' 
+                    f'\n!!\tOUTCAR location: {outcar_filename}' 
+                    f'\n!!\tConfiguration number: {config_num}' 
+                    f'\n!!\tLine number of error: {start_idx}' 
+                    f'\n!!\tExpected {crash_type}, {crash_line} '
+                    '\n')
+            else:
+                output.screen('!!WARNING: OUTCAR step incomplete!!'
+                    '\n!!Not all atom coordinates/coordinates were written to a configuration'
+                    '\n!!Variable "vasp_ignore_incomplete" is toggled to True'
+                    '\n!!Note that this may result in missing training set data (e.g., missing final converged structures)'
+                    f'\n!!\tOUTCAR location: {outcar_filename}' 
+                    f'\n!!\tConfiguration number: {config_num}'
+                    f'\n!!\tLine number of warning: {start_idx}'
+                    f'\n!!\tExpected {crash_type}, {crash_line} '
+                    '\n')
 
-    def generate_outcar_data(self):
-        """Generate and send (mutable) data to send to fitsnap"""
-        
-        all_config_dicts = []
-        for outcar_config in self.configs:
-            config_dict = {}
-            outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type, lines = outcar_config[0]
-            group = outcar_config[1]
-            config_data = self.parse_outcar_config(lines, potcar_list, potcar_elements, ions_per_type)
-            if type(config_data) == tuple:
-                crash_type, crash_line = config_data
-                is_bad_config = True
-                ## TODO sort out 'bad' OUTCARs earlier
-                if not self.vasp_ignore_incomplete:
-                    raise Exception('!!ERROR: OUTCAR step incomplete!!' \
-                        '\n!!Not all atom coordinates/forces were written to a configuration' 
-                        '\n!!Please check the OUTCAR for incomplete steps and adjust, '
-                        '\n!!or toggle variable "vasp_ignore_incomplete" to True'
-                        '\n!!(not recommended as you may miss future incomplete steps)' 
-                        f'\n!!\tOUTCAR location: {outcar_filename}' 
-                        f'\n!!\tConfiguration number: {config_num}' 
-                        f'\n!!\tLine number of error: {start_idx}' 
-                        f'\n!!\tExpected {crash_type}, {crash_line} '
-                        '\n')
-                else:
-                    print('!!WARNING: OUTCAR step incomplete!!'
-                        '\n!!Not all atom coordinates/coordinates were written to a configuration'
-                        '\n!!Variable "vasp_ignore_incomplete" is toggled to True'
-                        '\n!!Note that this may result in missing training set data (e.g., missing final converged structures)'
-                        f'\n!!\tOUTCAR location: {outcar_filename}' 
-                        f'\n!!\tConfiguration number: {config_num}'
-                        f'\n!!\tLine number of warning: {start_idx}'
-                        f'\n!!\tExpected {crash_type}, {crash_line} '
-                        '\n')
-                    continue
+        config_header = {}
+        config_header['Group'] = group
+        config_header['File'] = outcar_filename
+        config_header['EnergyStyle'] = "electronvolt"
+        config_header['StressStyle'] = "kB"
+        config_header['AtomTypeStyle'] = "chemicalsymbol"
+        config_header['PositionsStyle'] = "angstrom"
+        config_header['ForcesStyle'] = "electronvoltperangstrom"
+        config_header['LatticeStyle'] = "angstrom"
+        config_header['Data'] = [config_data]
 
-            config_header = {}
-            config_header['Group'] = group
-            config_header['File'] = outcar_filename
-            config_header['EnergyStyle'] = "electronvolt"
-            config_header['StressStyle'] = "kB"
-            config_header['AtomTypeStyle'] = "chemicalsymbol"
-            config_header['PositionsStyle'] = "angstrom"
-            config_header['ForcesStyle'] = "electronvoltperangstrom"
-            config_header['LatticeStyle'] = "angstrom"
-            config_header['Data'] = [config_data]
+        config_dict['Dataset'] = config_header
 
-            config_dict['Dataset'] = config_header
-            all_config_dicts.append(config_dict)
-
+        if not is_bad_config:
             # outcar_name, outcar_data, json_path, json_filestem, file_num
             json_path = f'JSON/{group}'
             if not os.path.exists(json_path):
@@ -256,7 +258,9 @@ class Vasp(Scraper):
             json_filename = f"{json_path}/{json_filestem}{file_num}.json"
             if not os.path.exists(json_filename) or self.vasp_overwrite_jsons:
                 self.write_json(json_filename, outcar_filename, config_dict)
-        return all_config_dicts
+            return config_dict
+        else:
+            return -1
 
     def parse_outcar_config(self,lines,potcar_list,potcar_elements,ions_per_type):
         ## TODO clean up syntax to match FitSNAP3
@@ -295,7 +299,6 @@ class Vasp(Scraper):
         natoms = sum(ions_per_type)
 
         ## Search entire file to create indices for each section
-        ## TODO: current weakness is that if one section marker missing, we'll get one-off errors, need to make sure that can't happen (exit gracefully or set OUTCAR aside)
         for i, line in enumerate(lines):
             ## TODO refactor - probably a smarter/faster way to do the "line_test" part...
             line_test = [True if sm in line else False for sm in section_markers]
@@ -309,6 +312,7 @@ class Vasp(Scraper):
             crash_type = '4 sections'
             missing_sections_str = 'missing sections: '
             missing_sections_str += ', '.join([section_names[i] for i, b in enumerate(missing_sections) if b])
+            del lines
             return (crash_type, missing_sections_str)
 
         ## Create data dict for this config, with global information already included
@@ -337,6 +341,7 @@ class Vasp(Scraper):
         if type(atom_coords) == str:
             crash_type = 'atom coords, atom forces'
             crash_atom_coord_line = 'found bad line: ' + atom_coords
+            del lines
             return (crash_type, crash_atom_coord_line)
 
         ## Energie :-)
@@ -421,7 +426,7 @@ class Vasp(Scraper):
             else:
                 is_aimd = False
         else:
-            print("!!WARNING: incomplete coding with scrape_ibrion, assuming not AIMD for now.")
+            output.screen("!!WARNING: incomplete coding with scrape_ibrion, assuming not AIMD for now.")
             is_aimd = False
         return is_aimd
 

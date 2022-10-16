@@ -37,8 +37,8 @@ dataPath = JSON
 #dataPath = _test_JSON
 
 [OUTFILE]
-metrics = InP_metrics.md
-potential = InP_pot
+metrics = json_InP_metrics.md
+potential = json_InP_pot
 
 [REFERENCE]
 units = metal
@@ -75,8 +75,8 @@ group_types = str float float float float float
 smartweights = 0
 random_sampling = 0
 smallDefects_aa = 		1 0  5319411.52359161  	12160.2964901219 	1.0e-12
-#Defects_iP  = 		1.0  0.0 	669131.752996794  	5805.68960393981  	1.0e-12
-# Defects_aP = 		1  0 	280933.371566026    3618.73557864646  	1.0e-12
+Defects_iP  = 		1.0  0.0 	669131.752996794  	5805.68960393981  	1.0e-12
+Defects_aP = 		1  0 	280933.371566026    3618.73557864646  	1.0e-12
 
 ## test-train split error example on 1|99%
 ##Defects_aP = 		0.01  0.99 	280933.371566026    3618.73557864646  	1.0e-12

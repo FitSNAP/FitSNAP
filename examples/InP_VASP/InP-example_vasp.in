@@ -78,7 +78,7 @@ detailed_errors = 1
 scraper = VASP
 
 [PATH]
-dataPath = VASP
+dataPath = VASP # Note, the dataPath/groups/ folders can have symbolic links to OUTCAR files if you dont want to move a bunch of files around
 
 [OUTFILE]
 metrics = vasp_InP-subset_metrics.md

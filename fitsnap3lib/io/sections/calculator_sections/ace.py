@@ -11,16 +11,17 @@ pt = ParallelTools()
 class Ace(Section):
 
     def __init__(self, name, config, args):
-        raise Exception("ACE calculator not working yet.")
+        #raise Exception("ACE calculator not working yet.")
         super().__init__(name, config, args)
         
-        allowedkeys = ['numTypes', 'ranks', 'lmax', 'nmax', 'mumax', 'nmaxbase', 'rcutfac', 'lambda', 'type', 'bzeroflag', 'erefs', 'rcinner','drcinner','RPI_heuristic']
+        allowedkeys = ['numTypes', 'ranks', 'lmax', 'nmax', 'mumax', 'nmaxbase', 'rcutfac', 'lambda', 'type', 'bzeroflag', 'erefs', 'rcinner', 'drcinner', 'RPI_heuristic', 'lmin']
         for value_name in config['ACE']:
             if value_name in allowedkeys: continue
             else:
                 raise RuntimeError(">>> Found unmatched variable in ACE section of input: ",value_name)
         self.numtypes = self.get_value("ACE", "numTypes", "1", "int")
         self.ranks = self.get_value("ACE","ranks","3").split()
+        self.lmin = self.get_value("ACE", "lmin", "1", "int")
         self.lmax = self.get_value("ACE", "lmax", "2").split()
         self.nmax = self.get_value("ACE", "nmax", "2").split() 
         self.mumax = self.get_value("ACE","mumax", "1")
@@ -57,11 +58,27 @@ class Ace(Section):
         if self.RPI_heuristic == 'lexicographic':
             ranked_chem_nus = [generate_nl(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax)) for ind,rnk in enumerate(self.ranks)]
         else:
-            ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = 0 ) for ind,rnk in enumerate(self.ranks)]
-        flatnus = [item for sublist in ranked_chem_nus for item in sublist]
-        pt.single_print("Total ACE descriptors",len(flatnus))
-        #pt.single_print("ACE descriptors",flatnus)
-        byattyp = srt_by_attyp(flatnus)
+            ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = self.lmin ) for ind,rnk in enumerate(self.ranks)]
+        nus_unsort = [item for sublist in ranked_chem_nus for item in sublist]
+        nus = nus_unsort.copy()
+        mu0s = []
+        mus =[]
+        ns = []
+        ls = []
+        for nu in nus_unsort:
+            mu0ii,muii,nii,lii = get_mu_n_l(nu)
+            mu0s.append(mu0ii)
+            mus.append(tuple(muii))
+            ns.append(tuple(nii))
+            ls.append(tuple(lii))
+        nus.sort(key = lambda x : mus[nus_unsort.index(x)],reverse = False)
+        nus.sort(key = lambda x : ns[nus_unsort.index(x)],reverse = False)
+        nus.sort(key = lambda x : ls[nus_unsort.index(x)],reverse = False)
+        nus.sort(key = lambda x : mu0s[nus_unsort.index(x)],reverse = False)
+        nus.sort(key = lambda x : len(x),reverse = False)
+        nus.sort(key = lambda x : mu0s[nus_unsort.index(x)],reverse = False)
+        pt.single_print("Total ACE descriptors",len(nus))
+        byattyp = srt_by_attyp(nus)
 
         for atype in range(self.numtypes):
             #self.blist.append( [atype] + [0] )
@@ -76,7 +93,7 @@ class Ace(Section):
                 self.blist.append([i] + flat_nu)
                 self.blank2J.append([prefac])
         self.ncoeff = int(len(self.blist)/self.numtypes)
-        pt.single_print('in compute: coeff, blank2j',self.ncoeff,len(self.blank2J),len(flatnus))
+        pt.single_print('in compute: coeff, blank2j',self.ncoeff,len(self.blank2J),len(nus))
         if not self.bzeroflag:
             self.blank2J = np.reshape(self.blank2J, (self.numtypes, int(len(self.blist)/self.numtypes)))
             #self.blank2J = np.reshape(self.blank2J, (self.numtypes, self.ncoeff)))
@@ -111,6 +128,6 @@ class Ace(Section):
             drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
                 
 
-        apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals,0, self.RPI_heuristic)
+        apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, self.lmin, self.RPI_heuristic)
         apot.write_pot('coupling_coefficients')
 

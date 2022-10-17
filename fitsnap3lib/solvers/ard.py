@@ -21,7 +21,6 @@ try:
 
         #@pt.sub_rank_zero
         def perform_fit(self):
-<<<<<<< HEAD
             @self.pt.sub_rank_zero
             def decorated_perform_fit():
                 training = [not elem for elem in pt.fitsnap_dict['Testing']]
@@ -41,7 +40,6 @@ try:
                 self.fit = reg.coef_
                 # residues = reg.predict(aw) - bw
             decorated_perform_fit()
-=======
             training = [not elem for elem in pt.fitsnap_dict['Testing']]
             w = pt.shared_arrays['w'].array[training]
             aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
@@ -58,7 +56,6 @@ try:
             reg.fit(aw, bw)
             self.fit = reg.coef_
             # residues = reg.predict(aw) - bw
->>>>>>> adapted for per-atom descriptor values in the LAMMPS compute
 
         def _dump_a(self):
             np.savez_compressed('a.npz', a=pt.shared_arrays['a'].array)

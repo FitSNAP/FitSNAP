@@ -1,11 +1,8 @@
-<<<<<<< HEAD
 from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np, _extract_commands
 from fitsnap3lib.parallel_tools import ParallelTools
-=======
 import ctypes
 from fitsnap3lib.calculators.calculator import Calculator
 from fitsnap3lib.parallel_tools import ParallelTools, DistributedList
->>>>>>> refactored ACE code
 from fitsnap3lib.io.input import Config
 import numpy as np
 
@@ -48,12 +45,10 @@ class LammpsPace(LammpsBase):
         self._set_neighbor_list()
 
     def _set_box(self):
-<<<<<<< HEAD
         self._set_box_helper(numtypes=config.sections['ACE'].numtypes)
 
     def _create_atoms(self):
         self._create_atoms_helper(type_mapping=config.sections["ACE"].type_mapping)
-=======
         self._lmp.command("boundary p p p")
         ((ax, bx, cx),
          (ay, by, cy),
@@ -99,7 +94,7 @@ class LammpsPace(LammpsBase):
     def _set_variables(self, **lmp_variable_args):
         for k, v in lmp_variable_args.items():
             self._lmp.command(f"variable {k} equal {v}")
->>>>>>> refactored ACE code
+#>>>>>>> refactored ACE code
 
     def _set_computes(self):
         numtypes = config.sections['ACE'].numtypes
@@ -242,8 +237,6 @@ class LammpsPace(LammpsBase):
         pt.fitsnap_dict['Testing'][self.distributed_index:dindex] = [bool(self._data['test_bool'])] * length
         self.shared_index = index
         self.distributed_index = dindex
-<<<<<<< HEAD
-=======
 
 # this is super clean when there is only one value per key, needs reworking
 def _lammps_variables(bispec_options):
@@ -290,4 +283,4 @@ def _extract_compute_np(lmp, name, compute_style, result_type, array_shape):
 
 def _extract_commands(string):
     return [x for x in string.splitlines() if x.strip() != '']
->>>>>>> refactored ACE code
+#>>>>>>> refactored ACE code

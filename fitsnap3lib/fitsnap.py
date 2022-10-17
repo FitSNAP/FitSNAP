@@ -85,6 +85,10 @@ class FitSnap:
                                 # useful for using library to loop over fits
         if self.config.sections["EXTRAS"].only_test:
             self.fit = output.read_fit()
+
+        if (hasattr(self.pt, "lammps_version")):
+          if (self.config.sections['CALCULATOR'].nonlinear and (self.pt.lammps_version < 20220915) ):
+              raise Exception(f"Please upgrade LAMMPS to 2022-09-15 or later to use nonlinear solvers.")
        
     #@pt.single_timeit 
     def scrape_configs(self):
@@ -123,7 +127,11 @@ class FitSnap:
             if (self.delete_data):
                 del self.data
             self.calculator.collect_distributed_lists()
-            self.calculator.extras()
+
+            # calculator.extras() has dataframe processing specific to linear solvers only
+            
+            if (self.solver.linear):
+                self.calculator.extras()
 
         decorated_process_configs()
 

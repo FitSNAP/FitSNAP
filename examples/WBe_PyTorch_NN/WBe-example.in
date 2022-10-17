@@ -29,7 +29,7 @@ Be = 0.0
 [PYTORCH]
 layer_sizes = num_desc 32 16 8 1
 learning_rate = 1.5e-4 
-num_epochs = 20
+num_epochs = 10
 batch_size = 4
 save_state_output = WBe_Pytorch.pt
 energy_weight = 1e-2

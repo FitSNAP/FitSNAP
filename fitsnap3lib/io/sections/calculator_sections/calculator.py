@@ -30,4 +30,6 @@ class Calculator(Section):
         self.pt.add_2_fitsnap("nonlinear", self.nonlinear)
         if (self.nonlinear):
             self.linear = False
+        else:
+            self.linear = True
         self.delete()

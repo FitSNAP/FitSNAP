@@ -26,14 +26,14 @@ nonlinear = 1
 Fe = 0.0
 
 [PYTORCH]
-layer_sizes = num_desc 10 8 6 1
+layer_sizes = num_desc 64 32 16 1
 learning_rate = 1e-4
-num_epochs = 1 #30
+num_epochs = 50
 batch_size = 4
 save_state_output = Fe_Pytorch.pt
-energy_weight = 1e-4
+energy_weight = 1e-3
 force_weight = 1.0
-training_fraction = 0.7
+#training_fraction = 0.7
 
 [SOLVER]
 solver = PYTORCH
@@ -52,11 +52,13 @@ potential = Fe_pot
 
 [REFERENCE]
 units = metal
-atom_style = spin
-pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.8 spin/exchange/biquadratic 5.0
-pair_coeff1 = * * zero
-pair_coeff2 = * * zbl 26 26 
-pair_coeff3 = * * spin/exchange/biquadratic biquadratic 5.0 0.2827 -4.747 0.7810 -0.03619 -2.973 0.5273 offset yes
+pair_style = zero 10.0
+pair_coeff = * *
+#atom_style = spin
+#pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.8 spin/exchange/biquadratic 5.0
+#pair_coeff1 = * * zero
+#pair_coeff2 = * * zbl 26 26 
+#pair_coeff3 = * * spin/exchange/biquadratic biquadratic 5.0 0.2827 -4.747 0.7810 -0.03619 -2.973 0.5273 offset yes
 
 [GROUPS]
 group_sections = name training_size testing_size eweight fweight vweight
@@ -64,13 +66,13 @@ group_types = str float float float float float
 random_sampling = 0
 smartweights = 0
 
-MD-bcc_Te300K                   = 1.0 0.0 7248.125779  7.175309915 1.0E-12
-EOS_100                         = 1.0 0.0 10.37680984  3.074864006 1.0E-12
-BCC-HCP-transition              = 1.0 0.0 2.39808552  2.320864338 1.0E-12
-liquid_mag_old                  = 1.0 0.0 5.541998374  6.473010639 1.0E-12
-point_def                       = 1.0 0.0 17.23319884  11.24367978 1.0E-12
-CCMC-bcc-hcp-elastic_Jun2020    = 1.0 0.0 1.382681069  1.963203872 1.0E-12
-liquid_nonmag                   = 1.0 0.0 63.68593312  1.29692425 1.0E-12
+MD-bcc_Te300K                   = 0.7 0.3 7248.125779  7.175309915 1.0E-12
+EOS_100                         = 0.7 0.3 10.37680984  3.074864006 1.0E-12
+BCC-HCP-transition              = 0.7 0.3 2.39808552  2.320864338 1.0E-12
+#liquid_mag_old                  = 0.7 0.3 5.541998374  6.473010639 1.0E-12
+point_def                       = 0.7 0.3 17.23319884  11.24367978 1.0E-12
+CCMC-bcc-hcp-elastic_Jun2020    = 0.7 0.3 1.382681069  1.963203872 1.0E-12
+liquid_nonmag                   = 0.7 0.3 63.68593312  1.29692425 1.0E-12
 
 [EXTRAS]
 dump_descriptors = 1

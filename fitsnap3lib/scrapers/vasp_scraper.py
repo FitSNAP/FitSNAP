@@ -382,7 +382,8 @@ class Vasp(Scraper):
         ## These searches replace the POSCAR and POTCAR, and can also check IBRION for AIMD runs (commented out now)
         lines_potcar, lines_vrhfin, lines_ions_per_type = [], [],[]
         potcar_list, potcar_elements, ions_per_type = [], [], []
-        # line_ibrion, is_aimd = "", False
+        line_ibrion, is_scf = "", False 
+        ## scf: self-consistent framework - ions don't move, electrons 'moved' until convergence criterion reached
 
         for line in header:
             if "VRHFIN" in line:
@@ -426,21 +427,21 @@ class Vasp(Scraper):
             ions_per_type = [int(s) for s in str0.split()]
         return ions_per_type
 
-    def get_ibrion(self, line):
+    def check_scf(self, line):
         ## There should be only one of these lines (from INCAR print)
         ## IBRION value should always be first number < 10 to appear after "="
         line1 = line.split()
         idx_equals = line1.index("=")
         probably_ibrion = line1[idx_equals+1]
         if probably_ibrion.isdigit():
-            if probably_ibrion == "0":
-                is_aimd = True ## https://www.vasp.at/wiki/index.php/IBRION
+            if probably_ibrion == "-1":
+                is_scf = True ## https://www.vasp.at/wiki/index.php/IBRION
             else:
-                is_aimd = False
+                is_scf = False
         else:
-            output.screen("!!WARNING: incomplete coding with scrape_ibrion, assuming not AIMD for now.")
-            is_aimd = False
-        return is_aimd
+            output.screen("!!WARNING: incomplete coding with scrape_ibrion, assuming not SCF for now.")
+            is_scf = False
+        return is_scf
 
     def get_direct_lattice(self, lines):
         lattice_coords = []

@@ -176,6 +176,7 @@ class Scraper:
 
         # NODES SPLIT UP HERE
         self.configs = self.pt.split_by_node(self.configs)
+
         self.test_bool = self.pt.split_by_node(self.test_bool)
         groups = self.pt.split_by_node(groups)
         group_list = self.pt.split_by_node(group_list)

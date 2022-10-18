@@ -84,7 +84,7 @@ class Solver:
 
 
     def _checks(self):
-        assert not (self.linear and self.config.sections['CALCULATOR'].per_atom_energy and self.config.args.perform_fit)
+        assert not (self.config.sections['CALCULATOR'].linear and self.config.sections['CALCULATOR'].per_atom_energy and self.config.args.perform_fit)
 
     #@pt.rank_zero
     def error_analysis(self):

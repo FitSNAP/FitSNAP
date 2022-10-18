@@ -499,8 +499,7 @@ try:
 
             standardize_bool : bool
                 True - Standardize weights
-                False - Do not standardize weights, useful if you are comparing inputs on a previously
-                        standardized model
+                False - Do not standardize weights, useful if you are comparing inputs on a previously standardized model
 
             dtype : torch.dtype
                 Optional override of the global dtype

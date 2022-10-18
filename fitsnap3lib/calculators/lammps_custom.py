@@ -20,7 +20,7 @@ class LammpsCustom(LammpsBase):
         self._row_index = 0
         self.pt.check_lammps()
 
-        self.bessel = Bessel() # for calculating Bessel descriptors
+        self.bessel = Bessel(self.config.sections['CUSTOM'].num_descriptors, self.config.sections['CUSTOM'].cutoff) # for calculating Bessel descriptors
 
     def get_width(self):
         """

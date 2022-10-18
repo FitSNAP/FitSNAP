@@ -1,5 +1,5 @@
 import numpy as np
-from fitsnap3lib.io.input import Config
+#from fitsnap3lib.io.input import Config
 
 try:
     import torch
@@ -9,10 +9,12 @@ try:
         """
         Class to calculate Bessel function descriptors
         """
-        def __init__(self):
-            self.config = Config()
-            self.num_descriptors = self.config.sections['CUSTOM'].num_descriptors
-            self.cutoff = self.config.sections['CUSTOM'].cutoff
+        def __init__(self, num_descriptors, cutoff):
+            #self.config = Config()
+            #self.num_descriptors = self.config.sections['CUSTOM'].num_descriptors
+            #self.cutoff = self.config.sections['CUSTOM'].cutoff
+            self.num_descriptors = num_descriptors
+            self.cutoff = cutoff
 
         def calculate_rij(self, x, neighlist, unique_i, xneigh):
             """

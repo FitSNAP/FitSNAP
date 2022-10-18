@@ -81,6 +81,7 @@ try:
                 self.num_elements = self.config.sections["CUSTOM"].numtypes
                 self.num_desc_per_element = self.config.sections["CUSTOM"].num_descriptors/self.num_elements
                 self.num_desc = self.config.sections["CUSTOM"].num_descriptors
+                self.cutoff = self.config.sections["CUSTOM"].cutoff
 
             self.dtype = self.config.sections["NETWORK"].dtype
             self.layer_sizes = self.config.sections["NETWORK"].layer_sizes
@@ -103,6 +104,7 @@ try:
                                   self.num_desc,
                                   self.energy_weight,
                                   self.force_weight,
+                                  self.cutoff,
                                   self.num_elements,
                                   self.multi_element_option,
                                   self.dtype)

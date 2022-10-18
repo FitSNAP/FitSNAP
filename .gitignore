@@ -21,6 +21,7 @@ examples/InP_VASP/Weights.npy
 examples/InP_VASP/*log.lammps
 examples/InP_VASP/InP-example_json.in
 examples/InP_VASP/vJSON
+examples/InP_VASP/_shift_test
 # ignoring built test docs
 docs/build/
 

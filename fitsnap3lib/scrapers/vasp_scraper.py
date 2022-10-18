@@ -30,6 +30,12 @@ class Vasp(Scraper):
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
         self.vasp_ignore_jsons = config.sections["GROUPS"].vasp_ignore_jsons
 
+        if 'TRAINING_ESHIFT' in config.sections.keys():
+            self.training_eshift = config.sections['TRAINING_ESHIFT'].training_eshift
+            output.screen("!WARNING: 'TRAINING_ESHIFT' is in input file!\n!WARNING: This shifts the per-atom energy of scraped OUTCAR configurations.\n!WARNING: Be sure that this is the behavior you want/expect.")
+        else:
+            self.training_eshift = {}
+
 
     def scrape_groups(self):
         ### Locate all OUTCARs in datapath
@@ -104,8 +110,7 @@ class Vasp(Scraper):
                 ## but separated for each iteration (idx loops on 'lines')
                 ## Tuple data: outcar file name str, config number int, starting line number (for debug)  int, 
                 ## potcar list, potcar elements list, number ions per element list, configuration lines list 
-                unique_configs = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type,
-                                    lines[start_idx_loops[i]:end_idx_loops[i]])
+                unique_configs = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type,lines[start_idx_loops[i]:end_idx_loops[i]])
                                     for i in range(0, len(start_idx_loops))]
                 for uc in unique_configs:
                     config_dict = self.generate_config_dict(group, uc)
@@ -211,7 +216,7 @@ class Vasp(Scraper):
         config_dict = {}
         is_bad_config = False
         has_json = None
-        outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type, lines = outcar_config
+        outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type,lines = outcar_config
         file_num = config_num + 1
 
         ## JSON read/write setup
@@ -362,6 +367,12 @@ class Vasp(Scraper):
         line_energie = lines[lidx_energie]
         total_energie = self.get_energie(line_energie)
 
+        ## Special toggled shift in energie if converting training data
+        if len(self.training_eshift) > 0:
+            training_eshifts = [self.training_eshift[element] for element in potcar_elements]
+            energy_shifts = [ions_per_type[i]*training_eshifts[i] for i in range(len(potcar_elements))]
+            total_energie += sum(energy_shifts)
+
         # Here is where all the data is put together since the energy value is the last
         # one listed in each configuration.  After this, all these values will be overwritten
         # once the next configuration appears in the sequence when parsing
@@ -401,7 +412,7 @@ class Vasp(Scraper):
         for line in lines_vrhfin:
             str0 = line.strip().replace("VRHFIN =", "")
             str1 = str0[:str0.find(":")]
-            potcar_elements.append(str1)
+            potcar_elements.append(str1.strip())
 
         for line in lines_ions_per_type:
             str0 = line.replace("ions per type = ","").strip()

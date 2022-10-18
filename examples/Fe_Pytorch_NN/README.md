@@ -4,9 +4,10 @@ Fit a NN with
 
     python -m fitsnap3 Fe-example.in --overwrite # use --overwrite to overwrite existing fitsnap files.
 
-This creates corresponding plots of errors vs. epochs and target force vs. model force. 
+The following python scripts help analyze fitting progress and results:
 
-To check that the model forces match those calculated with finite difference, do 
-`python fd_force_check.py`, which creates a `fd_force_check.png` plot. This finite difference 
-script uses the same force calculation routine that we use in 
-`fitsnap3lib/lib/neural_networks/pytorch.py`
+    python plot_error_vs_epochs.py
+    python plot_energy_comparison.py
+    python plot_force_comparison.py
+
+

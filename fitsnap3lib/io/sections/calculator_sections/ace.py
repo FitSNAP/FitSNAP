@@ -14,6 +14,7 @@ pt = ParallelTools()
 class Ace(Section):
 
     def __init__(self, name, config, args):
+        raise Exception("ACE calculator not working yet.")
         super().__init__(name, config, args)
 
         self.allowedkeys = ['numTypes', 'ranks', 'lmax', 'nmax', 'nmaxbase', 'rcutfac',

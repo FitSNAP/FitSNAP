@@ -1,6 +1,11 @@
 Run FitSNAP
 ===========
 
+**If you want to get started immediately with interactive examples**, please see our 
+`Colab Python notebook tutorial <tutorialnotebook_>`_
+
+.. _tutorialnotebook: https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb
+
 There are two ways to run FitSNAP: (1) the python executable or (2) as a python library. The 
 executable version is reserved for the most basic operation of fitting on a dataset, where data
 is scraped from a directory, configurations are input to LAMMPS to calculate descriptors, and the 
@@ -134,15 +139,117 @@ We explain the sections and their keys in more detail below.
 [BISPECTRUM]
 ^^^^^^^^^^^^
 
+This section contains settings for the SNAP bispectrum descriptors from `Thompson et. al. <snappaper_>`_
+
+.. _snappaper: https://www.sciencedirect.com/science/article/pii/S0021999114008353
+
+- :code:`numTypes` number of atom types in your set of configurations located in `the [PATH] section <Run.html#path>`__
+
+- :code:`type` contains a list of element type symbols, one for each type. Make sure these are 
+  ordered correctly, e.g. if you have a LAMMPS type 1 atom that is :code:`Ga`, and LAMMPS type 2 
+  atoms are :code:`N`, list this as :code:`Ga N`.
+
+The remaining keywords are thoroughly explained in the `LAMMPS docs on computing SNAP descriptors <lammpssnap_>`_ 
+but we will give an overview here. **These are hyperparameters that *could* be optimized for your 
+specific system, but this is not a requirement. You may also use the default values, or values used 
+in our examples, which are often well behaved for other systems.**
+
+- :code:`twojmax` determines the number of bispectrum coefficients for each element type. Give an 
+  argument for each element type, e.g. for two element types we may use :code:`6 6` declaring 
+  :code:`twojmax = 6` for each type. Higher :code:`twojmax` increases the number of bispectrum 
+  components for each atom, thus potentially giving more accuracy at an increased cost. We recommend 
+  using a :code:`twojmax` of 4, 6, or 8. This corresponds to 14, 30, and 55 bispectrum components, 
+  respectively. Default value is 6. 
+
+- :code:`rcutfac` is a cutoff radius parameter. One value is used for all element types. We recommend 
+  a cutoff between 4 and 5 Angstroms for most systems. Default value is 4.67 Angstroms. 
+
+- :code:`rfac0` is a parameter used in distance to angle conversion, between 0 and 1. Default value 
+  is 0.99363.
+
+- :code:`rmin0` another parameter used in distance to angle conversion, between 0 and 1. Default value 
+  is 0.
+
+- :code:`wj` list of neighbor weights. Give one argument for each element types, e.g. for two element 
+  types we may use :code:`1.0 0.5` declaring a weight of 1.0 for neighbors of type 1, and 0.5 for 
+  neighbors of type 2. We recommend taking values from the existing multi-element examples.
+
+- :code:`radelem` list of cutoff radii, one for each element type. These values get multiplied by 
+  :code:`rcutfac` to determine the effective cutoff of a particular type.
+
+- :code:`wselfallflag` is 0 or 1, determining whether self-contribution is for elements of a central 
+  atom or for all elements, respectively.
+
+- :code:`chemflag` is 0 or 1, determining whether to use explicit multi-element SNAP descriptors as 
+  explained in `Cusentino et. al. <chemsnappaper_>`_, and used in the InP example. This 
+  increases the number of SNAP descriptors to resolve multi-element environment descriptions, and 
+  therefore comes at an increase in cost but higher accuracy. This option is not required 
+  for multi-element systems; the default value is 0.
+
+- :code:`bzeroflag` is 0 or 1, determining whether or not B0, the bispectrum components of an atom 
+  with no neighbors, are subtracted from the calculated bispectrum components.
+
+- :code:`quadraticflag` is 0 or 1, determining whether or not to use quadratic descriptors in a 
+  linear model, as done by `Wood and Thompson <quadsnappaper_>`_, and illusrated in the 
+  :code:`Ta_Quadratic` example.
+
+The following keywords are necessary for extracting per-atom descriptors and individual derivatives 
+of bispectrum components with respect to neighbors, required for neural network potentials. See more 
+info in `PyTorch Models <Pytorch.html>`__
+
+- :code:`bikflag` is 0 or 1, determining whether to compute per-atom bispectrum descriptors instead 
+  of sums of components for each atom. We do the latter for linear fitting because of the nature of 
+  the linear problem, which saves memory, but per-atom descriptors are required for neural networks. 
+
+- :code:`dgradflag` is 0 or 1, determining whether to compute individual derivatives of descriptors 
+  with respect to neighboring atoms, which is required for neural networks.
+
+.. _lammpssnap: https://docs.lammps.org/compute_sna_atom.html 
+.. _quadsnappaper: https://aip.scitation.org/doi/full/10.1063/1.5017641 
+.. _chemsnappaper: https://www.sciencedirect.com/science/article/pii/S0021999114008353
+
 [CALCULATOR]
 ^^^^^^^^^^^^
+
+This section houses keywords determining which calculator to use, i.e. which descriptors to 
+calculate. 
+
+- :code:`calculator` is the name of the LAMMPS connection for getting descriptors, e.g. for SNAP 
+  descriptors use :code:`LAMMPSSNAP`.
+
+- :code:`energy` is 0 or 1, determining whether to calculate descriptors associated with 
+  energies.
+
+- :code:`force` is 0 or 1, determining whether to calculate descriptor gradients 
+  associated with forces.
+
+- :code:`stress` is 0 or 1, determining whether to calculate descriptors gradients associated with 
+  virial terms for calculating and fitting to stresses.
+
+- :code:`per_atom_energy` is 0 or 1, determining whether to use per-atom energy descriptors in 
+  association with :code:`bikflag = 1`
+
+- :code:`nonlinear` is 0 or 1, and should be 1 if using nonlinear solvers such as PyTorch models. 
 
 [ESHIFT]
 ^^^^^^^^
 
+This section declares an energy shift applied to each atom type.
+
 [SOLVER]
 ^^^^^^^^
-.. _PATH:
+
+This section contains keywords associated with specific machine learning solvers. 
+
+- :code:`solver` name of the solver. We recommend using :code:`SVD` for linear solvers and 
+  :code:`PYTORCH` for neural networks. 
+
+[SCRAPER]
+^^^^^^^^^
+
+This section declares which file scraper to use for gathering training data.
+
+- :code:`scraper` is either :code:`JSON` or :code:`XYZ.`
 
 [PATH]
 ^^^^^^
@@ -152,7 +259,44 @@ For example if the training data is in a file called :code:`JSON` in the previou
 to where we run the FitSNAP executable, this section looks like::
 
     [PATH]
-    dataPath = JSON
+    dataPath = ../JSON
+
+[OUTFILE]
+^^^^^^^^^
+
+This section declares the names of output files.
+
+- :code:`metrics` gives the name of the error metrics markdown file. If using LAMMPS metal units, 
+  energy mean absolute errors are in eV and force errors are in eV/Angstrom. 
+
+- :code:`potential` gives the prefix of the LAMMPS-ready potential files to dump.
+
+[REFERENCE]
+^^^^^^^^^^^
+
+This section includes settings for an *optional* potential to overlay our machine learned potential 
+with. We call this a "reference potential", which is a pair style defined in LAMMPS. If you choose 
+to use a reference potential, the energies and forces from the reference potential will be subtracted 
+from the target *ab initio* training data. We also declare units in this section.
+
+- :code:`units` declares units used by LAMMPS, see `LAMMPS units docs <lammpsunits_>`_ for more 
+  info. 
+
+- :code:`atom_style` the atom style used by the LAMMPS pair style you wish to overlay, see 
+  `LAMMPS atom style docs <lammpsatomstyle_>`_ for more info. 
+
+The minimum working reference potential setup involves not using a reference potential at all, where 
+the reference section would look like (using metal units)::
+
+    [REFERENCE]
+    units = metal
+    pair_style = zero 10.0
+    pair_coeff = * *
+
+The rest of the keywords are associated with the particular LAMMPS pair style you wish to use. 
+
+.. _lammpsunits: https://docs.lammps.org/units.html
+.. _lammpsatomstyle: https://docs.lammps.org/atom_style.html
 
 [GROUPS]
 ^^^^^^^^
@@ -161,38 +305,71 @@ Each group should be its own sub-irectory in the directory given by the :code:`d
 `the [PATH] section <Run.html#path>`__. There are a few different allowed syntaxes; subdirectory 
 names in the first column is common to all options.
 
-The default grouplist format has five columns and is as follows::
+:code:`group_sections` declares which parameters you want to set for each group of configurations. 
 
-    name  size  eweight  fweight  vweight
-    (STR) (REAL) (REAL)  (REAL)   (REAL)
+For example::
 
-The first column is the name of the subfolder with training data. The second column defines the 
-number of files to be used in training the fit. The last three columns are real numbers defining the 
-weight vector for all configurations in this group::
+    group_sections = name training_size testing_size eweight fweight vweight
 
-    NAME_OF_SUBFOLDER NUMBER_OF_FILES ENERGY_WEIGHT FORCE_WEIGHT VIRIAL_WEIGHT
+means you will supply group names, training size as a decimal fraction, testing size as a decimal 
+fraction, energy weight, force weight, and virial weight, respectively. We must also declare the 
+data types associated with these variables, given by
 
-If the second column is a fraction::
+    group_types = str float float float float float
 
-    (STR) (REAL, <=1.0) (REAL) (REAL) (REAL)
+Then we may declare the group names and parameters associated with them. For a particular group 
+called :code:`Liquid` for example, this looks like::
 
-The second column now defines the fraction of this group to be used in fitting. This will sample at 
-random from the list of files in this group::
+    Liquid        =  1.0    0.0       4.67E+02        1       1.00E-08
 
-    NAME_OF_SUBFOLDER FRACTION_OF_FILES ENERGY_WEIGHT FORCE_WEIGHT VIRIAL_WEIGHT
+where :code:`Liquid` is the name of the group, :code:`1.0` is the training fraction, :code:`0.0` is 
+the testing fraction, :code:`6.47E+02` is the energy weight, :code:`1` is the force weight, and 
+:code:`1.00E-8` is the virial weight.
 
-Other available grouplist columns through the group_sections keyword are:
+Other available keywords are
 
-- :code:`training_size` = size or fraction of total files to be used in training
-- :code:`testing_size` = size or fraction of total files to be used in testing
+- :code:`random_sampling` is 0 or 1. If 1, configurations in the groups are randomly sampled between 
+  their training and testing fractions. 
 
-A few examples are found in the :code:`fitsnap/examples` directory.
+- :code:`smartweights`` is 0 or 1. If 1, we declare statistically distributed weights given your 
+  supplied weights.
+
+A few examples are found in the examples directory.
+
+[EXTRAS]
+^^^^^^^^
+
+This section contains keywords on optional info to dump. By default, linear models output error 
+metric markdown files that should be sufficient in most cases. If more detailed errors are required, 
+please see the output Pandas dataframe :code:`FitSNAP.df` used by linear models. Examples and 
+library tools for analyzing  this dataframe are found in our 
+`Colab Python notebook tutorial <tutorialnotebook_>`_.
+
+[MEMORY]
+^^^^^^^^
+
+This section contains keywords for dealing with memory. We recommend using defaults. 
+
+Outputs
+-------
+
+FitSNAP outputs include error metrics, detailed errors for each atom, configuration, or groups of 
+configurations, and LAMMPS-ready files for running MD simulations.
+
+Outputs are different for linear and nonlinear models. 
+
+For linear models, please see the `Linear models output section <Linear.html#outputs>`__
+
+For nonlinear models, please see the
+`PyTorch models output section <Pytorch.html#outputs-and-error-calculation>`__. After running a 
+linear model fit, the following outputs will be produced:
 
 Library
 -------
 
-FitSNAP may also be run through the library interface. More documentation coming soon, but for now
-the `GitHub repo examples <libexamples_>`_ may help set up scripts for your needs.
+FitSNAP may also be run through the library interface. The `GitHub repo examples <libexamples_>`_ 
+may help set up scripts for your needs. More useful library functionality is found in our 
+`Colab Python notebook tutorial <tutorialnotebook_>`_.
 
 .. _libexamples: https://github.com/FitSNAP/FitSNAP/tree/master/examples/library
 

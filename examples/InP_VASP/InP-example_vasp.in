@@ -14,7 +14,7 @@
 ##          3. In the [PATH] section, set 'datapath = {your_root_directory}' (in this example, 'VASP')
 ##          4. Inside the data root directory (datapath), create one or more *group directories* 
 ##                  --> Here, there are 3 groups, 'Defects_aP', 'Defects_iP', and 'smallDefects_aa'
-##          5. Inside of each group directory, place *VASP run directories* that you would like to train on, i.e., 'all_simulations/unique_simulation_1/.../*CAR'
+##          5. Inside of each group directory, place *VASP run directories* OR *symlinks to those directories* that you would like to train on, i.e., 'all_simulations/unique_simulation_1/.../*CAR'
 ##                  --> Here, each group has a few different subfolders with OUTCARs, such as './VASP/Defects_aP/type1/OUTCAR'
 ##          6. In the [GROUPS] section, add the group directories that you would like to include in your fit 
 ##                  --> Here, all three example groups are included, but you only need a single group folder to perform a fit
@@ -82,7 +82,7 @@ detailed_errors = 1
 scraper = VASP
 
 [PATH]
-dataPath = VASP
+dataPath = VASP # Note, the dataPath/groups/ folders can have symbolic links to the directories housing OUTCAR files if you dont want to move a bunch of files around
 
 [OUTFILE]
 metrics = vasp_InP-subset_metrics.md

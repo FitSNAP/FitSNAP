@@ -109,7 +109,7 @@ class Vasp(Scraper):
                                     for i in range(0, len(start_idx_loops))]
                 for uc in unique_configs:
                     config_dict = self.generate_config_dict(group, uc)
-                    if config_dict != -1:
+                    if config_dict != -1: 
                         self.configs[group].append(config_dict)
                 del lines
 

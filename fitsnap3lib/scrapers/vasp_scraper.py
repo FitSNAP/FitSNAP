@@ -23,6 +23,7 @@ class Vasp(Scraper):
         self.bad_configs = {}
         self.all_config_dicts = []
         self.bc_bool = False
+        self.unconverged_tag = 'UNCONVERGED'
         self.infile = config.args.infile
         self.vasppath = config.sections['PATH'].datapath
         self.group_table = config.sections["GROUPS"].group_table
@@ -97,8 +98,9 @@ class Vasp(Scraper):
                 nlines = len(lines)
 
                 ## Use ion loop text to partition ionic steps
-                ion_loop_text = 'aborting loop because EDIFF is reached'
+                ion_loop_text = 'aborting loop'
                 start_idx_loops = [i for i, line in enumerate(lines) if ion_loop_text in line]
+                converged_list = [False if 'unconverged' in lines[i] else True for i in start_idx_loops]
                 end_idx_loops = [i for i in start_idx_loops[1:]] + [nlines]
 
                 ## Grab potcar and element info
@@ -110,7 +112,7 @@ class Vasp(Scraper):
                 ## but separated for each iteration (idx loops on 'lines')
                 ## Tuple data: outcar file name str, config number int, starting line number (for debug)  int, 
                 ## potcar list, potcar elements list, number ions per element list, configuration lines list 
-                unique_configs = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type,lines[start_idx_loops[i]:end_idx_loops[i]])
+                unique_configs = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type, converged_list[i], lines[start_idx_loops[i]:end_idx_loops[i]])
                                     for i in range(0, len(start_idx_loops))]
                 for uc in unique_configs:
                     config_dict = self.generate_config_dict(group, uc)
@@ -216,13 +218,16 @@ class Vasp(Scraper):
         config_dict = {}
         is_bad_config = False
         has_json = None
-        outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type,lines = outcar_config
+        outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type, converged, lines = outcar_config
         file_num = config_num + 1
 
         ## JSON read/write setup
         json_path = f'{self.jsonpath}/{group}'
         json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','') #.replace(f'_{group}','')
-        json_filename = f"{json_path}/{json_filestem}_{file_num}.json"
+        if converged:
+            json_filename = f"{json_path}/{json_filestem}_{file_num}.json"
+        else:
+            json_filename = f"{json_path}/{json_filestem}_{file_num}_{self.unconverged_tag}.json"
 
         ## Check if JSON was already created from this OUTCAR
         if not os.path.exists(json_path):
@@ -316,7 +321,7 @@ class Vasp(Scraper):
             list_atom_types.extend(elem_list)
         natoms = sum(ions_per_type)
 
-        ## Search entire file to create indices for each section
+        ## Search entire config/ionic step to create indices for each section
         for i, line in enumerate(lines):
             line_test = [True if sm in line else False for sm in section_markers]
             if any(line_test):

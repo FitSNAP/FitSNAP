@@ -1,9 +1,9 @@
 import numpy as np
+from fitsnap3lib.io.input import Config
 
 try:
     import torch
     import math
-    from fitsnap3lib.io.input import Config
 
     class Bessel():
         """

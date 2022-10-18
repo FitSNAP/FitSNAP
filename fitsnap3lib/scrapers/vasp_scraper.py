@@ -28,6 +28,7 @@ class Vasp(Scraper):
         self.vasppath = config.sections['PATH'].datapath
         self.group_table = config.sections["GROUPS"].group_table
         self.jsonpath = config.sections['GROUPS'].vasp_json_pathname
+        self.use_energie_with_entropy = config.sections['GROUPS'].vasp_TOTEN
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
         self.vasp_ignore_jsons = config.sections["GROUPS"].vasp_ignore_jsons
 
@@ -312,7 +313,7 @@ class Vasp(Scraper):
 
         ## Index lines of file containing JSON data
         section_idxs = [None,None,None,None]
-        atom_coords, atom_forces, stress_component, all_lattice, total_energie  = None, None, None, None, None
+        atom_coords, atom_forces, stress_component, all_lattice, total_energie, energie_with_entropy  = None, None, None, None, None, None
 
         list_atom_types = []
         for i, elem in enumerate(potcar_elements):
@@ -366,11 +367,21 @@ class Vasp(Scraper):
             del lines
             return (crash_type, crash_atom_coord_line)
 
-        ## Energie :-)
-        ## We are getting the value without entropy
+        ## Energie :-) without entropy
         lidx_energie = section_idxs[idx_energie] + 4
         line_energie = lines[lidx_energie]
-        total_energie = self.get_energie(line_energie)
+        total_energie_without_entropy = self.get_energie_without_entropy(line_energie)
+
+        ## Energie WITH entropy (TOTEN)
+        lidx_energie_entropy = section_idxs[idx_energie] + 2
+        line_energie_entropy = lines[lidx_energie_entropy]
+        total_energie_with_entropy = self.get_energie_with_entropy(line_energie_entropy)
+
+        ## Check which one the user has picked (by toggling variable vasp_TOTEN in the GROUPS section)
+        if self.use_energie_with_entropy:
+            total_energie = total_energie_with_entropy
+        else:
+            total_energie = total_energie_without_entropy
 
         ## Special toggled shift in energie if converting training data
         if len(self.training_eshift) > 0:
@@ -490,11 +501,16 @@ class Vasp(Scraper):
             forces.append([fx, fy, fz])
         return coords, forces
 
-    def get_energie(self, line):
+    def get_energie_without_entropy(self, line):
         str0 = line[:line.rfind("energy(sigma->")].strip()
         str1 = "".join([c for c in str0 if c.isdigit() or c == "-" or c == "."])
         energie = float(str1)
         return energie
+
+
+    def get_energie_with_entropy(self, line):
+        energie_with_entropy = float(line.split()[4])
+        return energie_with_entropy
     
     def write_json(self, json_filename, outcar_filename, config_dict):
         dt = datetime.now().strftime('%B %d %Y %I:%M%p')

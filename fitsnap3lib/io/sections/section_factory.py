@@ -7,7 +7,7 @@ from fitsnap3lib.io.sections.calculator_sections.ace import Ace
 from fitsnap3lib.io.sections.calculator_sections.basic_calculator import Basic
 from fitsnap3lib.io.sections.calculator_sections.custom import Custom
 from fitsnap3lib.io.sections.eshift import Eshift
-from fitsnap3lib.io.sections.training_eshift import Training_Eshift
+from fitsnap3lib.io.sections.trainshift import Trainshift
 from fitsnap3lib.io.sections.extras import Extras
 from fitsnap3lib.io.sections.groups import Groups
 from fitsnap3lib.io.sections.memory import Memory

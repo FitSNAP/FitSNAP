@@ -28,15 +28,14 @@ class Vasp(Scraper):
         self.vasppath = config.sections['PATH'].datapath
         self.group_table = config.sections["GROUPS"].group_table
         self.jsonpath = config.sections['GROUPS'].vasp_json_pathname
-        self.use_energie_with_entropy = config.sections['GROUPS'].vasp_TOTEN
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
         self.vasp_ignore_jsons = config.sections["GROUPS"].vasp_ignore_jsons
 
-        if 'TRAINING_ESHIFT' in config.sections.keys():
-            self.training_eshift = config.sections['TRAINING_ESHIFT'].training_eshift
-            output.screen("!WARNING: 'TRAINING_ESHIFT' is in input file!\n!WARNING: This shifts the per-atom energy of scraped OUTCAR configurations.\n!WARNING: Be sure that this is the behavior you want/expect.")
+        if 'TRAINSHIFT' in config.sections.keys():
+            self.trainshift = config.sections['TRAINSHIFT'].trainshift
+            output.screen("!WARNING: 'TRAINSHIFT' is in input file!\n!WARNING: This shifts the per-atom energy of scraped OUTCAR configurations.\n!WARNING: Be sure that this is the behavior you want/expect.")
         else:
-            self.training_eshift = {}
+            self.trainshift = {}
 
 
     def scrape_groups(self):
@@ -377,16 +376,19 @@ class Vasp(Scraper):
         line_energie_entropy = lines[lidx_energie_entropy]
         total_energie_with_entropy = self.get_energie_with_entropy(line_energie_entropy)
 
-        ## Check which one the user has picked (by toggling variable vasp_TOTEN in the GROUPS section)
-        if self.use_energie_with_entropy:
-            total_energie = total_energie_with_entropy
-        else:
-            total_energie = total_energie_without_entropy
+        ## Use energy without entropy by default 
+        total_energie = total_energie_without_entropy
 
         ## Special toggled shift in energie if converting training data
-        if len(self.training_eshift) > 0:
-            training_eshifts = [self.training_eshift[element] for element in potcar_elements]
-            energy_shifts = [ions_per_type[i]*training_eshifts[i] for i in range(len(potcar_elements))]
+        if self.trainshift:
+            
+            ## Check if we should use the default without entropy, or use TOTEN
+            if self.trainshift['use_TOTEN']:
+                total_energie = total_energie_with_entropy
+
+            ## Shift energies
+            shifted_energies = [self.trainshift[element] for element in potcar_elements]
+            energy_shifts = [ions_per_type[i]*shifted_energies[i] for i in range(len(potcar_elements))]
             total_energie += sum(energy_shifts)
 
         # Here is where all the data is put together since the energy value is the last

@@ -31,6 +31,12 @@ class Vasp(Scraper):
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
         self.vasp_ignore_jsons = config.sections["GROUPS"].vasp_ignore_jsons
 
+        if 'TRAINSHIFT' in config.sections.keys():
+            self.trainshift = config.sections['TRAINSHIFT'].trainshift
+            output.screen("!WARNING: 'TRAINSHIFT' is in input file!\n!WARNING: This shifts the per-atom energy of scraped OUTCAR configurations.\n!WARNING: Be sure that this is the behavior you want/expect.")
+        else:
+            self.trainshift = {}
+
 
     def scrape_groups(self):
         ### Locate all OUTCARs in datapath
@@ -307,7 +313,7 @@ class Vasp(Scraper):
 
         ## Index lines of file containing JSON data
         section_idxs = [None,None,None,None]
-        atom_coords, atom_forces, stress_component, all_lattice, total_energie  = None, None, None, None, None
+        atom_coords, atom_forces, stress_component, all_lattice, total_energie, energie_with_entropy  = None, None, None, None, None, None
 
         list_atom_types = []
         for i, elem in enumerate(potcar_elements):
@@ -361,11 +367,30 @@ class Vasp(Scraper):
             del lines
             return (crash_type, crash_atom_coord_line)
 
-        ## Energie :-)
-        ## We are getting the value without entropy
+        ## Energie :-) without entropy
         lidx_energie = section_idxs[idx_energie] + 4
         line_energie = lines[lidx_energie]
-        total_energie = self.get_energie(line_energie)
+        total_energie_without_entropy = self.get_energie_without_entropy(line_energie)
+
+        ## Energie WITH entropy (TOTEN)
+        lidx_energie_entropy = section_idxs[idx_energie] + 2
+        line_energie_entropy = lines[lidx_energie_entropy]
+        total_energie_with_entropy = self.get_energie_with_entropy(line_energie_entropy)
+
+        ## Use energy without entropy by default 
+        total_energie = total_energie_without_entropy
+
+        ## Special toggled shift in energie if converting training data
+        if self.trainshift:
+            
+            ## Check if we should use the default without entropy, or use TOTEN
+            if self.trainshift['use_TOTEN']:
+                total_energie = total_energie_with_entropy
+
+            ## Shift energies
+            shifted_energies = [self.trainshift[element] for element in potcar_elements]
+            energy_shifts = [ions_per_type[i]*shifted_energies[i] for i in range(len(potcar_elements))]
+            total_energie += sum(energy_shifts)
 
         # Here is where all the data is put together since the energy value is the last
         # one listed in each configuration.  After this, all these values will be overwritten
@@ -387,7 +412,8 @@ class Vasp(Scraper):
         ## These searches replace the POSCAR and POTCAR, and can also check IBRION for AIMD runs (commented out now)
         lines_potcar, lines_vrhfin, lines_ions_per_type = [], [],[]
         potcar_list, potcar_elements, ions_per_type = [], [], []
-        # line_ibrion, is_aimd = "", False
+        line_ibrion, is_scf = "", False 
+        ## scf: self-consistent framework - ions don't move, electrons 'moved' until convergence criterion reached
 
         for line in header:
             if "VRHFIN" in line:
@@ -405,7 +431,7 @@ class Vasp(Scraper):
         for line in lines_vrhfin:
             str0 = line.strip().replace("VRHFIN =", "")
             str1 = str0[:str0.find(":")]
-            potcar_elements.append(str1)
+            potcar_elements.append(str1.strip())
 
         for line in lines_ions_per_type:
             str0 = line.replace("ions per type = ","").strip()
@@ -431,21 +457,21 @@ class Vasp(Scraper):
             ions_per_type = [int(s) for s in str0.split()]
         return ions_per_type
 
-    def get_ibrion(self, line):
+    def check_scf(self, line):
         ## There should be only one of these lines (from INCAR print)
         ## IBRION value should always be first number < 10 to appear after "="
         line1 = line.split()
         idx_equals = line1.index("=")
         probably_ibrion = line1[idx_equals+1]
         if probably_ibrion.isdigit():
-            if probably_ibrion == "0":
-                is_aimd = True ## https://www.vasp.at/wiki/index.php/IBRION
+            if probably_ibrion == "-1":
+                is_scf = True ## https://www.vasp.at/wiki/index.php/IBRION
             else:
-                is_aimd = False
+                is_scf = False
         else:
-            output.screen("!!WARNING: incomplete coding with scrape_ibrion, assuming not AIMD for now.")
-            is_aimd = False
-        return is_aimd
+            output.screen("!!WARNING: incomplete coding with scrape_ibrion, assuming not SCF for now.")
+            is_scf = False
+        return is_scf
 
     def get_direct_lattice(self, lines):
         lattice_coords = []
@@ -478,11 +504,16 @@ class Vasp(Scraper):
             forces.append([fx, fy, fz])
         return coords, forces
 
-    def get_energie(self, line):
+    def get_energie_without_entropy(self, line):
         str0 = line[:line.rfind("energy(sigma->")].strip()
         str1 = "".join([c for c in str0 if c.isdigit() or c == "-" or c == "."])
         energie = float(str1)
         return energie
+
+
+    def get_energie_with_entropy(self, line):
+        energie_with_entropy = float(line.split()[4])
+        return energie_with_entropy
     
     def write_json(self, json_filename, outcar_filename, config_dict):
         dt = datetime.now().strftime('%B %d %Y %I:%M%p')

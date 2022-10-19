@@ -24,9 +24,7 @@ class Trainshift(Section):
             return
 
         ## Hacky way to get multiple data types into this section
-        ## TODO improve if needs be
         for atom_type in self.types: 
             self.trainshift[atom_type] = self.get_value("TRAINSHIFT", "{}".format(atom_type), "0.0", "float")
-        self.trainshift['use_TOTEN'] = self.get_value("TRAINSHIFT", 'use_TOTEN', "0", "bool")
 
         self.delete()

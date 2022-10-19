@@ -25,7 +25,8 @@ class Vasp(Scraper):
         self.bc_bool = False
         self.unconverged_tag = 'UNCONVERGED'
         self.infile = config.args.infile
-        self.vasppath = config.sections['PATH'].datapath
+        self.vasp_path = config.sections['PATH'].datapath
+        self.use_TOTEN = config.sections["GROUPS"].vasp_use_TOTEN
         self.group_table = config.sections["GROUPS"].group_table
         self.jsonpath = config.sections['GROUPS'].vasp_json_pathname
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
@@ -41,7 +42,7 @@ class Vasp(Scraper):
     def scrape_groups(self):
         ### Locate all OUTCARs in datapath
         glob_asterisks = '/**/*'
-        outcars_base = os.path.join(self.vasppath, *glob_asterisks.split('/'))
+        outcars_base = os.path.join(self.vasp_path, *glob_asterisks.split('/'))
 
         ## TODO make this search user-specify-able (e.g., OUTCARs have labels/prefixes etc.)
         all_outcars = [f for f in glob(outcars_base,recursive=True) if f.endswith('OUTCAR')]
@@ -51,12 +52,12 @@ class Vasp(Scraper):
 
         for group in self.group_table:
             ## First, check that all group folders exist
-            group_vasppath = f'{self.vasppath}/{group}'
-            if not os.path.exists(group_vasppath):
+            group_vasp_path = f'{self.vasp_path}/{group}'
+            if not os.path.exists(group_vasp_path):
                 raise Exception('!!ERROR: group folder not detected!!' 
                     '\n!!Please check that all groups in the input file have an associated group folder' 
                     f'\n!!\tInput file: {self.infile}'
-                    f'\n!!\tMissing group folder: {group_vasppath}'
+                    f'\n!!\tMissing group folder: {group_vasp_path}'
                     '\n')
 
             training_size = None
@@ -78,13 +79,12 @@ class Vasp(Scraper):
             
             ## Grab OUTCARS for this training group
             ## Test filepath to be sure that unique group name is being matched
-            # group_outcars = [f for f in all_outcars if group == f.replace(self.vasppath,"").replace("/",'&')[1:].split('&')]
-            group_outcars = [f for f in all_outcars if group_vasppath + '/' in f]
+            group_outcars = [f for f in all_outcars if group_vasp_path + '/' in f]
             if len(group_outcars) == 0:
                 raise Exception('!!ERROR: no OUTCARs found in group!!' 
                     '\n!!Please check that all groups in the input file have at least one file named "OUTCAR"' 
                     '\n!!in at least one subdirectory of the group folder' 
-                    f'\n!!\tMissing group data root: {group_vasppath}'
+                    f'\n!!\tMissing group data root: {group_vasp_path}'
                     '\n')
 
             file_base = os.path.join(config.sections['PATH'].datapath, group)
@@ -270,7 +270,10 @@ class Vasp(Scraper):
 
             config_header = {}
             config_header['Group'] = group
-            config_header['File'] = outcar_filename
+            config_header['File'] = json_filename
+            config_header['Eshift'] = dict(config.sections["ESHIFT"].eshift)
+            config_header['Trainshift'] = dict(config.sections["TRAINSHIFT"].trainshift)
+            config_header['use_TOTEN'] = self.use_TOTEN
             config_header['EnergyStyle'] = "electronvolt"
             config_header['StressStyle'] = "kB"
             config_header['AtomTypeStyle'] = "chemicalsymbol"
@@ -313,7 +316,7 @@ class Vasp(Scraper):
 
         ## Index lines of file containing JSON data
         section_idxs = [None,None,None,None]
-        atom_coords, atom_forces, stress_component, all_lattice, total_energie, energie_with_entropy  = None, None, None, None, None, None
+        atom_coords, atom_forces, stress_component, all_lattice, total_energie  = None, None, None, None, None
 
         list_atom_types = []
         for i, elem in enumerate(potcar_elements):
@@ -367,26 +370,25 @@ class Vasp(Scraper):
             del lines
             return (crash_type, crash_atom_coord_line)
 
-        ## Energie :-) without entropy
+        ## Energie WITH entropy (TOTEN)
+        lidx_TOTEN = section_idxs[idx_energie] + 2
+        line_TOTEN = lines[lidx_TOTEN]
+        total_energie_with_entropy = self.get_energie_with_entropy(line_TOTEN)
+
+        ## Energie without entropy
         lidx_energie = section_idxs[idx_energie] + 4
         line_energie = lines[lidx_energie]
         total_energie_without_entropy = self.get_energie_without_entropy(line_energie)
 
-        ## Energie WITH entropy (TOTEN)
-        lidx_energie_entropy = section_idxs[idx_energie] + 2
-        line_energie_entropy = lines[lidx_energie_entropy]
-        total_energie_with_entropy = self.get_energie_with_entropy(line_energie_entropy)
-
-        ## Use energy without entropy by default 
-        total_energie = total_energie_without_entropy
+        ## Check if we should use the default without entropy, or use TOTEN 
+        ## (when vasp_use_TOTEN = True in [GROUPS])
+        if self.use_TOTEN:
+            total_energie = total_energie_with_entropy
+        else:
+            total_energie = total_energie_without_entropy
 
         ## Special toggled shift in energie if converting training data
         if self.trainshift:
-            
-            ## Check if we should use the default without entropy, or use TOTEN
-            if self.trainshift['use_TOTEN']:
-                total_energie = total_energie_with_entropy
-
             ## Shift energies
             shifted_energies = [self.trainshift[element] for element in potcar_elements]
             energy_shifts = [ions_per_type[i]*shifted_energies[i] for i in range(len(potcar_elements))]

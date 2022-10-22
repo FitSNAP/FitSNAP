@@ -100,10 +100,10 @@ try:
                     self.networks.append(create_torch_network(self.layer_sizes))
 
             self.optimizer = None
+            self.force_bool = self.pt.fitsnap_dict['force']
             self.model = FitTorch(self.networks, #config.sections["PYTORCH"].networks,
                                   self.num_desc_per_element,
-                                  self.energy_weight,
-                                  self.force_weight,
+                                  self.force_bool,
                                   self.num_elements,
                                   self.multi_element_option,
                                   self.dtype)
@@ -288,14 +288,21 @@ try:
                         descriptors = batch['x'].to(self.device).requires_grad_(True)
                         atom_types = batch['t'].to(self.device)
                         targets = batch['y'].to(self.device).requires_grad_(True)
-                        target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                         indices = batch['i'].to(self.device)
                         num_atoms = batch['noa'].to(self.device)
                         weights = batch['w'].to(self.device)
-                        dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
-                        dbdrindx = batch['dbdrindx'].to(self.device)
-                        unique_j = batch['unique_j'].to(self.device)
-                        unique_i = batch['unique_i'].to(self.device)
+                        if (self.pt.fitsnap_dict['force']):
+                            target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
+                            dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
+                            dbdrindx = batch['dbdrindx'].to(self.device)
+                            unique_j = batch['unique_j'].to(self.device)
+                            unique_i = batch['unique_i'].to(self.device)
+                        else:
+                            target_forces = None
+                            dgrad = None
+                            dbdrindx = None
+                            unique_j = None
+                            unique_i = None
                         testing_bools = batch['testing_bools']
                         (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, unique_i, self.device)
                         energies = torch.div(energies,num_atoms)
@@ -309,28 +316,42 @@ try:
                         indices_forces = torch.repeat_interleave(indices, 3)
                         force_weights = weights[indices_forces,1]
 
-                        if (self.energy_weight != 0):
+                        if (self.pt.fitsnap_dict['energy']):
                             energies = energies.to(self.device)
-                        if (self.force_weight != 0):
+                        if (self.pt.fitsnap_dict['force']):
                             forces = forces.to(self.device)
 
                         if (epoch == self.config.sections["PYTORCH"].num_epochs-1):
 
-                            if (self.force_weight !=0):
+                            if (self.pt.fitsnap_dict['force']):
                                 target_force_plot.append(target_forces.cpu().detach().numpy())
                                 model_force_plot.append(forces.cpu().detach().numpy())
-                            if (self.energy_weight !=0):
+                            if (self.pt.fitsnap_dict['energy']):
                                 target_energy_plot.append(targets.cpu().detach().numpy())
                                 model_energy_plot.append(energies.cpu().detach().numpy())
 
                         # assert that model and target force dimensions match
 
-                        if (self.force_weight !=0):
+                        if (self.pt.fitsnap_dict['force']):
                             assert target_forces.size() == forces.size()
 
+                        if (self.pt.fitsnap_dict['energy'] and self.pt.fitsnap_dict['force']):
+                            if (self.global_weight_bool):
+                                loss = self.energy_weight*self.loss_function(energies, targets) \
+                                     + self.force_weight*self.loss_function(forces, target_forces)
+                            else:
+                                loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
+                                    + self.weighted_mse_loss(forces, target_forces, force_weights)
+                        elif (not self.pt.fitsnap_dict['force']):
+                            if (self.global_weight_bool):
+                                loss = self.energy_weight*self.loss_function(energies, targets)
+                            else:
+                                loss = self.weighted_mse_loss(energies, targets, weights[:,0])
+                            
+                        """
                         if (self.energy_weight==0.0):
                             loss = self.force_weight*self.loss_function(forces, target_forces)
-                        elif (self.force_weight==0.0):
+                        elif (self.pt.fitsnap_dict['force']):
                             loss = self.energy_weight*self.loss_function(energies, targets)
                         else:
                             if (self.global_weight_bool):
@@ -339,6 +360,7 @@ try:
                             else:
                                 loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
                                     + self.weighted_mse_loss(forces, target_forces, force_weights)
+                        """
                         self.optimizer.zero_grad()
                         loss.backward()
                         self.optimizer.step()
@@ -352,14 +374,22 @@ try:
                         descriptors = batch['x'].to(self.device).requires_grad_(True)
                         atom_types = batch['t'].to(self.device)
                         targets = batch['y'].to(self.device).requires_grad_(True)
-                        target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
+                        #target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                         indices = batch['i'].to(self.device)
                         num_atoms = batch['noa'].to(self.device)
                         weights = batch['w'].to(self.device)
-                        dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
-                        dbdrindx = batch['dbdrindx'].to(self.device)
-                        unique_j = batch['unique_j'].to(self.device)
-                        unique_i = batch['unique_i'].to(self.device)
+                        if (self.pt.fitsnap_dict['force']):
+                            target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
+                            dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
+                            dbdrindx = batch['dbdrindx'].to(self.device)
+                            unique_j = batch['unique_j'].to(self.device)
+                            unique_i = batch['unique_i'].to(self.device)
+                        else:
+                            target_forces = None
+                            dgrad = None
+                            dbdrindx = None
+                            unique_j = None
+                            unique_i = None
                         (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, unique_i, self.device)
                         energies = torch.div(energies,num_atoms)
                         
@@ -368,35 +398,50 @@ try:
                         indices_forces = torch.repeat_interleave(indices, 3)
                         force_weights = weights[indices_forces,1]
 
-                        if (self.energy_weight != 0):
+                        if (self.pt.fitsnap_dict['energy']):
                             energies = energies.to(self.device)
-                        if (self.force_weight != 0):
+                        if (self.pt.fitsnap_dict['force']):
                             forces = forces.to(self.device)
 
                         if (epoch == self.config.sections["PYTORCH"].num_epochs-1):
 
-                            if (self.force_weight !=0):
+                            if (self.pt.fitsnap_dict['force']):
                                 target_force_plot_val.append(target_forces.cpu().detach().numpy())
                                 model_force_plot_val.append(forces.cpu().detach().numpy())
-                                natoms_per_config.append(num_atoms.cpu().detach().numpy())
-                            if (self.energy_weight !=0):
+                                #natoms_per_config.append(num_atoms.cpu().detach().numpy())
+                            if (self.pt.fitsnap_dict['energy']):
                                 target_energy_plot_val.append(targets.cpu().detach().numpy())
                                 model_energy_plot_val.append(energies.cpu().detach().numpy())
 
                         # assert that model and target force dimensions match
 
-                        if (self.force_weight !=0):
+                        if (self.pt.fitsnap_dict['force']):
                             assert target_forces.size() == forces.size()
 
                         # assert number of atoms is correct
-                        
+                        """
                         if (self.energy_weight !=0):
                             natoms_batch = np.sum(num_atoms.cpu().detach().numpy())
                             nforce_components_batch = forces.size()[0]
                             assert (3*natoms_batch == nforce_components_batch)
+                        """
 
                         # calculate loss
 
+                        if (self.pt.fitsnap_dict['energy'] and self.pt.fitsnap_dict['force']):
+                            if (self.global_weight_bool):
+                                loss = self.energy_weight*self.loss_function(energies, targets) \
+                                     + self.force_weight*self.loss_function(forces, target_forces)
+                            else:
+                                loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
+                                    + self.weighted_mse_loss(forces, target_forces, force_weights)
+                        elif (not self.pt.fitsnap_dict['force']):
+                            if (self.global_weight_bool):
+                                loss = self.energy_weight*self.loss_function(energies, targets)
+                            else:
+                                loss = self.weighted_mse_loss(energies, targets, weights[:,0])
+                                
+                        """
                         if (self.energy_weight==0.0):
                             loss = self.force_weight*self.loss_function(forces, target_forces)
                         elif (self.force_weight==0.0):
@@ -408,7 +453,8 @@ try:
                             else:
                                 loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
                                     + self.weighted_mse_loss(forces, target_forces, force_weights)
-
+                        """
+                        
                         val_losses_step.append(loss.item())
 
                     # average training and validation losses across all batches
@@ -426,7 +472,7 @@ try:
                             self.config.sections['PYTORCH'].save_state_output
                         )
 
-                if (self.force_weight != 0.0):
+                if (self.pt.fitsnap_dict['force']):
 
                     # print target and model forces
                     # training
@@ -445,28 +491,28 @@ try:
                         dat_val = np.concatenate((model_force_plot_val, target_force_plot_val), axis=1)
                         np.savetxt("force_comparison_val.dat", dat_val) 
 
-                if (self.energy_weight != 0.0):
+                #if (self.pt.fitsnap_dict['energy']):
 
-                    # print target and model energies
-                    # training
-                    target_energy_plot = np.concatenate(target_energy_plot)
-                    model_energy_plot = np.concatenate(model_energy_plot)
+                # print target and model energies
+                # training
+                target_energy_plot = np.concatenate(target_energy_plot)
+                model_energy_plot = np.concatenate(model_energy_plot)
 
-                    target_energy_plot = np.array([target_energy_plot]).T
-                    model_energy_plot = np.array([model_energy_plot]).T
+                target_energy_plot = np.array([target_energy_plot]).T
+                model_energy_plot = np.array([model_energy_plot]).T
 
-                    dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
-                    np.savetxt("energy_comparison.dat", dat)
-                    # validation
-                    if (target_energy_plot_val):
-                        target_energy_plot_val = np.concatenate(target_energy_plot_val)
-                        model_energy_plot_val = np.concatenate(model_energy_plot_val)
-                        natoms_per_config = np.concatenate(natoms_per_config)
-                        target_energy_plot_val = np.array([target_energy_plot_val]).T
-                        model_energy_plot_val = np.array([model_energy_plot_val]).T
-                        natoms_per_config = np.array([natoms_per_config]).T
-                        dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val, natoms_per_config), axis=1)
-                        np.savetxt("energy_comparison_val.dat", dat_val)
+                dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
+                np.savetxt("energy_comparison.dat", dat)
+                # validation
+                if (target_energy_plot_val):
+                    target_energy_plot_val = np.concatenate(target_energy_plot_val)
+                    model_energy_plot_val = np.concatenate(model_energy_plot_val)
+                    #natoms_per_config = np.concatenate(natoms_per_config)
+                    target_energy_plot_val = np.array([target_energy_plot_val]).T
+                    model_energy_plot_val = np.array([model_energy_plot_val]).T
+                    #natoms_per_config = np.array([natoms_per_config]).T
+                    dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val), axis=1)
+                    np.savetxt("energy_comparison_val.dat", dat_val)
 
                 # print training loss vs. epoch data
 

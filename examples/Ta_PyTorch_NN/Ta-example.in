@@ -18,7 +18,7 @@ dgradflag = 1
 calculator = LAMMPSSNAP
 energy = 1
 per_atom_energy = 1
-force = 1
+force = 1 #1
 stress = 0
 nonlinear = 1
 
@@ -27,13 +27,13 @@ Ta = 0.0
 
 [PYTORCH]
 layer_sizes = num_desc 64 32 16 1 #1000 1000 8 1
-learning_rate = 1.5e-4 
+learning_rate = 5e-5 
 num_epochs = 100
 batch_size = 4 # 363 configs in entire set
 save_state_output = Ta_Pytorch.pt
 energy_weight = 1e-2
 force_weight = 1.0
-training_fraction = 0.7
+#training_fraction = 0.7
 
 [SOLVER]
 solver = PYTORCH
@@ -62,19 +62,19 @@ pair_coeff2 = * * zbl 73 73
 group_sections = name training_size testing_size eweight fweight vweight
 group_types = str float float float float float
 smartweights = 0
-random_sampling = 0
-Displaced_A15 =  1.0    0.0       100             1               1.00E-08
-Displaced_BCC =  1.0    0.0       100             1               1.00E-08
-Displaced_FCC =  1.0    0.0       100             1               1.00E-08
-Elastic_BCC   =  1.0    0.0     1.00E-08        1.00E-08        0.0001
-Elastic_FCC   =  1.0    0.0     1.00E-09        1.00E-09        1.00E-09
-GSF_110       =  1.0    0.0      100             1               1.00E-08
-GSF_112       =  1.0    0.0      100             1               1.00E-08
-Liquid        =  1.0    0.0       4.67E+02        1               1.00E-08
-Surface       =  1.0    0.0       100             1               1.00E-08
-Volume_A15    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
-Volume_BCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
-Volume_FCC    =  1.0    0.0      1.00E+00        1.00E-09        1.00E-09
+random_sampling = 1
+Displaced_A15 =  0.7    0.3       100             1               1.00E-08
+Displaced_BCC =  0.7    0.3       100             1               1.00E-08
+Displaced_FCC =  0.7    0.3       100             1               1.00E-08
+Elastic_BCC   =  0.7    0.3     1.00E-08        1.00E-08        0.0001
+Elastic_FCC   =  0.7    0.3     1.00E-09        1.00E-09        1.00E-09
+GSF_110       =  0.7    0.3      100             1               1.00E-08
+GSF_112       =  0.7    0.3      100             1               1.00E-08
+Liquid        =  0.7    0.3       4.67E+02        1               1.00E-08
+Surface       =  0.7    0.3       100             1               1.00E-08
+Volume_A15    =  0.7    0.3      1.00E+00        1.00E-09        1.00E-09
+Volume_BCC    =  0.7    0.3      1.00E+00        1.00E-09        1.00E-09
+Volume_FCC    =  0.7    0.3      1.00E+00        1.00E-09        1.00E-09
 
 [EXTRAS]
 dump_descriptors = 1

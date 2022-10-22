@@ -79,11 +79,11 @@ class Calculator:
             self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
 
-            if self.config.sections["CALCULATOR"].force:
-                self.pt.create_shared_array('dgrad', dgrad_len, a_width, 
-                                            tm=self.config.sections["SOLVER"].true_multinode)
-                self.pt.create_shared_array('dbdrindx', dgrad_len, 3, 
-                                            tm=self.config.sections["SOLVER"].true_multinode)
+            #if self.config.sections["CALCULATOR"].force:
+            self.pt.create_shared_array('dgrad', dgrad_len, a_width, 
+                                        tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('dbdrindx', dgrad_len, 3, 
+                                        tm=self.config.sections["SOLVER"].true_multinode)
 
             # make an index for which the 'a' array starts on a particular proc
             self.pt.new_slice_a()

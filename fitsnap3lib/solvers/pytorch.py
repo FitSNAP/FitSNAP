@@ -159,8 +159,9 @@ try:
                 
                 indx_natoms_high = indx_natoms_low + config.natoms
                 indx_forces_high = indx_forces_low + 3*config.natoms
-                nrows_dgrad = int(self.pt.fitsnap_dict["NumDgradRows"][i])
-                indx_dgrad_high = indx_dgrad_low + nrows_dgrad
+                if (self.pt.fitsnap_dict['force']):
+                    nrows_dgrad = int(self.pt.fitsnap_dict["NumDgradRows"][i])
+                    indx_dgrad_high = indx_dgrad_low + nrows_dgrad
 
                 config.energy = self.pt.shared_arrays['b'].array[i]
                 config.filename = self.pt.fitsnap_dict['Configs'][i]
@@ -168,13 +169,15 @@ try:
                 config.weights = self.pt.shared_arrays['w'].array[i]
                 config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
                 config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
-                config.forces = self.pt.shared_arrays['c'].array[indx_forces_low:indx_forces_high]
-                config.dgrad = self.pt.shared_arrays['dgrad'].array[indx_dgrad_low:indx_dgrad_high]
-                config.dgrad_indices = self.pt.shared_arrays['dbdrindx'].array[indx_dgrad_low:indx_dgrad_high]
+                if (self.pt.fitsnap_dict['force']):
+                    config.forces = self.pt.shared_arrays['c'].array[indx_forces_low:indx_forces_high]
+                    config.dgrad = self.pt.shared_arrays['dgrad'].array[indx_dgrad_low:indx_dgrad_high]
+                    config.dgrad_indices = self.pt.shared_arrays['dbdrindx'].array[indx_dgrad_low:indx_dgrad_high]
 
                 indx_natoms_low += config.natoms
                 indx_forces_low += 3*config.natoms
-                indx_dgrad_low += nrows_dgrad
+                if (self.pt.fitsnap_dict['force']):
+                    indx_dgrad_low += nrows_dgrad
 
             # check that we make assignments (not copies) of data, to save memory
 

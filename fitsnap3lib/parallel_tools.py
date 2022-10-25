@@ -666,8 +666,6 @@ class ParallelTools(metaclass=Singleton):
             natoms = self.shared_arrays["number_of_atoms"].array[i]
             if (self.fitsnap_dict["force"]):
                 sub_dgrad_sizes[proc_number] += self.shared_arrays["number_of_dgrad_rows"].array[i]
-        print(sub_dgrad_sizes)
-        print(len(self.shared_arrays['dgrad'].array))
         assert sum(sub_dgrad_sizes) == len(self.shared_arrays['dgrad'].array)
         # dbidrj
         self.add_2_fitsnap("sub_dgrad_size", sub_dgrad_sizes)

@@ -43,6 +43,8 @@ class Bispectrum(Section):
         self.bzeroflag = self.get_value("BISPECTRUM", "bzeroflag", "0", "bool")
         # quadraticflag true enables the quadratic model
         self.quadraticflag = self.get_value("BISPECTRUM", "quadraticflag", "0", "bool")
+        if (self.chemflag and self.quadraticflag):
+            raise ValueError("Quadratic chemsnap not impelemented.")
         # bikflag true enables computing of bispectrum per atom instead of sum
         self.bikflag = self.get_value("BISPECTRUM", "bikflag", "0", "bool")
         if self.bikflag:

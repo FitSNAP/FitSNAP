@@ -27,3 +27,4 @@ class Configuration():
         self.positions = None # 1D 3N 
         self.x = None # Nx3
         self.xneigh = None # neighbor positions lined up with neighlist[:,1]
+        self.transform_x = None # neighlist transformed positions such that xneigh = transform_x + x

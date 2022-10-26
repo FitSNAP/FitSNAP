@@ -156,6 +156,8 @@ class Calculator:
                                         tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('xneigh', neighlist_len, xneigh_width, 
                                         tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('transform_x', neighlist_len, xneigh_width, 
+                                        tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('x', c_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)

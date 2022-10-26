@@ -189,6 +189,15 @@ try:
 
                 config.neighlist = self.pt.shared_arrays['neighlist'].array[indx_neighlist_low:indx_neighlist_high,0:2]
                 config.xneigh = self.pt.shared_arrays['xneigh'].array[indx_neighlist_low:indx_neighlist_high, :]
+                config.transform_x = self.pt.shared_arrays['transform_x'].array[indx_neighlist_low:indx_neighlist_high, :]
+
+                #print(config.xneigh)
+                #print(config.neighlist[:,0].astype(np.int))
+                #print(config.transform_x + config.x[config.neighlist[:,0].astype(np.int),:])
+
+                assert(np.all(np.round(config.xneigh,6) == np.round(config.transform_x + config.x[config.neighlist[:,0].astype(np.int),:],6)) )
+
+                #assert(False)
 
                 indx_natoms_low += config.natoms
                 indx_forces_low += 3*config.natoms

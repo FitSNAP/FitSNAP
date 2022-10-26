@@ -85,6 +85,7 @@ class LammpsCustom(LammpsBase):
 
         lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
         lmp_volume = self._lmp.get_thermo("vol")
+        assert (np.all(np.round(self._data["Positions"],decimals=6)==np.round(lmp_pos,decimals=6)))
 
         # extract other quantities (no reference forces for this calculator yet!)
 
@@ -114,8 +115,10 @@ class LammpsCustom(LammpsBase):
         num_neighs_per_atom = []
         neighlist = []
         xneighs = []
+        transform_x = []
         for i in range(0,nl.size):
             idx, nlist  = nl.get(i)
+            #print(f"{idx} {tags[idx]}")
             #print("\natom {} with ID {} has {} neighbors:".format(idx,tags[idx],nlist.size))
             num_neighs_i = 0
             if nlist.size > 0:
@@ -123,6 +126,9 @@ class LammpsCustom(LammpsBase):
                     num_neighs_i += 1
                     neighlist.append([tags[idx], tags[n]]) #, ptr_pos[n][0], ptr_pos[n][1], ptr_pos[n][2]])
                     xneighs.append([ptr_pos[n][0], ptr_pos[n][1], ptr_pos[n][2]])
+                    transform_x.append([ptr_pos[n][0]-lmp_pos[tags[idx]-1,0], \
+                                        ptr_pos[n][1]-lmp_pos[tags[idx]-1,1], \
+                                        ptr_pos[n][2]-lmp_pos[tags[idx]-1,2]])
 
             num_neighs_per_atom.append(num_neighs_i)
             number_of_neighs += num_neighs_i
@@ -131,6 +137,7 @@ class LammpsCustom(LammpsBase):
         assert(np.sum(num_neighs_per_atom) == number_of_neighs)
         neighlist = np.array(neighlist, dtype=int) - 1 # subtract 1 to get indices starting from 0
         xneighs = np.array(xneighs)
+        transform_x = np.array(transform_x)
 
         # populate the per-atom array 'a'
 
@@ -157,6 +164,18 @@ class LammpsCustom(LammpsBase):
         nrows_neighlist = number_of_neighs
         self.pt.shared_arrays['neighlist'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = neighlist
         self.pt.shared_arrays['xneigh'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = xneighs
+        self.pt.shared_arrays['transform_x'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = transform_x
+
+        #print(self._data["Positions"])
+        #print(lmp_pos)
+        #print(xneighs)
+        #print(transform_x)
+        #print(xneighs - lmp_pos[neighlist[:,0]])
+        #print(np.round(xneighs - lmp_pos[neighlist[:,0]],5) == np.round(transform_x,5))
+        assert(np.all(np.round(xneighs-lmp_pos[neighlist[:,0]],6) == np.round(transform_x,6)) )
+        #print(np.round(self._data["Positions"],decimals=6)==np.round(lmp_pos,decimals=6))
+        #assert(False)
+
         # calculate descriptors for standardization
         descriptors = self.calculate_descriptors(self._data["Positions"], neighlist, xneighs)
         self.pt.shared_arrays['descriptors'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = descriptors

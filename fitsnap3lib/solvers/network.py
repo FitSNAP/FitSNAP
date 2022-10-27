@@ -190,14 +190,7 @@ try:
                 config.neighlist = self.pt.shared_arrays['neighlist'].array[indx_neighlist_low:indx_neighlist_high,0:2]
                 config.xneigh = self.pt.shared_arrays['xneigh'].array[indx_neighlist_low:indx_neighlist_high, :]
                 config.transform_x = self.pt.shared_arrays['transform_x'].array[indx_neighlist_low:indx_neighlist_high, :]
-
-                #print(config.xneigh)
-                #print(config.neighlist[:,0].astype(np.int))
-                #print(config.transform_x + config.x[config.neighlist[:,0].astype(np.int),:])
-
-                assert(np.all(np.round(config.xneigh,6) == np.round(config.transform_x + config.x[config.neighlist[:,0].astype(np.int),:],6)) )
-
-                #assert(False)
+                assert(np.all(np.round(config.xneigh,6) == np.round(config.transform_x + config.x[config.neighlist[:,1].astype(np.int),:],6)) )
 
                 indx_natoms_low += config.natoms
                 indx_forces_low += 3*config.natoms
@@ -317,6 +310,7 @@ try:
                 for i, batch in enumerate(self.training_loader):
                     positions = batch['x'].to(self.device).requires_grad_(True)
                     xneigh = batch['xneigh'].to(self.device)
+                    transform_x = batch['transform_x'].to(self.device)
                     atom_types = batch['t'].to(self.device)
                     targets = batch['y'].to(self.device).requires_grad_(True)
                     target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
@@ -328,8 +322,8 @@ try:
                     numneigh = batch['numneigh'].to(self.device)
                     unique_i = batch['unique_i'].to(self.device)
                     testing_bools = batch['testing_bools']
-                    (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms, 
-                                                  atom_types, unique_i, self.device)
+                    (energies,forces) = self.model(positions, neighlist, xneigh, transform_x, 
+                                                   indices, num_atoms, atom_types, unique_i, self.device)
                     energies = torch.div(energies,num_atoms)
 
                     # ravel the forces for calculating loss
@@ -388,6 +382,7 @@ try:
                 for i, batch in enumerate(self.validation_loader):
                     positions = batch['x'].to(self.device).requires_grad_(True)
                     xneigh = batch['xneigh'].to(self.device)
+                    transform_x = batch['transform_x'].to(self.device)
                     atom_types = batch['t'].to(self.device)
                     targets = batch['y'].to(self.device).requires_grad_(True)
                     target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
@@ -399,8 +394,8 @@ try:
                     numneigh = batch['numneigh'].to(self.device)
                     unique_i = batch['unique_i'].to(self.device)
                     testing_bools = batch['testing_bools']
-                    (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms, 
-                                                  atom_types, unique_i, self.device)
+                    (energies,forces) = self.model(positions, neighlist, xneigh, transform_x, 
+                                                   indices, num_atoms, atom_types, unique_i, self.device)
                     energies = torch.div(energies,num_atoms)
 
                     # ravel the forces for calculating loss
@@ -615,6 +610,7 @@ try:
                             #positions = torch.tensor(config.positions).requires_grad_(True)
                             positions = torch.tensor(config.x).requires_grad_(True)
                             xneigh = torch.tensor(config.xneigh)
+                            transform_x = torch.tensor(config.transform_x)
                             atom_types = torch.tensor(config.types).long()
                             target = torch.tensor(config.energy).reshape(-1)
                             # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
@@ -626,6 +622,7 @@ try:
                             # convert quantities to desired dtype
                       
                             positions = positions.to(dtype)
+                            transform_x = transform_x.to(dtype)
                             target = target.to(dtype)
                             weights = weights.to(dtype)
                             target_forces = target_forces.to(dtype)
@@ -636,11 +633,13 @@ try:
                             #indices = torch.repeat_interleave(config_indices, num_atoms)
                             indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
                             unique_i = neighlist[:,0]
+                            unique_j = neighlist[:,1]
                             
                             # need to unsqueeze num_atoms to get a tensor of definable size
 
-                            (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms.unsqueeze(0), 
-                                                          atom_types, unique_i, self.device, dtype)
+                            (energies,forces) = self.model(positions, neighlist, xneigh, transform_x, 
+                                                          indices, num_atoms.unsqueeze(0), 
+                                                          atom_types, unique_i, unique_j, self.device, dtype)
 
                             energies_configs.append(energies)
                             forces_configs.append(forces)
@@ -658,6 +657,7 @@ try:
                         #positions = torch.tensor(config.positions).requires_grad_(True)
                         positions = torch.tensor(config.x).requires_grad_(True)
                         xneigh = torch.tensor(config.xneigh)
+                        transform_x = torch.tensor(config.transform_x)
                         atom_types = torch.tensor(config.types).long()
                         target = torch.tensor(config.energy).reshape(-1)
                         # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
@@ -669,6 +669,7 @@ try:
                         # convert quantities to desired dtype
                   
                         positions = positions.to(dtype)
+                        transform_x = transform_x.to(dtype)
                         target = target.to(dtype)
                         weights = weights.to(dtype)
                         target_forces = target_forces.to(dtype)
@@ -679,11 +680,13 @@ try:
                         #indices = torch.repeat_interleave(config_indices, num_atoms)
                         indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
                         unique_i = neighlist[:,0]
+                        unique_j = neighlist[:,1]
                         
                         # need to unsqueeze num_atoms to get a tensor of definable size
 
-                        (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms.unsqueeze(0), 
-                                                      atom_types, unique_i, self.device, dtype)
+                        (energies,forces) = self.model(positions, neighlist, xneigh, transform_x, 
+                                                       indices, num_atoms.unsqueeze(0), 
+                                                       atom_types, unique_i, unique_j, self.device, dtype)
 
                         energies_configs.append(energies)
                         forces_configs.append(forces)

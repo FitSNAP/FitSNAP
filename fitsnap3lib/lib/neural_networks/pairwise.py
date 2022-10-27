@@ -99,7 +99,7 @@ class FitTorch(torch.nn.Module):
 
         self.bessel = Bessel(descriptor_count, cutoff) # Bessel object provides functions to calculate descriptors
 
-    def forward(self, x, neighlist, xneigh, indices, atoms_per_structure, types, unique_i, device, dtype=torch.float32):
+    def forward(self, x, neighlist, xneigh, transform_x, indices, atoms_per_structure, types, unique_i, unique_j, device, dtype=torch.float32):
         """
         Forward pass through the PyTorch network model, calculating both energies and forces.
 
@@ -131,6 +131,15 @@ class FitTorch(torch.nn.Module):
 
         """
 
+        #print(unique_i.size())
+        #print("^^^^^ forward")
+        #print(unique_i)
+        #print(x)
+        xneigh = transform_x + x[unique_j,:]
+        #print(xneigh)
+        #print(xneigh2)
+
+        #assert(False)
         # construct Bessel basis
 
         rbf = self.bessel.radial_bessel_basis(x, neighlist, unique_i, xneigh)
@@ -167,7 +176,7 @@ class FitTorch(torch.nn.Module):
         # TODO for now we divide energy by 2, to fix this we need to incorporate the LAMMPS 
         # neighlist-transformed positions in the forward pass
 
-        predicted_energy_total = 0.5*predicted_energy_total
+        predicted_energy_total = 1.0*predicted_energy_total
 
         return (predicted_energy_total, predicted_forces)
 

@@ -126,9 +126,15 @@ class LammpsCustom(LammpsBase):
                     num_neighs_i += 1
                     neighlist.append([tags[idx], tags[n]]) #, ptr_pos[n][0], ptr_pos[n][1], ptr_pos[n][2]])
                     xneighs.append([ptr_pos[n][0], ptr_pos[n][1], ptr_pos[n][2]])
+                    """
                     transform_x.append([ptr_pos[n][0]-lmp_pos[tags[idx]-1,0], \
                                         ptr_pos[n][1]-lmp_pos[tags[idx]-1,1], \
                                         ptr_pos[n][2]-lmp_pos[tags[idx]-1,2]])
+                    """
+
+                    transform_x.append([ptr_pos[n][0]-lmp_pos[tags[n]-1,0], \
+                                        ptr_pos[n][1]-lmp_pos[tags[n]-1,1], \
+                                        ptr_pos[n][2]-lmp_pos[tags[n]-1,2]])
 
             num_neighs_per_atom.append(num_neighs_i)
             number_of_neighs += num_neighs_i
@@ -172,7 +178,7 @@ class LammpsCustom(LammpsBase):
         #print(transform_x)
         #print(xneighs - lmp_pos[neighlist[:,0]])
         #print(np.round(xneighs - lmp_pos[neighlist[:,0]],5) == np.round(transform_x,5))
-        assert(np.all(np.round(xneighs-lmp_pos[neighlist[:,0]],6) == np.round(transform_x,6)) )
+        assert(np.all(np.round(xneighs-lmp_pos[neighlist[:,1]],6) == np.round(transform_x,6)) )
         #print(np.round(self._data["Positions"],decimals=6)==np.round(lmp_pos,decimals=6))
         #assert(False)
 

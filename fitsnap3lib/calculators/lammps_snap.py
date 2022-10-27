@@ -185,16 +185,17 @@ class LammpsSnap(LammpsBase):
         self.pt.shared_arrays['w'].array[index_b,1] = self._data["fweight"]
         index_b += 1
 
-        # populate the force truth array 'c'
+        if (self.config.sections['CALCULATOR'].force):
+            # populate the force truth array 'c'
 
-        self.pt.shared_arrays['c'].array[index_c:(index_c + (3*num_atoms))] = self._data["Forces"].ravel() - ref_forces
-        index_c += 3*num_atoms
+            self.pt.shared_arrays['c'].array[index_c:(index_c + (3*num_atoms))] = self._data["Forces"].ravel() - ref_forces
+            index_c += 3*num_atoms
 
-        # populate the dgrad arrays 'dgrad' and 'dbdrindx'
+            # populate the dgrad arrays 'dgrad' and 'dbdrindx'
 
-        self.pt.shared_arrays['dgrad'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad
-        self.pt.shared_arrays['dbdrindx'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad_indices
-        index_dgrad += nrows_dgrad
+            self.pt.shared_arrays['dgrad'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad
+            self.pt.shared_arrays['dbdrindx'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad_indices
+            index_dgrad += nrows_dgrad
 
         # populate the fitsnap dicts
         # these are distributed lists and therefore have different size per proc, but will get 
@@ -206,8 +207,10 @@ class LammpsSnap(LammpsBase):
         self.pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = ['{}'.format(self._data['Group'])]
         self.pt.fitsnap_dict['Configs'][self.distributed_index:dindex] = ['{}'.format(self._data['File'])]
         self.pt.fitsnap_dict['NumAtoms'][self.distributed_index:dindex] = ['{}'.format(self._data['NumAtoms'])]
-        self.pt.fitsnap_dict['NumDgradRows'][self.distributed_index:dindex] = ['{}'.format(nrows_dgrad)]
         self.pt.fitsnap_dict['Testing'][self.distributed_index:dindex] = [bool(self._data['test_bool'])]
+        
+        if (self.config.sections['CALCULATOR'].force):
+            self.pt.fitsnap_dict['NumDgradRows'][self.distributed_index:dindex] = ['{}'.format(nrows_dgrad)]
 
         # reset indices since we are stacking data in the shared arrays
 

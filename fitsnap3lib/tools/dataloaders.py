@@ -55,10 +55,17 @@ class InRAMDatasetPyTorch(InRAMDataset):
         target = torch.tensor(self.configs[idx].energy).float().reshape(-1)
         # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
         weights = torch.tensor(self.configs[idx].weights[None,:]).float()
-        target_forces = torch.tensor(self.configs[idx].forces).float()
+        if (self.configs[idx].forces is not None):
+            target_forces = torch.tensor(self.configs[idx].forces).float()
+            dgrad = torch.tensor(self.configs[idx].dgrad).float()
+            dbdrindx = torch.tensor(self.configs[idx].dgrad_indices).long()
+        else:
+            target_forces = None
+            dgrad = None
+            dbdrindx = None
         number_of_atoms = torch.tensor(self.configs[idx].natoms)
-        dgrad = torch.tensor(self.configs[idx].dgrad).float()
-        dbdrindx = torch.tensor(self.configs[idx].dgrad_indices).long()
+        #dgrad = torch.tensor(self.configs[idx].dgrad).float()
+        #dbdrindx = torch.tensor(self.configs[idx].dgrad_indices).long()
 
         configuration = {'x': config_descriptors,
                          'y': target, #target.reshape(-1),
@@ -82,10 +89,16 @@ def torch_collate(batch):
     batch_of_types = torch.cat([conf['t'] for conf in batch], dim=0)
     batch_of_targets = torch.cat([conf['y'] for conf in batch], dim=0)
     batch_of_weights = torch.cat([conf['w'] for conf in batch], dim=0)
-    batch_of_target_forces = torch.cat([conf['y_forces'] for conf in batch], dim=0)
     number_of_atoms = torch.cat([conf['noa'] for conf in batch], dim=0)
-    batch_of_dgrad = torch.cat([conf['dgrad'] for conf in batch], dim=0)
-    batch_of_dbdrindx = torch.cat([conf['dbdrindx'] for conf in batch], dim=0)
+    
+    if (batch[0]['y_forces'] is not None):
+        batch_of_target_forces = torch.cat([conf['y_forces'] for conf in batch], dim=0)
+        batch_of_dgrad = torch.cat([conf['dgrad'] for conf in batch], dim=0)
+        batch_of_dbdrindx = torch.cat([conf['dbdrindx'] for conf in batch], dim=0)
+    else:
+        batch_of_target_forces = None
+        batch_of_dgrad = None
+        batch_of_dbdrindx = None
 
     # make indices upon which to contract per-atom energies for this batch
 
@@ -97,15 +110,19 @@ def torch_collate(batch):
     # we treat the entire batch as a single config when calculating forces
 
     configs = [conf['configs'] for conf in batch] # batch of Configuration objects
-    natoms_grow = 0
-    unique_i_indices = []
-    unique_j_indices = []
-    for i, conf in enumerate(configs):
-        unique_i_indices.append(torch.tensor(conf.dgrad_indices[:,0]+natoms_grow).long())
-        unique_j_indices.append(torch.tensor(conf.dgrad_indices[:,1]+natoms_grow).long())
-        natoms_grow += conf.natoms
-    batch_of_unique_i = torch.cat(unique_i_indices, dim=0)
-    batch_of_unique_j = torch.cat(unique_j_indices, dim=0)
+    if (batch[0]['y_forces'] is not None):
+        natoms_grow = 0
+        unique_i_indices = []
+        unique_j_indices = []
+        for i, conf in enumerate(configs):
+            unique_i_indices.append(torch.tensor(conf.dgrad_indices[:,0]+natoms_grow).long())
+            unique_j_indices.append(torch.tensor(conf.dgrad_indices[:,1]+natoms_grow).long())
+            natoms_grow += conf.natoms
+        batch_of_unique_i = torch.cat(unique_i_indices, dim=0)
+        batch_of_unique_j = torch.cat(unique_j_indices, dim=0)
+    else:
+        batch_of_unique_i = None
+        batch_of_unique_j = None
 
     # batch of testing bools to check that we have proper training/testing configs:
     

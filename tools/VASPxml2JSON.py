@@ -1,7 +1,7 @@
 #! /usr/bin/env/ python
 
-# This script will parse through a single OUTCAR file from VASP, which may include one or more configurations, and will print out
-# a JSON file(s) that can then be read into fitSNAP.  To run this script, you will need to specify an OUTCAR file, and
+# This script will parse through a single vasprun.xml file from VASP, which may include one or more configurations, and will print out
+# a JSON file(s) that can then be read into fitSNAP.  To run this script, you will need to specify a vasprun.xml file, and
 # the name of the JSON file(s) that will be output in the command line  --->  python VASP2JSON.py myvasprun.xmlfile myJSONfile
 
 import sys, os
@@ -24,7 +24,7 @@ def write_json(data, jsonfilename):
     all of the units as well as 'Data'.  This is then encompassed by myDataSet which then gets
     fed into the json.dump command.  Most of this is just getting everything into the right format
     
-    :param data: dict, parsed output of POSCAR and OUTCAR files
+    :param data: dict, parsed output of POSCAR and vasprun.xml files
     :param jsonfilename: str, filename of .json file to be written 
     """
     jsonfile = open(jsonfilename, "w")
@@ -55,7 +55,7 @@ list_POTCARS = []
 config_number = 1
 
 
-# Start parsing through OUTCAR looking for keywords that are assocaited with the
+# Start parsing through vasprun.xml looking for entries that are associated with the
 # different values for the data needed, such as forces or positions
 
 
@@ -64,6 +64,7 @@ for event, elem in tree:
     if elem.tag == 'parameters' and event=='end': #once at the start
         NELM = int(elem.find('separator[@name="electronic"]/separator[@name="electronic convergence"]/i[@name="NELM"]').text)
         #print(NELM)
+        
     elif elem.tag == 'atominfo' and event == 'end': #once at the start
         for entry in elem.find("array[@name='atoms']/set"):
             listAtomTypes.append(entry[0].text.strip())
@@ -72,6 +73,7 @@ for event, elem in tree:
         for entry in elem.find("array[@name='atomtypes']/set"):
             list_POTCARS.append(entry[4].text.strip().split())
         #print('potcars:', list_POTCARS)
+        
     elif (elem.tag == 'structure' and not elem.attrib.get('name')) and event=='end': #only the empty name ones - not primitive cell, initial, or final (those are repeats) - so each ionic step
         all_lattice = []
         for entry in elem.find("crystal/varray[@name='basis']"):
@@ -83,6 +85,7 @@ for event, elem in tree:
             frac_atom_coords.append([float(x) for x in entry.text.split()])
         atom_coords = dot(frac_atom_coords, all_lattice).tolist()
         #print(atom_coords)
+        
     elif elem.tag == 'calculation' and event=='end': #this triggers each ionic step
         atom_force = []
         for entry in elem.find("varray[@name='forces']"):
@@ -92,9 +95,10 @@ for event, elem in tree:
         for entry in elem.find("varray[@name='stress']"):
             stress_component.append([float(x) for x in entry.text.split()])
         totalEnergy = float(elem.find('energy/i[@name="e_0_energy"]').text)  ##NOTE! this value is incorrectly reported by VASP in version 5.4 (fixed in 6.1), see https://www.vasp.at/forum/viewtopic.php?t=17839
+        ## ASE vasprun.xml io reader has a more complex workaround to get the correct energy - we can update to include if needed
         #print(totalEnergy)
         if len(elem.findall("scstep")) == NELM:
-            electronic_convergence = False ##This isn't the best way to check this, but not sure if info is directly available. Could try to calculate energy diff and compare to EDIFF
+            electronic_convergence = False ##This isn't the best way to check this, but not sure if info is directly available. Could try to calculate energy diff from scstep entries and compare to EDIFF
         else:
             electronic_convergence = True
         

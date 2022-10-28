@@ -79,9 +79,12 @@ try:
             self.multi_element_option = self.config.sections["NETWORK"].multi_element_option
             if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
                 self.num_elements = self.config.sections["CUSTOM"].numtypes
+                self.num_radial = self.config.sections["CUSTOM"].num_radial
+                self.num_3body = self.config.sections["CUSTOM"].num_3body
                 self.num_desc_per_element = self.config.sections["CUSTOM"].num_descriptors/self.num_elements
                 self.num_desc = self.config.sections["CUSTOM"].num_descriptors
                 self.cutoff = self.config.sections["CUSTOM"].cutoff
+
 
             self.dtype = self.config.sections["NETWORK"].dtype
             self.layer_sizes = self.config.sections["NETWORK"].layer_sizes
@@ -102,6 +105,8 @@ try:
             self.optimizer = None
             self.model = FitTorch(self.networks, #config.sections["PYTORCH"].networks,
                                   self.num_desc,
+                                  self.num_radial,
+                                  self.num_3body,
                                   self.energy_weight,
                                   self.force_weight,
                                   self.cutoff,
@@ -321,9 +326,10 @@ try:
                     neighlist = batch['neighlist'].to(self.device)
                     numneigh = batch['numneigh'].to(self.device)
                     unique_i = batch['unique_i'].to(self.device)
+                    unique_j = batch['unique_j'].to(self.device)
                     testing_bools = batch['testing_bools']
                     (energies,forces) = self.model(positions, neighlist, xneigh, transform_x, 
-                                                   indices, num_atoms, atom_types, unique_i, self.device)
+                                                   indices, num_atoms, atom_types, unique_i, unique_j, self.device)
                     energies = torch.div(energies,num_atoms)
 
                     # ravel the forces for calculating loss
@@ -393,9 +399,10 @@ try:
                     neighlist = batch['neighlist'].to(self.device)
                     numneigh = batch['numneigh'].to(self.device)
                     unique_i = batch['unique_i'].to(self.device)
+                    unique_j = batch['unique_j'].to(self.device)
                     testing_bools = batch['testing_bools']
                     (energies,forces) = self.model(positions, neighlist, xneigh, transform_x, 
-                                                   indices, num_atoms, atom_types, unique_i, self.device)
+                                                   indices, num_atoms, atom_types, unique_i, unique_j, self.device)
                     energies = torch.div(energies,num_atoms)
 
                     # ravel the forces for calculating loss

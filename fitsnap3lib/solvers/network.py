@@ -265,6 +265,9 @@ try:
                 # TODO we should only have to calculate pairwise descriptors once in order to do this.
                 # TODO only standardize the descriptors, not the derivatives
 
+                #print(np.shape(self.pt.shared_arrays['descriptors'].array))
+                #assert(False)
+
                 inv_std = 1/np.std(self.pt.shared_arrays['descriptors'].array, axis=0)
                 mean_inv_std = np.mean(self.pt.shared_arrays['descriptors'].array, axis=0) * inv_std
                 state_dict = self.model.state_dict()

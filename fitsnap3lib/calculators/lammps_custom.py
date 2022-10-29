@@ -2,6 +2,7 @@ from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np
 from fitsnap3lib.parallel_tools import ParallelTools, DistributedList
 from fitsnap3lib.io.input import Config
 from fitsnap3lib.lib.neural_networks.descriptors.bessel import Bessel
+from fitsnap3lib.lib.neural_networks.descriptors.g3b import Gaussian3Body
 import numpy as np
 
 
@@ -20,7 +21,10 @@ class LammpsCustom(LammpsBase):
         self._row_index = 0
         self.pt.check_lammps()
 
-        self.bessel = Bessel(self.config.sections['CUSTOM'].num_descriptors, self.config.sections['CUSTOM'].cutoff) # for calculating Bessel descriptors
+        # declare objects for calculating descriptors used to standardize the network
+
+        self.bessel = Bessel(self.config.sections['CUSTOM'].num_radial, self.config.sections['CUSTOM'].cutoff)
+        self.g3b = Gaussian3Body(self.config.sections['CUSTOM'].num_3body, self.config.sections['CUSTOM'].cutoff)
 
     def get_width(self):
         """
@@ -61,9 +65,29 @@ class LammpsCustom(LammpsBase):
         config.
         """
 
+        # calculate radial basis descriptors for each pair
+
         basis = self.bessel.numpy_radial_bessel_basis(x, neighlist, xneigh)
 
-        return basis
+        # calculate 3 body descriptors for each pair and convert to numpy
+
+        descriptors_3body = self.g3b.calculate(x, 
+                                               neighlist[:,0], 
+                                               neighlist[:,1], 
+                                               xneigh, 
+                                               numpy_bool=True).numpy()
+        
+
+        #print(np.shape(basis))
+        #print(np.shape(descriptors_3body))
+
+        assert(np.shape(basis)[0] == np.shape(descriptors_3body)[0])
+        descriptors = np.concatenate([basis,descriptors_3body], axis=1)
+        #print(np.shape(descriptors))
+        assert(np.shape(descriptors)[1] == self.config.sections['CUSTOM'].num_descriptors)
+        #assert(False)
+
+        return descriptors
 
 
     def _collect_lammps_nonlinear(self):

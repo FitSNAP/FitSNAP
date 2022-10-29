@@ -147,6 +147,7 @@ class FitTorch(torch.nn.Module):
 
         descriptors_3body = self.g3b.calculate(x, unique_i, unique_j, xneigh)
 
+        """
         diff_norm = torch.nn.functional.normalize(x[unique_i] - xneigh, dim=1)
 
         print(diff_norm.size())
@@ -194,15 +195,14 @@ class FitTorch(torch.nn.Module):
         descriptors_3body = torch.cat(list_of_dij, dim=0)
 
         print(descriptors_3body.size())
-
-
-        #assert(False)
+        
+        """
 
         # construct Bessel basis
 
         rbf = self.bessel.radial_bessel_basis(x, neighlist, unique_i, xneigh)
         assert(rbf.size()[0] == neighlist.size()[0])
-        print(rbf.size())
+        #print(rbf.size())
 
         # this basis needs to be input to a network for each pair
         # calculate pairwise energies
@@ -211,11 +211,14 @@ class FitTorch(torch.nn.Module):
 
         descriptors = torch.cat([rbf, descriptors_3body], dim=1) # num_pairs x num_descriptors
 
-        print(descriptors.size())
+        assert(descriptors.size()[0] == xneigh.size()[0])
 
-        assert (False)
+        #print(descriptors.size())
 
-        eij = self.networks[0](rbf)
+        #assert (False)
+
+        #eij = self.networks[0](rbf)
+        eij = self.networks[0](descriptors)
 
         cutoff_functions = self.bessel.cutoff_function(x, neighlist, unique_i, xneigh)
 

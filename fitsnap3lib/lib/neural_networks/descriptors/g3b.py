@@ -25,7 +25,7 @@ try:
             self.mu = torch.linspace(-1,1,self.num_descriptors).unsqueeze(1).unsqueeze(2)
             self.mu = self.mu.transpose(0,2) # 1 x 1 x self.num_3body
 
-        def calculate(self, x, unique_i, unique_j, xneigh):
+        def calculate(self, x, unique_i, unique_j, xneigh, numpy_bool = False):
             """
             Calculate 3body descriptors for all pairs.
 
@@ -44,29 +44,38 @@ try:
 
             xneigh:
                 LAMMPS neighlist transformed positions of all neighbors, size (num_neighobrs, 3)
+
+            numpy_bool: bool
+                Default False; use True if wanting to convert from numpy to torch tensor
             """
 
+            if (numpy_bool):
+                x = torch.from_numpy(x)
+                unique_i = torch.from_numpy(unique_i)
+                unique_j = torch.from_numpy(unique_j)
+                xneigh = torch.from_numpy(xneigh)
+
             assert(unique_i.size()[0]==xneigh.size()[0])
-            print(unique_i.size())
-            print(unique_j.size())
-            print(xneigh.size())
+            #print(unique_i.size())
+            #print(unique_j.size())
+            #print(xneigh.size())
 
 
             # normalized displacements between atoms
 
             diff_norm = torch.nn.functional.normalize(x[unique_i] - xneigh, dim=1)
 
-            # cutoff function for all pairs, (1 x num_neigh)
+            # cutoff function for all pairs, size (1 x num_neigh) because transpose
 
             fcrik = self.cutoff_function(x, unique_i, xneigh).transpose(0,1)
-            print(fcrik.size())
+            #print(fcrik.size())
 
             # unique indices of unique_i for this batch help resolve which atoms i are involved
 
             ui = unique_i.unique()
 
             # list of displacements for all atoms i
-            # list_of_rij[i].size() is (numneigh[i], 3)
+            # list_of_rij[i] size is (numneigh[i], 3)
             # we do this in a list because each atom i may have different numneigh, and we want 
             # outer product of these pairs for a single atom i, not between all possible pairs in sytem
 
@@ -77,6 +86,8 @@ try:
             # with outer product of displacements
             # list_of_fcrik[i] is (numneigh[i] x numneigh[i]), where rows are repeated, and cutoff 
             # function is distinct among columns
+            # TODO: torch.repeat() is known for poor performance; try repeat_interleave, expand, or 
+            #       the broadcast indexing trick for multiplying vectors to tensors row-wise.
 
             list_of_fcrik = [fcrik[:,unique_i==i] for i in ui]
             list_of_fcrik = [list_of_fcrik[idx].unsqueeze(2).repeat(list_of_rij[idx].size()[0],1,self.num_descriptors) 
@@ -86,6 +97,8 @@ try:
             # this tensor is size  (numneigh[i] x numneigh[i]), is diagonal with ones because rij \dot rij,
             # and symmetric
             # list_of_mm[i] is the outer product for atom i
+            # TODO: torch.repeat() is known for poor performance; try repeat_interleave, expand, or 
+            #       the broadcast indexing trick for multiplying vectors to tensors row-wise.
 
             list_of_mm = [torch.mm(list_of_rij[idx], 
                           torch.transpose(list_of_rij[idx],0,1)).unsqueeze(2).repeat(1,1,self.num_descriptors) 
@@ -105,10 +118,9 @@ try:
 
             list_of_dij = [torch.sum(list_of_exp[i],dim=1) for i in range(len_ui)]
             descriptors_3body = torch.cat(list_of_dij, dim=0)
+            #print(descriptors_3body.size())
 
-            print(descriptors_3body.size())
-
-            assert(False)
+            return descriptors_3body
 
 
         def calculate_rij(self, x, unique_i, xneigh):

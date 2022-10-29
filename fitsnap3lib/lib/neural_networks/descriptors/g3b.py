@@ -21,9 +21,11 @@ try:
             #self.eta = 2
             #self.mu = torch.linspace(-1,1,num_descriptors)
 
+            self.pi = torch.tensor(math.pi)
             self.eta = 2.
-            self.mu = torch.linspace(-1,1,self.num_descriptors).unsqueeze(1).unsqueeze(2)
-            self.mu = self.mu.transpose(0,2) # 1 x 1 x self.num_3body
+            self.mu = torch.linspace(-1,1,self.num_descriptors)
+            #self.mu = torch.linspace(-1,1,self.num_descriptors).unsqueeze(1).unsqueeze(2)
+            #self.mu = self.mu.transpose(0,2) # 1 x 1 x self.num_3body
 
         def calculate(self, x, unique_i, unique_j, xneigh, numpy_bool = False):
             """
@@ -43,11 +45,15 @@ try:
                 Indices of atoms j in this batch, size (num_neighbors)
 
             xneigh:
-                LAMMPS neighlist transformed positions of all neighbors, size (num_neighobrs, 3)
+                LAMMPS neighlist transformed positions of all neighbors in the batch, size (num_neighobrs, 3)
 
             numpy_bool: bool
                 Default False; use True if wanting to convert from numpy to torch tensor
             """
+
+            # TODO: Look into using generators to reduce list overhead
+            #       https://stackoverflow.com/questions/51105841/faster-python-list-comprehension
+            #       scroll down to see awesome generator solutions
 
             if (numpy_bool):
                 x = torch.from_numpy(x)
@@ -65,9 +71,12 @@ try:
 
             diff_norm = torch.nn.functional.normalize(x[unique_i] - xneigh, dim=1)
 
-            # cutoff function for all pairs, size (1 x num_neigh) because transpose
+            # cutoff function for all pairs, size (num_neigh)
 
-            fcrik = self.cutoff_function(x, unique_i, xneigh).transpose(0,1)
+            fcrik = self.cutoff_function(x, unique_i, xneigh) #.flatten()
+            #print(fcrik.size())
+            #assert(False)
+            #fcrik = self.cutoff_function(x, unique_i, xneigh).transpose(0,1)
             #print(fcrik.size())
 
             # unique indices of unique_i for this batch help resolve which atoms i are involved
@@ -81,17 +90,35 @@ try:
 
             list_of_rij = [diff_norm[unique_i==i] for i in ui]
             len_ui = len(list_of_rij) # number of unique atoms i in this batch
+            #print(len_ui)
 
             # list of cutoff functions for all pairs ik, will be repeated along rows to multiply 
             # with outer product of displacements
             # list_of_fcrik[i] is (numneigh[i] x numneigh[i]), where rows are repeated, and cutoff 
-            # function is distinct among columns
+            # function is distinct among columns corresponding to different (i,k) pairs
             # TODO: torch.repeat() is known for poor performance; try repeat_interleave, expand, or 
             #       the broadcast indexing trick for multiplying vectors to tensors row-wise.
+            # NOTE: if m = torch.tensor([[1,2,3],[4,5,6],[7,8,9]]) and d=torch.tensor([1,2,3]) we 
+            #       can simply do m * d to multiply column vector d to rows of m.
+            #       Ditto if d=torch.tensor([[1,2,3]])
+            #list_of_fcrik = [fcrik[:,unique_i==i] for i in ui]
 
-            list_of_fcrik = [fcrik[:,unique_i==i] for i in ui]
-            list_of_fcrik = [list_of_fcrik[idx].unsqueeze(2).repeat(list_of_rij[idx].size()[0],1,self.num_descriptors) 
-                             for idx in range(len_ui)]
+            #for i in ui:
+            #    print(i)
+            #for i in range(len_ui):
+            #    print(i)
+            #print(ui)
+            #assert(False)
+
+            list_of_fcrik = [fcrik[unique_i==i] for i in ui]
+            #print(list_of_fcrik[0].size())
+            #print(list_of_fcrik[0])
+            #print(self.mu)
+
+            #assert(False)
+            #list_of_fcrik = [list_of_fcrik[idx].unsqueeze(2).repeat(list_of_rij[idx].size()[0],1,self.num_descriptors) 
+            #                 for idx in range(len_ui)]
+            #assert(False)
 
             # outer product of displacements gives rij \dot rik for all pairs, for a given atom i
             # this tensor is size  (numneigh[i] x numneigh[i]), is diagonal with ones because rij \dot rij,
@@ -100,23 +127,73 @@ try:
             # TODO: torch.repeat() is known for poor performance; try repeat_interleave, expand, or 
             #       the broadcast indexing trick for multiplying vectors to tensors row-wise.
 
+            #list_of_mm = [torch.mm(list_of_rij[idx], 
+            #              torch.transpose(list_of_rij[idx],0,1)).unsqueeze(2).repeat(1,1,self.num_descriptors) 
+            #              for idx in range(len_ui)]
+
+            """
             list_of_mm = [torch.mm(list_of_rij[idx], 
-                          torch.transpose(list_of_rij[idx],0,1)).unsqueeze(2).repeat(1,1,self.num_descriptors) 
-                          for idx in range(len_ui)]
+                          torch.transpose(list_of_rij[idx],0,1))
+                          for idx in range(len_ui)] 
+            """
+            #list_of_mm = [torch.mm(list_of_rij[idx], 
+            #              torch.transpose(list_of_rij[idx],0,1))
+            #              for idx in range(len_ui)]                      
+
+            #assert(False)
 
             # exponentiate the outer products while applying eta, mu, and cutoff function
             # list_of_exp[i] is the exponentiated gaussian with applied cutoff function for atom i
             # and has size (numneigh[i] x numneigh[i]) since we're still dealing with all pairs
 
-            list_of_exp = [torch.exp(-1.0*self.eta*(list_of_mm[i]-self.mu)**2)*list_of_fcrik[i] 
-                           for i in range(len_ui)]
+            #list_of_exp = [torch.exp(-1.0*self.eta*(list_of_mm[i]-self.mu)**2)*list_of_fcrik[i] 
+            #               for i in range(len_ui)]
+
+            #list_of_exp = [torch.exp(-1.0*self.eta*(list_of_mm[i][:,:,None]-self.mu)**2) 
+            #               * list_of_fcrik[i][:,None]
+            #               for i in range(len_ui)]
+
+            #print(list_of_exp[0].size())
+            #assert(False)
+
+            # Subtract diagonal elements (j,k) where j=k, for all descriptors.
+            # TODO: Better way to do this? These for loops are slow... Adds ~4 seconds per epoch
+            #       in Ta example.
+
+            """"
+            for i in range(len_ui):
+              for d in range(self.num_descriptors):
+                  list_of_exp[i][:,:,d].fill_diagonal_(0)
+            """
+
+            #print(list_of_exp[0][:,:,0])
+            #assert(False)
 
             # calculate 3body descriptors for each pair by summing over all atoms k, along the 
             # columns
             # descriptors_3body has size (num_pairs x num_descriptors) since we concatenate all pairs 
             # for each atom i
 
-            list_of_dij = [torch.sum(list_of_exp[i],dim=1) for i in range(len_ui)]
+            #list_of_dij = [torch.sum(list_of_exp[i],dim=1) for i in range(len_ui)]
+
+            # trying to reduce number of loops:
+
+            """
+            list_of_dij = [torch.sum(
+                           torch.exp(-1.0*self.eta*(list_of_mm[i][:,:,None]-self.mu)**2) 
+                           * list_of_fcrik[i][:,None], 
+                           dim=1)
+                           for i in range(len_ui)]
+            """
+
+            list_of_dij = [torch.sum(
+                              torch.exp(-1.0*self.eta
+                                  * (torch.mm(list_of_rij[i], torch.transpose(list_of_rij[i],0,1))[:,:,None]
+                                  -self.mu)**2) 
+                              * list_of_fcrik[i][:,None], 
+                           dim=1)
+                           for i in ui] #range(len_ui)]
+
             descriptors_3body = torch.cat(list_of_dij, dim=0)
             #print(descriptors_3body.size())
 
@@ -225,20 +302,15 @@ try:
                 positions of neighbors corresponding to indices j in neighlist
             """
 
-            num_rbf = self.num_descriptors # number of radial basis functions
-                                           # e.g. 3 includes n = 1,2,3
-
             rij = self.calculate_rij(x, unique_i, xneigh)
 
-            c = self.cutoff #3.0 # cutoff
-            pi = torch.tensor(math.pi)
+            c = self.cutoff
+            #pi = torch.tensor(math.pi)
 
             #function = 0.5 - 0.5*torch.sin(pi_over_two*((rij-R)/D))
-            function = 0.5 + 0.5*torch.cos(pi*(rij-0)/(c-0))
+            function = 0.5 + 0.5*torch.cos(self.pi*(rij-0)/(c-0))
 
-            return function
-
-
+            return function[:,0]
 
         def numpy_calculate_rij(self, x, neighlist, xneigh):
             """

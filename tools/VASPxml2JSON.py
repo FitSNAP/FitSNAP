@@ -59,7 +59,7 @@ config_number = 1
 # different values for the data needed, such as forces or positions
 
 
-tree = ET.iterparse('vasprun.xml', events=['start', 'end'])
+tree = ET.iterparse(xml_file, events=['start', 'end'])
 for event, elem in tree:
     if elem.tag == 'parameters' and event=='end': #once at the start
         NELM = int(elem.find('separator[@name="electronic"]/separator[@name="electronic convergence"]/i[@name="NELM"]').text)
@@ -88,12 +88,16 @@ for event, elem in tree:
         
     elif elem.tag == 'calculation' and event=='end': #this triggers each ionic step
         atom_force = []
-        for entry in elem.find("varray[@name='forces']"):
-            atom_force.append([float(x) for x in entry.text.split()])
+        force_block = elem.find("varray[@name='forces']")
+        if force_block:
+            for entry in force_block:
+                atom_force.append([float(x) for x in entry.text.split()])
         #print(atom_force)
+        stress_block = elem.find("varray[@name='stress']")
         stress_component = []
-        for entry in elem.find("varray[@name='stress']"):
-            stress_component.append([float(x) for x in entry.text.split()])
+        if stress_block:
+            for entry in stress_block:
+                stress_component.append([float(x) for x in entry.text.split()])
         totalEnergy = float(elem.find('energy/i[@name="e_0_energy"]').text)  ##NOTE! this value is incorrectly reported by VASP in version 5.4 (fixed in 6.1), see https://www.vasp.at/forum/viewtopic.php?t=17839
         ## ASE vasprun.xml io reader has a more complex workaround to get the correct energy - we can update to include if needed
         #print(totalEnergy)
@@ -107,8 +111,10 @@ for event, elem in tree:
         # once the next configuration appears in the sequence when parsing
         data = {}
         data["Positions"] = atom_coords
-        data["Forces"] = atom_force
-        data["Stress"] = stress_component
+        if atom_force:
+            data["Forces"] = atom_force
+        if stress_component:
+            data["Stress"] = stress_component
         data["Lattice"] = all_lattice
         data["Energy"] = totalEnergy
         data["AtomTypes"] = listAtomTypes

@@ -135,77 +135,18 @@ class FitTorch(torch.nn.Module):
 
         """
 
-
-        #print(unique_i)
-        #print(unique_j)
-        #print(transform_x.size())
-        #assert(False)
-
         # create neighbor positions by transforming atom j positions
 
         xneigh = transform_x + x[unique_j,:]
 
-        descriptors_3body = self.g3b.calculate(x, unique_i, unique_j, xneigh)
-
-        """
-        diff_norm = torch.nn.functional.normalize(x[unique_i] - xneigh, dim=1)
-
-        print(diff_norm.size())
-        fcrik = self.g3b.cutoff_function(x, neighlist, unique_i, xneigh).transpose(0,1)
-        print(fcrik.size())
-        #assert(False)
-        #rij = torch.linalg.norm(diff, dim=1)
-        #rij = rij.unsqueeze(1)   
-        ui = unique_i.unique()
-        list_of_rij = [diff_norm[unique_i==i] for i in ui]
-        #print(list_of_rij[0].size()) # N x 3
-        #assert(False)
-        list_of_fcrik = [fcrik[:,unique_i==i] for i in ui]
-        len_ui = len(list_of_rij)
-        list_of_mm = [torch.mm(list_of_rij[idx], torch.transpose(list_of_rij[idx],0,1)).unsqueeze(2).repeat(1,1,self.num_3body) for idx in range(len_ui)]
-        list_of_fcrik = [list_of_fcrik[idx].unsqueeze(2).repeat(list_of_rij[idx].size()[0],1,self.num_3body) for idx in range(len_ui)]
-        #print(list_of_fcrik[0].size()) # N x N x num_mu
-        #print(list_of_fcrik[0].repeat(40,1,1)[:,0,0]) # this is all the same (single column of jk matrix)
-        #print(list_of_fcrik[0].repeat(40,1,1)[0,:,0]) # these are all different (single row of jk matrix)
-        #assert(False)
-        eta = 2.
-        mu = torch.linspace(-1,1,self.num_3body).unsqueeze(1).unsqueeze(2)
-        mu = mu.transpose(0,2) # 1 x 1 x self.num_3body
-
-        # each list_of_mm[i] has a N x N x num_3body tensor, where N is number of pairs for atom i
-        #print(mu.size())
-        #print(list_of_mm[0].size())
-        #print(list_of_mm[0][:,:,0]) NxN tensor for first mu
-        #print(list_of_mm[0][:,:,1]) NxN tensor for second mu, etc..
-        # multiply by eta and subtract mu
-        #assert(False)
-        #exparg = [-1.0*eta*(list_of_mm[i]-mu)**2 for i in range(len_ui)]
-        # multiply each k (the columns) by a cutoff function f(rik)
-        list_of_exp = [torch.exp(-1.0*eta*(list_of_mm[i]-mu)**2)*list_of_fcrik[i] for i in range(len_ui)]
-        print(list_of_exp[0].size())
-        #print(unique_i[0:42])
-        # sum over columns k
-        # list_of_dij[i] is a N x num_desc tensor, rows are pairs ij for atom i, cols are descriptors
-        list_of_dij = [torch.sum(list_of_exp[i],dim=1) for i in range(len_ui)]
-        print(list_of_dij[0].size())
-
-        # list_of_dij[i] contains descriptors for all pairs of atom i
-        # concatenate all elements of list to obtain one feature vector for all pairs
-
-        descriptors_3body = torch.cat(list_of_dij, dim=0)
-
-        print(descriptors_3body.size())
-        
-        """
-
-        # construct Bessel basis
+        # calculate Bessel radial basis
 
         rbf = self.bessel.radial_bessel_basis(x, neighlist, unique_i, xneigh)
         assert(rbf.size()[0] == neighlist.size()[0])
-        #print(rbf.size())
 
-        # this basis needs to be input to a network for each pair
-        # calculate pairwise energies
+        # calculate 3 body descriptors 
+
+        descriptors_3body = self.g3b.calculate(x, unique_i, unique_j, xneigh)
 
         # concatenate radial descriptors and 3body descriptors
 
@@ -213,11 +154,8 @@ class FitTorch(torch.nn.Module):
 
         assert(descriptors.size()[0] == xneigh.size()[0])
 
-        #print(descriptors.size())
+        # input descriptors to a network for each pair; calculate pairwise energies
 
-        #assert (False)
-
-        #eij = self.networks[0](rbf)
         eij = self.networks[0](descriptors)
 
         cutoff_functions = self.bessel.cutoff_function(x, neighlist, unique_i, xneigh)

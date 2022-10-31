@@ -186,13 +186,20 @@ try:
                            for i in range(len_ui)]
             """
 
+            # Cram a bunch of calculations into a single list comprehension to reduce overhead.
+            # torch.mm() calculates a matrix of dot products for all pairs, then we fill the diagonals
+            # with zeros to ignore dot products of the same pair.
+
             list_of_dij = [torch.sum(
                               torch.exp(-1.0*self.eta
-                                  * (torch.mm(list_of_rij[i], torch.transpose(list_of_rij[i],0,1))[:,:,None]
+                                  * (torch.mm(list_of_rij[i], torch.transpose(list_of_rij[i],0,1)).fill_diagonal_(0)[:,:,None]
                                   -self.mu)**2) 
                               * list_of_fcrik[i][:,None], 
                            dim=1)
                            for i in ui] #range(len_ui)]
+
+            #print(list_of_dij[0].size())
+            #assert(False)
 
             descriptors_3body = torch.cat(list_of_dij, dim=0)
             #print(descriptors_3body.size())

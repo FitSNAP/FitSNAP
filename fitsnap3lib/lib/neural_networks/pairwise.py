@@ -1,3 +1,4 @@
+
 import torch
 from torch import from_numpy
 from torch.nn import Parameter
@@ -61,7 +62,7 @@ class FitTorch(torch.nn.Module):
         Option for which multi-element network model to use
     """
 
-    def __init__(self, networks, descriptor_count, energy_weight, force_weight, n_elements=1, multi_element_option=1, dtype=torch.float32):
+    def __init__(self, networks, descriptor_count, energy_weight, force_weight, cutoff, n_elements=1, multi_element_option=1, dtype=torch.float32):
         """
         Initializer.
         """
@@ -96,7 +97,7 @@ class FitTorch(torch.nn.Module):
         if (force_weight==0.0):
             self.force_bool = False
 
-        self.bessel = Bessel() # Bessel object provides functions to calculate descriptors
+        self.bessel = Bessel(descriptor_count, cutoff) # Bessel object provides functions to calculate descriptors
 
     def forward(self, x, neighlist, xneigh, indices, atoms_per_structure, types, unique_i, device, dtype=torch.float32):
         """

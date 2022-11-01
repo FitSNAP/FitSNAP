@@ -152,10 +152,17 @@ class FitSnap:
                         self.solver.perform_fit()
             else:
                 self.solver.fit = self.fit
+                
+        @self.pt.single_timeit
+        def fit_gather():
             self.solver.fit_gather()
+        @self.pt.single_timeit
+        def error_analysis():
             self.solver.error_analysis()
 
         decorated_perform_fit()
+        fit_gather()
+        error_analysis()
 
     #@pt.single_timeit  
     def write_output(self):

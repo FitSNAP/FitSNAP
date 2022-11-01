@@ -46,11 +46,8 @@ class FitTorch(torch.nn.Module):
     descriptor_count: int
         Length of descriptors for an atom
 
-    energy_weight: float
-        Weight of energy in loss function, used for determining if energy is fit or not
-
-    force_weight: float
-        Weight of force in loss function, used for determining if energy is fit or not
+    force_bool: bool
+        Boolean telling whether to calculate forces or not
 
     n_elements: int
         Number of differentiable atoms types 
@@ -59,7 +56,7 @@ class FitTorch(torch.nn.Module):
         Option for which multi-element network model to use
     """
 
-    def __init__(self, networks, descriptor_count, energy_weight, force_weight, n_elements=1, multi_element_option=1, dtype=torch.float32):
+    def __init__(self, networks, descriptor_count, force_bool, n_elements=1, multi_element_option=1, dtype=torch.float32):
         """
         Initializer.
         """
@@ -88,11 +85,11 @@ class FitTorch(torch.nn.Module):
         self.multi_element_option = multi_element_option
 
         self.energy_bool = True
-        self.force_bool = True
-        if (energy_weight==0.0):
-            self.energy_bool = False
-        if (force_weight==0.0):
-            self.force_bool = False
+        self.force_bool = force_bool
+        #if (energy_weight==0.0):
+        #    self.energy_bool = False
+        #if (force_weight==0.0):
+        #    self.force_bool = False
 
     def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, unique_i, device, dtype=torch.float32):
         """

@@ -162,7 +162,7 @@ class Solver:
 
     def _errors(self, group, rtype, indices):
         this_true, this_pred = self.df['truths'][indices], self.df['preds'][indices]
-        this_a = self.df.iloc[:, 0:self.pt.shared_arrays['a'].array.shape[1]].loc[indices].to_numpy()
+        #this_a = self.df.iloc[:, 0:self.pt.shared_arrays['a'].array.shape[1]].loc[indices].to_numpy()
         if self.weighted == 'Weighted':
             w = self.pt.shared_arrays['w'].array[indices]
             this_true, this_pred = w * this_true, w * this_pred

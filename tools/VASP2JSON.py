@@ -53,6 +53,7 @@ def write_json(data, jsonfilename):
 order_atom_types = []
 listAtomTypes = []
 list_POTCARS = []
+stress_component = []
 
 # Start parsing through OUTCAR looking for keywords that are assocaited with the
 # different values for the data needed, such as forces or positions
@@ -173,7 +174,8 @@ for i, line in enumerate(lines):
 
         data["Positions"] = atom_coords
         data["Forces"] = atom_forces
-        data["Stress"] = stress_component
+        if stress_component:
+            data["Stress"] = stress_component
         data["Lattice"] = all_lattice
         data["Energy"] = totalEnergy
         data["AtomTypes"] = listAtomTypes
@@ -199,3 +201,4 @@ for i, line in enumerate(lines):
                     write_json(data, jsonfilename)
 
         outcar_config_number = outcar_config_number + 1
+        stress_component = []

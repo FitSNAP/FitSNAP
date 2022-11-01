@@ -105,7 +105,7 @@ class Vasp(Scraper):
 
                 ## Grab potcar and element info
                 header_lines = lines[:start_idx_loops[0]]
-                potcar_list, potcar_elements, ions_per_type = self.parse_outcar_header(header_lines)
+                potcar_list, potcar_elements, ions_per_type, is_duplicated = self.parse_outcar_header(header_lines)
 
                 ## Each config in a single OUTCAR is assigned the same
                 ## parent data (i.e. filename, potcar and ion data)
@@ -115,12 +115,21 @@ class Vasp(Scraper):
                 unique_configs = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type, converged_list[i],
                                     lines[start_idx_loops[i]:end_idx_loops[i]])
                                     for i in range(0, len(start_idx_loops))]
+                
+                ## Avoid adding degenerate structures (for different energies) to training set
+                ## Take only final one for JSON
+                ## See 'parse_outcar_header' method, the IBRION and NSW check, for more details
+                if is_duplicated:
+                    unique_configs = unique_configs[-1:]
+
+                ## Parse and process OUTCAR data per configuration
                 for uc in unique_configs:
                     config_dict = self.generate_config_dict(group, uc)
                     if config_dict != -1: 
                         self.configs[group].append(config_dict)
                 del lines
 
+            ## If random_sampling toggled on, shuffle training and testing data
             if config.sections["GROUPS"].random_sampling:
                 shuffle(self.configs[group], pt.get_seed)
             nconfigs = len(self.configs[group])
@@ -412,8 +421,10 @@ class Vasp(Scraper):
         ## These searches replace the POSCAR and POTCAR, and can also check IBRION for AIMD runs (commented out now)
         lines_potcar, lines_vrhfin, lines_ions_per_type = [], [],[]
         potcar_list, potcar_elements, ions_per_type = [], [], []
-        line_ibrion, is_scf = "", False 
+        ibrion, nsw = None, None 
+        is_duplicated = False
         ## scf: self-consistent framework - ions don't move, electrons 'moved' until convergence criterion reached
+        ## if IBRION = -1 and NSW > 0, VASP sometimes prints duplicate structures, check for this
 
         for line in header:
             if "VRHFIN" in line:
@@ -425,8 +436,18 @@ class Vasp(Scraper):
                 # Look for the ordering of the atom types - grabbing POTCAR filenames first, then atom labels separately because VASP has terribly inconsistent formatting
                 if line.split()[1:] not in potcar_list:  # VASP will have these lines in the OUTCAR twice, and we don't need to append them the second time
                     potcar_list.append(line.split()[1:])  # each line will look something like ['PAW_PBE', 'Zr_sv_GW', '05Dec2013']
+            ## TODO add check that warns user if POSCAR elements and POTCAR order are not the same (if possible)
+            elif 'IBRION' in line:
+                ibrion = self.get_ibrion(line)
+            elif 'NSW' in line:
+                nsw = self.get_nsw(line)
 
-        ## TODO add check that warns user if POSCAR elements and POTCAR order are not the same (if possible)
+        if ibrion == -1 and nsw > 0:
+            output.screen('!WARNING: degenerate energies on same structure!\n'
+                            '!This can happen when IBRION = -1 and NSW > 0.\n'
+                            f'!(your settings: IBRION = {ibrion}, NSW = {nsw})\n'
+                            f'!Jumping to final (optimized) configuration.\n\n')
+            is_duplicated = True
 
         for line in lines_vrhfin:
             str0 = line.strip().replace("VRHFIN =", "")
@@ -437,7 +458,7 @@ class Vasp(Scraper):
             str0 = line.replace("ions per type = ","").strip()
             ions_per_type = [int(s) for s in str0.split()]
 
-        return potcar_list, potcar_elements, ions_per_type
+        return potcar_list, potcar_elements, ions_per_type, is_duplicated
 
     def get_vrhfin(self, lines):
         ## Scrapes vrhfin lines to get elements
@@ -457,21 +478,21 @@ class Vasp(Scraper):
             ions_per_type = [int(s) for s in str0.split()]
         return ions_per_type
 
-    def check_scf(self, line):
+    def get_ibrion(self, line):
         ## There should be only one of these lines (from INCAR print)
         ## IBRION value should always be first number < 10 to appear after "="
         line1 = line.split()
         idx_equals = line1.index("=")
         probably_ibrion = line1[idx_equals+1]
-        if probably_ibrion.isdigit():
-            if probably_ibrion == "-1":
-                is_scf = True ## https://www.vasp.at/wiki/index.php/IBRION
-            else:
-                is_scf = False
-        else:
-            output.screen("!!WARNING: incomplete coding with scrape_ibrion, assuming not SCF for now.")
-            is_scf = False
-        return is_scf
+        return int(probably_ibrion)
+    
+    def get_nsw(self, line):
+        ## There should be only one of these lines (from INCAR print)
+        ## Format:   >NSW    =    100    number of steps for IOM
+        line1 = line.split()
+        idx_equals = line1.index("=")
+        probably_nsw = line1[idx_equals+1]
+        return int(probably_nsw)
 
     def get_direct_lattice(self, lines):
         lattice_coords = []

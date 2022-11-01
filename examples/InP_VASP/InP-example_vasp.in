@@ -43,7 +43,7 @@
 ##                      Otherwise, defaults to grabbing 'energy without entropy' value 2 lines lower
 ##          vasp_unconverged_label (type <str>, default 'UNCONVERGED') 
 ##                  --> User can change the string for the JSON label of unconverged configurations. 
-##                      Can also be set to '' to eliminate labels for unconverged configurations (not recommended!).
+##                      Can also be set to '' to eliminate labels for unconverged configurations (not recommended!)
 ##
 ##  Note: This is the first iteration of the VASP scraper. Many improvements are planned and suggestions are very welcome!
 ##  Final note: This InP example is meant *only* to show how to use the VASP scraper!

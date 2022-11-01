@@ -2,7 +2,6 @@ import numpy as np
 import itertools
 from fitsnap3lib.lib.sym_ACE.rpi_lib import *
 from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import  *
-
 from fitsnap3lib.io.sections.sections import Section
 from fitsnap3lib.parallel_tools import ParallelTools
 

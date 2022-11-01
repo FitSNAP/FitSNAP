@@ -6,8 +6,8 @@ from fitsnap3lib.io.input import Config
 import numpy as np
 
 
-#config = Config()
-#pt = ParallelTools()
+config = Config()
+pt = ParallelTools()
 
 
 class Pace(Output):
@@ -23,7 +23,7 @@ class Pace(Output):
             coeffs = new_coeffs
         self.write(coeffs, errors)
 
-    #@pt.rank_zero
+    @pt.rank_zero
     def write(self, coeffs, errors):
         @self.pt.rank_zero
         def decorated_write():

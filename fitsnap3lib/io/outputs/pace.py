@@ -89,6 +89,7 @@ class Pace(Output):
 
         apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, self.lmin, self.RPI_heuristic)
         apot.set_betas(coeffs,has_zeros=True)
+	apot.set_funcs()
         apot.write_pot(self.config.sections["OUTFILE"].potential_name)
 
 def _to_coeff_string(coeffs):

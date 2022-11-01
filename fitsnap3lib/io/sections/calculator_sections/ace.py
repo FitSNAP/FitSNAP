@@ -81,7 +81,6 @@ class Ace(Section):
         byattyp = srt_by_attyp(nus)
 
         for atype in range(self.numtypes):
-            #self.blist.append( [atype] + [0] )
             nus = byattyp[str(atype)]
             for nu in nus:
                 i += 1
@@ -96,11 +95,9 @@ class Ace(Section):
         pt.single_print('in compute: coeff, blank2j',self.ncoeff,len(self.blank2J),len(nus))
         if not self.bzeroflag:
             self.blank2J = np.reshape(self.blank2J, (self.numtypes, int(len(self.blist)/self.numtypes)))
-            #self.blank2J = np.reshape(self.blank2J, (self.numtypes, self.ncoeff)))
             onehot_atoms = np.ones((self.numtypes, 1))
             self.blank2J = np.concatenate((onehot_atoms, self.blank2J), axis=1)
             self.blank2J = np.reshape(self.blank2J, (len(self.blist) + self.numtypes))
-            pt.single_print('new shape for blank2j',np.shape(self.blank2J))
         else:
             self.blank2J = np.reshape(self.blank2J, len(self.blist))
 

@@ -4,8 +4,8 @@ from fitsnap3lib.io.input import Config
 import numpy as np
 
 
-#config = Config()
-#pt = ParallelTools()
+config = Config()
+pt = ParallelTools()
 
 
 try:
@@ -24,6 +24,7 @@ try:
             @self.pt.sub_rank_zero
             def decorated_perform_fit():
                 training = [not elem for elem in pt.fitsnap_dict['Testing']]
+                pt.single_print(training)
                 w = pt.shared_arrays['w'].array[training]
                 aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
                 if config.sections['EXTRAS'].apply_transpose:
@@ -38,8 +39,10 @@ try:
                                     lambda_1=lmbval_small, lambda_2=lmbval_small, fit_intercept=False)
                 reg.fit(aw, bw)
                 self.fit = reg.coef_
-                # residues = reg.predict(aw) - bw
+                residues = reg.predict(aw) - bw
             decorated_perform_fit()
+            for key in pt.fitsnap_dict.keys():
+                pt.single_print(key,pt.fitsnap_dict[key])
             training = [not elem for elem in pt.fitsnap_dict['Testing']]
             w = pt.shared_arrays['w'].array[training]
             aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
@@ -55,7 +58,7 @@ try:
                                 lambda_1=lmbval_small, lambda_2=lmbval_small, fit_intercept=False)
             reg.fit(aw, bw)
             self.fit = reg.coef_
-            # residues = reg.predict(aw) - bw
+            residues = reg.predict(aw) - bw
 
         def _dump_a(self):
             np.savez_compressed('a.npz', a=pt.shared_arrays['a'].array)

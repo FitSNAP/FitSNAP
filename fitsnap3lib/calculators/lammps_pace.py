@@ -141,8 +141,10 @@ class LammpsPace(LammpsBase):
         dindex = self.distributed_index
         pt.single_print('nrows,ncols',nrows_snap,ncols_snap)
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
-        pt.single_print('nrows,ncols',nrows_snap,ncols_snap, np.shape(lmp_snap))
         pt.single_print(lmp_snap)
+        if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
+            pt.single_print('WARNING! applying np.nan_to_num()')
+            lmp_snap = np.nan_to_num(lmp_snap)
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
             raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
                                                                                   self._data["Group"]))

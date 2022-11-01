@@ -17,12 +17,11 @@ def create_torch_network(layer_sizes):
     This also performs standarization in the first linear layer.
     This only supports softplus as the nonlinear activation function.
 
-        Parameters:
-            layer_sizes (list of ints): Size of each network layers
+    Args:
+        layer_sizes (:obj:`list` of :obj:`int`): Number of nodes for each layer.
 
-        Return:
-            Network Architecture of type neural network sequential
-
+    Returns:
+        :obj:`torch.nn.Sequential`: Neural network architecture
     """
 
     layers = []
@@ -38,32 +37,20 @@ def create_torch_network(layer_sizes):
 
 class FitTorch(torch.nn.Module):
     """
-    FitSNAP PyTorch network model. 
+    FitSNAP PyTorch model for pairwise networks.
 
-    Attributes
-    ----------
+    Attributes:
+        networks (:obj:`list` of :obj:`torch.nn.Sequential`): Description of `attr1`.
+        descriptor_count (:obj:`int`): Number of descriptors for a pair.
+        num_radial (:obj:`int`): Number of radial descriptors for a pair.
+        num_3body (:obj:`int`): Number of 3-body descriptors for a pair.
+        cutoff (:obj:`float`): Radial cutoff for neighlist.
+        n_elements (:obj:`int`): Number of element types.
+        multi_element_option (:obj:`int`): Setting for how to deal with multiple element types. 
 
-    networks: list
-        A list of nn.Sequential network architectures.
-        Each type-type pairwise interaction is a different network.
-
-    descriptor_count: int
-        Length of descriptors for an atom
-
-    energy_weight: float
-        Weight of energy in loss function, used for determining if energy is fit or not
-
-    force_weight: float
-        Weight of force in loss function, used for determining if energy is fit or not
-
-    n_elements: int
-        Number of differentiable atoms types 
-
-    multi_element_option: int
-        Option for which multi-element network model to use
     """
 
-    def __init__(self, networks, descriptor_count, num_radial, num_3body, energy_weight, force_weight, cutoff, n_elements=1, multi_element_option=1, dtype=torch.float32):
+    def __init__(self, networks, descriptor_count, num_radial, num_3body, cutoff, n_elements=1, multi_element_option=1, dtype=torch.float32):
         """
         Initializer.
         """
@@ -93,45 +80,42 @@ class FitTorch(torch.nn.Module):
         self.n_elem = n_elements
         self.multi_element_option = multi_element_option
 
-        self.energy_bool = True
-        self.force_bool = True
-        if (energy_weight==0.0):
-            self.energy_bool = False
-        if (force_weight==0.0):
-            self.force_bool = False
+        # create descriptor objects with settings, used to calculate descriptors in forward pass
 
         self.bessel = Bessel(num_radial, cutoff) # Bessel object provides functions to calculate descriptors
         self.g3b = Gaussian3Body(num_3body, cutoff)
 
-    def forward(self, x, neighlist, xneigh, transform_x, indices, atoms_per_structure, types, unique_i, unique_j, device, dtype=torch.float32):
+    def forward(self, x, neighlist, transform_x, indices, atoms_per_structure, types, unique_i, unique_j, device, dtype=torch.float32):
         """
         Forward pass through the PyTorch network model, calculating both energies and forces.
 
-        Attributes
-        ----------
+        Args:
+            x (:obj:`torch.Tensor.float`): Array of positions for this batch
+            neighlist (:obj`torch.Tensor.long`): Sparse neighlist for this batch
+            transform_x (:obj:`torch.Tensor.float`): Array of LAMMPS transformed positions of neighbors
+                                                     for this batch. 
+            indices (:obj:`torch.Tensor.long`): Array of configuration indices upon which to 
+                                                contract pairwise energies, for this batch.
+            atoms_per_structure (:obj:`torch.Tensor.long`): Number of atoms per configuration for 
+                                                            this batch.
+            types (:obj:`torch.Tensor.long`): Atom types starting from 0, for this batch.
 
-        x: torch.Tensor.float
-            Array of descriptors for this batch
+            unique_i (:obj:`torch.Tensor.long`): Atoms i for all atoms in this batch indexed 
+                                                 starting from 0 to (natoms_batch-1)
+            unique_j (:obj:`torch.Tensor.long`): Neighbors j for all atoms in this batch indexed 
+                                                 starting from 0 to (natoms_batch-1)
+            dtype (:obj:`torch.float32`, optional): Data type used for torch tensors, default is 
+                                                   torch.float32 for training, but we set to 
+                                                   torch.float64 for finite difference tests to 
+                                                   ensure correct force calculations.
 
-        neighlist: torch.Tensor.long
-            Sparse neighlist for this batch
+            device: pytorch accelerator device object
 
-        indices: torch.Tensor.long
-            Array of indices upon which to contract pairwise energies, for this batch
-
-        atoms_per_structure: torch.Tensor.long
-            Number of atoms per configuration for this batch
-
-        types: torch.Tensor.long
-            Atom types starting from 0, for this batch
-
-        unique_i: atoms i for all atoms in this batch indexed starting from 0 to (natoms_batch-1)
-        
-        dtype: torch.float32
-            Data type used for torch tensors, default is torch.float32 for easy training, but we set 
-            to torch.float64 for finite difference tests to ensure correct force calculations.
-
-        device: pytorch accelerator device object
+        Returns:
+            tuple: (predicted_energy_total, predicted_forces)
+            
+            First element is predicted energies for this batch, second element is predicted 
+            forces for this batch.
 
         """
 
@@ -139,14 +123,31 @@ class FitTorch(torch.nn.Module):
 
         xneigh = transform_x + x[unique_j,:]
 
+        # calculate displacements and distances - needed for various descriptor functions
+        # NOTE: Only do this once so we don't bloat the computational graph.
+        # diff size is (numneigh, 3)
+        # diff_norm is size (numneigh, 3)
+        # rij is size (numneigh,1)
+
+        diff = x[unique_i] - xneigh
+        diff_norm = torch.nn.functional.normalize(diff, dim=1) # need for g3b
+        rij = torch.linalg.norm(diff, dim=1).unsqueeze(1)  # need for cutoff and various other functions
+
+        # Calculate cutoff functions once for pairwise terms here, because we use the same cutoff 
+        # function for both radial basis and eij.
+
+        cutoff_functions = self.bessel.cutoff_function(rij)
+
         # calculate Bessel radial basis
 
-        rbf = self.bessel.radial_bessel_basis(x, neighlist, unique_i, xneigh)
+        #rbf = self.bessel.radial_bessel_basis(x, neighlist, unique_i, xneigh)
+        rbf = self.bessel.radial_bessel_basis(rij, cutoff_functions)
         assert(rbf.size()[0] == neighlist.size()[0])
 
         # calculate 3 body descriptors 
 
-        descriptors_3body = self.g3b.calculate(x, unique_i, unique_j, xneigh)
+        #descriptors_3body = self.g3b.calculate(x, unique_i, unique_j, xneigh)
+        descriptors_3body = self.g3b.calculate(rij, diff_norm, unique_i)
 
         # concatenate radial descriptors and 3body descriptors
 
@@ -158,7 +159,8 @@ class FitTorch(torch.nn.Module):
 
         eij = self.networks[0](descriptors)
 
-        cutoff_functions = self.bessel.cutoff_function(x, neighlist, unique_i, xneigh)
+        #cutoff_functions = self.bessel.cutoff_function(x, neighlist, unique_i, xneigh)
+        #cutoff_functions = self.bessel.cutoff_function(rij)
 
         assert(cutoff_functions.size() == eij.size())
         eij = torch.mul(eij,cutoff_functions)

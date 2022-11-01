@@ -4,6 +4,7 @@ from fitsnap3lib.io.input import Config
 from fitsnap3lib.lib.neural_networks.descriptors.bessel import Bessel
 from fitsnap3lib.lib.neural_networks.descriptors.g3b import Gaussian3Body
 import numpy as np
+from sklearn.preprocessing import normalize
 
 
 #config = Config()
@@ -65,17 +66,28 @@ class LammpsCustom(LammpsBase):
         config.
         """
 
+        # calculate displacements and distances - needed for various descriptor functions
+        # diff size is (numneigh, 3)
+        # diff_norm is size (numneigh, 3)
+        # rij is size (numneigh,1)
+
+        diff = x[neighlist[:,0]] - xneigh
+        rij = np.linalg.norm(diff, axis=1)[:,None] # need for cutoff and various other functions
+        diff_norm = diff/rij # need for g3b
+
+        # calculate cutoff functions used in radial descriptors
+
+        cutoff_functions = self.bessel.cutoff_function(rij, numpy_bool=True)
+        #print(cutoff_functions)
+        #assert(False)
+
         # calculate radial basis descriptors for each pair
 
-        basis = self.bessel.numpy_radial_bessel_basis(x, neighlist, xneigh)
+        basis = self.bessel.radial_bessel_basis(rij, cutoff_functions, numpy_bool=True).numpy()
 
         # calculate 3 body descriptors for each pair and convert to numpy
 
-        descriptors_3body = self.g3b.calculate(x, 
-                                               neighlist[:,0], 
-                                               neighlist[:,1], 
-                                               xneigh, 
-                                               numpy_bool=True).numpy()
+        descriptors_3body = self.g3b.calculate(rij, diff_norm, neighlist[:,0], numpy_bool=True).numpy()
         
 
         #print(np.shape(basis))

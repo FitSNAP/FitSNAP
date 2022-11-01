@@ -19,49 +19,23 @@ try:
         """
         A class to use custom networks
 
-        ...
-
-        Attributes
-        ----------
-        optimizer : torch.optim.Adam
-            Torch Adam optimization object
-
-        model : torch.nn.Module
-            Network model that maps descriptors to a per atom attribute
-
-        loss_function : torch.loss.MSELoss
-            Mean squared error loss function
-
-        learning_rate: float
-            Learning rate for gradient descent
-
-        scheduler: torch.optim.lr_scheduler.ReduceLROnPlateau
-            Learning rate scheduler
-
-        device : torch.nn.Module (None)
-            Accelerator device
-
-        training_data: torch.utils.data.Dataset
-            Torch dataset for loading in pieces of the A matrix
-
-        training_loader: torch.utils.data.DataLoader
-            Data loader for loading in datasets
-
-        Methods
-        -------
-        create_datasets():
-            Creates the dataset to be used for training and the data loader for the batch system.
-
-        perform_fit():
-            Performs the pytorch fitting for a lammps potential
+        Attributes:
+            optimizer (:obj:`torch.optim.Adam`): Torch Adam optimization object
+            model (:obj:`torch.nn.Module`): Network model that maps descriptors to a per atom attribute
+            loss_function (:obj:`torch.loss.MSELoss`): Mean squared error loss function
+            learning_rate (:obj:`float`): Learning rate for gradient descent
+            scheduler (:obj:`torch.optim.lr_scheduler.ReduceLROnPlateau`): Learning rate scheduler
+            device: Accelerator device
+            training_data (:obj:`torch.utils.data.Dataset`): Torch dataset for training
+            training_loader (:obj:`torch.utils.data.DataLoader`): Data loader for loading in datasets
         """
 
         def __init__(self, name):
             """
             Initializes attributes for the pytorch solver.
 
-                Parameters:
-                    name : Name of solver class
+            Parameters:
+                name : Name of solver class
 
             """
             super().__init__(name, linear=False)
@@ -107,8 +81,6 @@ try:
                                   self.num_desc,
                                   self.num_radial,
                                   self.num_3body,
-                                  self.energy_weight,
-                                  self.force_weight,
                                   self.cutoff,
                                   self.num_elements,
                                   self.multi_element_option,
@@ -260,10 +232,6 @@ try:
 
                 # standardization
                 # need to perform on all network types in the model
-                # TODO for pairwise networks: move this somewhere else, since we don't yet have the descriptors.
-                # TODO perhaps move this to wherever we calculate the descriptors?
-                # TODO we should only have to calculate pairwise descriptors once in order to do this.
-                # TODO only standardize the descriptors, not the derivatives
 
                 #print(np.shape(self.pt.shared_arrays['descriptors'].array))
                 #assert(False)
@@ -331,7 +299,7 @@ try:
                     unique_i = batch['unique_i'].to(self.device)
                     unique_j = batch['unique_j'].to(self.device)
                     testing_bools = batch['testing_bools']
-                    (energies,forces) = self.model(positions, neighlist, xneigh, transform_x, 
+                    (energies,forces) = self.model(positions, neighlist, transform_x, 
                                                    indices, num_atoms, atom_types, unique_i, unique_j, self.device)
                     energies = torch.div(energies,num_atoms)
 
@@ -404,7 +372,7 @@ try:
                     unique_i = batch['unique_i'].to(self.device)
                     unique_j = batch['unique_j'].to(self.device)
                     testing_bools = batch['testing_bools']
-                    (energies,forces) = self.model(positions, neighlist, xneigh, transform_x, 
+                    (energies,forces) = self.model(positions, neighlist, transform_x, 
                                                    indices, num_atoms, atom_types, unique_i, unique_j, self.device)
                     energies = torch.div(energies,num_atoms)
 
@@ -647,7 +615,7 @@ try:
                             
                             # need to unsqueeze num_atoms to get a tensor of definable size
 
-                            (energies,forces) = self.model(positions, neighlist, xneigh, transform_x, 
+                            (energies,forces) = self.model(positions, neighlist, transform_x, 
                                                           indices, num_atoms.unsqueeze(0), 
                                                           atom_types, unique_i, unique_j, self.device, dtype)
 
@@ -694,7 +662,7 @@ try:
                         
                         # need to unsqueeze num_atoms to get a tensor of definable size
 
-                        (energies,forces) = self.model(positions, neighlist, xneigh, transform_x, 
+                        (energies,forces) = self.model(positions, neighlist, transform_x, 
                                                        indices, num_atoms.unsqueeze(0), 
                                                        atom_types, unique_i, unique_j, self.device, dtype)
 

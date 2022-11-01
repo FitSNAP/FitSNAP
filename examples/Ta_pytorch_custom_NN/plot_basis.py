@@ -37,18 +37,34 @@ def calculate_bessel(r, n, rc):
         Radial Bessel function calculation for base n, has size (number_neigh, 1)
     """
 
+    pi = np.pi
+
+    rmin = 3.5
+
+    mask = r > rmin
+    #print(mask)
+
+    #print(np.shape(r))
+    #assert(False)
+    function = np.empty(np.shape(r)) # .double() # need to use double if doing FD test
+
+    c = rc
+
+    function[mask] = 0.5 + 0.5*np.cos(pi*(r[mask]-rmin)/(c-rmin))
+    function[~mask] = 1.0
+
     # calculate Bessel
 
     pi = np.pi
-    rbf = np.divide(np.sqrt(2./rc)*np.sin(((n*pi)/rc)*r), r)     
+    rbf = np.divide(np.sqrt(2./rc)*np.sin(((n*pi)/rc)*r), r)*function
 
     return rbf
 
-rc = 4.2
+rc = 5.0
 r = np.linspace(0.0001,rc,100)
 h = r[1]-r[0]
 r = np.expand_dims(r, axis=1)
-num_rbf = 3
+num_rbf = 8
 basis = np.concatenate([calculate_bessel(r, n, rc) for n in range(1,num_rbf+1)], axis=1)
 
 print(np.shape(basis))

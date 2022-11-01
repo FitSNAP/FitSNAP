@@ -16,6 +16,8 @@ Create & activate conda environment with dependencies::
     conda create --name fitsnap python=3.10
     conda activate fitsnap
     python -m pip install numpy torch scipy virtualenv psutil pandas tabulate mpi4py Cython
+    # For contributing to docs:
+    python -m pip install sphinx sphinx_rtd_theme sphinxcontrib-napoleon
 
 Set the following environment variables::
 

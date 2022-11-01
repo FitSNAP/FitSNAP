@@ -23,7 +23,6 @@ class Vasp(Scraper):
         self.bad_configs = {}
         self.all_config_dicts = []
         self.bc_bool = False
-        self.unconverged_tag = 'UNCONVERGED'
         self.infile = config.args.infile
         self.vasp_path = config.sections['PATH'].datapath
         self.use_TOTEN = config.sections["GROUPS"].vasp_use_TOTEN
@@ -31,6 +30,7 @@ class Vasp(Scraper):
         self.jsonpath = config.sections['GROUPS'].vasp_json_pathname
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
         self.vasp_ignore_jsons = config.sections["GROUPS"].vasp_ignore_jsons
+        self.unconverged_label = config.sections["GROUPS"].vasp_unconverged_label
 
         if 'TRAINSHIFT' in config.sections.keys():
             self.trainshift = config.sections['TRAINSHIFT'].trainshift
@@ -237,7 +237,10 @@ class Vasp(Scraper):
         if converged:
             json_filename = f"{json_path}/{json_filestem}_{file_num}.json"
         else:
-            json_filename = f"{json_path}/{json_filestem}_{file_num}_{self.unconverged_tag}.json"
+            if self.unconverged_label != '\'\'':
+                json_filename = f"{json_path}/{json_filestem}_{file_num}_{self.unconverged_label}.json"
+            else:
+                json_filename = f"{json_path}/{json_filestem}_{file_num}.json"
 
         ## Check if JSON was already created from this OUTCAR
         if not os.path.exists(json_path):

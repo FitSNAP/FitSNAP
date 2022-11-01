@@ -41,6 +41,9 @@
 ##          vasp_use_TOTEN (type <bool>, default False) 
 ##                  --> If True or 1, the scraper will grab the 'free energy  TOTEN =' line (energy with entropy) per ionic step
 ##                      Otherwise, defaults to grabbing 'energy without entropy' value 2 lines lower
+##          vasp_unconverged_label (type <str>, default 'UNCONVERGED') 
+##                  --> User can change the string for the JSON label of unconverged configurations. 
+##                      Can also be set to '' to eliminate labels for unconverged configurations (not recommended!).
 ##
 ##  Note: This is the first iteration of the VASP scraper. Many improvements are planned and suggestions are very welcome!
 ##  Final note: This InP example is meant *only* to show how to use the VASP scraper!
@@ -106,6 +109,7 @@ group_types = str float float float float float
 smartweights = 0
 random_sampling = 0
 vasp_json_pathname = vJSON
+vasp_ignore_jsons = True
 vasp_ignore_jsons = True
 smallDefects_aa = 	1.0     0.0     5319411.52359161  	12160.2964901219 	1.0e-12
 # Defects_aP = 		1.0	    0.0     280933.371566026    3618.73557864646  	1.0e-12

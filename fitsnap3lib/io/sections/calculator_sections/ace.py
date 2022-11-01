@@ -1,12 +1,10 @@
 import numpy as np
 import itertools
-from rpi_lib import *
-from yamlpace_tools.potential import  *
+from fitsnap3lib.lib.sym_ACE.rpi_lib import *
+from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import  *
 
 from fitsnap3lib.io.sections.sections import Section
 from fitsnap3lib.parallel_tools import ParallelTools
-
-pt = ParallelTools()
 
 class Ace(Section):
 
@@ -44,6 +42,7 @@ class Ace(Section):
         if self.bikflag:
             self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
 
+        self.pt = ParallelTools()
         self._generate_b_list()
         self._write_couple()
         Section.num_desc = len(self.blist)
@@ -77,7 +76,6 @@ class Ace(Section):
         nus.sort(key = lambda x : mu0s[nus_unsort.index(x)],reverse = False)
         nus.sort(key = lambda x : len(x),reverse = False)
         nus.sort(key = lambda x : mu0s[nus_unsort.index(x)],reverse = False)
-        pt.single_print("Total ACE descriptors",len(nus))
         byattyp = srt_by_attyp(nus)
 
         for atype in range(self.numtypes):
@@ -92,7 +90,6 @@ class Ace(Section):
                 self.blist.append([i] + flat_nu)
                 self.blank2J.append([prefac])
         self.ncoeff = int(len(self.blist)/self.numtypes)
-        pt.single_print('in compute: coeff, blank2j',self.ncoeff,len(self.blank2J),len(nus))
         if not self.bzeroflag:
             self.blank2J = np.reshape(self.blank2J, (self.numtypes, int(len(self.blist)/self.numtypes)))
             onehot_atoms = np.ones((self.numtypes, 1))
@@ -110,7 +107,6 @@ class Ace(Section):
         bondinds=range(len(self.types))
         bonds = [b for b in itertools.product(bondinds,bondinds)]
         bondstrs = ['[%d, %d]' % b for b in bonds]
-        pt.single_print("Bonds",bondstrs)
         assert len(self.lmbda) == len(bondstrs), "must provide rc, lambda, for each BOND type" 
         assert len(self.rcutfac) == len(bondstrs), "must provide rc, lambda, for each BOND type" 
         if len(self.lmbda) == 1:

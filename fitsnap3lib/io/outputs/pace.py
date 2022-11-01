@@ -1,13 +1,13 @@
 from fitsnap3lib.io.outputs.outputs import Output, optional_open
 from fitsnap3lib.parallel_tools import ParallelTools
 from datetime import datetime
-from yamlpace_tools.potential import *
+from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import *
 from fitsnap3lib.io.input import Config
 import numpy as np
 
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 class Pace(Output):
@@ -23,7 +23,7 @@ class Pace(Output):
             coeffs = new_coeffs
         self.write(coeffs, errors)
 
-    @pt.rank_zero
+    #@pt.rank_zero
     def write(self, coeffs, errors):
         @self.pt.rank_zero
         def decorated_write():
@@ -72,7 +72,6 @@ class Pace(Output):
         bondinds=range(len(self.types))
         bonds = [b for b in itertools.product(bondinds,bondinds)]
         bondstrs = ['[%d, %d]' % b for b in bonds]
-        pt.single_print("Bonds",bondstrs)
         assert len(self.lmbda) == len(bondstrs), "must provide rc, lambda, for each BOND type"
         assert len(self.rcutfac) == len(bondstrs), "must provide rc, lambda, for each BOND type"
         if len(self.lmbda) == 1:
@@ -89,13 +88,14 @@ class Pace(Output):
 
         apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, self.lmin, self.RPI_heuristic)
         apot.set_betas(coeffs,has_zeros=True)
-	apot.set_funcs()
+        apot.set_funcs()
         apot.write_pot(self.config.sections["OUTFILE"].potential_name)
 
 def _to_coeff_string(coeffs):
     """
     Convert a set of coefficients along with bispec options into a .snapparam file
     """
+    config = Config()
     desc_str = "ACE"
 
     coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))

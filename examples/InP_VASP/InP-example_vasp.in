@@ -37,7 +37,10 @@
 ##                      Use with caution! Uncomment 'Defects_iP_crash' group below and set this to False for an example of crash behavior.
 ##          vasp_ignore_jsons (type <bool>, default False) 
 ##                  --> If True or 1, ignore any created JSONs, forcing the VASP scraper to read all OUTCARs for every FitSNAP run.
-##                      Strongly not recommended, may lead to major slowdowns and/or file I/O issues
+##                      Strongly not recommended, may lead to major slowdowns and/or file I/O issues        
+##          vasp_use_TOTEN (type <bool>, default False) 
+##                  --> If True or 1, the scraper will grab the 'free energy  TOTEN =' line (energy with entropy) per ionic step
+##                      Otherwise, defaults to grabbing 'energy without entropy' value 2 lines lower
 ##
 ##  Note: This is the first iteration of the VASP scraper. Many improvements are planned and suggestions are very welcome!
 ##  Final note: This InP example is meant *only* to show how to use the VASP scraper!

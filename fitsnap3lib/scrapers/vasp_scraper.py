@@ -34,7 +34,7 @@ class Vasp(Scraper):
 
         if 'TRAINSHIFT' in config.sections.keys():
             self.trainshift = config.sections['TRAINSHIFT'].trainshift
-            output.screen("!WARNING: 'TRAINSHIFT' is in input file!\n!WARNING: This shifts the per-atom energy of scraped OUTCAR configurations.\n!WARNING: Be sure that this is the behavior you want/expect.")
+            output.screen("!WARNING: 'TRAINSHIFT' is in input file!\n!WARNING: This section is used to shift (and clearly document) per-atom energies between VASP datasets.\n!WARNING: . \n!WARNING: Only use this section if you know what you're doing!")
         else:
             self.trainshift = {}
 
@@ -271,8 +271,6 @@ class Vasp(Scraper):
             config_header = {}
             config_header['Group'] = group
             config_header['File'] = json_filename
-            config_header['Eshift'] = dict(config.sections["ESHIFT"].eshift)
-            config_header['Trainshift'] = dict(config.sections["TRAINSHIFT"].trainshift)
             config_header['use_TOTEN'] = self.use_TOTEN
             config_header['EnergyStyle'] = "electronvolt"
             config_header['StressStyle'] = "kB"

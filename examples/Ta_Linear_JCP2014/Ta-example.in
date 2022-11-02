@@ -19,7 +19,7 @@ force = 1
 stress = 1
 
 [ESHIFT]
-Ta = 40.0
+Ta = 0.0
 
 [SOLVER]
 solver = SVD

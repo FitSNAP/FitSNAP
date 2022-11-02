@@ -74,10 +74,6 @@ stress = 1
 In = -1.65967588701534
 P = 4.38159549501534
 
-#[TRAINING_ESHIFT]
-#In = -33.44556677
-#P = 24.68
-
 [SOLVER]
 solver = SVD
 compute_testerrs = 1
@@ -110,11 +106,9 @@ smartweights = 0
 random_sampling = 0
 vasp_json_pathname = vJSON
 vasp_ignore_jsons = True
-vasp_ignore_jsons = True
 smallDefects_aa = 	1.0     0.0     5319411.52359161  	12160.2964901219 	1.0e-12
-# Defects_aP = 		1.0	    0.0     280933.371566026    3618.73557864646  	1.0e-12
-#Defects_iP  = 		1.0     0.0     669131.752996794  	5805.68960393981  	1.0e-12
-# Defects_iP_crash  = 1.0     0.0     669131.752996794  	5805.68960393981  	1.0e-12 ## Example of group with one incomplete run & crash behavior
+#Defects_aP = 		1.0	    0.0     280933.371566026    3618.73557864646  	1.0e-12
+#Defects_iP_crash  = 1.0     0.0     669131.752996794  	5805.68960393981  	1.0e-12 ## Example of group with one incomplete run & crash behavior
 
 [EXTRAS]
 dump_descriptors = 0

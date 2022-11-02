@@ -27,3 +27,15 @@ force errors, for the training and validation sets.
 ### Running MD with NN potential.
 
 Refer to folder "MD" for instructions to run MD simulations with the potential.
+
+### Comparisons.
+
+To run a 5-fold cross validation study, do:
+
+    ./run.sh
+
+Then average the errors at the end with 
+
+    python plot_force_comparison_average.py
+
+

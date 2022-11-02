@@ -44,31 +44,14 @@ from fitsnap3lib.io.input import Config
 class FitSnap:
     """ This classes houses the functions needed for machine learning a potential, start to finish.
 
-    Attributes
-    ----------
-    scraper : class Scraper
-        instance of the Scraper class for gathering configs
-
-    data : list
-        list of dictionaries, where each configuration of atoms has its own dictionary
-
-    calculator: class Calculator
-        instance of the Calculator class for calculating descriptors and fitting data
-
-    solver: class Solver
-        instance of the Solver class for performing a fit
-
-    fit: numpy array
-        array of fitting coefficients from linear models
-
-    delete_data: bool
-        boolean setting that deletes the data list (if `True`) after a fit, and is useful to make
-        `False` if looping over fits 
-
-    Methods
-    -------
-    scrape_configs():
-        scrapes configurations of atoms and creates the `data` list
+    Attributes:
+        scraper (:obj:`class` Scraper): instance of the Scraper class for gathering configs
+        data (:obj:`list`): list of dictionaries, where each configuration of atoms has its own dictionary
+        calculator (:obj:`class` Calculator): instance of the Calculator class for calculating descriptors and fitting data
+        solver (:obj:`class` Solver): instance of the Solver class for performing a fit
+        fit: numpy array of fitting coefficients from linear models
+        delete_data (:obj:`bool`): deletes the data list (if True) after a fit, useful to make False 
+                                   if looping over fits.
     """
     def __init__(self): 
 
@@ -92,6 +75,7 @@ class FitSnap:
        
     #@pt.single_timeit 
     def scrape_configs(self):
+        """Scrapes configurations of atoms and creates the :code:`data` list"""
 
         @self.pt.single_timeit
         def decorated_scrape_configs():
@@ -103,6 +87,7 @@ class FitSnap:
 
     #@pt.single_timeit 
     def process_configs(self):
+        """Calculate descriptors for all configurations in the :code:`data` list"""
 
         @self.pt.single_timeit
         def decorated_process_configs():
@@ -137,6 +122,8 @@ class FitSnap:
 
     #@pt.single_timeit 
     def perform_fit(self):
+        """Solve the machine learning problem with descriptors as input and energies/forces/etc as 
+           targets"""
 
         @ self.pt.single_timeit
         def decorated_perform_fit():

@@ -7,7 +7,11 @@ try:
 
     class Gaussian3Body():
         """
-        Class to calculate Bessel function descriptors
+        Class to calculate Gaussian 3-body descriptors.
+
+        Args:
+            num_desecriptors (int): Number of 3-body descriptors.
+            cutoff (float): Neighborlist cutoff.
         """
         def __init__(self, num_descriptors, cutoff):
             self.num_descriptors = num_descriptors
@@ -20,23 +24,22 @@ try:
         #def calculate(self, x, unique_i, unique_j, xneigh, numpy_bool = False):
         def calculate(self, rij, diff_norm, unique_i, numpy_bool = False):
             """
-            Calculate 3body descriptors for all pairs.
+            Calculate 3body descriptors for all pairs. In the following discussion, :code:`num_neighs` 
+            is the total number of neighbors in the entire batch, also equivalent to the total 
+            number of pairs.
 
-            Attributes
-            ----------
+            Args:
+                rij (:obj:`torch.tensor`): Pairwise distances of all pairs in this batch, size 
+                                           (num_neighs, 1) where :code:`num_neighs` is number of neighbors 
+                                           for all atoms in this batch
+                diff_norm (:obj:`torch.tensor`): Pairwise normalized dispalcements between all pairs 
+                                                 in this batch, size (num_neighs, 3)
+                unique_i (:obj:`torch.long`): Indices of atoms i in this batch, size (num_neighs)
+                numpy_bool (bool, optional): Default False; use True if wanting to convert from 
+                                             numpy to torch tensor
 
-            rij: torch.tensor
-                Pairwise distances of all pairs in this batch, size (num_neighs, 1) where `num_neighs` is 
-                number of neighbors for all atoms in this batch
-
-            diff_norm: torch.tensor
-                Pairwise normalized dispalcements between all pairs in this batch, size (num_neighs, 3)
-
-            unique_i:
-                Indices of atoms i in this batch, size (num_neighs)
-
-            numpy_bool: bool
-                Default False; use True if wanting to convert from numpy to torch tensor
+            Returns:
+                :obj:`torch.tensor`: Tensor of size (num_neighs, num_3body_descriptors)
             """
 
             # TODO: Look into using generators to reduce list overhead
@@ -72,6 +75,7 @@ try:
                            for i in ui] #range(len_ui)]
             """
 
+            """
             list_of_dij = [torch.sum(
                               torch.exp(-1.0*self.eta
                                   * (torch.mm(diff_norm[unique_i==i], 
@@ -80,8 +84,18 @@ try:
                               * fcrik[unique_i==i][:,None], 
                            dim=1)
                            for i in ui] #range(len_ui)]
-
             descriptors_3body = torch.cat(list_of_dij, dim=0)
+            """
+
+            descriptors_3body = torch.cat([torch.sum(
+                                        torch.exp(-1.0*self.eta
+                                            * (torch.mm(diff_norm[unique_i==i], 
+                                                torch.transpose(diff_norm[unique_i==i],0,1)).fill_diagonal_(0)[:,:,None]
+                                            -self.mu)**2) 
+                                        * fcrik[unique_i==i][:,None], 
+                                      dim=1)
+                                    for i in ui],
+                                    dim=0)
 
             return descriptors_3body
 
@@ -90,20 +104,13 @@ try:
             """
             Calculate cutoff function for all rij
 
-            Attributes
-            ----------
-
-            rij: torch.tensor
-                Pairwise distances of all pairs in this batch, size (num_neighs, 1) where `num_neighs` is 
-                number of neighbors for all atoms in this batch.
-
-            
+            Args:
+                rij (:obj:`torch.Tensor`): Pairwise distances of all pairs in this batch, size 
+                                           (num_neighs, 1) where `num_neighs` is number of neighbors 
+                                           for all atoms in this batch.
             """
 
-            #rij = self.calculate_rij(x, unique_i, xneigh)
-
             c = self.cutoff
-            #pi = torch.tensor(math.pi)
 
             #function = 0.5 - 0.5*torch.sin(pi_over_two*((rij-R)/D))
             function = 0.5 + 0.5*torch.cos(self.pi*(rij-0)/(c-0))

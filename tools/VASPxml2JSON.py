@@ -103,28 +103,26 @@ for event, elem in tree:
             for entry in force_block:
                 atom_force.append([float(x) for x in entry.text.split()])
         #print(atom_force)
-        stress_block = elem.find("varray[@name='stress']")
+
         stress_component = []
+        stress_block = elem.find("varray[@name='stress']")
         if stress_block:
             for entry in stress_block:
                 stress_component.append([float(x) for x in entry.text.split()])
 
         # print(energy_output_choice, version, version[:3])
         if version[:3] == '5.4' and energy_output_choice != 'e_fr_energy':
-           ##NOTE! e_0_energy is incorrectly reported by VASP in version 5.4 (fixed in 6.1), see https://www.vasp.at/forum/viewtopic.php?t=17839
-            ## ASE vasprun.xml io reader has a more complex workaround to get the correct energy - we can update to include if needed
-
-            if energy_output_choice == 'e_0_entrp':
-                totalEnergy = float(elem.find(f'energy/i[@name="e_wo_entrp"]').text) 
-            elif energy_output_choice == 'e_wo_entrp':
-                # totalEnergy = float(elem.find(f'energy/i[@name="e_wo_entrp"]').text) 
-
-                print("!!ERROR: e_wo_entrp (energy without entropy) is incorrectly printed in XML files from VASP version 5.4!!\n"
-                "\t!Entropy (eentropy) is falsly assigned to e_0_energy.\n"
-                "\t!This tool does not currently have a workaround.\n"
-                "\t!For now, please switch your energy_output_choice variable to e_fr_energy or use the OUTCAR scraper (VASP2JSON.py).\n"
-                )
-                exit()
+            if 0:  ## toggle to 1 to print warning
+                print(f"-> INFO: Detected VASP v5.4 - this version has a bug where '{energy_output_choice}' is written incorrectly in final energy output (corrected in v6.1). \n"
+                f"\t-> Taking '{energy_output_choice}' from final scstep calculation instead (check with OUTCAR values if uncertain).\n"
+                "\t-> See https://www.vasp.at/forum/viewtopic.php?t=17839# for more details.\n")
+            
+            bad_energy = float(elem.find(f'energy/i[@name="{energy_output_choice}"]').text)
+            final_scstep = elem.findall("scstep")[-1]
+            # print(final_scstep)
+            totalEnergy = float(final_scstep.find(f"energy/i[@name='{energy_output_choice}']").text)
+            # print(totalEnergy, bad_energy)
+ 
         else:        
             totalEnergy = float(elem.find(f'energy/i[@name="{energy_output_choice}"]').text)  
         # print('TOTAL ENERGY:', totalEnergy)
@@ -133,6 +131,7 @@ for event, elem in tree:
             electronic_convergence = False ##This isn't the best way to check this, but not sure if info is directly available. Could try to calculate energy diff from scstep entries and compare to EDIFF
         else:
             electronic_convergence = True
+
         
         # Here is where all the data is put together for each ionic step
         # After this, all these values will be overwritten

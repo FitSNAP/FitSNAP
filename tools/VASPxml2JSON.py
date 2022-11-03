@@ -3,6 +3,8 @@
 # This script will parse through a single vasprun.xml file from VASP, which may include one or more configurations, and will print out
 # a JSON file(s) that can then be read into fitSNAP.  To run this script, you will need to specify a vasprun.xml file, and
 # the name of the JSON file(s) that will be output in the command line  --->  python VASP2JSON.py myvasprun.xmlfile myJSONfile
+# Script author: Logan Williams
+# Adjusted from VASP2JSON.py script by Mary Alice Cusentino
 
 import sys, os
 import json
@@ -13,6 +15,9 @@ xml_file = sys.argv[1]
 JSON_file = str(sys.argv[2])
 
 write_unconverged_steps_anyway = False
+energy_output_forms = ["e_fr_energy","e_wo_entrp","e_0_energy"]
+energy_output_default = "e_wo_entrp"
+energy_output_choice = energy_output_default
 
 def write_json(data, jsonfilename):
     """
@@ -53,6 +58,7 @@ order_atom_types = []
 listAtomTypes = []
 list_POTCARS = []
 config_number = 1
+version = None ## string, 1st three digits
 
 
 # Start parsing through vasprun.xml looking for entries that are associated with the
@@ -61,6 +67,10 @@ config_number = 1
 
 tree = ET.iterparse(xml_file, events=['start', 'end'])
 for event, elem in tree:
+
+    if elem.tag == 'generator': # grab VASP info
+        version = '.'.join(elem.find('i[@name="version"]').text.strip().split('.')[:3])
+
     if elem.tag == 'parameters' and event=='end': #once at the start
         NELM = int(elem.find('separator[@name="electronic"]/separator[@name="electronic convergence"]/i[@name="NELM"]').text)
         #print(NELM)
@@ -98,9 +108,27 @@ for event, elem in tree:
         if stress_block:
             for entry in stress_block:
                 stress_component.append([float(x) for x in entry.text.split()])
-        totalEnergy = float(elem.find('energy/i[@name="e_0_energy"]').text)  ##NOTE! this value is incorrectly reported by VASP in version 5.4 (fixed in 6.1), see https://www.vasp.at/forum/viewtopic.php?t=17839
-        ## ASE vasprun.xml io reader has a more complex workaround to get the correct energy - we can update to include if needed
-        #print(totalEnergy)
+
+        # print(energy_output_choice, version, version[:3])
+        if version[:3] == '5.4' and energy_output_choice != 'e_fr_energy':
+           ##NOTE! e_0_energy is incorrectly reported by VASP in version 5.4 (fixed in 6.1), see https://www.vasp.at/forum/viewtopic.php?t=17839
+            ## ASE vasprun.xml io reader has a more complex workaround to get the correct energy - we can update to include if needed
+
+            if energy_output_choice == 'e_0_entrp':
+                totalEnergy = float(elem.find(f'energy/i[@name="e_wo_entrp"]').text) 
+            elif energy_output_choice == 'e_wo_entrp':
+                # totalEnergy = float(elem.find(f'energy/i[@name="e_wo_entrp"]').text) 
+
+                print("!!ERROR: e_wo_entrp (energy without entropy) is incorrectly printed in XML files from VASP version 5.4!!\n"
+                "\t!Entropy (eentropy) is falsly assigned to e_0_energy.\n"
+                "\t!This tool does not currently have a workaround.\n"
+                "\t!For now, please switch your energy_output_choice variable to e_fr_energy or use the OUTCAR scraper (VASP2JSON.py).\n"
+                )
+                exit()
+        else:        
+            totalEnergy = float(elem.find(f'energy/i[@name="{energy_output_choice}"]').text)  
+        # print('TOTAL ENERGY:', totalEnergy)
+
         if len(elem.findall("scstep")) == NELM:
             electronic_convergence = False ##This isn't the best way to check this, but not sure if info is directly available. Could try to calculate energy diff from scstep entries and compare to EDIFF
         else:

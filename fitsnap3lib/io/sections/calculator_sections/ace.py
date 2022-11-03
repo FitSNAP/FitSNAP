@@ -8,10 +8,11 @@ from fitsnap3lib.parallel_tools import ParallelTools
 class Ace(Section):
 
     def __init__(self, name, config, args):
-        #raise Exception("ACE calculator not working yet.")
         super().__init__(name, config, args)
         
-        allowedkeys = ['numTypes', 'ranks', 'lmax', 'nmax', 'mumax', 'nmaxbase', 'rcutfac', 'lambda', 'type', 'bzeroflag', 'erefs', 'rcinner', 'drcinner', 'RPI_heuristic', 'lmin']
+        allowedkeys = ['numTypes', 'ranks', 'lmax', 'nmax', 'mumax', 'nmaxbase', 'rcutfac', 'lambda', 
+                       'type', 'bzeroflag', 'erefs', 'rcinner', 'drcinner', 'RPI_heuristic', 'lmin', 
+                       'bikflag', 'dgradflag']
         for value_name in config['ACE']:
             if value_name in allowedkeys: continue
             else:
@@ -30,6 +31,7 @@ class Ace(Section):
         self.types = self.get_value("ACE", "type", "H").split()
         self.erefs = self.get_value("ACE", "erefs", "0.0").split() 
         self.bikflag = self.get_value("ACE", "bikflag", "0", "bool")
+        self.dgradflag = self.get_value("ACE", "dgradflag", "0", "bool")
         self.RPI_heuristic = self.get_value("ACE" , "RPI_heuristic" , 'root_SO3_span')
         self.type_mapping = {}
         for i, atom_type in enumerate(self.types):

@@ -14,10 +14,13 @@ pt = ParallelTools()
 class LammpsPace(LammpsBase):
 
     def get_width(self):
-        num_types = config.sections["ACE"].numtypes
-        a_width = config.sections["ACE"].ncoeff  * num_types
-        if not config.sections["ACE"].bzeroflag:
-            a_width += num_types
+        if (self.config.sections["SOLVER"].solver == "PYTORCH"):
+            a_width = self.config.sections["ACE"].ncoeff
+        else:
+            num_types = config.sections["ACE"].numtypes
+            a_width = config.sections["ACE"].ncoeff  * num_types
+            if not config.sections["ACE"].bzeroflag:
+                a_width += num_types
         return a_width
 
     def _prepare_lammps(self):
@@ -105,9 +108,125 @@ class LammpsPace(LammpsBase):
 
         if not config.sections['ACE'].bikflag:
             base_pace = "compute snap all pace coupling_coefficients.yace 0 0"
-        elif config.sections['ACE'].bikflag:
+        elif (config.sections['ACE'].bikflag and not config.sections['ACE'].dgradflag):
             base_pace = "compute snap all pace coupling_coefficients.yace 1 0"
+        elif (config.sections['ACE'].bikflag and config.sections['ACE'].dgradflag):
+            base_pace = "compute snap all pace coupling_coefficients.yace 1 1"
         self._lmp.command(base_pace)
+
+    def _collect_lammps_nonlinear(self):
+        num_atoms = self._data["NumAtoms"]
+        num_types = self.config.sections['ACE'].numtypes
+        n_coeff = self.config.sections['ACE'].ncoeff
+        energy = self._data["Energy"]
+        filename = self._data["File"]
+
+        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+
+        # extract positions
+
+        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
+        #print(lmp_pos[0,0])
+
+        # extract types
+
+        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
+        lmp_volume = self._lmp.get_thermo("vol")
+
+        # extract SNAP data, including reference potential data
+
+        bik_rows = num_atoms
+        nrows_energy = bik_rows
+        ndim_force = 3
+        ndim_virial = 6
+        nrows_virial = ndim_virial
+        lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, None)
+        ncols_bispectrum = n_coeff
+
+        # number of columns in the snap array, add 3 to include indices and Cartesian components.
+
+        ncols_snap = n_coeff + 3
+        ncols_reference = 0
+        nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-1
+        nrows_snap = nrows_energy + nrows_dgrad + 1
+        assert nrows_snap == np.shape(lmp_snap)[0]
+        index = self.shared_index # Index telling where to start in the shared arrays on this proc.
+                                  # Currently this is an index for the 'a' array (natoms*nconfigs rows).
+                                  # This is also an index for the 't' array of types (natoms*nconfigs rows).
+                                  # Also made indices for:
+                                  # - the 'b' array (3*natoms+1)*nconfigs rows.
+                                  # - the 'dgrad' array (natoms+1)*nneigh*3*nconfigs rows.
+                                  # - the 'dgrad_indices' array which has same number of rows as 'dgrad'
+        dindex = self.distributed_index
+        index_b = self.shared_index_b
+        index_c = self.shared_index_c
+        index_dgrad = self.shared_index_dgrad
+
+        # extract the useful parts of the snap array
+
+        bispectrum_components = lmp_snap[0:bik_rows, 3:n_coeff+3]
+        ref_forces = lmp_snap[0:bik_rows, 0:3].flatten()
+        dgrad = lmp_snap[bik_rows:(bik_rows+nrows_dgrad), 3:n_coeff+3]
+        dgrad_indices = lmp_snap[bik_rows:(bik_rows+nrows_dgrad), 0:3].astype(np.int32)
+        ref_energy = lmp_snap[-1, 0]
+
+        # strip zero dgrad components (equivalent to pruning neighborlist)
+         
+        nonzero_rows = lmp_snap[bik_rows:(bik_rows+nrows_dgrad),3:(n_coeff+3)] != 0.0
+        nonzero_rows = np.any(nonzero_rows, axis=1)
+        dgrad = dgrad[nonzero_rows, :]
+        nrows_dgrad = np.shape(dgrad)[0]
+        nrows_snap = np.shape(dgrad)[0] + nrows_energy + 1
+        dgrad_indices = dgrad_indices[nonzero_rows, :]
+
+        # populate the bispectrum array 'a'
+
+        self.pt.shared_arrays['a'].array[index:index+bik_rows] = bispectrum_components
+        self.pt.shared_arrays['t'].array[index:index+bik_rows] = lmp_types
+        index += num_atoms
+
+        # populate the truth array 'b' and weight array 'w'
+
+        self.pt.shared_arrays['b'].array[index_b] = (energy - ref_energy)/num_atoms
+        self.pt.shared_arrays['w'].array[index_b,0] = self._data["eweight"]
+        self.pt.shared_arrays['w'].array[index_b,1] = self._data["fweight"]
+        index_b += 1
+
+        if (self.config.sections['CALCULATOR'].force):
+            # populate the force truth array 'c'
+
+            self.pt.shared_arrays['c'].array[index_c:(index_c + (3*num_atoms))] = self._data["Forces"].ravel() - ref_forces
+            index_c += 3*num_atoms
+
+            # populate the dgrad arrays 'dgrad' and 'dbdrindx'
+
+            self.pt.shared_arrays['dgrad'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad
+            self.pt.shared_arrays['dbdrindx'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad_indices
+            index_dgrad += nrows_dgrad
+
+        # populate the fitsnap dicts
+        # these are distributed lists and therefore have different size per proc, but will get 
+        # gathered later onto the root proc in calculator.collect_distributed_lists
+        # we use fitsnap dicts for NumAtoms and NumDgradRows here because they are organized differently 
+        # than the corresponding shared arrays. 
+
+        dindex = dindex+1
+        self.pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = ['{}'.format(self._data['Group'])]
+        self.pt.fitsnap_dict['Configs'][self.distributed_index:dindex] = ['{}'.format(self._data['File'])]
+        self.pt.fitsnap_dict['NumAtoms'][self.distributed_index:dindex] = ['{}'.format(self._data['NumAtoms'])]
+        self.pt.fitsnap_dict['Testing'][self.distributed_index:dindex] = [bool(self._data['test_bool'])]
+        
+        if (self.config.sections['CALCULATOR'].force):
+            self.pt.fitsnap_dict['NumDgradRows'][self.distributed_index:dindex] = ['{}'.format(nrows_dgrad)]
+
+        # reset indices since we are stacking data in the shared arrays
+
+        self.shared_index = index
+        self.distributed_index = dindex
+        self.shared_index_b = index_b
+        self.shared_index_c = index_c
+        self.shared_index_dgrad = index_dgrad
 
     def _collect_lammps(self):
 
@@ -240,49 +359,49 @@ class LammpsPace(LammpsBase):
         self.shared_index = index
         self.distributed_index = dindex
 
-# this is super clean when there is only one value per key, needs reworking
-def _lammps_variables(bispec_options):
-    d = {k: bispec_options[k] for k in
-         ["rcutfac",
-          "rfac0",
-          "rmin0",
-          "twojmax"]}
-    d.update(
-        {
-            (k + str(i + 1)): bispec_options[k][i]
-            # "zblz", "wj", "radelem"
-            for k in ["wj", "radelem"]
-            for i, v in enumerate(bispec_options[k])
-        })
-    return d
+    def _collect_lammps_preprocess(self):
+        num_atoms = self._data["NumAtoms"]
+        num_types = self.config.sections['ACE'].numtypes
+        n_coeff = self.config.sections['ACE'].ncoeff
+        energy = self._data["Energy"]
 
+        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
 
-def _extract_compute_np(lmp, name, compute_style, result_type, array_shape):
-    """
-    Convert a lammps compute to a numpy array.
-    Assumes the compute stores floating point numbers.
-    Note that the result is a view into the original memory.
-    If the result type is 0 (scalar) then conversion to numpy is
-    skipped and a python float is returned.
+        # extract positions
 
-    From LAMMPS/src/library.cpp:
-    style = 0 for global data, 1 for per-atom data, 2 for local data
-    type = 0 for scalar, 1 for vector, 2 for array
+        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
 
-    """
-    ptr = lmp.extract_compute(name, compute_style, result_type)
-    if result_type == 0:
-        # No casting needed, lammps.py already works
-        return ptr
-    if result_type == 2:
-        ptr = ptr.contents
-    total_size = np.prod(array_shape)
-    buffer_ptr = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_double * total_size))
-    array_np = np.frombuffer(buffer_ptr.contents, dtype=float)
-    array_np.shape = array_shape
-    return array_np
+        # extract types
 
+        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
+        lmp_volume = self._lmp.get_thermo("vol")
 
-def _extract_commands(string):
-    return [x for x in string.splitlines() if x.strip() != '']
-#>>>>>>> refactored ACE code
+        # extract SNAP data, including reference potential data
+
+        bik_rows = 1
+        if self.config.sections['ACE'].bikflag:
+            bik_rows = num_atoms
+        nrows_energy = bik_rows
+        ndim_force = 3
+        ndim_virial = 6
+        nrows_virial = ndim_virial
+        lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, None)
+
+        ncols_bispectrum = n_coeff + 3
+        ncols_reference = 0
+        nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-1 #6
+        dgrad = lmp_snap[num_atoms:(num_atoms+nrows_dgrad), 3:(n_coeff+3)]
+
+        # strip zero dgrad components (almost equivalent to pruning neighborlist)
+         
+        nonzero_rows = lmp_snap[num_atoms:(num_atoms+nrows_dgrad),3:(n_coeff+3)] != 0.0
+        nonzero_rows = np.any(nonzero_rows, axis=1)
+        dgrad = dgrad[nonzero_rows, :]
+        nrows_dgrad = np.shape(dgrad)[0]
+
+        # check that number of atoms here is equal to number of atoms in the sliced array
+
+        natoms_sliced = self.pt.shared_arrays['number_of_atoms'].sliced_array[self._i]
+        assert(natoms_sliced==num_atoms)
+        self.pt.shared_arrays['number_of_dgrad_rows'].sliced_array[self._i] = nrows_dgrad

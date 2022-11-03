@@ -12,7 +12,7 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]
         test: [mpi, quad] #, eme, xyz, neme, spin] #, pace], TODO: add pace tests
-        python-version: ["3.11"]
+        python-version: ["3.10"]
       max-parallel: 20
     runs-on: ${{ matrix.os }}
 
@@ -61,7 +61,16 @@ jobs:
         mkdir build
         cd build
         # need to manually set CMAKE_OSX_DEPLOYMENT_TARGET to 10.15, needs to be changed/maintain as versions change
-        cmake -D PKG_ML-SNAP=yes -D PKG_SPIN=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes -D Python_FIND_FRAMEWORK=LAST -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 ../
+        # cmake -D PKG_ML-SNAP=yes -D PKG_SPIN=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes -D Python_FIND_FRAMEWORK=LAST -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 ../
+        cmake ../cmake -DLAMMPS_EXCEPTIONS=yes \
+                      -DBUILD_SHARED_LIBS=yes \
+                      -DMLIAP_ENABLE_PYTHON=yes \
+                      -DPKG_PYTHON=yes \
+                      -DPKG_ML-SNAP=yes \
+                      -DPKG_ML-IAP=yes \
+                      -DPKG_ML-PACE=yes \
+                      -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
+                      -DPYTHON_EXECUTABLE:FILEPATH=`which python` ../
         make -j 20
         make install-python
         cd ../../../FitSNAP

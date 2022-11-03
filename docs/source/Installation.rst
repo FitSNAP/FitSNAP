@@ -224,7 +224,7 @@ After setting up MPI (or not) and downloading/cloning LAMMPS:
 .. _LAMMPS PACE install:
 
 LAMMPS PACE install
-^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
 
 After installing scipy and the sym_ACE library available at: https://github.com/jmgoff/sym_ACE_lite.git and for developers at https://github.com/jmgoff/sym_ACE.git
 
@@ -240,8 +240,8 @@ After installing scipy and the sym_ACE library available at: https://github.com/
 
 # Next, download the modified lammps-user-pace code that contains extra arrays for breaking out descriptor contributions::
 
-        git clone git@github.com:jmgoff/lammps-user-pace-1.git
-        cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2022.09.27/ML-PACE/ace-evaluator/
+        git clone https://github.com/jmgoff/lammps-user-pace-1
+        cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2022.10.15/ML-PACE/ace-evaluator/
         make -j
         make install
 

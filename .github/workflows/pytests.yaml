@@ -67,7 +67,6 @@ jobs:
                       -DMLIAP_ENABLE_PYTHON=yes \
                       -DPKG_PYTHON=yes \
                       -DPKG_ML-SNAP=yes \
-                      -DPKG_ML-IAP=yes \
                       -DPKG_ML-PACE=yes \
                       -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
                       -DPYTHON_EXECUTABLE:FILEPATH=`which python` ../

@@ -12,8 +12,17 @@ JSON_file = str(sys.argv[2])
 
 # Allow unconverged structures to be written to JSON (default: False)
 write_unconverged_steps_anyway = False  
+
 # Stop program crashing due to incomplete writing of configurations (default: False)
 ignore_incomplete_configs = False
+
+# Select energy output form
+# e_fr_energy: energy with entropy (TOTEN)
+# e_wo_entrp: energy without entropy 
+# e_0_energy: energy with sigma->0 (ISMEAR adjustment) 
+energy_output_forms = ["e_fr_energy","e_wo_entrp","e_0_energy"]
+energy_output_default = "e_wo_entrp"
+energy_output_choice = energy_output_default
 
 def write_json(data, jsonfilename):
     """
@@ -166,7 +175,15 @@ for i, line in enumerate(lines):
 
     elif "FREE ENERGIE OF THE ION-ELECTRON SYSTEM" in line:
         data = {}
-        totalEnergy = float(lines[i + 4].split()[3])
+        
+        ## This script currently grabs the energy without entropy line, first value
+        if energy_output_choice == 'e_fr_energy':
+            totalEnergy = float(lines[i + 2].split()[4])
+        elif energy_output_choice == 'e_wo_entrp':
+            totalEnergy = float(lines[i + 4].split()[3])
+        elif energy_output_choice == 'e_0_entrp':
+            totalEnergy = float(lines[i + 4].split()[6])
+            
 
         # Here is where all the data is put together since the energy value is the last
         # one listed in each configuration.  After this, all these values will be overwritten

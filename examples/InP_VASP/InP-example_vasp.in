@@ -1,49 +1,56 @@
 ##  VASP scraper directions
 ##  =======================
-##  This scraper takes OUTCAR files, extracts all completed ionic steps (called 'configurations'), and creates dictionary objects for each one.
+##  This scraper takes VASP-generated XML and/or OUTCAR files, extracts all completed ionic steps (called 'configurations'), and creates FitSNAP-readable objects for each.
 ##  On the first FitSNAP run, the scraper will write JSON files for each configuration and use those for subsequent FitSNAP runs.
-##  This is to save time in file I/O for FitSNAP (OUTCARs have a lot of extra text and can be very large files).
+##  This is to save time in file I/O for FitSNAP, especially when reading OUTCARs.
+##  Because OUTCARs are slow to read, the default VASP scraper behavior is to find and scrape XMLs first. If no XMLs are found, it will then find and scrape OUTCARs (this can be changed, see below for details)
+##  Important: by default, the scraper takes VASP energy without entropy (this can be changed, see below for details)
 ##
 ##      To set up this scraper:
-##          0. Make sure all the OUTCAR files you want to include are named simply OUTCAR. 
+##          0. Make sure all the OUTCAR and/or XML files you want to include are named simply OUTCAR and/or vasprun.xml. 
 ##             Each one MUST be contained in at least one directory but can be at arbitrary directory depth.
-##             This structure was chosen to mirror default VASP input and output structure (i.e., 'all_simulations/unique_simulation_1/.../*CAR')
+##             This structure was chosen to mirror default VASP input and output structure, i.e., 'all_simulations/unique_sim_1/.../bottom_dir/OUTCAR' (or vasprun.xml)
 ##          1. In the [SCRAPER] section, set 'scaper = VASP'
 ##          2. Create a *data root directory* in the same place as your FitSNAP input file 
 ##                  --> Here, that directory is ./VASP
 ##          3. In the [PATH] section, set 'datapath = {your_root_directory}' (in this example, 'VASP')
 ##          4. Inside the data root directory (datapath), create one or more *group directories* 
 ##                  --> Here, there are 3 groups, 'Defects_aP', 'Defects_iP', and 'smallDefects_aa'
-##          5. Inside of each group directory, place *VASP run directories* OR *symlinks to those directories* that you would like to train on, i.e., 'all_simulations/unique_simulation_1/.../*CAR'
-##                  --> Here, each group has a few different subfolders with OUTCARs, such as './VASP/Defects_aP/type1/OUTCAR'
+##          5. Inside of each group directory, place *VASP run directories* OR *symbolic links to those directories* that you would like to train on, i.e., 'all_simulations/unique_sim_1/.../bottom_dir/OUTCAR' (or vasprun.xml) 
+##                  --> Here, each group has a few different subfolders with OUTCARs, such as './VASP/Defects_aP/type1/OUTCAR' (or vasprun.xml)
 ##          6. In the [GROUPS] section, add the group directories that you would like to include in your fit 
 ##                  --> Here, all three example groups are included, but you only need a single group folder to perform a fit
 ##                  --> Please see the FitSNAP documentation to learn more about train/test splitting, group energy and force weights, etc.
-##          7. Run FitSNAP (see other documentation for how to do this)
+##          7. (Optional) Add/modify any settings variables to the [SCRAPER] section (see below for details)
+##          8. Run FitSNAP (see other documentation for how to do this)
 ##
 ##      Expected default scraper output: 
-##          FitSNAP will create a new directory (default vJSON), with FitSNAP-formatted JSON file(s) named after the group and (sub)directories where the OUTCAR was located
-##                  --> Example: if the OUTCAR was found in 'VASP/some_group/subdir1/subdir2/OUTCAR' and has 3 configurations, the JSONs will be named
+##          FitSNAP will create a new directory (default vJSON), with FitSNAP-formatted JSON file(s) named after the group and (sub)directories where the XML or OUTCAR was located
+##                  --> Example: if an XML was found in 'VASP/some_group/subdir1/subdir2/vasprun.xml' and has 3 configurations, the JSONs will be named
 ##                      'VASP_some_group_subdir1_subdir2_1.json', 'VASP_some_group_subdir1_subdir2_2.json', and 'VASP_some_group_subdir1_subdir2_3.json' 
 ##          
-##          The scraper will crash if an OUTCAR configuration is found not to run to completion (for example, a run was interrupted before converging a relaxation)
+##          The scraper will crash if an OUTCAR or XML configuration is found not to run to completion (for example, a run crashed before completing an ionic step)
 ##
-##      Optional scraper variables in [GROUPS] section (if not included below, defaut values are used):
+##      VASP scraper settings: these are all set by default, but can be changed by putting the variable in the [SCRAPER] section:
 ##          vasp_json_pathname (type <str>, default vJSON)
-##                  --> The user can set the new directory name through the variable 'vasp_json_pathname' in the [GROUPS] section
+##                  --> The user can set the new directory name through the variable 'vasp_json_pathname' 
 ##          vasp_ignore_incomplete (type <bool>, default False) 
-##                  --> If True or 1, ignore incomplete OUTCAR configurations (warning will still be thrown)
+##                  --> If True or 1, ignore incomplete OUTCAR configurations (warning will still be thrown) (NOTE: not tested for XML yet)
 ##                      All other viable configurations will be included in the fit. The configuration number of the incompete one will be skipped over.
 ##                      Use with caution! Uncomment 'Defects_iP_crash' group below and set this to False for an example of crash behavior.
 ##          vasp_ignore_jsons (type <bool>, default False) 
 ##                  --> If True or 1, ignore any created JSONs, forcing the VASP scraper to read all OUTCARs for every FitSNAP run.
 ##                      Strongly not recommended, may lead to major slowdowns and/or file I/O issues        
 ##          vasp_use_TOTEN (type <bool>, default False) 
-##                  --> If True or 1, the scraper will grab the 'free energy  TOTEN =' line (energy with entropy) per ionic step
-##                      Otherwise, defaults to grabbing 'energy without entropy' value 2 lines lower
-##          vasp_unconverged_label (type <str>, default 'UNCONVERGED') 
+##                  --> If True or 1, the scraper will grab the free energy with entropy per ionic step (OUTCAR: 'free energy  TOTEN =' line, XML: 'e_fr_energy')
+##                      Otherwise, defaults to grabbing energy without entropy (OUTCAR: 'energy without entropy = ' line, XML: 'e_wo_entrp')
+##          vasp_unconverged_label (type <str>, default 'UNCONVERGED')  
 ##                  --> User can change the string for the JSON label of unconverged configurations. 
 ##                      Can also be set to '' to eliminate labels for unconverged configurations (not recommended!)
+##          vasp_outcar_only (type <bool>, default False)  
+##                  --> If True or 1, the scraper will only look for OUTCARs and will ignore vasprun.xml files. 
+##          vasp_xml_only (type <bool>, default False)  
+##                  --> If True or 1, the scraper will only look for vasprun.xml files and will ignore OUTCARs. 
 ##
 ##  Note: This is the first iteration of the VASP scraper. Many improvements are planned and suggestions are very welcome!
 ##  Final note: This InP example is meant *only* to show how to use the VASP scraper!
@@ -82,6 +89,8 @@ detailed_errors = 1
 [SCRAPER]
 ## See comments above for explicit instructions on using the VASP scraper.
 scraper = VASP
+vasp_json_pathname = my_InP_JSONs   ## without this variable, the defaut is vJSON
+vasp_unconverged_label = my_unconverged_label  ## without this variable, the defaut is UNCONVERGED
 
 [PATH]
 dataPath = VASP # Note, the dataPath/groups/ folders can have symbolic links to the directories housing OUTCAR files if you dont want to move a bunch of files around
@@ -104,8 +113,6 @@ group_sections = name training_size testing_size eweight fweight vweight
 group_types = str float float float float float
 smartweights = 0
 random_sampling = 0
-vasp_json_pathname = vJSON
-vasp_ignore_jsons = True
 smallDefects_aa = 	1.0     0.0     5319411.52359161  	12160.2964901219 	1.0e-12
 #Defects_aP = 		1.0	    0.0     280933.371566026    3618.73557864646  	1.0e-12
 #Defects_iP_crash  = 1.0     0.0     669131.752996794  	5805.68960393981  	1.0e-12 ## Example of group with one incomplete run & crash behavior

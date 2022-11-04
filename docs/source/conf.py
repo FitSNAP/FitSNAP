@@ -13,6 +13,7 @@ __file__ = "../../fitsnap3lib/"
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 sys.path.insert(0, site.getsitepackages()[0])
 print(sys.path)
+print(site.getsitepackages()[0])
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

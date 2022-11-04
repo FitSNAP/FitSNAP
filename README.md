@@ -62,7 +62,7 @@ for how to build docs for your features.
 #### About
 * Mitchell Wood and Aidan Thompson co-lead development of FitSNAP since 2016.
 * The FitSNAP Development Team is the set of all contributors to the FitSNAP project, including all subprojects.
-* Core efforts have been conducted under the auspicies of Sandia National Laboratory, with variable funding sources. 
-* The original prototype of FitSNAP was developed in 2012 at SNL under Lab Directed Research and Development.
+* The core development of FitSNAP is performed at the Center for Computing Research (CCR), Sandia National Laboratories, Albuquerque, New Mexico, USA 
+* The original prototype of FitSNAP was developed in 2012 under a CIS LDRD project.
 
 _Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_

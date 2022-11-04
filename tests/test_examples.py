@@ -32,7 +32,7 @@ ta_xyz_example_file = example_path / 'Ta_XYZ' / 'Ta-example.in'
 wbe_linear_example_file = example_path / 'WBe_PRB2019' / 'WBe-example.in'
 inp_eme_example_file = example_path / 'InP_JPCA2020' / 'InP-example.in'
 fe_spin_example_file = example_path / 'Fe_Linear_NPJ2021' / 'Fe-example.in'
-pace_example_file = example_path / 'Ta_PACE' / 'svd' / 'Ta.in'
+pace_example_file = example_path / 'Ta_PACE' / 'Ta.in'
 
 
 def pytest_configure(config):

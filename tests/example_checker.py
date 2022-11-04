@@ -72,10 +72,11 @@ class ExampleChecker:
     standard_outfile = str(self._standard_path / Path(self._outfile).name)
     testing_coeffs = self._pace_parser(str(self._example_path / self._outfile))
     standard_coeffs = self._pace_parser(standard_outfile)
-    assert np.max(np.abs(testing_coeffs - standard_coeffs)) < 5e-3
+    assert np.max(np.abs(((testing_coeffs - standard_coeffs)/standard_coeffs)*100)) < 0.1 #5e-3
     with open("test_output", "w") as fp:
       print("Average coeff diff is ", np.average(np.abs(testing_coeffs - standard_coeffs)), file=fp)
       print("Max coeff diff is ", np.max(np.abs(testing_coeffs - standard_coeffs)), file=fp)
+      print("Max coeff percent diff is ", np.max(np.abs(((testing_coeffs - standard_coeffs)/standard_coeffs)*100)), file=fp)
 
   @staticmethod
   def _snap_parser(coeff_file):

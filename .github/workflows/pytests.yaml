@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        test: [mpi, quad] #, eme, xyz, neme, spin] #, pace], TODO: add pace tests
+        test: [mpi, quad, pace] #, eme, xyz, neme, spin]
         python-version: ["3.10"]
       max-parallel: 20
     runs-on: ${{ matrix.os }}
@@ -96,12 +96,13 @@ jobs:
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
-        pytest -s test_examples.py::test_fitsnap_${{ matrix.test}}
+        python -m pytest -s test_examples.py::test_fitsnap_${{ matrix.test}}
     - name: Test nonlinear models
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH
         cd tests
-        pytest -s test_pytorch.py::test_fd_single_elem
-        pytest -s test_pytorch.py::test_fd_multi_elem
+        python -m pytest -s test_pytorch.py::test_fd_single_elem
+        python -m pytest -s test_pytorch.py::test_fd_multi_elem
+        python -m pytest -s test_pytorch.py::test_fd_ace_single_elem
 
 

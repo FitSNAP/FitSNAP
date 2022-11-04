@@ -16,6 +16,8 @@ Create & activate conda environment with dependencies::
     conda create --name fitsnap python=3.10
     conda activate fitsnap
     python -m pip install numpy torch scipy virtualenv psutil pandas tabulate mpi4py Cython
+    # for fitting ACE:
+    python -m pip install sympy pyyaml
 
 Set the following environment variables::
 

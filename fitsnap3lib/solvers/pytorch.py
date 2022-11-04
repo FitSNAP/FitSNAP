@@ -80,6 +80,10 @@ try:
             self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
             if (self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP"):
                 self.num_elements = self.config.sections["BISPECTRUM"].numtypes
+            elif (self.config.sections["CALCULATOR"].calculator == "LAMMPSPACE"):
+                self.num_elements = self.config.sections["ACE"].numtypes
+            else:
+                raise Exception("Unsupported calculator for PyTorch solver.")
 
             self.num_desc_per_element = self.config.sections["CALCULATOR"].num_desc/self.num_elements
 

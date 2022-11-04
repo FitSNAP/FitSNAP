@@ -25,18 +25,18 @@ class Vasp(Scraper):
         self.all_config_dicts = []
         self.bc_bool = False
         self.infile = config.args.infile
-        self.vasp_path = config.sections['PATH'].datapath
-        self.use_TOTEN = config.sections["GROUPS"].vasp_use_TOTEN
         self.group_table = config.sections["GROUPS"].group_table
-        self.jsonpath = config.sections['GROUPS'].vasp_json_pathname
-        self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
-        self.vasp_ignore_jsons = config.sections["GROUPS"].vasp_ignore_jsons
-        self.unconverged_label = config.sections["GROUPS"].vasp_unconverged_label
-        self.vasp_xml_only = config.sections["GROUPS"].vasp_xml_only ## for testing 
-        self.vasp_outcar_only = config.sections["GROUPS"].vasp_outcar_only ## for testing
+        self.vasp_path = config.sections['PATH'].datapath
+        self.use_TOTEN = config.sections["SCRAPER"].vasp_use_TOTEN
+        self.jsonpath = config.sections['SCRAPER'].vasp_json_pathname
+        self.ignore_incomplete = config.sections["SCRAPER"].vasp_ignore_incomplete
+        self.ignore_jsons = config.sections["SCRAPER"].vasp_ignore_jsons
+        self.unconverged_label = config.sections["SCRAPER"].vasp_unconverged_label
+        self.xml_only = config.sections["SCRAPER"].vasp_xml_only ## for testing 
+        self.outcar_only = config.sections["SCRAPER"].vasp_outcar_only ## for testing
 
-        if self.vasp_xml_only and self.vasp_outcar_only:
-            raise Exception('!!ERROR: vasp_xml_only and vasp_outcar_only in [GROUPS] section are both set to True!!' 
+        if self.xml_only and self.outcar_only:
+            raise Exception('!!ERROR: vasp_xml_only and vasp_outcar_only in [SCRAPER] section are both set to True!!' 
                 '\n!!Please do one of the following: ' 
                 '\n!!\t- Set one of them to False, or ' 
                 '\n!!\t- Remove/comment out one of them, or ' 
@@ -67,9 +67,9 @@ class Vasp(Scraper):
         xml_no_outcar = [f for f in only_xmls if f.replace('vasprun.xml','OUTCAR') not in only_outcars] 
 
         ## Depending on user selection, choose scraper
-        if self.vasp_outcar_only == True:
+        if self.outcar_only == True:
             vasp_files = only_outcars 
-        elif self.vasp_xml_only == True:
+        elif self.xml_only == True:
             vasp_files = only_xmls + xml_no_outcar
         else:
             vasp_files = only_xmls + outcar_no_xml
@@ -284,7 +284,7 @@ class Vasp(Scraper):
         else:
             has_json = os.path.exists(json_filename)
 
-        if has_json and not self.vasp_ignore_jsons:
+        if has_json and not self.ignore_jsons:
             with open(json_filename, 'r') as f:
                 config_dict = json.loads(f.read(), parse_constant=True)
             return config_dict
@@ -293,7 +293,7 @@ class Vasp(Scraper):
             if type(config_data) == tuple:
                 crash_type, crash_line = config_data
                 is_bad_config = True
-                if not self.vasp_ignore_incomplete:
+                if not self.ignore_incomplete:
                     raise Exception('!!ERROR: Incomplete OUTCAR configuration found!!' 
                         '\n!!Not all atom coordinates/forces were written to a configuration' 
                         '\n!!Please check the OUTCAR for incomplete steps and adjust, '
@@ -702,7 +702,7 @@ class Vasp(Scraper):
             else:
                 has_json = os.path.exists(json_filename)
 
-            if has_json and not self.vasp_ignore_jsons:
+            if has_json and not self.ignore_jsons:
                 with open(json_filename, 'r') as f:
                     config_dict = json.loads(f.read(), parse_constant=True)
                 return config_dict

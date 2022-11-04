@@ -28,7 +28,7 @@ class Groups(Section):
         super().__init__(name, config, args)
 
         ## TODO move VASP-based variables into scraper section
-        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'random_seed', 'vasp_use_TOTEN','vasp_json_pathname','vasp_ignore_incomplete','vasp_ignore_jsons','vasp_unconverged_label','vasp_xml_only','vasp_outcar_only','BOLTZ']
+        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'random_seed', 'BOLTZ']
 
         # for value_name in config['GROUPS']:
         #     if value_name in allowedkeys: continue
@@ -39,13 +39,6 @@ class Groups(Section):
         self.smartweights = self.get_value("GROUPS", "smartweights", "0", "bool")
         self.random_sampling = self.get_value("GROUPS", "random_sampling", "0", "bool")
         self.random_seed = self.get_value("GROUPS", "random_seed", "0", "float")
-        self.vasp_use_TOTEN = self.get_value("GROUPS", "vasp_use_TOTEN", "False", "bool")
-        self.vasp_json_pathname = self.get_value("GROUPS", "vasp_json_pathname", "vJSON", "str")
-        self.vasp_ignore_incomplete = self.get_value("GROUPS", "vasp_ignore_incomplete", "1", "bool")
-        self.vasp_ignore_jsons = self.get_value("GROUPS", "vasp_ignore_jsons", "0", "bool")
-        self.vasp_xml_only = self.get_value("GROUPS", "vasp_xml_only", "0", "bool")  ## for testing
-        self.vasp_outcar_only = self.get_value("GROUPS", "vasp_outcar_only", "0", "bool")  ## for testing
-        self.vasp_unconverged_label = self.get_value("GROUPS", "vasp_unconverged_label", "UNCONVERGED", "str")
         self.boltz = self.get_value("BISPECTRUM", "BOLTZ", "0", "float")
         _str_2_fun(self.group_types)
         self.group_table = None
@@ -74,7 +67,7 @@ class Groups(Section):
             if found_variables != expected_variables:
                 ## There is probably a typo somewhere, let user know
                 raise Exception('!!ERROR: Too many group variables found!!' 
-                        '\n!!Check the input file section [GROUP] for extra variables, typos ' 
+                        '\n!!Check the input file section [GROUPS] for extra variables, typos ' 
                         f'\n!!\tInput file: {self._args.infile}' 
                         f'\n!!\tGroup line: {k} = {v}' 
                         f'\n!!\tExpected {expected_variables} columns for settings, found {found_variables}'

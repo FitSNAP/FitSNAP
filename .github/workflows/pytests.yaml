@@ -59,7 +59,7 @@ jobs:
         # conda activate base
         cd ../
 
-# Procedure for installing our custom branch with compute pace:
+        # Procedure for installing our custom branch with compute pace:
 
         git clone -b compute-pace https://github.com/jmgoff/lammps_compute_PACE
         cd lammps_compute_PACE
@@ -79,25 +79,25 @@ jobs:
         make install-python
         cd ../../../FitSNAP
 
-# Procedure for installing the standard LAMMPS develop branch:
+        # Procedure for installing the standard LAMMPS develop branch:
 
-#        git clone https://github.com/lammps/lammps.git
-#        cd lammps/cmake
-#        mkdir build
-#        cd build
+        #git clone https://github.com/lammps/lammps.git
+        #cd lammps/cmake
+        #mkdir build
+        #cd build
         # need to manually set CMAKE_OSX_DEPLOYMENT_TARGET to 10.15, needs to be changed/maintain as versions change
         # cmake -D PKG_ML-SNAP=yes -D PKG_SPIN=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes -D Python_FIND_FRAMEWORK=LAST -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 ../
-#        cmake -DLAMMPS_EXCEPTIONS=yes \
-#              -DBUILD_SHARED_LIBS=yes \
-#              -DMLIAP_ENABLE_PYTHON=yes \
-#              -DPKG_PYTHON=yes \
-#              -DPKG_ML-SNAP=yes \
-#              -DPKG_ML-PACE=yes \
-#              -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
-#              -DPYTHON_EXECUTABLE:FILEPATH=`which python` ../
-#        make -j 20
-#        make install-python
-#        cd ../../../FitSNAP
+        #cmake -DLAMMPS_EXCEPTIONS=yes \
+        #      -DBUILD_SHARED_LIBS=yes \
+        #      -DMLIAP_ENABLE_PYTHON=yes \
+        #      -DPKG_PYTHON=yes \
+        #      -DPKG_ML-SNAP=yes \
+        #      -DPKG_ML-PACE=yes \
+        #      -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
+        #      -DPYTHON_EXECUTABLE:FILEPATH=`which python` ../
+        #make -j 20
+        #make install-python
+        #cd ../../../FitSNAP
     - name: Test stubs with pytest
       run: |
         python -m pip install --upgrade pytest

@@ -109,9 +109,10 @@ for i, line in enumerate(lines):
                 
     # Look for lattice vectors for configuration
     elif "direct lattice vectors" in line:
-        lattice_x = [float(x) for x in lines[i + 1].split()[0:3]]
-        lattice_y = [float(y) for y in lines[i + 2].split()[0:3]]
-        lattice_z = [float(z) for z in lines[i + 3].split()[0:3]]
+        lattice_to_xml_precision = 8 ## ensures identical precision between this and VASPxml2JSON.py
+        lattice_x = [round(float(x), lattice_to_xml_precision) for x in lines[i + 1].split()[0:3]]
+        lattice_y = [round(float(y), lattice_to_xml_precision) for y in lines[i + 2].split()[0:3]]
+        lattice_z = [round(float(z), lattice_to_xml_precision) for z in lines[i + 3].split()[0:3]]
         all_lattice = [lattice_x, lattice_y, lattice_z]
 
     # Look for stresses for configuration.  Assumes total stress is 14 lines down

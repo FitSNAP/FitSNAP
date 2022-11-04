@@ -93,24 +93,32 @@ for event, elem in tree:
         frac_atom_coords = []
         for entry in elem.find("varray[@name='positions']"):
             frac_atom_coords.append([float(x) for x in entry.text.split()])
-        atom_coords = dot(frac_atom_coords, all_lattice).tolist()
+
+        coords_to_outcar_precision = 5 ## ensures identical precision between this and OUTCAR scrape
+        # atom_coords = dot(frac_atom_coords, all_lattice).tolist()
+        atom_coords = [[round(x, coords_to_outcar_precision) for x in coord] for coord in dot(frac_atom_coords, all_lattice).tolist()]
         #print(atom_coords)
-        
+                 
     elif elem.tag == 'calculation' and event=='end': #this triggers each ionic step
         atom_force = []
         force_block = elem.find("varray[@name='forces']")
         if force_block:
             for entry in force_block:
-                atom_force.append([float(x) for x in entry.text.split()])
+                forces_to_outcar_precision = 6 ## ensures identical precision between this and VASP2JSON.py
+                # atom_force.append([float(x) for x in entry.text.split()])
+                atom_force.append([round(float(x), forces_to_outcar_precision) for x in entry.text.split()])
         #print(atom_force)
 
         stress_component = []
         stress_block = elem.find("varray[@name='stress']")
         if stress_block:
             for entry in stress_block:
-                stress_component.append([float(x) for x in entry.text.split()])
-
-        # print(energy_output_choice, version, version[:3])
+                stresses_to_outcar_precision = 9 ## ensures identical precision between this and OUTCAR scrape
+                #stress_component.append([float(x) for x in entry.text.split()])
+                stress_component.append([round(float(x), stresses_to_outcar_precision) for x in entry.text.split()])
+        #print(stress_component)
+        
+        ## Check for VASP v5.4 bug in energy assignment
         if version[:3] == '5.4' and energy_output_choice != 'e_fr_energy':
             if 0:  ## toggle to 1 to print warning
                 print(f"-> INFO: Detected VASP v5.4 - this version has a bug where '{energy_output_choice}' is written incorrectly in final energy output (corrected in v6.1). \n"

@@ -11,30 +11,8 @@ A Python package for machine learning potentials with [LAMMPS](https://github.co
 
 **Colab Python notebook tutorial:** [https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb](https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb)
 
-_Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_
-##
-
-#### Original author:
-    Aidan P. Thompson, athomps (at) sandia (dot) gov (Sandia National Labs)
-    http://www.cs.sandia.gov/~athomps
-
-#### Key contributors (alphabetical):
-    Mary Alice Cusentino (Sandia National Labs)
-    Nicholas Lubbers (Los Alamos National Lab)
-    Drew Rohskopf (Sandia National Labs)
-    Charles Sievers (UC Davis, Sandia National Labs)
-    Adam Stephens (Sandia National Labs)
-    Mitchell Wood (Sandia National Labs)
-
-#### Additional authors (alphabetical):
-    Elizabeth Decolvenaere (D. E. Shaw Research)
-    Stan Moore (Sandia National Labs)
-    Steve Plimpton (Sandia National Labs)
-    Gary Saavedra (Sandia National Labs)
-    Peter Schultz (Sandia National Labs)
-    Laura Swiler (Sandia National Labs)
-
-<!-----------------END-HEADER------------------------------------->
+#### How to cite 
+We are currently working on an overview of the code in its current state, stay tuned!
 
 #### Dependencies:
 
@@ -80,3 +58,11 @@ the docs for details on how to install the current LAMMPS which has these functi
 * Get Sphinx with `pip install sphinx sphinx_rtd_theme` for adding new documentation, and see `docs/README.md` 
 for how to build docs for your features. 
 * **Feel free to ask for help!**
+
+#### About
+* Mitchell Wood and Aidan Thompson co-lead development of FitSNAP since 2016.
+* The FitSNAP Development Team is the set of all contributors to the FitSNAP project, including all subprojects.
+* The core development of FitSNAP is performed at the Center for Computing Research (CCR), Sandia National Laboratories, Albuquerque, New Mexico, USA 
+* The original prototype of FitSNAP was developed in 2012 under a CIS LDRD project.
+
+_Copyright (2016) Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software. This software is distributed under the GNU General Public License_

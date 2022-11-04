@@ -7,10 +7,13 @@
 # add these directories to sys.path here.
 import pathlib
 import sys
+import site
 __file__ = "../../fitsnap3lib/"
 #__file__ = ".."
 sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
+sys.path.insert(0, site.getsitepackages()[0])
 print(sys.path)
+print(site.getsitepackages()[0])
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -23,7 +26,8 @@ author = 'Sandia Corporation'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'sphinx.ext.autodoc'
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon'
 ]
 
 templates_path = ['_templates']

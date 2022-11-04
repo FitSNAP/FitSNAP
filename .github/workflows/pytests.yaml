@@ -59,9 +59,10 @@ jobs:
         # conda activate base
         cd ../
 
+# Procedure for installing our custom branch with compute pace:
 
-        git clone -b compute-pace https://github.com/jmgoff/lammps_compute_PACE lammps
-        cd lammps
+        git clone -b compute-pace https://github.com/jmgoff/lammps_compute_PACE
+        cd lammps_compute_PACE
         mkdir build && cd build
         # need to manually set CMAKE_OSX_DEPLOYMENT_TARGET to 10.15, needs to be changed/maintained as versions change
         cmake -DLAMMPS_EXCEPTIONS=yes \
@@ -77,6 +78,8 @@ jobs:
         make -j
         make install-python
         cd ../../../FitSNAP
+
+# Procedure for installing the standard LAMMPS develop branch:
 
 #        git clone https://github.com/lammps/lammps.git
 #        cd lammps/cmake

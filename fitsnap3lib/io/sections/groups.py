@@ -26,7 +26,9 @@ class Groups(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'random_seed', 'vasp_use_TOTEN','vasp_json_pathname','vasp_ignore_incomplete','vasp_ignore_jsons','vasp_unconverged_label','BOLTZ']
+
+        ## TODO move VASP-based variables into scraper section
+        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'random_seed', 'vasp_use_TOTEN','vasp_json_pathname','vasp_ignore_incomplete','vasp_ignore_jsons','vasp_unconverged_label','vasp_xml_only','vasp_outcar_only','BOLTZ']
 
         # for value_name in config['GROUPS']:
         #     if value_name in allowedkeys: continue
@@ -41,6 +43,8 @@ class Groups(Section):
         self.vasp_json_pathname = self.get_value("GROUPS", "vasp_json_pathname", "vJSON", "str")
         self.vasp_ignore_incomplete = self.get_value("GROUPS", "vasp_ignore_incomplete", "1", "bool")
         self.vasp_ignore_jsons = self.get_value("GROUPS", "vasp_ignore_jsons", "0", "bool")
+        self.vasp_xml_only = self.get_value("GROUPS", "vasp_xml_only", "0", "bool")  ## for testing
+        self.vasp_outcar_only = self.get_value("GROUPS", "vasp_outcar_only", "0", "bool")  ## for testing
         self.vasp_unconverged_label = self.get_value("GROUPS", "vasp_unconverged_label", "UNCONVERGED", "str")
         self.boltz = self.get_value("BISPECTRUM", "BOLTZ", "0", "float")
         _str_2_fun(self.group_types)

@@ -32,6 +32,17 @@ class Vasp(Scraper):
         self.vasp_ignore_incomplete = config.sections["GROUPS"].vasp_ignore_incomplete
         self.vasp_ignore_jsons = config.sections["GROUPS"].vasp_ignore_jsons
         self.unconverged_label = config.sections["GROUPS"].vasp_unconverged_label
+        self.vasp_xml_only = config.sections["GROUPS"].vasp_xml_only ## for testing 
+        self.vasp_outcar_only = config.sections["GROUPS"].vasp_outcar_only ## for testing
+
+        if self.vasp_xml_only and self.vasp_outcar_only:
+            raise Exception('!!ERROR: vasp_xml_only and vasp_outcar_only in [GROUPS] section are both set to True!!' 
+                '\n!!Please do one of the following: ' 
+                '\n!!\t- Set one of them to False, or ' 
+                '\n!!\t- Remove/comment out one of them, or ' 
+                '\n!!\t- Delete both of them (FitSNAP will scrape XMLs first, then OUTCARs where XML is missing)' 
+                f'\n!!\tInput file: {self.infile}'
+                '\n')
 
         if 'TRAINSHIFT' in config.sections.keys():
             self.trainshift = config.sections['TRAINSHIFT'].trainshift
@@ -49,11 +60,19 @@ class Vasp(Scraper):
         ## First search for OUTCARs since they are most likely to be present
         ## Only then, match OUTCARs with XML files in the same subdirectory
         ## TODO make this search user-specify-able (e.g., OUTCARs have labels/prefixes etc.)
+        
         only_outcars = [f for f in glob(outcars_base,recursive=True) if f.endswith('OUTCAR')]
         only_xmls = [f for f in glob(outcars_base,recursive=True) if f.endswith('vasprun.xml')]
         outcar_no_xml = [f for f in only_outcars if f.replace('OUTCAR','vasprun.xml') not in only_xmls]
-        xml_no_outcar = [f for f in only_xmls if f.replace('vasprun.xml','OUTCAR') not in only_outcars]
-        mixed_vasp_files = only_xmls + outcar_no_xml
+        xml_no_outcar = [f for f in only_xmls if f.replace('vasprun.xml','OUTCAR') not in only_outcars] 
+
+        ## Depending on user selection, choose scraper
+        if self.vasp_outcar_only == True:
+            vasp_files = only_outcars 
+        elif self.vasp_xml_only == True:
+            vasp_files = only_xmls + xml_no_outcar
+        else:
+            vasp_files = only_xmls + outcar_no_xml
 
         ## Grab test|train split
         self.group_dict = {k: config.sections['GROUPS'].group_types[i] for i, k in enumerate(config.sections['GROUPS'].group_sections)}
@@ -87,7 +106,7 @@ class Vasp(Scraper):
             
             ## Grab OUTCARS for this training group
             ## Test filepath to be sure that unique group name is being matched
-            group_files = [f for f in mixed_vasp_files if group_vasp_path + '/' in f]
+            group_files = [f for f in vasp_files if group_vasp_path + '/' in f]
             if len(group_files) == 0:
                 raise Exception('!!ERROR: no OUTCARs found in group!!' 
                     '\n!!Please check that all groups in the input file have at least one file named "OUTCAR"' 

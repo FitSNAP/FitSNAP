@@ -58,12 +58,12 @@ jobs:
         which python
         # conda activate base
         cd ../
-        git clone https://github.com/lammps/lammps.git
-        cd lammps/cmake
-        mkdir build
-        cd build
-        # need to manually set CMAKE_OSX_DEPLOYMENT_TARGET to 10.15, needs to be changed/maintain as versions change
-        # cmake -D PKG_ML-SNAP=yes -D PKG_SPIN=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes -D Python_FIND_FRAMEWORK=LAST -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 ../
+
+
+        git clone -b compute-pace https://github.com/jmgoff/lammps_compute_PACE lammps
+        cd lammps
+        mkdir build && cd build
+        # need to manually set CMAKE_OSX_DEPLOYMENT_TARGET to 10.15, needs to be changed/maintained as versions change
         cmake -DLAMMPS_EXCEPTIONS=yes \
               -DBUILD_SHARED_LIBS=yes \
               -DMLIAP_ENABLE_PYTHON=yes \
@@ -72,9 +72,29 @@ jobs:
               -DPKG_ML-PACE=yes \
               -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
               -DPYTHON_EXECUTABLE:FILEPATH=`which python` ../
-        make -j 20
+        git clone https://github.com/jmgoff/lammps-user-pace-1
+        cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2022.10.15/ML-PACE/ace-evaluator/
+        make -j
         make install-python
         cd ../../../FitSNAP
+
+#        git clone https://github.com/lammps/lammps.git
+#        cd lammps/cmake
+#        mkdir build
+#        cd build
+        # need to manually set CMAKE_OSX_DEPLOYMENT_TARGET to 10.15, needs to be changed/maintain as versions change
+        # cmake -D PKG_ML-SNAP=yes -D PKG_SPIN=yes -D LAMMPS_EXCEPTIONS=yes -D BUILD_SHARED_LIBS=yes -D Python_FIND_FRAMEWORK=LAST -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 ../
+#        cmake -DLAMMPS_EXCEPTIONS=yes \
+#              -DBUILD_SHARED_LIBS=yes \
+#              -DMLIAP_ENABLE_PYTHON=yes \
+#              -DPKG_PYTHON=yes \
+#              -DPKG_ML-SNAP=yes \
+#              -DPKG_ML-PACE=yes \
+#              -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
+#              -DPYTHON_EXECUTABLE:FILEPATH=`which python` ../
+#        make -j 20
+#        make install-python
+#        cd ../../../FitSNAP
     - name: Test stubs with pytest
       run: |
         python -m pip install --upgrade pytest

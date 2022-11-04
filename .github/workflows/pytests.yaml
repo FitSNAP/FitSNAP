@@ -62,7 +62,7 @@ jobs:
         # Procedure for installing our custom branch with compute pace:
 
         git clone -b compute-pace https://github.com/jmgoff/lammps_compute_PACE
-        cd lammps_compute_PACE
+        cd lammps_compute_PACE/cmake
         mkdir build && cd build
         # need to manually set CMAKE_OSX_DEPLOYMENT_TARGET to 10.15, needs to be changed/maintained as versions change
         cmake -DLAMMPS_EXCEPTIONS=yes \

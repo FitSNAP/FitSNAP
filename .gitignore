@@ -23,3 +23,6 @@ docs/build/
 
 # ignore MacOS generated files
 *.DS_Store
+
+# ignore PACE library files
+fitsnap3lib/lib/sym_ACE/lib/*.pickle

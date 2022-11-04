@@ -1,0 +1,3 @@
+LAMMPS (15 Sep 2022)
+WARNING: Using I/O redirection is unreliable with parallel runs. Better use -in switch to read input file. (src/lammps.cpp:524)
+Total wall time: 0:00:00

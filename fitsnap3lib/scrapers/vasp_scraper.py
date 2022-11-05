@@ -659,7 +659,8 @@ class Vasp(Scraper):
             if has_json and not self.ignore_jsons:
                 with open(json_filename, 'r') as f:
                     config_dict = json.loads(f.read(), parse_constant=True)
-                return config_dict
+                self.configs[group].append(config_dict)
+                # return config_dict
             else:            
                 config_header = {}
                 config_header['Group'] = group
@@ -681,9 +682,10 @@ class Vasp(Scraper):
                 if not is_bad_config:
                     self.write_json(json_filename, xml_filename, config_dict)
                     self.configs[group].append(config_dict)
-                    return config_dict
+                    # return config_dict
                 else:
-                    return -1
+                    ## TODO when OUTCAR/XML read have similar structure, add bad_config warning or error here!
+                    pass
     
     def write_json(self, json_filename, vasp_filename, config_dict):
         dt = datetime.now().strftime('%B %d %Y %I:%M%p')

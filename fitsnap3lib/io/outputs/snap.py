@@ -79,7 +79,7 @@ def _to_param_string():
         chemflag_int = 1
     else:
         chemflag_int = 0
-    return f"""
+    param_string = f"""
     # required
     rcutfac {config.sections["BISPECTRUM"].rcutfac}
     twojmax {max(config.sections["BISPECTRUM"].twojmax)}
@@ -92,7 +92,17 @@ def _to_param_string():
     wselfallflag {config.sections["BISPECTRUM"].wselfallflag}
     chemflag {chemflag_int}
     bnormflag {config.sections["BISPECTRUM"].bnormflag}
+    switchinnerflag {config.sections["BISPECTRUM"].switchinnerflag}
     """
+    
+    if config.sections["BISPECTRUM"].switchinnerflag:
+        sinner = config.sections["BISPECTRUM"].sinner
+        dinner = config.sections["BISPECTRUM"].dinner
+        param_string += f"""sinner {sinner}
+    dinner {dinner}
+    """
+
+    return param_string
 
 
 def _to_coeff_string(coeffs):

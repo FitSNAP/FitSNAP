@@ -87,6 +87,11 @@ class Vasp(Scraper):
 
         ## Count number of VASP vs. JSON scrapes (VASP scrapes are much slower)
         count_json_scrapes, count_vasp_scrapes = 0, 0
+
+        ## Start parsing configurations per grouop
+        ## If JSON found, read that first (unless vasp_ignore_jsons = True)
+        ## If no JSON found, then scrape XML
+        ## If no XML found, then scrape OUTCAR
         for group in self.group_table:
             ## First, check that all group folders exist
             group_vasp_path = f'{self.vasp_path}/{group}'
@@ -114,30 +119,29 @@ class Vasp(Scraper):
             if training_size is None:
                 raise ValueError('Please set training size for {}'.format(group))
             
-            ## Grab OUTCARS for this training group
-            ## Test filepath to be sure that unique group name is being matched
-            group_files = [f for f in vasp_files if group_vasp_path + '/' in f]
-
-            ## Soft check to see if all JSONs for this group have been generated
-            ## If not, re-scrape the entire group (to be safe)
-            ## TODO make CSV file that ensures correct number of JSONs have been written
+            ## Grab JSONs for this training group
             group_json_path = f'{self.json_path}/{group}'
             try:
                 group_json_files = [f"{group_json_path}/{f}" for f in os.listdir(group_json_path)]
             except:
                 group_json_files = []
 
+            ## Grab VASP files for this training group
+            group_files = [f for f in vasp_files if group_vasp_path + '/' in f]
+
             if len(group_files) == 0:
-                raise Exception('!!ERROR: no OUTCARs found in group!!' 
-                    '\n!!Please check that all groups in the input file have at least one file named "OUTCAR"' 
+                raise Exception('!!ERROR: no VASP data (XML/OUTCAR) found in group!!' 
+                    '\n!!Please check that all groups in the input file have at least one file named "OUTCAR" or "vasprun.xml"' 
                     '\n!!in at least one subdirectory of the group folder' 
-                    f'\n!!\tMissing group data root: {group_vasp_path}'
+                    f'\n!!\t[PATH] dataPath = {self.vasp_path}'
+                    f'\n!!\tMissing group data directory: {group_vasp_path} <-- should be in dataPath and should have at least one XML/OUTCAR file'
                     '\n')
 
             file_base = os.path.join(config.sections['PATH'].datapath, group)
             self.files[file_base] = group_files
             self.configs[group] = []  
 
+            ## Parse individual files
             for vasp_file in self.files[file_base]:
                 json_filestem = self._get_json_filestem(vasp_file)
                 vasp_jsons = [f for f in group_json_files if json_filestem in f]

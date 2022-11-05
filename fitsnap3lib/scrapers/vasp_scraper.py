@@ -73,6 +73,15 @@ class Vasp(Scraper):
         else:
             vasp_files = only_xmls + outcar_no_xml
 
+        ## Make sure user has actual VASP data to scrape or check against JSONs, crash informatively if not
+        if not vasp_files:
+            raise Exception('!!ERROR: no VASP data detected in [PATH] dataPath!!' 
+                '\n!!Please direct your dataPath variable to your VASP data (symlinks are OK too)' 
+                '\n!!Otherwise, designate another scraper in [SCRAPER] section' 
+                f'\n!!\tInput file: {self.infile}'
+                f'\n!!\t[PATH] dataPath = {self.vasp_path} <-- no OUTCAR/XML data found here!'
+                '\n')
+
         ## Grab test|train split
         self.group_dict = {k: config.sections['GROUPS'].group_types[i] for i, k in enumerate(config.sections['GROUPS'].group_sections)}
 

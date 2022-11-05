@@ -28,7 +28,7 @@ class Scraper(Section):
         ## Variables to configure VASP scraper (all optional)
         self.vasp_use_TOTEN = self.get_value("SCRAPER", "vasp_use_TOTEN", "False", "bool")
         self.vasp_json_pathname = self.get_value("SCRAPER", "vasp_json_pathname", "vJSON", "str")
-        self.vasp_ignore_incomplete = self.get_value("SCRAPER", "vasp_ignore_incomplete", "1", "bool")
+        self.vasp_ignore_incomplete = self.get_value("SCRAPER", "vasp_ignore_incomplete", "0", "bool")
         self.vasp_ignore_jsons = self.get_value("SCRAPER", "vasp_ignore_jsons", "0", "bool")
         self.vasp_xml_only = self.get_value("SCRAPER", "vasp_xml_only", "0", "bool")  ## for testing
         self.vasp_outcar_only = self.get_value("SCRAPER", "vasp_outcar_only", "0", "bool")  ## for testing

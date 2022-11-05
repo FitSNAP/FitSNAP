@@ -32,8 +32,8 @@ class Vasp(Scraper):
         self.ignore_incomplete = config.sections["SCRAPER"].vasp_ignore_incomplete
         self.ignore_jsons = config.sections["SCRAPER"].vasp_ignore_jsons
         self.unconverged_label = config.sections["SCRAPER"].vasp_unconverged_label
-        self.xml_only = config.sections["SCRAPER"].vasp_xml_only ## for testing 
-        self.outcar_only = config.sections["SCRAPER"].vasp_outcar_only ## for testing
+        self.xml_only = config.sections["SCRAPER"].vasp_xml_only 
+        self.outcar_only = config.sections["SCRAPER"].vasp_outcar_only 
 
         if self.xml_only and self.outcar_only:
             raise Exception('!!ERROR: vasp_xml_only and vasp_outcar_only in [SCRAPER] section are both set to True!!' 
@@ -337,7 +337,7 @@ class Vasp(Scraper):
                 return -1
 
     def parse_outcar_config(self,lines,potcar_list,potcar_elements,ions_per_type):
-        ## Many thanks to Mary Alice Cusentino and Logan Williams for parts of the following code
+        ## Many thanks to Mary Alice Cusentino (original author) and Logan Williams (important additions) for parts of the following code
         ## Based on the VASP2JSON.py script in the 'tools' directory
         ## LIST SECTION_MARKERS AND RELATED FUNCTIONS ARE HARD-CODED!!
         ## DO NOT CHANGE UNLESS YOU KNOW WHAT YOU'RE DOING!!
@@ -398,18 +398,42 @@ class Vasp(Scraper):
         lidx_last_lattice0 = section_idxs[idx_lattice_vects] + 1
         lidx_last_lattice1 = lidx_last_lattice0 + 3
         lines_last_lattice = lines[lidx_last_lattice0:lidx_last_lattice1]
-        all_lattice = self.get_direct_lattice(lines_last_lattice)
+
+        all_lattice = []
+        for i in range(0, 3):
+            lattice_to_xml_precision = 8
+            # lattice_coords.append([float(x) for x in lines[i].split()[:3]])
+            all_lattice.append([round(float(x), lattice_to_xml_precision) for x in lines_last_lattice[i].split()[:3]])
 
         ## Stresses
         lidx_stresses = section_idxs[idx_stress_vects] + 14
         line_stresses = lines[lidx_stresses]
-        stress_component = self.get_stresses(line_stresses)
+
+        ## TODO check that we can assume symmetric stress tensors
+        ## TODO where do we set the cell type (Bravais)
+        columns = line_stresses.split()
+        stress_xx, stress_yy, stress_zz = [float(c) for c in columns[2:5]]
+        stress_xy, stress_yz, stress_zx = [float(c) for c in columns[5:8]]
+        stress_component = [[stress_xx, stress_xy, stress_zx],
+                    [stress_xy, stress_yy, stress_yz],
+                    [stress_zx, stress_yz, stress_zz]]
 
         ## Atom coordinates and forces
         lidx_forces0 = section_idxs[idx_force_vects] + 2
         lidx_forces1 = lidx_forces0 + natoms
         lines_forces = lines[lidx_forces0:lidx_forces1]
-        atom_coords, atom_forces = self.get_forces(lines_forces)
+        atom_coords, atom_forces = [], []
+        try:
+            [float(v) for v in lines_forces[-1].split()[:6]]
+        except:
+            print('OUTCAR config did not run to completion! Discarding configuration')
+            return lines_forces[-1],-1 ## returning faulty string for error message
+
+        for line in lines_forces:
+            x, y, z, fx, fy, fz = [float(v) for v in line.split()[:6]]
+            atom_coords.append([x, y, z])
+            atom_forces.append([fx, fy, fz])
+
         if type(atom_coords) == str:
             crash_type = 'atom coords, atom forces'
             crash_atom_coord_line = 'found bad line: ' + atom_coords
@@ -419,12 +443,14 @@ class Vasp(Scraper):
         ## Energie WITH entropy (TOTEN)
         lidx_TOTEN = section_idxs[idx_energie] + 2
         line_TOTEN = lines[lidx_TOTEN]
-        total_energie_with_entropy = self.get_energie_with_entropy(line_TOTEN)
+        total_energie_with_entropy = float(line_TOTEN.split()[4])
 
         ## Energie without entropy
         lidx_energie = section_idxs[idx_energie] + 4
         line_energie = lines[lidx_energie]
-        total_energie_without_entropy = self.get_energie_without_entropy(line_energie)
+        str0 = line_energie[:line_energie.rfind("energy(sigma->")].strip()
+        str1 = "".join([c for c in str0 if c.isdigit() or c == "-" or c == "."])
+        total_energie_without_entropy = float(str1) 
 
         ## Check if we should use the default without entropy, or use TOTEN 
         ## (when vasp_use_TOTEN = True in [GROUPS])
@@ -474,12 +500,20 @@ class Vasp(Scraper):
                 lines_potcar.append(line)
                 # Look for the ordering of the atom types - grabbing POTCAR filenames first, then atom labels separately because VASP has terribly inconsistent formatting
                 if line.split()[1:] not in potcar_list:  # VASP will have these lines in the OUTCAR twice, and we don't need to append them the second time
-                    potcar_list.append(line.split()[1:])  # each line will look something like ['PAW_PBE', 'Zr_sv_GW', '05Dec2013']
-            ## TODO add check that warns user if POSCAR elements and POTCAR order are not the same (if possible)
+                    potcar_list.append(line.split()[1:])  # each line will look something like ['PAW_PBE', 'Zr_sv_GW', '05Dec2013'
+                ## TODO add POTCAR/POSCAR order check here
             elif 'IBRION' in line:
-                ibrion = self.get_ibrion(line)
+                # There should be only one of these lines (from INCAR print)
+                ## IBRION value should always be first number < 10 to appear after "="
+                line1 = line.split()
+                idx_equals = line1.index("=")
+                ibrion = int(line1[idx_equals+1])
             elif 'NSW' in line:
-                nsw = self.get_nsw(line)
+                ## There should be only one of these lines (from INCAR print)
+                ## Format:   >NSW    =    100    number of steps for IOM
+                line1 = line.split()
+                idx_equals = line1.index("=")
+                nsw = int(line1[idx_equals+1])
 
         if ibrion == -1 and nsw > 0:
             output.screen('!WARNING: degenerate energies on same structure!\n'
@@ -499,94 +533,20 @@ class Vasp(Scraper):
 
         return potcar_list, potcar_elements, ions_per_type, is_duplicated
 
-    def get_vrhfin(self, lines):
-        ## Scrapes vrhfin lines to get elements
-        ## These lines appear only once per element in OUTCARs
-        ## Format: VRHFIN =W: 5p6s5d
-        elem_list = []
-        for line in lines:
-            str0 = line.strip().replace("VRHFIN =", "")
-            str1 = str0[:str0.find(":")]
-            elem_list.append(str1)
-        return elem_list
-
-    def get_ions_per_type(self, lines):
-        ions_per_type = []
-        for line in lines:
-            str0 = line.replace("ions per type = ","").strip()
-            ions_per_type = [int(s) for s in str0.split()]
-        return ions_per_type
-
-    def get_ibrion(self, line):
-        ## There should be only one of these lines (from INCAR print)
-        ## IBRION value should always be first number < 10 to appear after "="
-        line1 = line.split()
-        idx_equals = line1.index("=")
-        probably_ibrion = line1[idx_equals+1]
-        return int(probably_ibrion)
-    
-    def get_nsw(self, line):
-        ## There should be only one of these lines (from INCAR print)
-        ## Format:   >NSW    =    100    number of steps for IOM
-        line1 = line.split()
-        idx_equals = line1.index("=")
-        probably_nsw = line1[idx_equals+1]
-        return int(probably_nsw)
-
-    def get_direct_lattice(self, lines):
-        lattice_coords = []
-        for i in range(0, 3):
-            lattice_to_xml_precision = 8
-            # lattice_coords.append([float(x) for x in lines[i].split()[:3]])
-            lattice_coords.append([round(float(x), lattice_to_xml_precision) for x in lines[i].split()[:3]])
-        return lattice_coords
-
-    def get_stresses(self, line):
-        ## TODO check that we can assume symmetric stress tensors
-        ## TODO where do we set the cell type (Bravais)
-        columns = line.split()
-        stress_xx, stress_yy, stress_zz = [float(c) for c in columns[2:5]]
-        stress_xy, stress_yz, stress_zx = [float(c) for c in columns[5:8]]
-        stresses = [[stress_xx, stress_xy, stress_zx],
-                    [stress_xy, stress_yy, stress_yz],
-                    [stress_zx, stress_yz, stress_zz]]
-        return stresses
-
-    def get_forces(self, lines):
-        coords, forces = [], []
-        try:
-            [float(v) for v in lines[-1].split()[:6]]
-        except:
-            print('OUTCAR config did not run to completion! Discarding configuration')
-            return lines[-1],-1 ## returning faulty string for error message
-
-        for line in lines:
-            x, y, z, fx, fy, fz = [float(v) for v in line.split()[:6]]
-            coords.append([x, y, z])
-            forces.append([fx, fy, fz])
-        return coords, forces
-
-    def get_energie_without_entropy(self, line):
-        str0 = line[:line.rfind("energy(sigma->")].strip()
-        str1 = "".join([c for c in str0 if c.isdigit() or c == "-" or c == "."])
-        energie = float(str1)
-        return energie
-
-    def get_energie_with_entropy(self, line):
-        energie_with_entropy = float(line.split()[4])
-        return energie_with_entropy
-
     def parse_xml(self, xml_filename, group):
+        ## Credit and thanks go to Logan Williams for developing the VASPxml2JSON.py 
+        ## tool on which this class method is based!
         unique_configs = []
         natoms = None
         list_atom_types,potcar_list = [],[]
         energy_output_choice = 'e_wo_entrp'
 
         ## Check if user has specified free energy (with entropy)
+        ## TODO allow user to also choose energy(sigma->0) ('e_0_energy')
         if self.use_TOTEN:
             energy_output_choice = 'e_fr_energy'
 
-        ## TODO make XML scrape more efficient
+        ## TODO scrape per-run data only once (like OUTCAR)
         tree = ET.iterparse(xml_filename, events=['start', 'end'])
         for event, elem in tree:
             if elem.tag == 'generator': # grab VASP info
@@ -594,23 +554,20 @@ class Vasp(Scraper):
 
             if elem.tag == 'parameters' and event=='end': #once at the start
                 NELM = int(elem.find('separator[@name="electronic"]/separator[@name="electronic convergence"]/i[@name="NELM"]').text)
-                #print(NELM)
                 
             elif elem.tag == 'atominfo' and event == 'end': #once at the start
                 for entry in elem.find("array[@name='atoms']/set"):
                     list_atom_types.append(entry[0].text.strip())
                 natoms = len(list_atom_types)
-                #print('atom types', list_atom_types)
                 for entry in elem.find("array[@name='atomtypes']/set"):
                     potcar_list.append(entry[4].text.strip().split())
-                #print('potcars:', potcar_list)
                 
             elif (elem.tag == 'structure' and not elem.attrib.get('name')) and event=='end': #only the empty name ones - not primitive cell, initial, or final (those are repeats) - so each ionic step
                 all_lattice = []
                 for entry in elem.find("crystal/varray[@name='basis']"):
                     lattice_row = [float(x) for x in entry.text.split()]
                     all_lattice.append(lattice_row)
-                #print('lattice = ', all_lattice)
+
                 frac_atom_coords = []
                 for entry in elem.find("varray[@name='positions']"):
                     frac_atom_coords.append([float(x) for x in entry.text.split()])
@@ -631,11 +588,10 @@ class Vasp(Scraper):
                 stress_block = elem.find("varray[@name='stress']")
                 if stress_block:
                     for entry in stress_block:
-                        stresses_to_outcar_precision = 9 ## ensures identical precision between this and OUTCAR scrape
+                        stresses_to_outcar_precision = 5 ## ensures identical precision between this and OUTCAR scrape
                         #stress_component.append([float(x) for x in entry.text.split()])
                         stress_component.append([round(float(x), stresses_to_outcar_precision) for x in entry.text.split()])
 
-                # print(energy_output_choice, version, version[:3])
                 if version[:3] == '5.4' and energy_output_choice != 'e_fr_energy':
                     if 0:  ## toggle to 1 to print warning
                         print(f"-> INFO: Detected VASP v5.4 - this version has a bug where '{energy_output_choice}' is written incorrectly in final energy output (corrected in v6.1). \n"
@@ -644,14 +600,12 @@ class Vasp(Scraper):
                     
                     bad_energy = float(elem.find(f'energy/i[@name="{energy_output_choice}"]').text)
                     final_scstep = elem.findall("scstep")[-1]
-                    # print(final_scstep)
                     totalEnergy = float(final_scstep.find(f"energy/i[@name='{energy_output_choice}']").text)
-                    # print(totalEnergy, bad_energy)
         
                 else:        
                     totalEnergy = float(elem.find(f'energy/i[@name="{energy_output_choice}"]').text)  
-                # print('TOTAL ENERGY:', totalEnergy)
 
+                ## TODO implement Logan's suggested fix in comment below to confirm electronic convergence
                 if len(elem.findall("scstep")) == NELM:
                     electronic_convergence = False ##This isn't the best way to check this, but not sure if info is dirrectly available. Could try to calculate energy diff from scstep entries and compare to EDIFF
                 else:
@@ -741,27 +695,19 @@ class Vasp(Scraper):
         # with open(json_filename, "a+") as f: ## with comment line
         with open(json_filename, "w") as f:
             json.dump(config_dict, f, indent=2, sort_keys=True)
+
         return
 
 
-## ------------------------ Ideas/plans for future versions ------------------------ ##
+## ------------------------ Template ideas/plans for future versions ------------------------ ##
     def scrape_incar(self):
         ## Might be able to add this info to FitSNAP JSONs easily, will need to check compatibility
         pass
 
-
-    def only_read_JSONs_if_OUTCAR_already_converted(self):
-        ## Many OUTCARs (esp. for AIMD) are HUGE and take a long time to parse. Design a user-friendly and elegant way to confirm that OUTCAR has already been parsed and only read available JSON data (see above)
-        pass
-
-    def check_OUTCAR_filesizes(self):
-        ## Many OUTCARs (esp. for AIMD) are HUGE and take a long time to parse. In these cases, strongly recommend to user to toggle vasp2json on, and then use JSONs only, or have an elegant way to only read available JSON data (see above)
+    def confirm_potcar_element_order(self):
+        ## Add check that warns user if POSCAR elements and POTCAR order are not the same (if possible)
         pass
 
     def generate_lammps_test(self):
         ## Maybe create option where we can take scraped OUTCARs and make LAMMPS-compatible *dat files right away
         pass
-
-    def vasp_namer(self):
-        ## Tryiing to think of a clever naming scheme so that users can trace back where they got the file
-        return

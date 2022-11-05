@@ -37,7 +37,7 @@
 ##          vasp_ignore_incomplete (type <bool>, default False) 
 ##                  --> If True or 1, ignore incomplete OUTCAR configurations (warning will still be thrown) (NOTE: not tested for XML yet)
 ##                      All other viable configurations will be included in the fit. The configuration number of the incompete one will be skipped over.
-##                      Use with caution! Uncomment 'Defects_iP_crash' group below and set this to False for an example of crash behavior.
+##                      Use with caution! Uncomment 'Defects_iP_crash' group below for an example of crash behavior.
 ##          vasp_ignore_jsons (type <bool>, default False) 
 ##                  --> If True or 1, ignore any created JSONs, forcing the VASP scraper to read all OUTCARs for every FitSNAP run.
 ##                      Strongly not recommended, may lead to major slowdowns and/or file I/O issues        
@@ -114,8 +114,8 @@ group_types = str float float float float float
 smartweights = 0
 random_sampling = 0
 smallDefects_aa = 	1.0     0.0     5319411.52359161  	12160.2964901219 	1.0e-12
-#Defects_aP = 		1.0	    0.0     280933.371566026    3618.73557864646  	1.0e-12
-#Defects_iP_crash  = 1.0     0.0     669131.752996794  	5805.68960393981  	1.0e-12 ## Example of group with one incomplete run & crash behavior
+Defects_aP = 		1.0	    0.0     280933.371566026    3618.73557864646  	1.0e-12
+Defects_iP_crash  = 1.0     0.0     669131.752996794  	5805.68960393981  	1.0e-12 ## Example of group with one incomplete run & crash behavior
 
 [EXTRAS]
 dump_descriptors = 0

@@ -3,6 +3,8 @@
 # This script will parse through a single OUTCAR file from VASP, which may include one or more configurations, and will print out
 # a JSON file(s) that can then be read into fitSNAP.  To run this script, you will need to specify an OUTCAR file, and
 # the name of the JSON file(s) that will be output in the command line  --->  python VASP2JSON.py myOUTCARfile myJSONfile
+# Script author: Mary Alice Cusentino
+# Adjusted by Logan Williams
 
 import sys
 import json
@@ -216,7 +218,7 @@ for i, line in enumerate(lines):
         # If an unconverged step is discovered, and 'write_unconverged_steps_anyway' is set 
         # to True, the json will be written.
 
-        jsonfilename = JSON_file + str(outcar_config_number) + ".json"
+        jsonfilename = f"{JSON_file}_{str(outcar_config_number)}.json"
         if is_complete_config:
             if electronic_convergence:
                 write_json(data, jsonfilename)

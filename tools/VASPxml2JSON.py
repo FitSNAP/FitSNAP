@@ -2,7 +2,7 @@
 
 # This script will parse through a single vasprun.xml file from VASP, which may include one or more configurations, and will print out
 # a JSON file(s) that can then be read into fitSNAP.  To run this script, you will need to specify a vasprun.xml file, and
-# the name of the JSON file(s) that will be output in the command line  --->  python VASP2JSON.py myvasprun.xmlfile myJSONfile
+# the name of the JSON file(s) that will be output in the command line  --->  python VASPxml2JSON.py myvasprun.xmlfile myJSONfile
 # Script author: Logan Williams
 # Adjusted from VASP2JSON.py script by Mary Alice Cusentino
 
@@ -117,7 +117,7 @@ for event, elem in tree:
         if stress_block:
             for entry in stress_block:
                 ## Ensures identical JSON output by matching precision between this and VASP2JSON.py 
-                stresses_to_outcar_precision = 9 
+                stresses_to_outcar_precision = 5
                 stress_component.append([round(float(x), stresses_to_outcar_precision) for x in entry.text.split()])
                 ## If you want to retain XML precision, comment the 2 lines above out and uncomment the line below
                 #stress_component.append([float(x) for x in entry.text.split()])
@@ -166,7 +166,7 @@ for event, elem in tree:
         # json files should be output now.  The configuration number will be increased by one
         # to keep track of which configuration is associated with which json file.
 
-        jsonfilename = JSON_file + str(config_number) + ".json"
+        jsonfilename = f"{JSON_file}_{str(config_number)}.json"
 
         if electronic_convergence:
             write_json(data, jsonfilename)

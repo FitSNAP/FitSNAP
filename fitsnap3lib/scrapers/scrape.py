@@ -62,6 +62,7 @@ class Scraper:
         self.conversions = {}
 
         self._init_units()
+        self._check_random_sampling()
 
     def scrape_groups(self):
         group_dict = {k: self.config.sections["GROUPS"].group_types[i]
@@ -69,23 +70,6 @@ class Scraper:
         self.group_table = self.config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
-        user_set_random_seed = self.config.sections["GROUPS"].random_seed ## default is 0
-
-        if self.config.sections["GROUPS"].random_sampling:
-            output.screen(f"Random sampling of groups toggled on.")
-            if not user_set_random_seed:
-                sampling_seed = self.pt.get_seed()
-                seed_txt = f"FitSNAP-generated seed for random sampling: {self.pt.get_seed()}"
-            else:
-                ## groups.py casts random_seed to float, just in case user
-                ## uses continuous variable. if user input was originally
-                ## an integer, this casts it to int (less confusing for user)
-                if user_set_random_seed.is_integer():
-                    sampling_seed = int(user_set_random_seed)
-                seed_txt = f"User-set seed for random sampling: {sampling_seed}"
-            output.screen(seed_txt)
-            seed(sampling_seed)
-            self._write_seed_file(seed_txt)
 
         for key in self.group_table:
             bc_bool = False
@@ -340,6 +324,26 @@ class Scraper:
 
             if self.config.sections["CALCULATOR"].stress:
                 self.data['fweight'] /= 6
+            
+    #@pt.rank_zero
+    def _check_random_sampling(self):
+        user_random_sampling_seed = self.config.sections["GROUPS"].random_sampling_seed ## default is 0
+
+        if self.config.sections["GROUPS"].random_sampling:
+            output.screen(f"Random sampling of groups toggled on")
+            if not user_random_sampling_seed:
+                sampling_seed = self.pt.get_seed()
+                seed_txt = f"FitSNAP-generated seed for random sampling: {self.pt.get_seed()}"
+            else:
+                ## groups.py casts random_seed to float, just in case user
+                ## uses continuous variable. if user input was originally
+                ## an integer, this casts it to int (less confusing for user)
+                if user_random_sampling_seed.is_integer():
+                    sampling_seed = int(user_random_sampling_seed)
+                seed_txt = f"User-set seed for random sampling: {sampling_seed}"
+            output.screen(seed_txt)
+            seed(sampling_seed)
+            self._write_seed_file(seed_txt)
 
     #@pt.rank_zero
     def _write_seed_file(self, txt):

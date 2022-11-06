@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 config = Config()
 pt = ParallelTools()
 
+
 class Vasp(Scraper):
 
     def __init__(self, name): 
@@ -77,7 +78,7 @@ class Vasp(Scraper):
         if not vasp_files:
             raise Exception('!!ERROR: no VASP data detected in [PATH] dataPath!!' 
                 '\n!!Please direct your dataPath variable to your VASP data (symlinks are OK too)' 
-                '\n!!Otherwise, designate another scraper in [SCRAPER] section' 
+                '\n!!Otherwise, designate another scraper in [SCRAPER] section (JSON is default)' 
                 f'\n!!\tInput file: {self.infile}'
                 f'\n!!\t[PATH] dataPath = {self.vasp_path} <-- no OUTCAR/XML data found here!'
                 '\n')
@@ -119,12 +120,15 @@ class Vasp(Scraper):
             if training_size is None:
                 raise ValueError('Please set training size for {}'.format(group))
             
-            ## Grab JSONs for this training group
+            ## Grab JSONs for this training group, if not ignoring JSONs
+            group_json_files = []
             group_json_path = f'{self.json_path}/{group}'
-            try:
+            if os.path.exists(group_json_path):
                 group_json_files = [f"{group_json_path}/{f}" for f in os.listdir(group_json_path)]
-            except:
-                group_json_files = []
+            else:
+                self._make_json_dir_rank0(group_json_path)
+                # if not self.ignore_jsons:
+                #     os.makedirs(group_json_path)
 
             ## Grab VASP files for this training group
             group_files = [f for f in vasp_files if group_vasp_path + '/' in f]
@@ -133,15 +137,21 @@ class Vasp(Scraper):
                 raise Exception('!!ERROR: no VASP data (XML/OUTCAR) found in group!!' 
                     '\n!!Please check that all groups in the input file have at least one file named "OUTCAR" or "vasprun.xml"' 
                     '\n!!in at least one subdirectory of the group folder' 
+                    '\n!!Also check VASP scraper variables below, this group may only have one type of file' 
+                    f'\n!!\t[SCRAPER] vasp_xml_only = {self.xml_only}'
+                    f'\n!!\t[SCRAPER] vasp_outcar_only = {self.outcar_only}'
                     f'\n!!\t[PATH] dataPath = {self.vasp_path}'
-                    f'\n!!\tMissing group data directory: {group_vasp_path} <-- should be in dataPath and should have at least one XML/OUTCAR file'
+                    f'\n!!\tMissing group data directory: {group_vasp_path} <-- should be in dataPath and should have at least one XML or OUTCAR file'
                     '\n')
 
+            
+            ## Begin group partitioning
             file_base = os.path.join(config.sections['PATH'].datapath, group)
             self.files[file_base] = group_files
             self.configs[group] = []  
 
             ## Parse individual files
+            ## Note that one VASP file has multiplle configs (JSONs)
             for vasp_file in self.files[file_base]:
                 json_filestem = self._get_json_filestem(vasp_file)
                 vasp_jsons = [f for f in group_json_files if json_filestem in f]
@@ -150,23 +160,29 @@ class Vasp(Scraper):
                     ## One VASP file can be associated with one or more JSONs
                     ## Assume that file has been properly scraped and load all related JSON configs
                     for json_filename in vasp_jsons:
-                        config_dict = self._read_json(json_filename)
-                        self.configs[group].append(config_dict)
+                        # config_dict = self._read_json(json_filename)
+                        self.configs[group].append(json_filename)
                         count_json_scrapes += 1
                 else:
-                    if vasp_file.endswith('OUTCAR'):
-                        config_dict = self.parse_outcar(vasp_file, group)
-                    elif vasp_file.endswith('vasprun.xml'):
-                        config_dict = self.parse_xml(vasp_file, group)
-                    self.configs[group].append(config_dict)
-                    count_vasp_scrapes += 1
+                    configs_xml, configs_outcar = [], []
+                    if vasp_file.endswith('vasprun.xml'):
+                        configs_xml = self.find_xml_configs(vasp_file, group)
+                        num_xml = len(configs_xml)
+                        self.configs[group].extend(configs_xml)
+                        count_vasp_scrapes += num_xml
 
-            ## If random_sampling toggled on, shuffle training and testing data
+                    if vasp_file.endswith('OUTCAR'):
+                        configs_outcar = self.find_outcar_configs(vasp_file)
+                        num_outcar = len(configs_outcar)
+                        self.configs[group].extend(configs_outcar)
+                        count_vasp_scrapes += num_outcar
+
+            ## If random_sampling toggled on, shuffle before splitting into training and testing data
             if config.sections["GROUPS"].random_sampling:
-                shuffle(self.configs[group], pt.get_seed)
-            nconfigs = len(self.configs[group])
+                shuffle(self.configs[group])
 
             ## Assign configurations to train/test groups
+            nconfigs = len(self.configs[group])
             if training_size == 1:
                 training_configs = nconfigs
                 testing_configs = 0
@@ -198,18 +214,34 @@ class Vasp(Scraper):
 
         ## Report number of VASP scrapes
         total_configs = count_json_scrapes + count_vasp_scrapes
-        if count_vasp_scrapes > 0:
+        if count_vasp_scrapes > 0 and not self.ignore_jsons:
             output.screen(f'VASP scraper: converted {count_vasp_scrapes} VASP configs, read {count_json_scrapes} JSON configs')
+        elif count_vasp_scrapes > 0 and self.ignore_jsons:
+            output.screen(f'VASP scraper: read {count_vasp_scrapes} VASP configs (vasp_ignore_jsons = True, no JSONs converted)')
         else:
             output.screen(f'VASP scraper: all {total_configs} configs read from JSON')
 
     def scrape_configs(self):
         """Generate and send (mutable) data to send to fitsnap"""
+
         self.conversions = copy(self.default_conversions)
-        for i, data0 in enumerate(self.configs):
-            data = data0[0]
+        # all_fitsnap_data = []
+
+        ## TODO READ ACTUAL VASP FILES HERE!
+        for i, unique_config in enumerate(self.configs):
+            data0, group = unique_config
+
+            ## If a str, then data coming from (already-converted) JSON
+            ## If a tuple, then data coming from XML or OUTCAR
+            if type(data0) == str:
+                data = self._read_json(data0)
+            elif type(data0) == tuple and len(data0) == 4:
+                data = self.parse_xml_config(group, data0)
+            elif type(data0) == tuple and len(data0) == 8:
+                data = self.parse_outcar_config(group, data0)
             
-            assert len(data) == 1, "More than one object (dataset) is in this file"
+            if data == -1: ## Bad configuration (incomplete)
+                continue
 
             self.data = data['Dataset']
 
@@ -259,7 +291,7 @@ class Vasp(Scraper):
 
         return self.all_data
 
-    def parse_outcar(self, outcar, group):
+    def find_outcar_configs(self, outcar):
         ## Open file
         with open(outcar, 'r') as fp:
             lines = fp.readlines()
@@ -291,41 +323,29 @@ class Vasp(Scraper):
             unique_configs = unique_configs[-1:]
 
         ## Parse and process OUTCAR data per configuration
-        for uc in unique_configs:
-            config_dict = self.create_outcar_jsons(group, uc)
-            if config_dict != -1: 
-                # self.configs[group].append(config_dict)
-                return config_dict
-            else:
-                ## TODO make this compatible with error handling
-                raise Exception("Bad OUTCAR configuration! Exiting...")
+        # for uc in unique_configs:
+        #     config_dict = self.create_outcar_jsons(group, uc)
+        #     if config_dict != -1: 
+        #         # self.configs[group].append(config_dict)
+        #         return config_dict
+        #     else:
+        #         ## TODO make this compatible with error handling
+        #         raise Exception("Bad OUTCAR configuration! Exiting...")
         del lines
+        return unique_configs
 
-
-    def create_outcar_jsons(self, group, outcar_config):
+    def parse_outcar_config(self, group, outcar_config):
         """If no JSON has been created, create dictionary for each configuration contained in a single OUTCAR"""
         """Otherwise, read existing JSON (unless input file variable 'vasp_overwrite_jsons' is toggled to True)"""
 
         ## TODO future: create CSV of converted files and check that first (instead of loading full OUTCAR again)
         config_dict = {}
-        is_bad_config = False
-        has_json = None
         outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type, converged, lines = outcar_config
         file_num = config_num + 1
-
-        ## JSON read/write setup
-        group_json_path = f'{self.json_path}/{group}'
-        json_filestem = self._get_json_filestem(outcar_filename)
-        if converged:
-            json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
-        else:
-            if self.unconverged_label != '\'\'':
-                json_filename = f"{group_json_path}/{json_filestem}_{file_num}_{self.unconverged_label}.json"
-            else:
-                json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
+        is_bad_config = False
 
         ## Get configuration data and check if OUTCAR was read properly
-        config_data = self.parse_outcar_config(lines, potcar_list, potcar_elements, ions_per_type)
+        config_data = self.generate_config_data(lines, potcar_list, potcar_elements, ions_per_type, converged)
         ## TODO create Exception for each case of crash to get rid of awkward reporting here
         if type(config_data) == tuple:
             crash_type, crash_line = config_data
@@ -351,6 +371,20 @@ class Vasp(Scraper):
                     f'\n!!\tLine number of warning: {start_idx}'
                     f'\n!!\tExpected {crash_type}, {crash_line} '
                     '\n')
+        
+        if is_bad_config:
+            return -1
+
+        ## JSON read/write setup (doing this for dict object, even if not writing)
+        group_json_path = f'{self.json_path}/{group}'
+        json_filestem = self._get_json_filestem(outcar_filename)
+        if converged:
+            json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
+        else:
+            if self.unconverged_label != '\'\'':
+                json_filename = f"{group_json_path}/{json_filestem}_{file_num}_{self.unconverged_label}.json"
+            else:
+                json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
 
         ## Continue if all is well with OUTCAR
         config_header = {}
@@ -368,10 +402,11 @@ class Vasp(Scraper):
 
         config_dict['Dataset'] = config_header
 
-        self.write_json(json_filename, outcar_filename, config_dict)
+        if not self.ignore_jsons:
+            self.write_json(json_filename, outcar_filename, config_dict)
         return config_dict
 
-    def parse_outcar_config(self,lines,potcar_list,potcar_elements,ions_per_type):
+    def generate_config_data(self,lines,potcar_list,potcar_elements,ions_per_type,converged):
         ## Many thanks to Mary Alice Cusentino (original author) and Logan Williams (important additions) for parts of the following code
         ## Based on the VASP2JSON.py script in the 'tools' directory
         ## LIST SECTION_MARKERS AND RELATED FUNCTIONS ARE HARD-CODED!!
@@ -509,6 +544,7 @@ class Vasp(Scraper):
         data['Stress'] = stress_component
         data['Lattice'] = all_lattice
         data['Energy'] = total_energie
+        data["converged"] = converged
         data["computation_code"] = "VASP"
         data["pseudopotential_information"] = potcar_list
 
@@ -568,13 +604,15 @@ class Vasp(Scraper):
 
         return potcar_list, potcar_elements, ions_per_type, is_duplicated
 
-    def parse_xml(self, xml_filename, group):
+    def find_xml_configs(self, xml_filename, group):
         ## Credit and thanks go to Logan Williams for developing the VASPxml2JSON.py 
         ## tool on which this class method is based!
+        ## TODO see if we can get this scraped in parallel somehow without messing up file IO
         unique_configs = []
         natoms = None
         list_atom_types,potcar_list = [],[]
         energy_output_choice = 'e_wo_entrp'
+        count_configs = 0
 
         ## Check if user has specified free energy (with entropy)
         ## TODO allow user to also choose energy(sigma->0) ('e_0_energy')
@@ -586,6 +624,11 @@ class Vasp(Scraper):
         for event, elem in tree:
             if elem.tag == 'generator': # grab VASP info
                 version = '.'.join(elem.find('i[@name="version"]').text.strip().split('.')[:3])
+
+            ## For future version which will transport (parts of) the tree
+            ## itself through scrape.divvy_up_configs() and back to self.scrape_configs
+            if elem.tag == 'time' and list(elem.attrib.values())[0] == 'totalsc' and event == 'end': 
+                count_configs += 1
 
             if elem.tag == 'parameters' and event=='end': #once at the start
                 NELM = int(elem.find('separator[@name="electronic"]/separator[@name="electronic convergence"]/i[@name="NELM"]').text)
@@ -662,50 +705,51 @@ class Vasp(Scraper):
                 data["Energy"] = totalEnergy
                 data["AtomTypes"] = list_atom_types
                 data["NumAtoms"] = natoms
+                data["converged"] = electronic_convergence
                 data["computation_code"] = "VASP"
                 data["pseudopotential_information"] = potcar_list
 
-                unique_configs.append([data, electronic_convergence])
-        
+                unique_configs.append((data, xml_filename, electronic_convergence, count_configs))        
         ## Garbage collect
         del tree
 
+        return unique_configs
+
         ## Parse and process XML data per configuration
-        for n, pair in enumerate(unique_configs):
-            config_dict = {}
-            file_num = n + 1
-            config_data, is_converged = pair
+    def parse_xml_config(self, group, config_data_list):
+        config_data, xml_filename, converged, config_num = config_data_list
+        config_dict = {}
+        file_num = config_num + 1
 
-            ## JSON read/write setup
-            group_json_path = f'{self.json_path}/{group}'
-            json_filestem = xml_filename.replace('/','_').replace('_vasprun.xml','') #.replace(f'_{group}','')
-            if electronic_convergence:
-                json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
+        ## JSON read/write setup
+        group_json_path = f'{self.json_path}/{group}'
+        json_filestem = xml_filename.replace('/','_').replace('_vasprun.xml','') #.replace(f'_{group}','')
+        if converged:
+            json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
+        else:
+            if self.unconverged_label != '\'\'':
+                json_filename = f"{group_json_path}/{json_filestem}_{file_num}_{self.unconverged_label}.json"
             else:
-                if self.unconverged_label != '\'\'':
-                    json_filename = f"{group_json_path}/{json_filestem}_{file_num}_{self.unconverged_label}.json"
-                else:
-                    json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
+                json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
 
-        
-            config_header = {}
-            config_header['Group'] = group
-            config_header['File'] = json_filename
-            config_header["scraped_file"] = xml_filename
-            config_header['use_TOTEN'] = self.use_TOTEN
-            config_header['EnergyStyle'] = "electronvolt"
-            config_header['StressStyle'] = "kB"
-            config_header['AtomTypeStyle'] = "chemicalsymbol"
-            config_header['PositionsStyle'] = "angstrom"
-            config_header['ForcesStyle'] = "electronvoltperangstrom"
-            config_header['LatticeStyle'] = "angstrom"
-            config_header['Data'] = [config_data]
+        config_header = {}
+        config_header['Group'] = group
+        config_header['File'] = json_filename
+        config_header["scraped_file"] = xml_filename
+        config_header['use_TOTEN'] = self.use_TOTEN
+        config_header['EnergyStyle'] = "electronvolt"
+        config_header['StressStyle'] = "kB"
+        config_header['AtomTypeStyle'] = "chemicalsymbol"
+        config_header['PositionsStyle'] = "angstrom"
+        config_header['ForcesStyle'] = "electronvoltperangstrom"
+        config_header['LatticeStyle'] = "angstrom"
+        config_header['Data'] = [config_data]
 
-            config_dict['Dataset'] = config_header
+        config_dict['Dataset'] = config_header
 
+        if not self.ignore_jsons:
             self.write_json(json_filename, xml_filename, config_dict)
-            # self.configs[group].append(config_dict)
-            return config_dict
+        return config_dict
             
     
     def write_json(self, json_filename, vasp_filename, config_dict):
@@ -728,6 +772,11 @@ class Vasp(Scraper):
 
     def _get_json_filestem(self, vasp_filename):
         return vasp_filename.replace('/','_').replace('_OUTCAR','').replace('_vasprun.xml','')
+
+    @pt.rank_zero
+    def _make_json_dir_rank0(self, group_json_path):
+        if not self.ignore_jsons:
+            os.makedirs(group_json_path)
 
 
 ## ------------------------ Template ideas/plans for future versions ------------------------ ##

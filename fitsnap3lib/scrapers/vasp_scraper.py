@@ -53,7 +53,6 @@ class Vasp(Scraper):
 
 
     def scrape_groups(self):
-        output.screen("\nIN VASP SCRAPE GROUPS !!!!!!!!!!!!!!!!\n")
         ### Locate all OUTCARs in datapath
         glob_asterisks = '/**/*'
         vasp_files_base = os.path.join(self.vasp_path, *glob_asterisks.split('/'))
@@ -218,8 +217,6 @@ class Vasp(Scraper):
             output.screen(f'VASP scraper: read {count_vasp_scrapes} VASP configs (vasp_ignore_jsons = True, no JSONs converted)')
         else:
             output.screen(f'VASP scraper: all {total_configs} configs read from JSON')
-
-        output.screen("\nEND VASP SCRAPE GROUPS\n")
 
     def scrape_configs(self):
         """Generate and send (mutable) data to send to fitsnap"""

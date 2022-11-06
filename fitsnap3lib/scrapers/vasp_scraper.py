@@ -103,6 +103,7 @@ class Vasp(Scraper):
         ## If no JSON found, then scrape XML
         ## If no XML found, then scrape OUTCAR
         for group in self.group_table:
+            print("GROUP ", group)
             ## First, check that all group folders exist
             group_vasp_path = f'{self.vasp_path}/{group}'
             if not os.path.exists(group_vasp_path):

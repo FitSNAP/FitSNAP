@@ -54,9 +54,10 @@ class Vasp(Scraper):
 
     def scrape_groups(self):
         ### Locate all OUTCARs in datapath
+        cwd = os.getcwd()
         glob_asterisks = '/**/*'
-        vasp_files_base = os.path.join(self.vasp_path, *glob_asterisks.split('/'))
-        json_files_base = os.path.join(self.json_path, *glob_asterisks.split('/'))
+        vasp_files_base = os.path.join(cwd, self.vasp_path, *glob_asterisks.split('/'))
+        json_files_base = os.path.join(cwd, self.json_path, *glob_asterisks.split('/'))
 
         ## Prefer XML, but go to OUTCAR if not available.
         ## First search for OUTCARs since they are most likely to be present

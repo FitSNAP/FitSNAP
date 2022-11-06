@@ -144,9 +144,9 @@ class Vasp(Scraper):
                     '\n')
 
             ## Get group JSONs, if they exist
-            group_vasp_jsons = [f for f in json_files if f'{self.json_path}/{group}/VASP_{group}' in f]
+            group_json_path = os.path.join(self.json_path,group)
+            group_vasp_jsons = [f for f in json_files if group_json_path in f and f.endswith('.json')]
             num_group_jsons = len(group_vasp_jsons)
-            group_json_path = f'{self.json_path}/{group}'
             if not os.path.exists(group_json_path) and not self.ignore_jsons:
                 self._make_json_dir_rank0(group_json_path)
 
@@ -373,15 +373,16 @@ class Vasp(Scraper):
             return -1
 
         ## JSON read/write setup (doing this for dict object, even if not writing)
-        group_json_path = f'{self.json_path}/{group}'
+        group_json_path = os.path.join(self.json_path,group) 
         json_filestem = self._get_json_filestem(outcar_filename)
         if converged:
-            json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
+            json_filename = f"{json_filestem}_{file_num}.json"
         else:
             if self.unconverged_label != '\'\'':
-                json_filename = f"{group_json_path}/{json_filestem}_{file_num}_{self.unconverged_label}.json"
+                json_filename = f"{json_filestem}_{file_num}_{self.unconverged_label}.json"
             else:
-                json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
+                json_filename = f"{json_filestem}_{file_num}.json"
+        json_filename = os.path.join(group_json_path, json_filename)
 
         ## Continue if all is well with OUTCAR
         config_header = {}
@@ -719,15 +720,16 @@ class Vasp(Scraper):
         file_num = config_num + 1
 
         ## JSON read/write setup
-        group_json_path = f'{self.json_path}/{group}'
+        group_json_path =  os.path.join(self.json_path,group)
         json_filestem = xml_filename.replace('/','_').replace('_vasprun.xml','') #.replace(f'_{group}','')
         if converged:
-            json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
+            json_filename = f"{json_filestem}_{file_num}.json"
         else:
             if self.unconverged_label != '\'\'':
-                json_filename = f"{group_json_path}/{json_filestem}_{file_num}_{self.unconverged_label}.json"
+                json_filename = f"{json_filestem}_{file_num}_{self.unconverged_label}.json"
             else:
-                json_filename = f"{group_json_path}/{json_filestem}_{file_num}.json"
+                json_filename = f"{json_filestem}_{file_num}.json"
+        json_filename = os.path.join(group_json_path, json_filename)
 
         config_header = {}
         config_header['Group'] = group

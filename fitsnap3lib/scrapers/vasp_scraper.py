@@ -53,6 +53,7 @@ class Vasp(Scraper):
 
 
     def scrape_groups(self):
+        output.screen("\nIN VASP SCRAPE GROUPS !!!!!!!!!!!!!!!!\n")
         ### Locate all OUTCARs in datapath
         glob_asterisks = '/**/*'
         vasp_files_base = os.path.join(self.vasp_path, *glob_asterisks.split('/'))
@@ -146,22 +147,19 @@ class Vasp(Scraper):
 
             
             ## Begin group partitioning
-            file_base = os.path.join(config.sections['PATH'].datapath, group)
-            self.files[file_base] = group_files
             self.configs[group] = []  
 
             ## Parse individual files
             ## Note that one VASP file has multiplle configs (JSONs)
-            for vasp_file in self.files[file_base]:
+            for vasp_file in group_files:
                 json_filestem = self._get_json_filestem(vasp_file)
-                vasp_jsons = [f for f in group_json_files if json_filestem in f]
-                num_jsons = len(vasp_jsons)
+                group_vasp_jsons = [f for f in group_json_files if json_filestem in f]
+                num_jsons = len(group_vasp_jsons)
                 if num_jsons >= 1 and not self.ignore_jsons:
                     ## One VASP file can be associated with one or more JSONs
                     ## Assume that file has been properly scraped and load all related JSON configs
-                    for json_filename in vasp_jsons:
-                        # config_dict = self._read_json(json_filename)
-                        self.configs[group].append(json_filename)
+                    for json_file in group_vasp_jsons:
+                        self.configs[group].append([json_file, int(os.stat(json_file).st_size)])
                         count_json_scrapes += 1
                 else:
                     configs_xml, configs_outcar = [], []
@@ -221,6 +219,8 @@ class Vasp(Scraper):
         else:
             output.screen(f'VASP scraper: all {total_configs} configs read from JSON')
 
+        output.screen("\nEND VASP SCRAPE GROUPS\n")
+
     def scrape_configs(self):
         """Generate and send (mutable) data to send to fitsnap"""
 
@@ -229,15 +229,15 @@ class Vasp(Scraper):
 
         ## TODO READ ACTUAL VASP FILES HERE!
         for i, unique_config in enumerate(self.configs):
-            data0, group = unique_config
-
             ## If a str, then data coming from (already-converted) JSON
             ## If a tuple, then data coming from XML or OUTCAR
-            if type(data0) == str:
-                data = self._read_json(data0)
-            elif type(data0) == tuple and len(data0) == 4:
+            if type(unique_config) == str:
+                data = self._read_json(unique_config)
+            elif type(unique_config[0]) == tuple and len(unique_config[0]) == 4:
+                data0, group = unique_config
                 data = self.parse_xml_config(group, data0)
-            elif type(data0) == tuple and len(data0) == 8:
+            elif type(unique_config[0]) == tuple and len(unique_config[0]) == 8:
+                data0, group = unique_config
                 data = self.parse_outcar_config(group, data0)
             
             if data == -1: ## Bad configuration (incomplete)
@@ -496,7 +496,7 @@ class Vasp(Scraper):
         try:
             [float(v) for v in lines_forces[-1].split()[:6]]
         except:
-            print('OUTCAR config did not run to completion! Discarding configuration')
+            output.screen('OUTCAR config did not run to completion! Discarding configuration')
             return lines_forces[-1],-1 ## returning faulty string for error message
 
         for line in lines_forces:
@@ -672,7 +672,7 @@ class Vasp(Scraper):
 
                 if version[:3] == '5.4' and energy_output_choice != 'e_fr_energy':
                     if 0:  ## toggle to 1 to print warning
-                        print(f"-> INFO: Detected VASP v5.4 - this version has a bug where '{energy_output_choice}' is written incorrectly in final energy output (corrected in v6.1). \n"
+                        output.screen(f"-> INFO: Detected VASP v5.4 - this version has a bug where '{energy_output_choice}' is written incorrectly in final energy output (corrected in v6.1). \n"
                         f"\t-> Taking '{energy_output_choice}' from final scstep calculation instead (check with OUTCAR values if uncertain).\n"
                         "\t-> See https://www.vasp.at/forum/viewtopic.php?t=17839# for more details.\n")
                     

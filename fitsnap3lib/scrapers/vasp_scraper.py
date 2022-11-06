@@ -56,6 +56,7 @@ class Vasp(Scraper):
         ### Locate all OUTCARs in datapath
         glob_asterisks = '/**/*'
         vasp_files_base = os.path.join(self.vasp_path, *glob_asterisks.split('/'))
+        json_files_base = os.path.join(self.json_path, *glob_asterisks.split('/'))
 
         ## Prefer XML, but go to OUTCAR if not available.
         ## First search for OUTCARs since they are most likely to be present
@@ -82,6 +83,14 @@ class Vasp(Scraper):
                 f'\n!!\tInput file: {self.infile}'
                 f'\n!!\t[PATH] dataPath = {self.vasp_path} <-- no OUTCAR/XML data found here!'
                 '\n')
+
+        ## Find all existing JSON files
+        json_files = []
+        if not self.ignore_jsons:
+            if os.path.exists(self.json_path):
+                json_files = [f for f in glob(json_files_base,recursive=True)]
+            else:
+                self._make_json_dir_rank0(self.json_path)
 
         ## Grab test|train split
         self.group_dict = {k: config.sections['GROUPS'].group_types[i] for i, k in enumerate(config.sections['GROUPS'].group_sections)}
@@ -119,16 +128,6 @@ class Vasp(Scraper):
                 testing_size = 0
             if training_size is None:
                 raise ValueError('Please set training size for {}'.format(group))
-            
-            ## Grab JSONs for this training group, if not ignoring JSONs
-            group_json_files = []
-            group_json_path = f'{self.json_path}/{group}'
-            if os.path.exists(group_json_path):
-                group_json_files = [f"{group_json_path}/{f}" for f in os.listdir(group_json_path)]
-            else:
-                self._make_json_dir_rank0(group_json_path)
-                # if not self.ignore_jsons:
-                #     os.makedirs(group_json_path)
 
             ## Grab VASP files for this training group
             group_files = [f for f in vasp_files if group_vasp_path + '/' in f]
@@ -144,31 +143,32 @@ class Vasp(Scraper):
                     f'\n!!\tMissing group data directory: {group_vasp_path} <-- should be in dataPath and should have at least one XML or OUTCAR file'
                     '\n')
 
-            
-            ## Begin group partitioning
-            self.configs[group] = []  
+            ## Get group JSONs, if they exist
+            group_vasp_jsons = [f for f in json_files if f'{self.json_path}/{group}/VASP_{group}' in f]
+            num_group_jsons = len(group_vasp_jsons)
+            group_json_path = f'{self.json_path}/{group}'
+            if not os.path.exists(group_json_path) and not self.ignore_jsons:
+                self._make_json_dir_rank0(group_json_path)
 
             ## Parse individual files
+            ## TODO parallel slowdowns in JSON reading probably start here!
             ## Note that one VASP file has multiplle configs (JSONs)
-            for vasp_file in group_files:
-                json_filestem = self._get_json_filestem(vasp_file)
-                group_vasp_jsons = [f for f in group_json_files if json_filestem in f]
-                num_jsons = len(group_vasp_jsons)
-                if num_jsons >= 1 and not self.ignore_jsons:
-                    ## One VASP file can be associated with one or more JSONs
-                    ## Assume that file has been properly scraped and load all related JSON configs
-                    for json_file in group_vasp_jsons:
-                        self.configs[group].append([json_file, int(os.stat(json_file).st_size)])
-                        count_json_scrapes += 1
-                else:
+            self.configs[group] = []  
+            if num_group_jsons >= 1 and not self.ignore_jsons:
+                ## One VASP file can be associated with one or more JSONs
+                ## Assume that file has been properly scraped and load all related JSON configs
+                for json_file in group_vasp_jsons:
+                    self.configs[group].append([json_file, int(os.stat(json_file).st_size)])
+                    count_json_scrapes += 1
+            else:
+                for vasp_file in group_files:
                     configs_xml, configs_outcar = [], []
                     if vasp_file.endswith('vasprun.xml'):
                         configs_xml = self.find_xml_configs(vasp_file, group)
                         num_xml = len(configs_xml)
                         self.configs[group].extend(configs_xml)
                         count_vasp_scrapes += num_xml
-
-                    if vasp_file.endswith('OUTCAR'):
+                    elif vasp_file.endswith('OUTCAR'):
                         configs_outcar = self.find_outcar_configs(vasp_file)
                         num_outcar = len(configs_outcar)
                         self.configs[group].extend(configs_outcar)
@@ -771,9 +771,9 @@ class Vasp(Scraper):
         return vasp_filename.replace('/','_').replace('_OUTCAR','').replace('_vasprun.xml','')
 
     @pt.rank_zero
-    def _make_json_dir_rank0(self, group_json_path):
+    def _make_json_dir_rank0(self, json_path):
         if not self.ignore_jsons:
-            os.makedirs(group_json_path)
+            os.mkdir(json_path)
 
 
 ## ------------------------ Template ideas/plans for future versions ------------------------ ##

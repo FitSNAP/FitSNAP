@@ -52,9 +52,11 @@
 ##          vasp_xml_only (type <bool>, default False)  
 ##                  --> If True or 1, the scraper will only look for vasprun.xml files and will ignore OUTCARs. 
 ##
-##  Note: This is the first iteration of the VASP scraper. Many improvements are planned and suggestions are very welcome!
-##  Final note: This InP example is meant *only* to show how to use the VASP scraper!
-##              These fits are *not at all* equivalent to the InP SNAP from the InP_JPCA2020 example (limited data)!
+##  Note 1:  MPI/parallel scraping is a bit borked after the addition of the XML reader. An investigation is underway and the slowdown 
+##           will be addressed in a future PR. One potential quick fix is, after reading in VASP structures, set vasp_only_outcars to True.
+##  Note 2:  This InP example is meant *only* to show how to use the VASP scraper!
+##           These fits are *not at all* equivalent to the InP SNAP from the InP_JPCA2020 example (limited data)!
+##  Request: The VASP scraper is a new addition to FitSNAP - please send us feedback, suggestions, and feature requests any time!
 
 [BISPECTRUM]
 numTypes = 2

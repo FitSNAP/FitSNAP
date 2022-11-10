@@ -536,6 +536,11 @@ class ParallelTools(metaclass=Singleton):
             if (self.fitsnap_dict["stress"] and not self.fitsnap_dict["nonlinear"]):
                 sub_a_sizes[proc_number] += 6
 
+            # if fitting to per-atom scalar, arrays are same as using per atom energies
+
+            if self.fitsnap_dict["per_atom_scalar"]:
+                sub_a_sizes[proc_number] += self.shared_arrays["number_of_atoms"].array[i]
+
         assert sum(sub_a_sizes) == len(self.shared_arrays['a'].array)
         self.add_2_fitsnap("sub_a_size", sub_a_sizes)
         self._bcast_fitsnap("sub_a_size")
@@ -566,7 +571,8 @@ class ParallelTools(metaclass=Singleton):
         for i in range(nof):
             proc_number = i % self._sub_size
             natoms = self.shared_arrays["number_of_atoms"].array[i]
-            sub_b_sizes[proc_number] += 1 #3*natoms +1
+            if self.fitsnap_dict["energy"]:
+                sub_b_sizes[proc_number] += 1 #3*natoms +1
         assert sum(sub_b_sizes) == len(self.shared_arrays['b'].array)
         self.add_2_fitsnap("sub_b_size", sub_b_sizes)
         self._bcast_fitsnap("sub_b_size")

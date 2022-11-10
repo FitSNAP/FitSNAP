@@ -2,8 +2,12 @@ Installation
 ============
 
 This page documents how to properly install LAMMPS and FitSNAP. First we begin with how to install 
-LAMMPS specifically for FitSNAP. If you do not want to manually install LAMMPS, please see our 
-`Minimal conda install`_ for quickly getting started with FitSNAP.
+LAMMPS specifically for FitSNAP. 
+
+- If you do not want to manually install LAMMPS, please see `Minimal conda install`_, but note this 
+  version of conda LAMMPS does not included recent features like neural networks or ACE descriptors.
+
+- If you want to quickly get started, see `Quick Installation <Quick.html>`__.
 
 .. _LAMMPS Installation:
 
@@ -11,7 +15,12 @@ LAMMPS Installation
 -------------------
 
 Since LAMMPS is the backbone of FitSNAP, we begin with instructions on how to install LAMMPS 
-specifically for using FitSNAP.
+specifically for using FitSNAP. The following few sections cover basics of installing LAMMPS with 
+Python library support. 
+
+- If you want quick installation instructions, see `Quick Installation <Quick.html>`__
+
+- If you want to fit ACE potentials, see `LAMMPS PACE install`_
 
 MPI for LAMMPS and FitSNAP.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,6 +112,54 @@ CMake curses (ccmake) GUI interface, build LAMMPS using the following steps:
 
 After completing this LAMMPS installation, please see `Install FitSNAP with latest LAMMPS`_ to use FitSNAP.
 
+.. _LAMMPS PACE install:
+
+LAMMPS PACE install
+^^^^^^^^^^^^^^^^^^^
+
+Computes for ACE descriptors are currently in our modified LAMMPS repo (https://github.com/jmgoff/lammps_compute_PACE), 
+so the installation instructions are a little different if you want to use ACE. 
+
+#. Clone our modified LAMMPS repo and set up a typical LAMMPS build::
+
+        git clone -b compute-pace https://github.com/jmgoff/lammps_compute_PACE
+        cd lammps_compute_PACE
+        mkdir build && cd build
+
+#. Set up a typical LAMMPS build the ML-PACE library enabled::
+
+        cmake ../cmake -DLAMMPS_EXCEPTIONS=yes \
+                       -DBUILD_SHARED_LIBS=yes \
+                       -DMLIAP_ENABLE_PYTHON=yes \
+                       -DPKG_PYTHON=yes \
+                       -DPKG_ML-SNAP=yes \
+                       -DPKG_ML-IAP=yes \
+                       -DPKG_ML-PACE=yes \
+                       -DPKG_SPIN=yes \
+                       -DPYTHON_EXECUTABLE:FILEPATH=`which python`
+
+#. Next, download the modified lammps-user-pace code that contains extra arrays for breaking out descriptor contributions::
+
+        git clone https://github.com/jmgoff/lammps-user-pace-1
+        cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2022.10.15/ML-PACE/ace-evaluator/
+        make -j
+        make install
+
+
+#. Now, set up paths::
+
+        export PYTHONPATH=$PYTHONPATH:/path/to/python3.<version>/site-packages
+        # Use DYLD_LIBRARY_PATH if using MacOS, on Linux use LD_LIBRARY_PATH:
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/lammps/build
+
+#. Now we can get and use FitSNAP::
+
+        cd /path/to/where/you/want/FitSNAP
+        git clone https://github.com/FitSNAP/FitSNAP
+        # Set python path so you can run FitSNAP as executable:
+        export PYTHONPATH=$PYTHONPATH:/path/to/where/you/want/FitSNAP
+
+See more instructions at `Quick Installation <Quick.html>`__.
 
 FitSNAP Installation
 --------------------
@@ -221,36 +278,4 @@ After setting up MPI (or not) and downloading/cloning LAMMPS:
 
 #. You should now be able to run the FitSNAP examples in :code:`FitSNAP/examples`.
 
-.. _LAMMPS PACE install:
-
-LAMMPS PACE install
-^^^^^^^^^^^^^^^^^^^
-
-After installing scipy and the sym_ACE library available at: https://github.com/jmgoff/sym_ACE_lite.git and for developers at https://github.com/jmgoff/sym_ACE.git
-
-#. Clone the lammps repository set up a typical LAMMPS build the ML-PACE library enabled::
-
-        git clone -b compute-pace git@github.com:jmgoff/lammps_compute_PACE.git
-        cd lammps_compute_PACE
-        mkdir build && cd build
-
-# Set up a typical LAMMPS build the ML-PACE library enabled::
-
-        cmake -D LAMMPS_EXCEPTIONS=on -D PKG_PYTHON=on -D BUILD_SHARED_LIBS=on -D CMAKE_BUILD_TYPE=Debug -D PKG_ML-IAP=on -D PKG_ML-PACE=on -D PKG_ML-SNAP=on -D BUILD_MPI=on -D BUILD_OMP=off  -D CMAKE_INSTALL_PREFIX=<$HOME>/.local -D ../cmake/
-
-# Next, download the modified lammps-user-pace code that contains extra arrays for breaking out descriptor contributions::
-
-        git clone https://github.com/jmgoff/lammps-user-pace-1
-        cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2022.10.15/ML-PACE/ace-evaluator/
-        make -j
-        make install
-
-
-# Now, set up paths::
-
-        INSTALL_PATH=$CMAKE_INSTALL_PREFIX/.local
-        export PYTHONPATH=$PYTHONPATH:$INSTALL_PATH/lib/python3.<version>/site-packages
-        export PYTHONPATH=$PYTHONPATH:$INSTALL_PATH/lib
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$INSTALL_PATH/lib
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/<path>/<to>/<lammps>/build
 

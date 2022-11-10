@@ -301,7 +301,7 @@ The rest of the keywords are associated with the particular LAMMPS pair style yo
 [GROUPS]
 ^^^^^^^^
 
-Each group should be its own sub-irectory in the directory given by the :code:`dataPath/` keyword in 
+Each group should be its own sub-directory in the directory given by the :code:`dataPath/` keyword in 
 `the [PATH] section <Run.html#path>`__. There are a few different allowed syntaxes; subdirectory 
 names in the first column is common to all options.
 

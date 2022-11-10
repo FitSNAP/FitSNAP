@@ -15,11 +15,11 @@ We can manually perform these tests locally.
 
 For example:
 
-    pytest -s test_examples.py::test_fitsnap_basic
+    python -m pytest -s test_examples.py::test_fitsnap_basic
 
 will run the single proc non stubs test for the Ta linear example. Adding the `-s` python will allow 
 you to see screen output from prints, for the purpose of debugging or designing your own tests. 
 
 To perform PyTorch tests locally:
 
-    pytest -s test_pytorch.py --disable-pytest-warning
+    python -m pytest -s test_pytorch.py --disable-pytest-warning

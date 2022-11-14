@@ -4,7 +4,6 @@ from fitsnap3lib.io.input import Config
 from fitsnap3lib.lib.neural_networks.descriptors.bessel import Bessel
 from fitsnap3lib.lib.neural_networks.descriptors.g3b import Gaussian3Body
 import numpy as np
-from sklearn.preprocessing import normalize
 
 
 #config = Config()

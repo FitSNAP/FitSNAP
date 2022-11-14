@@ -20,51 +20,22 @@ try:
         """
         A class to wrap Modules to ensure lammps mliap compatability.
 
-        ...
+        Args:
+            name: Name of the solver class.
 
-        Attributes
-        ----------
-        optimizer : torch.optim.Adam
-            Torch Adam optimization object
-
-        model : torch.nn.Module
-            Network model that maps descriptors to a per atom attribute
-
-        loss_function : torch.loss.MSELoss
-            Mean squared error loss function
-
-        learning_rate: float
-            Learning rate for gradient descent
-
-        scheduler: torch.optim.lr_scheduler.ReduceLROnPlateau
-            Learning rate scheduler
-
-        device : torch.nn.Module (None)
-            Accelerator device
-
-        training_data: torch.utils.data.Dataset
-            Torch dataset for loading in pieces of the A matrix
-
-        training_loader: torch.utils.data.DataLoader
-            Data loader for loading in datasets
-
-        Methods
-        -------
-        create_datasets():
-            Creates the dataset to be used for training and the data loader for the batch system.
-
-        perform_fit():
-            Performs the pytorch fitting for a lammps potential
+        Attributes:
+            optimizer (torch.optim.Adam): PyTorch Adam optimization object.
+            model (torch.nn.Module): Network model that maps descriptors to a per atom quantity 
+                (e.g. energy).
+            loss_function (torch.loss.MSELoss): Mean squared error loss function.
+            learning_Rate (float): Learning rate for gradient descent.
+            scheduler (torch.optim.lr_scheduler.ReduceLROnPlateau): Torch learning rate scheduler.
+            device: Torch accelerator device.
+            training_data (torch.utils.data.Dataset): Torch dataset for training.
+            training_loader (torch.utils.data.DataLoader): Data loader for loading datasets.
         """
 
         def __init__(self, name):
-            """
-            Initializes attributes for the pytorch solver.
-
-                Parameters:
-                    name : Name of solver class
-
-            """
             super().__init__(name, linear=False)
 
             self.pt = ParallelTools()
@@ -544,18 +515,12 @@ try:
             """
             Evaluates energies and forces on configs for testing purposes. 
 
-            Attributes
-            ----------
-            option : int
-                1 - evaluate energies/forces for all configs separately
-                2 - evaluate energies/forces using the dataloader/batch procedure
-
-            standardize_bool : bool
-                True - Standardize weights
-                False - Do not standardize weights, useful if you are comparing inputs on a previously standardized model
-
-            dtype : torch.dtype
-                Optional override of the global dtype
+            Args:
+                option (int): 1 to evaluate energies/forces for all configs separately, 2 for using 
+                    dataloader/batch procedure. Currently only 1 is implemented.
+                standardize_bool (bool): True to standardize weights, False otherwise. Useful if 
+                    comparing inputs with a previously standardized model.
+                dtype (torch.dtype): Optional override of the global dtype. 
             """
 
             @self.pt.sub_rank_zero

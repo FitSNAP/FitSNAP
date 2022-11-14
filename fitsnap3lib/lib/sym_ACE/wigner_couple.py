@@ -1,12 +1,17 @@
+"""
+Definitions of functions to build pickled libraries of coupling coefficients and Wigner 3j 
+coefficients. 
+
+Unclear if this is nice to have in a class; will keep this and others as collection of functions 
+for now.
+"""
+
 import numpy as np
 from fitsnap3lib.lib.sym_ACE.coupling_coeffs import *
 from fitsnap3lib.lib.sym_ACE.tree_method import *
 from fitsnap3lib.lib.sym_ACE.gen_labels import *
 from sympy.combinatorics import Permutation
 from functools import partial
-
-
-# Functions to build pickled libraries of generalized coupling coefficients
 
 
 def get_coupling(ldict, Wigner_3j, L_R=0,**kwargs):
@@ -95,14 +100,10 @@ def local_coupling(l,L_R=0,**kwargs):
 			raise ValueError("Cannot generate couplings for rank %d. symmetric L_R couplings up to rank 6 have been implemented" % rank)
 	return coupling,weights
 
-
-# TODO: Bring this into the AcePot class or FitSNAP library class?
-#       Unclear if this is nice to have in library mode; will keep as collection of functions for now.
 def generate_ccs():
     """
     Define and return coupling coefficients, called by AcePot initializer in potential.py
     """
-    print("testfunc!")
     Wigner_3j = get_w3j_and_cg() # from coupling_coeffs.py
 
     import time

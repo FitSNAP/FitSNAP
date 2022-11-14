@@ -158,14 +158,12 @@ def print_lammps(method):
 
 
 class ParallelTools(metaclass=Singleton):
-    """This classes creates and contains arrays used for fitting, across multiple processors.
+    """
+    This classes creates and contains arrays used for fitting, across multiple processors.
 
-    Attributes
-    ----------
-    check_fitsnap_exist : bool
-        checks whether fitsnap dictionaries exist before creating a new one, set to `False` to allow
-        recreating a dictionary
-
+    Attributes:
+        check_fitsnap_exist (bool): Checks whether fitsnap dictionaries exist before creating a new 
+            one, set to `False` to allow recreating a dictionary.
     """
 
     def __init__(self, comm=None):
@@ -332,12 +330,6 @@ class ParallelTools(metaclass=Singleton):
                                                        dtype=dtype,
                                                        multinode=tm,
                                                        comms=comms)
-                #print("-----")
-                #print(name)
-                #print(self.shared_arrays[name].array)
-                #print(self)
-                #print("-----")
-                
             else:   
                 self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)
         else:
@@ -501,14 +493,13 @@ class ParallelTools(metaclass=Singleton):
 
     def new_slice_a(self):
         """ 
-        create array to show which sub a matrix indices belong to which proc 
+        Create array to show which sub a matrix indices belong to which proc.
         For linear solvers, the A matrix may be composed of either summed per-atom descriptors OR 
         per-atom descriptors.
         For nonlinear solvers, the A matrix is composed of per-atom quantities like bispectrum 
         components, etc.
         """
         nof = len(self.shared_arrays["number_of_atoms"].array)
-        #print(f"----- nof: {nof} in parallel_tools.py")
         if self._sub_rank != 0:
             # wait for head proc on node to fill indices
             self._bcast_fitsnap("sub_a_size")
@@ -551,7 +542,7 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_a_indices"] = indices[self._sub_rank]
 
     def new_slice_b(self):
-        """ create array to show which sub b matrix indices belong to which proc """
+        """ Create array to show which sub b matrix indices belong to which proc. """
         nof = len(self.shared_arrays["number_of_atoms"].array)
         #print(f"--- nof: {nof} in parallel_tools.py new_slice_b")
         if self._sub_rank != 0:
@@ -582,7 +573,7 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_b_indices"] = indices[self._sub_rank]
 
     def new_slice_c(self):
-        """ create array to show which sub c matrix indices belong to which proc """
+        """ Create array to show which sub c matrix indices belong to which proc. """
         nof = len(self.shared_arrays["number_of_atoms"].array)
         #print(f"--- nof: {nof} in parallel_tools.py new_slice_c")
         if self._sub_rank != 0:
@@ -614,9 +605,8 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_c_indices"] = indices[self._sub_rank]
 
     def new_slice_t(self):
-        """ create array to show which sub types matrix indices belong to which proc """
+        """ Create array to show which sub types matrix indices belong to which proc. """
         nof = len(self.shared_arrays["number_of_atoms"].array)
-        #print(f"----- nof: {nof} in parallel_tools.py")
         if self._sub_rank != 0:
             # wait for head proc on node to fill indices
             self._bcast_fitsnap("sub_t_size")
@@ -649,7 +639,7 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_t_indices"] = indices[self._sub_rank]
 
     def new_slice_dgrad(self):
-        """ create array to show which sub dgrad matrix indices belong to which proc """
+        """ Create array to show which sub dgrad matrix indices belong to which proc. """
         nof = len(self.shared_arrays["number_of_atoms"].array)
         #print(f"--- nof: {nof} in parallel_tools.py new_slice_dgrad")
         if self._sub_rank != 0:
@@ -683,7 +673,7 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_dgrad_indices"] = indices[self._sub_rank]
 
     def new_slice_neighlist(self):
-        """ create array to show which sub neighlist matrix indices belong to which proc """
+        """ Create array to show which sub neighlist matrix indices belong to which proc. """
         nof = len(self.shared_arrays["number_of_atoms"].array)
         #print(f"--- nof: {nof} in parallel_tools.py new_slice_neighlist")
         if self._sub_rank != 0:
@@ -786,21 +776,10 @@ class DistributedList:
     """
     A class to wrap python list to ensure size stays the same allowing collection at end.
 
-    ...
-
-    Attributes
-    ----------
-    _len : int
-        length of distributed list held by current proc
-
-    _list : list
-        local section of distributed list
-
-    Methods
-    ----------
-    get_list():
-        returns deepcopy of internal list
-
+    Attributes:
+        _len (int):
+            length of distributed list held by current proc
+        _list(list): local section of distributed list
     """
 
     def __init__(self, proc_length):
@@ -836,7 +815,7 @@ class DistributedList:
         return self._list.__repr__()
 
     def get_list(self):
-        """ Return list """
+        """ Returns deepcopy of internal list """
         return deepcopy(self._list)
 
 

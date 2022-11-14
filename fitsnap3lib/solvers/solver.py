@@ -11,20 +11,8 @@ class Solver:
     This class declares the method to solve the machine learning problem, e.g. linear regression,
     nonlinear regression, etc.
 
-    Attributes
-    ----------
-    fit : numpy array
-        array containing coefficients of fit
-
-    Methods
-    -------
-    error_analysis():
-        extracts and stores fitting data, such as descriptor values, truths, and predictions, into
-        a Pandas dataframe
-
-    _errors():
-        calculate errors for a particular group, used by `_group_errors()` and `_all_errors()`
-         
+    Attributes:
+        fit: Numpy array containing coefficients of fit.
     """
 
     def __init__(self, name, linear=True):
@@ -88,6 +76,10 @@ class Solver:
 
     #@pt.rank_zero
     def error_analysis(self):
+        """
+        Extracts and stores fitting data, such as descriptor values, truths, and predictions, into
+        a Pandas dataframe.
+        """
         @self.pt.rank_zero
         def decorated_error_analysis():
             if not self.linear:

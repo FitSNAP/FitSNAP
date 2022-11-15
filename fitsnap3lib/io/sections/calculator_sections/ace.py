@@ -114,6 +114,7 @@ try:
             bonds = [b for b in itertools.product(bondinds,bondinds)]
             bondstrs = ['[%d, %d]' % b for b in bonds]
             assert len(self.lmbda) == len(bondstrs), "must provide rc, lambda, for each BOND type" 
+            print(len(self.rcutfac))
             assert len(self.rcutfac) == len(bondstrs), "must provide rc, lambda, for each BOND type" 
             if len(self.lmbda) == 1:
                 lmbdavals = self.lmbda

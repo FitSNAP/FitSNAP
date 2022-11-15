@@ -52,6 +52,13 @@ class Calculator:
                 c_len += 3*self.number_of_atoms
                 dgrad_len += self.pt.shared_arrays["number_of_dgrad_rows"].array.sum()
 
+            if self.config.sections["CALCULATOR"].per_atom_scalar:
+
+                # in this case we fitting NNs only to per-atom scalars, not to energies/forces
+
+                a_len += self.number_of_atoms # total number of atoms in all configs
+
+
 #            # stress fitting not supported yet.
 #            if config.sections["CALCULATOR"].stress:
 #                a_len += self.number_of_files_per_node * 6
@@ -78,6 +85,9 @@ class Calculator:
             self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
+            if self.config.sections["CALCULATOR"].per_atom_scalar:
+                # create per-atom scalar arrays
+                self.pt.create_shared_array('pas', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
 
             #if self.config.sections["CALCULATOR"].force:
             self.pt.create_shared_array('dgrad', dgrad_len, a_width, 

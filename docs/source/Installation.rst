@@ -80,11 +80,12 @@ First clone the LAMMPS repo::
 
     git clone https://github.com/lammps/lammps
 
-This creates a :code:`lammps` directory, where we will build LAMMPS::
+This creates a :code:`lammps` directory, where we will build LAMMPS using `cmake`` and `make`::
 
     cd /path/to/lammps
     mkdir build-fitsnap
     cd build-fitsnap
+    # Use cmake to build the Makefile
     cmake ../cmake -DLAMMPS_EXCEPTIONS=yes \
                   -DBUILD_SHARED_LIBS=yes \
                   -DMLIAP_ENABLE_PYTHON=yes \
@@ -94,8 +95,10 @@ This creates a :code:`lammps` directory, where we will build LAMMPS::
                   -DPKG_ML-PACE=yes \
                   -DPKG_SPIN=yes \
                   -DPYTHON_EXECUTABLE:FILEPATH=`which python`
-    make ### Builds a LAMMPS executable and shared library
-    make install-python ### Installs LAMMPS-Python interface
+    # Build a LAMMPS executable and shared library
+    make
+    # Install Python-LAMMPS interface
+    make install-python
 
 This will create a LAMMPS executable :code:`lmp`, which should be used to run MD using FitSNAP fits.
 This will also create a Python-LAMMPS interface located in your Python :code:`site-packages/lammps` 

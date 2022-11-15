@@ -13,6 +13,6 @@ https://gist.github.com/redlotus/3bc387c2591e3e908c9b63b97b11d24e
 
 https://www.sphinx-doc.org/en/master/usage/extensions/example_google.html
 
-And of course, please reach out or raise an issue on our GitHub if you want more info about adding 
+Please reach out or raise an issue on GitHub if you want more info about adding 
 a new feature.
 

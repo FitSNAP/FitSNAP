@@ -99,8 +99,6 @@ class FitSnap:
                     print("Nonlinear solver, preprocessing configs.")
                 self.calculator.preprocess_allocate(len(self.data))
                 for i, configuration in enumerate(self.data):
-                    if (self.pt._rank==0):
-                        print(i)
                     self.calculator.preprocess_configs(configuration, i)
 
             self.calculator.create_a()

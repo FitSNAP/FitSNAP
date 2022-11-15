@@ -7,7 +7,7 @@ LAMMPS specifically for FitSNAP.
 - If you do not want to manually install LAMMPS, please see `Minimal conda install`_, but note this 
   version of conda LAMMPS does not included recent features like neural networks or ACE descriptors.
 
-- If you want to quickly get started, see `Quick Installation <Quick.html>`__.
+- If you want a quick summary of installation instructions, see `Quick Installation <Quick.html>`__.
 
 .. _LAMMPS Installation:
 
@@ -17,8 +17,6 @@ LAMMPS Installation
 Since LAMMPS is the backbone of FitSNAP, we begin with instructions on how to install LAMMPS 
 specifically for using FitSNAP. The following few sections cover basics of installing LAMMPS with 
 Python library support. 
-
-- If you want quick installation instructions, see `Quick Installation <Quick.html>`__
 
 - If you want to fit ACE potentials, see `LAMMPS PACE install`_
 

@@ -15,9 +15,17 @@ Create & activate conda environment with dependencies::
 
     conda create --name fitsnap python=3.10
     conda activate fitsnap
-    python -m pip install numpy torch scipy virtualenv psutil pandas tabulate mpi4py Cython
-    # for fitting ACE:
+    python -m pip install numpy scipy sklearn virtualenv psutil pandas tabulate mpi4py Cython
+    # For nonlinear fitting:
+    python -m pip install torch
+    # For fitting ACE:
     python -m pip install sympy pyyaml
+    # For contributing to docs:
+    python -m pip install sphinx sphinx_rtd_theme sphinxcontrib-napoleon
+
+Now we need to install LAMMPS.
+
+**NOTE:** If you want to use ACE, please see `LAMMPS PACE install <Installation.html#lammps-pace-install>`__
 
 Set the following environment variables::
 

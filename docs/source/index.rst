@@ -48,6 +48,7 @@ Indices and tables
    :name: progdoc
    :includehidden:
 
+   Contributing
    Executable
    Library
 

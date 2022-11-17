@@ -25,7 +25,6 @@ class AcePot():
       self.__dict__.update(kwargs)
     
     self.global_ccs = generate_ccs()
-    #assert(False)
     self.E0 = reference_ens
     self.ranks =ranks
     self.elements = elements

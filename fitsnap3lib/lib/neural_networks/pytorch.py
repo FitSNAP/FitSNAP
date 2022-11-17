@@ -22,13 +22,29 @@ def create_torch_network(layer_sizes):
     """
 
     layers = []
+
+    # TODO: Make biases optional, need to also optionally ignore bias standardiziation in 
+    # solvers.pytorch.
     try:
-        layers.append(torch.nn.Linear(layer_sizes[0], layer_sizes[0]))
+        layers.append(torch.nn.Linear(layer_sizes[0], layer_sizes[0], bias=True))
         for i, layer in enumerate(layer_sizes):
-            layers.append(torch.nn.Linear(layer_sizes[i], layer_sizes[i + 1]))
+            layers.append(torch.nn.Linear(layer_sizes[i], layer_sizes[i + 1], bias=True))
             layers.append(torch.nn.Softplus())
+            #layers.append(torch.nn.Sigmoid())
     except IndexError:
         layers.pop()
+
+    # This adds all linear layers only.
+    # TODO: Make linear models an option with gradient descent. 
+    """
+    print(len(layer_sizes))
+    layers.append(torch.nn.Linear(layer_sizes[0], layer_sizes[0],bias=False))
+    for i in range(len(layer_sizes)-1):
+        print(f"{i}")
+        print(f"{i} {layer_sizes[i]} {layer_sizes[i + 1]}")
+        layers.append(torch.nn.Linear(layer_sizes[i], layer_sizes[i + 1],bias=False))
+    """
+
     return torch.nn.Sequential(*layers)
 
 
@@ -36,30 +52,16 @@ class FitTorch(torch.nn.Module):
     """
     FitSNAP PyTorch network model. 
 
-    Attributes
-    ----------
-
-    networks: list
-        A list of nn.Sequential network architectures.
-        Each list element is a different network type.
-
-    descriptor_count: int
-        Length of descriptors for an atom
-
-    force_bool: bool
-        Boolean telling whether to calculate forces or not
-
-    n_elements: int
-        Number of differentiable atoms types 
-
-    multi_element_option: int
-        Option for which multi-element network model to use
+    Args:
+        networks (list): List of nn.Sequential network architectures. Each list element is a 
+            different network type if multi-element option = 2.
+        descriptor_count (int): Length of descriptors for an atom.
+        force_bool (bool): Boolean telling whether to calculate forces or not.
+        n_elements (int): Number of differentiable atoms types 
+        multi_element_option (int): Option for which multi-element network model to use.
     """
 
     def __init__(self, networks, descriptor_count, force_bool, n_elements=1, multi_element_option=1, dtype=torch.float32):
-        """
-        Initializer.
-        """
         super().__init__()
 
         # pytorch does a nifty thing where each attribute here makes a unique key in state_dict
@@ -86,51 +88,32 @@ class FitTorch(torch.nn.Module):
 
         self.energy_bool = True
         self.force_bool = force_bool
-        #if (energy_weight==0.0):
-        #    self.energy_bool = False
-        #if (force_weight==0.0):
-        #    self.force_bool = False
 
     def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, unique_i, device, dtype=torch.float32):
         """
         Forward pass through the PyTorch network model, calculating both energies and forces.
 
-        Attributes
-        ----------
-
-        x: torch.Tensor.float
-            Array of descriptors for this batch
-
-        xd: torch.Tensor.float
-            Array of descriptor derivatives dDi/dRj for this batch
-
-        indices: torch.Tensor.long
-            Array of indices upon which to contract per atom energies, for this batch
-
-        atoms_per_structure: torch.Tensor.long
-            Number of atoms per configuration for this batch
-
-        types: torch.Tensor.long
-            Atom types starting from 0, for this batch
-
-        xd_indx: torch.Tensor.long 
-            Array of indices corresponding to descriptor derivatives, for this batch. These are 
-            concatenations of the direct LAMMPS dgradflag=1 output; we rely on unique_j and unique_i 
-            for adjusted indices of this batch (see dataloader.torch_collate)
-
-        unique_j: torch.Tensor.long 
-            Array of indices corresponding to unique atoms j in all batches of configs.
-            All forces in this batch will be contracted over these indices.
-
-        unique_i: torch.Tensor.long
-            Array of indices corresponding to unique neighbors i in all batches of configs. Forces 
-            on atoms j are summed over these neighbors and contracted appropriately. 
-        
-        dtype: torch.float32
-            Data type used for torch tensors, default is torch.float32 for easy training, but we set 
-            to torch.float64 for finite difference tests to ensure correct force calculations.
-
-        device: pytorch accelerator device object
+        Args:
+            x (torch.Tensor.float): Array of descriptors for this batch.
+            xd (torch.Tensor.float): Array of descriptor derivatives dDi/dRj for this batch.
+            indices (torch.Tensor.long): Array of indices upon which to contract per atom energies, 
+                for this batch.
+            atoms_per_structure (torch.Tensor.long): Number of atoms per configuration for this 
+                batch.
+            types (torch.Tensor.long): Atom types starting from 0, for this batch.
+            xd_indx (torch.Tensor.long): Array of indices corresponding to descriptor derivatives, 
+                for this batch. These are concatenations of the direct LAMMPS dgradflag=1 output; we 
+                rely on unique_j and unique_i for adjusted indices of this batch 
+                (see dataloader.torch_collate).
+            unique_j (torch.Tensor.long): Array of indices corresponding to unique atoms j in all 
+                batches of configs. All forces in this batch will be contracted over these indices.
+            unique_i (torch.Tensor.long): Array of indices corresponding to unique neighbors i in 
+                all batches of configs. Forces on atoms j are summed over these neighbors and 
+                contracted appropriately. 
+            dtype (torch.float32): Data type used for torch tensors, default is torch.float32 for 
+                easy training, but we set to torch.float64 for finite difference tests to ensure 
+                correct force calculations.
+            device: pytorch accelerator device object
 
         """
 
@@ -172,9 +155,6 @@ class FitTorch(torch.nn.Module):
 
             # neighbors i of atom j
 
-            #neigh_indices_x = xd_indx[x_indices_bool,0]
-            #neigh_indices_y = xd_indx[y_indices_bool,0] 
-            #neigh_indices_z = xd_indx[z_indices_bool,0]
             neigh_indices_x = unique_i[x_indices_bool]
             neigh_indices_y = unique_i[y_indices_bool] 
             neigh_indices_z = unique_i[z_indices_bool]
@@ -246,9 +226,9 @@ class FitTorch(torch.nn.Module):
         """
         Imports weights and bias into FitTorch model
 
-            Parameters:
-                weights (list of numpy array of floats): Network weights at each layer
-                bias (list of numpy array of floats): Network bias at each layer
+        Args:
+            weights (list of numpy array of floats): Network weights at each layer.
+            bias (list of numpy array of floats): Network bias at each layer.
 
         """
 
@@ -270,8 +250,8 @@ class FitTorch(torch.nn.Module):
         """
         Saves lammps ready pytorch model.
 
-            Parameters:
-                filename (str): Filename for lammps usable pytorch model
+        Args:
+            filename (str): Filename for lammps usable pytorch model.
 
         """
         
@@ -294,8 +274,8 @@ class FitTorch(torch.nn.Module):
         """
         Loads lammps ready pytorch model.
 
-            Parameters:
-                filename (str): Filename of lammps usable pytorch model
+        Args:
+            filename (str): Filename of lammps usable pytorch model.
 
         """
         model_state_dict = torch.load(filename).state_dict()

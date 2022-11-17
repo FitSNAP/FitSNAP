@@ -215,7 +215,7 @@ try:
         #@pt.sub_rank_zero
         def perform_fit(self):
             """
-            Performs the pytorch fitting for a lammps potential
+            Performs PyTorch fitting using previously calculated descriptors. 
             """
 
             @self.pt.sub_rank_zero
@@ -239,7 +239,6 @@ try:
                     ntypes = self.num_elements
                     num_networks = len(self.networks)
                     keys = [*state_dict.keys()]
-                    #for t in range(0,ntypes):
                     for t in range(0,num_networks):
                         first_layer_weight = "network_architecture"+str(t)+".0.weight"
                         first_layer_bias = "network_architecture"+str(t)+".0.bias"

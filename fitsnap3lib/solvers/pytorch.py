@@ -471,20 +471,6 @@ try:
                             # TODO: add groups weights
                             #loss = torch.sqrt(self.loss_function(pas, targets))
                             loss = self.loss_function(pas, targets)
-                                
-                        """
-                        if (self.energy_weight==0.0):
-                            loss = self.force_weight*self.loss_function(forces, target_forces)
-                        elif (self.force_weight==0.0):
-                            loss = self.energy_weight*self.loss_function(energies, targets)
-                        else:
-                            if (self.global_weight_bool):
-                                loss = self.energy_weight*self.loss_function(energies, targets) \
-                                     + self.force_weight*self.loss_function(forces, target_forces)
-                            else:
-                                loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
-                                    + self.weighted_mse_loss(forces, target_forces, force_weights)
-                        """
                         
                         val_losses_step.append(loss.item())
 

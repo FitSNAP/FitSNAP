@@ -19,6 +19,9 @@ try:
         """
         A class to use custom networks
 
+        Args:
+            name: Name of the solver class.
+
         Attributes:
             optimizer (:obj:`torch.optim.Adam`): Torch Adam optimization object
             model (:obj:`torch.nn.Module`): Network model that maps descriptors to a per atom attribute
@@ -31,13 +34,6 @@ try:
         """
 
         def __init__(self, name):
-            """
-            Initializes attributes for the pytorch solver.
-
-            Parameters:
-                name : Name of solver class
-
-            """
             super().__init__(name, linear=False)
 
             self.pt = ParallelTools()
@@ -63,7 +59,6 @@ try:
             self.dtype = self.config.sections["NETWORK"].dtype
             self.layer_sizes = self.config.sections["NETWORK"].layer_sizes
             if self.layer_sizes[0] == "num_desc":
-                #assert (Section.num_desc % self.num_elements == 0)
                 self.layer_sizes[0] = int(self.num_desc)
             self.layer_sizes = [int(layer_size) for layer_size in self.layer_sizes]
 
@@ -77,7 +72,7 @@ try:
                     self.networks.append(create_torch_network(self.layer_sizes))
 
             self.optimizer = None
-            self.model = FitTorch(self.networks, #config.sections["PYTORCH"].networks,
+            self.model = FitTorch(self.networks,
                                   self.num_desc,
                                   self.num_radial,
                                   self.num_3body,
@@ -233,9 +228,6 @@ try:
                 # standardization
                 # need to perform on all network types in the model
 
-                #print(np.shape(self.pt.shared_arrays['descriptors'].array))
-                #assert(False)
-
                 inv_std = 1/np.std(self.pt.shared_arrays['descriptors'].array, axis=0)
                 mean_inv_std = np.mean(self.pt.shared_arrays['descriptors'].array, axis=0) * inv_std
                 state_dict = self.model.state_dict()
@@ -272,8 +264,6 @@ try:
             target_energy_plot_val = []
             model_energy_plot_val = []
             natoms_per_config = [] # stores natoms per config for calculating eV/atom errors later.
-            #for epoch in range(self.config.sections['NETWORK'].num_epochs):
-            #    print(f"----- epoch: {epoch}")
             for epoch in range(self.config.sections['NETWORK'].num_epochs):
                 print(f"----- epoch: {epoch}")
                 start = time()
@@ -450,6 +440,7 @@ try:
             if (self.force_weight != 0.0):
 
                 # print target and model forces
+
                 # training
                 target_force_plot = np.concatenate(target_force_plot)
                 model_force_plot = np.concatenate(model_force_plot)
@@ -469,6 +460,7 @@ try:
             if (self.energy_weight != 0.0):
 
                 # print target and model energies
+
                 # training
                 target_energy_plot = np.concatenate(target_energy_plot)
                 model_energy_plot = np.concatenate(model_energy_plot)
@@ -500,11 +492,7 @@ try:
 
             self.pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
             
-            #if 'lammps.mliap' in sys.modules:
             self.model.write_lammps_torch(self.config.sections['NETWORK'].output_file)
-            #else:
-            #    print("Warning: This interpreter is not compatible with python-based mliap for LAMMPS. If you are using a Mac please make sure you have compiled python from source with './configure --enabled-shared' ")
-            #    print("Warning: FitSNAP will continue without ML-IAP")
             
             self.fit = None
 
@@ -512,26 +500,17 @@ try:
             """
             Evaluates energies and forces on configs for testing purposes. 
 
-            Attributes
-            ----------
-            option : int
-                1 - evaluate energies/forces for all configs separately
-                2 - evaluate energies/forces using the dataloader/batch procedure
-
-            standardize_bool : bool
-                True - Standardize weights
-                False - Do not standardize weights, useful if you are comparing inputs on a previously
-                        standardized model
-
-            dtype : torch.dtype
-                Optional override of the global dtype
+            Args:
+            option (int): 1 if evaluating energies/forces for all configs separately.
+                2 if evaluating energies/forces using the dataloader/batch procedure
+            standardize_bool (bool): True will standardize the weights. Not standardizing is useful 
+                if comparing inputs on a previously trained standardized model, such as when doing 
+                finite difference checks. 
+            dtype (torch.dtype): Optional override of the global dtype.
             """
 
-            print("^^^^^ evaluate config")
-            #standardize_bool = True # TODO fix this later
             @self.pt.sub_rank_zero
             def decorated_evaluate_configs():
-                #self.create_datasets()
 
                 if (standardize_bool):
                     if self.config.sections['NETWORK'].save_state_input is None:
@@ -576,13 +555,8 @@ try:
 
                     if (evaluate_all):
 
-                        print("^^^^^ EVALUATING ALL")
-
                         energies_configs = []
                         forces_configs = []
-                        #config=self.configs[config_index]
-
-                        #print(f"^^^^^ {config.filename}")
                         for config in self.configs:
                           
                             #positions = torch.tensor(config.positions).requires_grad_(True)
@@ -608,7 +582,6 @@ try:
                             # make indices upon which to contract per-atom energies for this config
 
                             config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
-                            #indices = torch.repeat_interleave(config_indices, num_atoms)
                             indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
                             unique_i = neighlist[:,0]
                             unique_j = neighlist[:,1]
@@ -628,9 +601,6 @@ try:
                         energies_configs = []
                         forces_configs = []
                         config=self.configs[config_index]
-
-                        #print(f"^^^^^ {config.filename}")
-                        #for config in self.configs:
                           
                         #positions = torch.tensor(config.positions).requires_grad_(True)
                         positions = torch.tensor(config.x).requires_grad_(True)
@@ -655,7 +625,6 @@ try:
                         # make indices upon which to contract per-atom energies for this config
 
                         config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
-                        #indices = torch.repeat_interleave(config_indices, num_atoms)
                         indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
                         unique_i = neighlist[:,0]
                         unique_j = neighlist[:,1]

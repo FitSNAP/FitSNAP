@@ -28,7 +28,7 @@ class LammpsCustom(LammpsBase):
 
     def get_width(self):
         """
-        Get width of A matrix, which is different for each Calculator
+        Get width of A matrix, which is different for each Calculator.
         """
 
         if (self.config.sections["SOLVER"].solver == "NETWORK"):
@@ -63,12 +63,22 @@ class LammpsCustom(LammpsBase):
         Calculate descriptors for network standardization (need mean and std)
         This is used in _collect_lammps_nonlinear to calculate pairwise descriptors for a single 
         config.
+
+        Args:
+            x (ndarray): Array of positions with size (natoms,3).
+            neighlist (ndarray): Neighbor list of integers with size (num_neigh, 2).
+            xneigh (ndarray): Array of positions for each atom, indicies correspond with `neighlist`, 
+                with size (num_neigh, 3).
+
+        Returns:
+            Array of descriptors for each pair with size (num_neigh, num_descriptors). The 2-body 
+            and 3-body descriptors are concatenated along the columns.
         """
 
-        # calculate displacements and distances - needed for various descriptor functions
-        # diff size is (numneigh, 3)
-        # diff_norm is size (numneigh, 3)
-        # rij is size (numneigh,1)
+        # Calculate displacements and distances - needed for various descriptor functions.
+        # diff size is (numneigh, 3).
+        # diff_norm is size (numneigh, 3).
+        # rij is size (numneigh,1).
 
         diff = x[neighlist[:,0]] - xneigh
         rij = np.linalg.norm(diff, axis=1)[:,None] # need for cutoff and various other functions
@@ -77,8 +87,6 @@ class LammpsCustom(LammpsBase):
         # calculate cutoff functions used in radial descriptors
 
         cutoff_functions = self.bessel.cutoff_function(rij, numpy_bool=True)
-        #print(cutoff_functions)
-        #assert(False)
 
         # calculate radial basis descriptors for each pair
 
@@ -87,16 +95,10 @@ class LammpsCustom(LammpsBase):
         # calculate 3 body descriptors for each pair and convert to numpy
 
         descriptors_3body = self.g3b.calculate(rij, diff_norm, neighlist[:,0], numpy_bool=True).numpy()
-        
-
-        #print(np.shape(basis))
-        #print(np.shape(descriptors_3body))
 
         assert(np.shape(basis)[0] == np.shape(descriptors_3body)[0])
         descriptors = np.concatenate([basis,descriptors_3body], axis=1)
-        #print(np.shape(descriptors))
         assert(np.shape(descriptors)[1] == self.config.sections['CUSTOM'].num_descriptors)
-        #assert(False)
 
         return descriptors
 
@@ -105,7 +107,6 @@ class LammpsCustom(LammpsBase):
 
         num_atoms = self._data["NumAtoms"]
         num_types = self.config.sections['CUSTOM'].numtypes
-        #n_coeff = self.config.sections['BISPECTRUM'].ncoeff
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
@@ -141,11 +142,10 @@ class LammpsCustom(LammpsBase):
         index_neighlist = self.shared_index_neighlist
 
         # look up the neighbor list
+
         nlidx = self._lmp.find_pair_neighlist('zero')
         nl = self._lmp.numpy.get_neighlist(nlidx)
-        #print(f"nl: {nl}")
         tags = self._lmp.extract_atom('id')
-        # print neighbor list contents
         number_of_neighs = 0 # number of neighs for this config
         num_neighs_per_atom = []
         neighlist = []
@@ -153,20 +153,12 @@ class LammpsCustom(LammpsBase):
         transform_x = []
         for i in range(0,nl.size):
             idx, nlist  = nl.get(i)
-            #print(f"{idx} {tags[idx]}")
-            #print("\natom {} with ID {} has {} neighbors:".format(idx,tags[idx],nlist.size))
             num_neighs_i = 0
             if nlist.size > 0:
                 for n in np.nditer(nlist):
                     num_neighs_i += 1
-                    neighlist.append([tags[idx], tags[n]]) #, ptr_pos[n][0], ptr_pos[n][1], ptr_pos[n][2]])
+                    neighlist.append([tags[idx], tags[n]])
                     xneighs.append([ptr_pos[n][0], ptr_pos[n][1], ptr_pos[n][2]])
-                    """
-                    transform_x.append([ptr_pos[n][0]-lmp_pos[tags[idx]-1,0], \
-                                        ptr_pos[n][1]-lmp_pos[tags[idx]-1,1], \
-                                        ptr_pos[n][2]-lmp_pos[tags[idx]-1,2]])
-                    """
-
                     transform_x.append([ptr_pos[n][0]-lmp_pos[tags[n]-1,0], \
                                         ptr_pos[n][1]-lmp_pos[tags[n]-1,1], \
                                         ptr_pos[n][2]-lmp_pos[tags[n]-1,2]])
@@ -207,26 +199,23 @@ class LammpsCustom(LammpsBase):
         self.pt.shared_arrays['xneigh'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = xneighs
         self.pt.shared_arrays['transform_x'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = transform_x
 
-        #print(self._data["Positions"])
-        #print(lmp_pos)
-        #print(xneighs)
-        #print(transform_x)
-        #print(xneighs - lmp_pos[neighlist[:,0]])
-        #print(np.round(xneighs - lmp_pos[neighlist[:,0]],5) == np.round(transform_x,5))
+        # assert neighlist-transformed positions are correct
+
         assert(np.all(np.round(xneighs-lmp_pos[neighlist[:,1]],6) == np.round(transform_x,6)) )
-        #print(np.round(self._data["Positions"],decimals=6)==np.round(lmp_pos,decimals=6))
-        #assert(False)
 
         # calculate descriptors for standardization
+
         descriptors = self.calculate_descriptors(self._data["Positions"], neighlist, xneighs)
         self.pt.shared_arrays['descriptors'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = descriptors
         index_neighlist += nrows_neighlist
 
-        # populate the fitsnap dicts
-        # these are distributed lists and therefore have different size per proc, but will get 
-        # gathered later onto the root proc in calculator.collect_distributed_lists
-        # we use fitsnap dicts for NumAtoms and NumNeighs here because they are organized differently 
-        # than the corresponding shared arrays. 
+        """
+        Populate the fitsnap dicts.
+        These are distributed lists and therefore have different size per proc, but will get 
+        gathered later onto the root proc in calculator.collect_distributed_lists.
+        We use fitsnap dicts for NumAtoms and NumNeighs here because they are organized differently 
+        than the corresponding shared arrays. 
+        """
 
         dindex = dindex+1
         self.pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = ['{}'.format(self._data['Group'])]
@@ -249,7 +238,6 @@ class LammpsCustom(LammpsBase):
         """
         num_atoms = self._data["NumAtoms"]
         num_types = self.config.sections['CUSTOM'].numtypes
-        #n_coeff = self.config.sections['CUSTOM'].ncoeff
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
@@ -265,20 +253,18 @@ class LammpsCustom(LammpsBase):
         lmp_volume = self._lmp.get_thermo("vol")
 
         # look up the neighbor list
+
         nlidx = self._lmp.find_pair_neighlist('zero')
         nl = self._lmp.numpy.get_neighlist(nlidx)
         tags = self._lmp.extract_atom('id')
-        # print neighbor list contents
         number_of_neighs = 0
         num_neighs_per_atom = []
         for i in range(0,nl.size):
             idx, nlist  = nl.get(i)
-            #print("\natom {} with ID {} has {} neighbors:".format(idx,tags[idx],nlist.size))
             num_neighs_i = 0
             if nlist.size > 0:
                 for n in np.nditer(nlist):
                     num_neighs_i += 1
-                    #print("  atom {} with ID {}".format(n,tags[n]))
             num_neighs_per_atom.append(num_neighs_i)
             number_of_neighs += num_neighs_i
 

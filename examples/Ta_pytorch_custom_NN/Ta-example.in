@@ -20,7 +20,7 @@ Ta = 0.0
 
 [NETWORK]
 layer_sizes = num_desc 32 16 1 
-learning_rate = 5e-5 #5e-4
+learning_rate = 5e-4
 num_epochs = 150
 batch_size = 4 # 363 configs in entire set
 save_state_output = Ta_Pytorch.pt

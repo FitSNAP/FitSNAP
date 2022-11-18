@@ -65,8 +65,10 @@ class LammpsCustom(LammpsBase):
         config.
 
         Args:
-            x (ndarray): Array of positions with size (natoms,3).
-            neighlist (ndarray): Neighbor list of integers with size (num_neigh, 2).
+            x (ndarray): Array of positions with size (num_neigh,3), these are atoms i with repeated 
+                indices to match the dimensions in `neighlist`. 
+            neighlist (ndarray): Neighbor list of integers with size (num_neigh, 2); first column is 
+                atom i and second column is atom j. 
             xneigh (ndarray): Array of positions for each atom, indicies correspond with `neighlist`, 
                 with size (num_neigh, 3).
 
@@ -74,11 +76,6 @@ class LammpsCustom(LammpsBase):
             Array of descriptors for each pair with size (num_neigh, num_descriptors). The 2-body 
             and 3-body descriptors are concatenated along the columns.
         """
-
-        # Calculate displacements and distances - needed for various descriptor functions.
-        # diff size is (numneigh, 3).
-        # diff_norm is size (numneigh, 3).
-        # rij is size (numneigh,1).
 
         diff = x[neighlist[:,0]] - xneigh
         rij = np.linalg.norm(diff, axis=1)[:,None] # need for cutoff and various other functions

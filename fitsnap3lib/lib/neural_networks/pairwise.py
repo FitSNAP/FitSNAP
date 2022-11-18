@@ -112,10 +112,8 @@ class FitTorch(torch.nn.Module):
             device: pytorch accelerator device object
 
         Returns:
-            tuple: (predicted_energy_total, predicted_forces)
-            
-            First element is predicted energies for this batch, second element is predicted 
-            forces for this batch.
+            tuple of (predicted_energy_total, predicted_forces). First element is predicted energies 
+            for this batch, second element is predicted forces for this batch.
 
         """
 
@@ -123,7 +121,7 @@ class FitTorch(torch.nn.Module):
 
         xneigh = transform_x + x[unique_j,:]
 
-        # calculate displacements and distances - needed for various descriptor functions
+        # Calculate displacements and distances - needed for various descriptor functions.
         # NOTE: Only do this once so we don't bloat the computational graph.
         # diff size is (numneigh, 3)
         # diff_norm is size (numneigh, 3)
@@ -140,13 +138,11 @@ class FitTorch(torch.nn.Module):
 
         # calculate Bessel radial basis
 
-        #rbf = self.bessel.radial_bessel_basis(x, neighlist, unique_i, xneigh)
         rbf = self.bessel.radial_bessel_basis(rij, cutoff_functions)
         assert(rbf.size()[0] == neighlist.size()[0])
 
         # calculate 3 body descriptors 
 
-        #descriptors_3body = self.g3b.calculate(x, unique_i, unique_j, xneigh)
         descriptors_3body = self.g3b.calculate(rij, diff_norm, unique_i)
 
         # concatenate radial descriptors and 3body descriptors
@@ -158,9 +154,6 @@ class FitTorch(torch.nn.Module):
         # input descriptors to a network for each pair; calculate pairwise energies
 
         eij = self.networks[0](descriptors)
-
-        #cutoff_functions = self.bessel.cutoff_function(x, neighlist, unique_i, xneigh)
-        #cutoff_functions = self.bessel.cutoff_function(rij)
 
         assert(cutoff_functions.size() == eij.size())
         eij = torch.mul(eij,cutoff_functions)
@@ -183,8 +176,8 @@ class FitTorch(torch.nn.Module):
 
         predicted_forces = -1.0*gradients_wrt_x
 
-        # TODO for now we divide energy by 2, to fix this we need to incorporate the LAMMPS 
-        # neighlist-transformed positions in the forward pass
+        # TODO: For now we divide energy by 2, to fix this we need to incorporate the LAMMPS 
+        # neighlist-transformed positions in the forward pass.
 
         predicted_energy_total = 1.0*predicted_energy_total
 

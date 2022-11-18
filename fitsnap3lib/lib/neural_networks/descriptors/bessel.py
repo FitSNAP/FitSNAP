@@ -28,13 +28,10 @@ try:
             c = self.cutoff
             pi = torch.tensor(math.pi)
             two_over_c = torch.tensor(2./c)
-
-            #cutoff_functions = self.cutoff_function(rij)
             rbf = torch.div(torch.sqrt(two_over_c)*torch.sin(((n*pi)/c)*rij), rij)*cutoff_functions     
 
             return rbf
 
-        #def radial_bessel_basis(self, x, neighlist, unique_i, xneigh):
         def radial_bessel_basis(self, rij, cutoff_functions, numpy_bool = False):
             """
             Calculate radial Bessel basis functions.

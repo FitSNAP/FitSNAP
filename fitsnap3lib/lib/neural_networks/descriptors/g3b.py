@@ -21,7 +21,6 @@ try:
             self.eta = 4.
             self.mu = torch.linspace(-1,1,self.num_descriptors)
 
-        #def calculate(self, x, unique_i, unique_j, xneigh, numpy_bool = False):
         def calculate(self, rij, diff_norm, unique_i, numpy_bool = False):
             """
             Calculate 3body descriptors for all pairs. In the following discussion, :code:`num_neighs` 
@@ -44,7 +43,6 @@ try:
 
             # TODO: Look into using generators to reduce list overhead
             #       https://stackoverflow.com/questions/51105841/faster-python-list-comprehension
-            #       scroll down to see awesome generator solutions
 
             if (numpy_bool):
                 rij = torch.from_numpy(rij)
@@ -75,18 +73,6 @@ try:
                            for i in ui] #range(len_ui)]
             """
 
-            """
-            list_of_dij = [torch.sum(
-                              torch.exp(-1.0*self.eta
-                                  * (torch.mm(diff_norm[unique_i==i], 
-                                      torch.transpose(diff_norm[unique_i==i],0,1)).fill_diagonal_(0)[:,:,None]
-                                  -self.mu)**2) 
-                              * fcrik[unique_i==i][:,None], 
-                           dim=1)
-                           for i in ui] #range(len_ui)]
-            descriptors_3body = torch.cat(list_of_dij, dim=0)
-            """
-
             descriptors_3body = torch.cat([torch.sum(
                                         torch.exp(-1.0*self.eta
                                             * (torch.mm(diff_norm[unique_i==i], 
@@ -111,8 +97,6 @@ try:
             """
 
             c = self.cutoff
-
-            #function = 0.5 - 0.5*torch.sin(pi_over_two*((rij-R)/D))
             function = 0.5 + 0.5*torch.cos(self.pi*(rij-0)/(c-0))
 
             return function[:,0]

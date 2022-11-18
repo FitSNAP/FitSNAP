@@ -27,3 +27,5 @@ force errors, for the training and validation sets.
 ### Running MD with NN potential.
 
 Refer to folder "MD" for instructions to run MD simulations with the potential.
+
+

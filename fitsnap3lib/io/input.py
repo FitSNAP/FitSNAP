@@ -28,14 +28,13 @@ class Singleton(type):
 
 
 class Config(metaclass=Singleton):
-    """ Class for storing input settings in a `config` instance.
-        The `config` instance is first created in `io/output.py`.
+    """ 
+    Class for storing input settings in a `config` instance. The `config` instance is first created 
+    in `io/output.py`.
 
-    Attributes
-    ----------
-    parse_cmdline : list
-        list of args that can be supplied at the command line, must include a string to the location
-        of the FitSNAP input script 
+    Attributes:
+        parse_cmdline (list): List of args that can be supplied at the command line, must include a 
+            string to the location of the FitSNAP input script .
     """
 
     def __init__(self, arguments_lst=None):

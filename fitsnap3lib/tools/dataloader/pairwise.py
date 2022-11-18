@@ -52,6 +52,7 @@ class InRAMDatasetPyTorch(InRAMDataset):
 
         config_positions = torch.tensor(self.configs[idx].x).float()
         config_xneigh = torch.tensor(self.configs[idx].xneigh).float()
+        config_transform_x = torch.tensor(self.configs[idx].transform_x).float()
         atom_types = torch.tensor(self.configs[idx].types).long()
         target = torch.tensor(self.configs[idx].energy).float().reshape(-1)
         # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
@@ -63,6 +64,7 @@ class InRAMDatasetPyTorch(InRAMDataset):
 
         configuration = {'x': config_positions,
                          'xneigh': config_xneigh,
+                         'transform_x': config_transform_x,
                          'y': target, #target.reshape(-1),
                          'y_forces': target_forces,
                          'noa': number_of_atoms.reshape(-1), #number_of_atoms.reshape(-1),
@@ -82,6 +84,7 @@ def torch_collate(batch):
 
     batch_of_positions = torch.cat([conf['x'] for conf in batch], dim=0)
     batch_of_xneigh = torch.cat([conf['xneigh'] for conf in batch], dim=0)
+    batch_of_transform_x = torch.cat([conf['transform_x'] for conf in batch], dim=0)
     batch_of_types = torch.cat([conf['t'] for conf in batch], dim=0)
     batch_of_targets = torch.cat([conf['y'] for conf in batch], dim=0)
     batch_of_weights = torch.cat([conf['w'] for conf in batch], dim=0)
@@ -103,10 +106,13 @@ def torch_collate(batch):
     configs = [conf['configs'] for conf in batch] # batch of Configuration objects
     natoms_grow = 0
     unique_i_indices = []
+    unique_j_indices = []
     for i, conf in enumerate(configs):
         unique_i_indices.append(torch.tensor(conf.neighlist[:,0]+natoms_grow).long())
+        unique_j_indices.append(torch.tensor(conf.neighlist[:,1]+natoms_grow).long())
         natoms_grow += conf.natoms
     batch_of_unique_i = torch.cat(unique_i_indices, dim=0)
+    batch_of_unique_j = torch.cat(unique_j_indices, dim=0)
 
     # batch of testing bools to check that we have proper training/testing configs:
     
@@ -125,6 +131,7 @@ def torch_collate(batch):
 
     collated_batch = {'x': batch_of_positions,
                       'xneigh': batch_of_xneigh,
+                      'transform_x': batch_of_transform_x,
                       't': batch_of_types,
                       'y': batch_of_targets,
                       'y_forces': batch_of_target_forces,
@@ -135,6 +142,7 @@ def torch_collate(batch):
                       'neighlist': batch_of_neighlist,
                       'numneigh': batch_of_numneigh,
                       'unique_i': batch_of_unique_i,
+                      'unique_j': batch_of_unique_j,
                       'testing_bools': batch_of_testing_bools}
 
     return collated_batch

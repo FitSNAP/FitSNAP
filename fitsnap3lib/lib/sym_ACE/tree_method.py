@@ -5,7 +5,6 @@ from fitsnap3lib.lib.sym_ACE.coupling_coeffs import *
 #  binary trees.
 
 def get_ms(l,M_R=0):
-
 	# retrieves the set of m_i combinations obeying \sum_i m_i = 0 for an arbitrary l vector
 	m_ranges={ind:range(-l[ind],l[ind]+1) for ind in range(len(l))}
 	m_range_arrays = [list(m_ranges[ind]) for ind in range(len(l))]
@@ -16,7 +15,7 @@ def get_ms(l,M_R=0):
 	m_strs = [ m_str_variable % fmf for fmf in first_m_filter]
 	return m_strs
 
-def rank_1_tree(l,L_R=0,M_R=0):
+def rank_1_tree(l,Wigner_3j,L_R=0,M_R=0):
 	#no nodes for rank 1
 
 	mstrs = get_ms(l,M_R)
@@ -40,7 +39,7 @@ def rank_1_tree(l,L_R=0,M_R=0):
 	return decomposed
 
 
-def rank_2_tree(l,L_R=0,M_R=0):
+def rank_2_tree(l,Wigner_3j,L_R=0,M_R=0):
 
 	nodes,remainder = tree(l)
 	node = nodes[0]
@@ -65,7 +64,7 @@ def rank_2_tree(l,L_R=0,M_R=0):
 				decomposed[inter][mstr] = (w)
 	return decomposed
 
-def rank_3_tree(l,L_R=0,M_R=0):
+def rank_3_tree(l,Wigner_3j,L_R=0,M_R=0):
 
 	full_inter_tuples = tree_l_inters(l,L_R=L_R,M_R=M_R)
 	mstrs = get_ms(l,M_R)
@@ -90,7 +89,7 @@ def rank_3_tree(l,L_R=0,M_R=0):
 	return decomposed
 	
 
-def rank_4_tree(l,L_R=0,M_R=0):
+def rank_4_tree(l,Wigner_3j,L_R=0,M_R=0):
 
 	nodes,remainder = tree(l)
 	mstrs = get_ms(l,M_R)
@@ -122,7 +121,7 @@ def rank_4_tree(l,L_R=0,M_R=0):
 
 
 
-def rank_5_tree(l,L_R=0,M_R=0):
+def rank_5_tree(l,Wigner_3j,L_R=0,M_R=0):
 
 	nodes,remainder = tree(l)
 	mstrs = get_ms(l,M_R)
@@ -155,7 +154,7 @@ def rank_5_tree(l,L_R=0,M_R=0):
 							decomposed[inter][mstr] = (w)
 	return decomposed
 
-def rank_6_tree(l,L_R=0,M_R=0):
+def rank_6_tree(l,Wigner_3j,L_R=0,M_R=0):
 
 	nodes,remainder = tree(l)
 	mstrs = get_ms(l,M_R)
@@ -193,7 +192,7 @@ def rank_6_tree(l,L_R=0,M_R=0):
 								decomposed[inter][mstr] = (w)
 	return decomposed
 
-def rank_7_tree(l,L_R=0,M_R=0):
+def rank_7_tree(l,Wigner_3j,L_R=0,M_R=0):
 
 	nodes,remainder = tree(l)
 	mstrs = get_ms(l,M_R)
@@ -235,7 +234,7 @@ def rank_7_tree(l,L_R=0,M_R=0):
 									decomposed[inter][mstr] = (w)
 	return decomposed
 
-def rank_8_tree(l,L_R=0,M_R=0):
+def rank_8_tree(l,Wigner_3j,L_R=0,M_R=0):
 
 	nodes,remainder = tree(l)
 	mstrs = get_ms(l,M_R)

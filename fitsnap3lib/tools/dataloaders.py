@@ -52,9 +52,15 @@ class InRAMDatasetPyTorch(InRAMDataset):
 
         config_descriptors = torch.tensor(self.configs[idx].descriptors).float()
         atom_types = torch.tensor(self.configs[idx].types).long()
-        target = torch.tensor(self.configs[idx].energy).float().reshape(-1)
-        # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
-        weights = torch.tensor(self.configs[idx].weights[None,:]).float()
+
+        if (self.configs[idx].energy is not None):
+            target = torch.tensor(self.configs[idx].energy).float().reshape(-1)
+            # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
+            weights = torch.tensor(self.configs[idx].weights[None,:]).float()
+        else:
+            target = None
+            weights = None
+
         if (self.configs[idx].forces is not None):
             target_forces = torch.tensor(self.configs[idx].forces).float()
             dgrad = torch.tensor(self.configs[idx].dgrad).float()
@@ -63,9 +69,13 @@ class InRAMDatasetPyTorch(InRAMDataset):
             target_forces = None
             dgrad = None
             dbdrindx = None
+
+        if (self.configs[idx].pas is not None):
+            # we are fitting per-atom scalars, don't use energies/forces
+            assert(self.configs[idx].energy is None and self.configs[idx].forces is None)
+            target = torch.tensor(self.configs[idx].pas).float()
+
         number_of_atoms = torch.tensor(self.configs[idx].natoms)
-        #dgrad = torch.tensor(self.configs[idx].dgrad).float()
-        #dbdrindx = torch.tensor(self.configs[idx].dgrad_indices).long()
 
         configuration = {'x': config_descriptors,
                          'y': target, #target.reshape(-1),
@@ -87,11 +97,21 @@ def torch_collate(batch):
 
     batch_of_descriptors = torch.cat([conf['x'] for conf in batch], dim=0)
     batch_of_types = torch.cat([conf['t'] for conf in batch], dim=0)
-    batch_of_targets = torch.cat([conf['y'] for conf in batch], dim=0)
-    batch_of_weights = torch.cat([conf['w'] for conf in batch], dim=0)
     number_of_atoms = torch.cat([conf['noa'] for conf in batch], dim=0)
+
+    if (batch[0]['y'] is not None):
+        # we fit to eneriges
+        batch_of_targets = torch.cat([conf['y'] for conf in batch], dim=0)
+    else:
+        batch_of_targets = None
+
+    if (batch[0]['w'] is not None):
+        batch_of_weights = torch.cat([conf['w'] for conf in batch], dim=0)
+    else:
+        batch_of_weights = None
     
     if (batch[0]['y_forces'] is not None):
+        # we fit to forces
         batch_of_target_forces = torch.cat([conf['y_forces'] for conf in batch], dim=0)
         batch_of_dgrad = torch.cat([conf['dgrad'] for conf in batch], dim=0)
         batch_of_dbdrindx = torch.cat([conf['dbdrindx'] for conf in batch], dim=0)

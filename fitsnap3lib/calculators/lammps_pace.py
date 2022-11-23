@@ -150,17 +150,20 @@ class LammpsPace(LammpsBase):
         nrows_pace = np.shape(dgrad)[0] + nrows_energy + 1
         dgrad_indices = dgrad_indices[nonzero_rows, :]
 
-        # populate the bispectrum array 'a'
+        # populate the bispectrum array 'a' and other per-atom arrays
 
         self.pt.shared_arrays['a'].array[index:index+bik_rows] = bispectrum_components
         self.pt.shared_arrays['t'].array[index:index+bik_rows] = lmp_types
+        if (self.config.sections['CALCULATOR'].per_atom_scalar):
+            self.pt.shared_arrays['pas'].array[index:index+bik_rows] = self._data["Chis"]
         index += num_atoms
 
         # populate the truth array 'b' and weight array 'w'
 
-        self.pt.shared_arrays['b'].array[index_b] = (energy - ref_energy)/num_atoms
-        self.pt.shared_arrays['w'].array[index_b,0] = self._data["eweight"]
-        self.pt.shared_arrays['w'].array[index_b,1] = self._data["fweight"]
+        if (self.config.sections['CALCULATOR'].energy):
+            self.pt.shared_arrays['b'].array[index_b] = (energy - ref_energy)/num_atoms
+            self.pt.shared_arrays['w'].array[index_b,0] = self._data["eweight"]
+            self.pt.shared_arrays['w'].array[index_b,1] = self._data["fweight"]
         index_b += 1
 
         if (self.config.sections['CALCULATOR'].force):

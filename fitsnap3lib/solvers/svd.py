@@ -34,8 +34,7 @@ class SVD(Solver):
             self.fit, residues, rank, s = lstsq(aw, bw, 1.0e-13)
         decorated_perform_fit()
 
-    @staticmethod
-    def _dump_a():
+    def _dump_a(self):
         np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)
 
     def _dump_x(self):

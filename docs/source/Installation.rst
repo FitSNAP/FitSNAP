@@ -46,7 +46,7 @@ creating your virtual environment, **make sure it is activated for all future st
 
 Now install the necessary pre-requisites to build Python-LAMMPS using pip or conda::
 
-    python -m pip install numpy scipy sklearn virtualenv psutil pandas tabulate mpi4py Cython
+    python -m pip install numpy scipy scikit-learn virtualenv psutil pandas tabulate mpi4py Cython
     # For nonlinear fitting:
     python -m pip install torch
     # For fitting ACE:
@@ -209,16 +209,6 @@ A minimal working environment can be set up using the Python distribution packag
 
 After installing Anaconda:
 
-#. Clone the FitSNAP repository::
-
-        git clone https://github.com/FitSNAP/FitSNAP.git 
-
-#. Add the cloned repository path to your PYTHONPATH environment variable, e.g. in :code:`~/.bashrc` 
-   or :code:`~/.bash_profile`::
-        
-        FITSNAP_DIR=\path\to\FitSNAP
-        export PYTHONPATH=$FITSNAP_DIR:$LAMMPS_DIR/python:$PYTHONPATH
-
 #. Add conda-forge to your Conda install, if not already added::
     
         conda config --add channels conda-forge
@@ -228,9 +218,20 @@ After installing Anaconda:
         conda create -n fitsnap python=3.9
         conda activate fitsnap
 
-#. Install packages (pytorch is optional)::
+#. Install dependencies::
 
-        conda install lammps psutil pandas tabulate sphinx sphinx_rtd_theme mpi4py pytorch
+        conda install lammps
+        python -m pip install numpy scipy scikit-learn virtualenv psutil pandas tabulate mpi4py Cython
+
+#. Clone the FitSNAP repository::
+
+        git clone https://github.com/FitSNAP/FitSNAP.git 
+
+#. Add the cloned repository path to your PYTHONPATH environment variable, e.g. in :code:`~/.bashrc` 
+   or :code:`~/.bash_profile`::
+        
+        FITSNAP_DIR=\path\to\FitSNAP
+        export PYTHONPATH=$FITSNAP_DIR:$LAMMPS_DIR/python:$PYTHONPATH
 
 - **TIP:** Periodically use the command :code:`git pull` in the cloned directory for updates 
 

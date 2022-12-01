@@ -18,8 +18,11 @@ used directly in `LAMMPS <lammps_>`_ to perform high-performance molecular dynam
 .. _snap: https://www.sciencedirect.com/science/article/pii/S0021999114008353
 .. _lammps: https://docs.lammps.org/
 
-FitSNAP Lingo
--------------
+FitSNAP Components
+------------------
+
+.. figure:: ../images/components.png
+   :scale: 60 %
 
 Throughout these docs we will use phrases or language particular to our general way of doing
 molecular machine learning. These phrases are also littered throughout our code architecture, for 

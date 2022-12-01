@@ -251,6 +251,18 @@ This section declares which file scraper to use for gathering training data.
 
 - :code:`scraper` is either :code:`JSON` or :code:`XYZ.`
 
+If using the XYZ scraper, each `Group <Run.html#groups>`__ of configurations has its own XYZ file 
+containing configurations of atoms concatenated together, in extended XYZ format. Follow the example 
+in :code:`examples/Ta_XYZ`.
+
+If using the JSON scraper, each `Group <Run.html#groups>`__ may have its own directory containing 
+separate JSON files for each configuration. Guarantee compatibility with FitSNAP by using our 
+:code:`tools/VASP2JSON.py` conversion script; this requires that your DFT training data be in VASP 
+OUTCAR format. Likewise for :code:`tools/VASPxml2JSON.py`.
+
+We are also working on a scraper that directly reads VASP output; more documentation on this coming 
+soon.
+
 [PATH]
 ^^^^^^
 

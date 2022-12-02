@@ -15,7 +15,7 @@ Create & activate conda environment with dependencies::
 
     conda create --name fitsnap python=3.10
     conda activate fitsnap
-    python -m pip install numpy scipy sklearn virtualenv psutil pandas tabulate mpi4py Cython
+    python -m pip install numpy scipy scikit-learn virtualenv psutil pandas tabulate mpi4py Cython
     # For nonlinear fitting:
     python -m pip install torch
     # For fitting ACE:

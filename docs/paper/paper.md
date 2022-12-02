@@ -26,13 +26,13 @@ authors:
   - name: S. Nikolov
     affiliation: 1
   - name: K. Sargsyan
-    affiliation: 1
+    affiliation: 6
   - name: D. Sema
     affiliation: 4
   - name: E. Sikorski
     affiliation: 1
   - name: L. Williams
-    affiliation: 1
+    affiliation: 6
   - name: A.P. Thompson
     affiliation: 1
   - name: M.A. Wood
@@ -50,6 +50,8 @@ affiliations:
    index: 4
  - name: Center for Integrated Nanotechnologies, Sandia National Laboratories, Albuquerque, NM, USA
    index: 5
+ - name: Chemistry, Combustion and Materials Science Center, Sandia National Laboratories, Livermore, CA, USA
+   index: 6
 date: 29 November 2022
 bibliography: paper.bib
 ---

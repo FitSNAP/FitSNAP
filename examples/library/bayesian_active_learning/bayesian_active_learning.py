@@ -12,8 +12,13 @@ import copy
 import pandas as pd
 #import gc
 
-##usage: python -i Bayesian_active_learning_FitSNAP.py --fitsnap_in Ta-example.in
+##usage: python -i bayesian_active_learning.py --fitsnap_in Ta-example.in
 
+plot_stuff = True
+if plot_stuff:
+    import matplotlib.pyplot as plt
+known_truth_for_unlabeled = True
+    
 #==============================
 def deepcopy_pt_internals(snap):
     pt = snap.pt
@@ -517,6 +522,9 @@ config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
 #config.sections['PATH'].datapath = '/'.join(directory + ['unlabeled_JSON'])  ##trying to flip the order for debugging
 config.sections['PATH'].datapath = '/'.join(directory + ['training_JSON'])
 config.sections['SOLVER'].solver = 'ANL'
+#TODO: put in test for existance of directory
+config.sections['GROUPS'].group_table['testing_json_group'] = {'training_size': 0.0, 'testing_size': 1.0, 'eweight': 1.0, 'fweight': 1.0, 'vweight': 1.0}
+
 # create a fitsnap object
 if parallel:
     comm.Barrier()
@@ -573,6 +581,7 @@ if rank==0:
     current_timestamp =datetime.now()
     print(current_timestamp - last_timestamp)
     last_timestamp = current_timestamp
+    error_log_list = []
     for n_loop in range(10):
         snap.solver.perform_fit()
         print('loop fit', n_loop, 'done')
@@ -592,7 +601,7 @@ if rank==0:
         print(current_timestamp - last_timestamp)
         last_timestamp = current_timestamp
         print(snap.solver.errors.loc['*ALL'])
-        
+        error_log_list.append(snap.solver.errors)
         C = snap.solver.cov
         
         #A = unlabeled_df[num_col].to_numpy()
@@ -606,6 +615,33 @@ if rank==0:
         print(current_timestamp - last_timestamp)
         last_timestamp = current_timestamp
 
+        #if plotting, plot the correlation between errors (if known) and uncertainty
+        if plot_stuff:
+            #this only makes sense if you actually have the truth values in your 'unlabeled pool'
+            if known_truth_for_unlabeled:
+                preds = np.dot(A,snap.solver.fit)
+                truths = pt.shared_arrays['b_copy'].array[mask_of_still_unused]
+                errors = truths - preds
+                plt.figure()
+                plt.scatter(abs(errors), diag)
+                plt.ylabel('uncertainty')
+                plt.xlabel('abs error')
+                plt.title('Active Learning Step ' + str(n_loop))
+                plt.savefig('uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
+                plt.figure()
+                ax = plt.gca()
+                plt.scatter(abs(errors), diag)
+                plt.ylabel('uncertainty')
+                plt.xlabel('abs error')
+                plt.title('Active Learning Step ' + str(n_loop))
+                ax.set_xscale("log")
+                ax.set_yscale("log")
+                plt.savefig('loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
+                print('loop uncertainty error correlation plotting', n_loop, 'done')
+                current_timestamp =datetime.now()
+                print(current_timestamp - last_timestamp)
+                last_timestamp = current_timestamp
+                
         ##implement the objective function here to pick some structures - ID by group and config
         #ranked_structures, x_vector_for_each_structure = objective_function(unlabeled_df, num_col)
         ranked_structures = objective_function(unlabeled_df)
@@ -731,6 +767,25 @@ if rank==0:
         last_timestamp = current_timestamp
 
         print('completed loop:', n_loop)
+
+if parallel:
+    comm.Barrier()
+
+plot_stuff = False
+if plot_stuff:
+    if rank==0:
+        EFS_used = []
+        if snap.config.sections['CALCULATOR'].energy:
+            EFS_used.append('Energy')
+        if snap.config.sections['CALCULATOR'].force:
+            EFS_used.append('Force')
+        if snap.config.sections['CALCULATOR'].stress:
+            EFS_used.append('Stress')
+        for quantity_type in EFS_used:
+            ncounts = [d.loc['testing_json_group', 'Unweighted', quantity_type]['ncount'] for d in error_log_list]
+            for error_metric in ['mae', 'rmse']:
+                error_metrics =  [d.loc['*ALL', 'Unweighted', quantity_type][error_metric] for d in error_log_list]
+                
 
 if parallel:
     comm.Barrier()

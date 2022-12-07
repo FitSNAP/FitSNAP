@@ -125,7 +125,7 @@ class Solver:
             self.errors = concat([concat({'*ALL':all}, names=['Groups']), grouped]) #combine dataframes
             self.errors.ncount = self.errors.ncount.astype(int) #the _ncount_mae_rmse_rsq_unweighted_and_weighted() function returns a series of all floats, but these are just ints
             self.errors.index.rename(["Group", "Weighting", "Testing", "Subsystem", ], inplace=True) #matching legacy format
-            self.errors.index = self.errors.index.set_levels(['Testing' if e else 'Training' for e in self.errors.index.levels[2]], level=2) #so it prints out pretty im markdown later
+            self.errors.index = self.errors.index.set_levels(['Testing' if e else 'Training' for e in self.errors.index.levels[2]], level=2) #so it prints out pretty in markdown later
             
             if self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and self.config.sections["BISPECTRUM"].bzeroflag:
                 self._offset()

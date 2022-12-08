@@ -2,7 +2,7 @@ import numpy as np
 import configparser
 import argparse
 from datetime import datetime
-from os import chdir, mkdir, getenv, getcwd
+from os import chdir, mkdir, getenv, getcwd, path
 #from json import loads
 import json
 from subprocess import run
@@ -10,7 +10,6 @@ from shutil import copyfileobj
 import inspect
 import copy 
 import pandas as pd
-#import gc
 import logging
 
 ##usage: python -i bayesian_active_learning.py --fitsnap_in Ta-example.in
@@ -26,14 +25,10 @@ def deepcopy_pt_internals(snap):
     #make our deepcopied arrays
     i1, i2 = pt.fitsnap_dict['sub_a_indices']
     i2 += 1  
-    #print('rank', rank, 'has sub_a_indices of:', i1, i2)
     a_len = pt.shared_arrays['a'].array.shape[0]
-#    print('a_len =', a_len)
     shared_array_names = list(pt.shared_arrays.keys()) # must separate from the dictionary otherwise will throw a silent runtime error when the dictionary changes size
     for array_name in shared_array_names:
-#        print(array_name)
         array_dims = pt.shared_arrays[array_name].array.shape
-#        print('array_dims =', array_dims)
         if array_dims[0] == a_len:
             if len(array_dims) == 2:
                 pt.create_shared_array(array_name+'_copy', array_dims[0], array_dims[1], tm=snap.config.sections["SOLVER"].true_multinode)
@@ -43,12 +38,9 @@ def deepcopy_pt_internals(snap):
                 raise Error('I did not code for more than 2d arrays.')
             if rank == 0:
                 print(array_name+'_copy has been instantiated')
-            #pt.new_slice_a()
-            #snap.calculator.shared_index = pt.fitsnap_dict["sub_a_indices"][0]
             #fill the cloned arrays - each processor should be doing the segment it originally handled
             if parallel:
                 comm.Barrier()
-            #i1, i2 = pt.fitsnap_dict['sub_a_indices']
             pt.shared_arrays[array_name+'_copy'].array[i1:i2] = copy.deepcopy(pt.shared_arrays[array_name].array[i1:i2])
             if parallel:
                 comm.Barrier()
@@ -61,13 +53,7 @@ def deepcopy_pt_internals(snap):
                 comm.Barrier()
             if rank == 0:
                 print('original ', array_name, ' has been deleted')
-            #print('rank', rank, 'reports pt arrays existing as:', pt.shared_arrays)
         else: #just copy over the little lists on the head proc
-            #if rank == 0:
-            #    print(pt.shared_arrays[array_name].array)
-            #    print(len(array_dims))
-            #    print(array_dims)
-            #    print(array_name+'_copy')
             if len(array_dims) == 2:
                 pt.create_shared_array(array_name+'_copy', array_dims[0], array_dims[1], dtype='i')
             elif len(array_dims) == 1:
@@ -87,9 +73,7 @@ def deepcopy_pt_internals(snap):
             if parallel:
                 comm.Barrier()
         
-        #gc.collect()
     #copy our metadata - all of this is only on the head processor as process_configs() sent everything back to it with a calculator.collect_distrubuted_lists() call
-    #print('rank', rank, 'reports pt fitsnap_dict keys as:', pt.fitsnap_dict.keys())
     if rank == 0:
         fictsnap_dict_metadata_lists = [name for name in pt.fitsnap_dict.keys() if type(pt.fitsnap_dict[name]) is list]
         for list_name in fictsnap_dict_metadata_lists:
@@ -98,10 +82,6 @@ def deepcopy_pt_internals(snap):
             #pt.add_2_fitsnap(list_name+"_copy", DistributedList(len(pt.fitsnap_dict[list_name])))
             pt.add_2_fitsnap(list_name+"_copy", copy.deepcopy(pt.fitsnap_dict[list_name]))
             print(list_name+"_copy has been instantiated")
-        #    pt.fitsnap_dict[list_name+"_copy"] = copy.deepcopy(pt.fitsnap_dict[list_name])
-        #pt.fitsnap_dict[list_name+"_copy"][i1:i2] = copy.deepcopy(pt.fitsnap_dict[list_name][i1:i2])
-        
-        #pt.gather_fitsnap(list_name+"_copy") # essentially calculator.collect_distributed_lists() for one key
         #from fitsnap3lib.parallel_tools import stubs  ## why is this not just a pt property?
         #if pt.fitsnap_dict[list_name+"_copy"] is not None and stubs != 1:
         #    pt.fitsnap_dict[list_name+"_copy"] = [item for sublist in pt.fitsnap_dict[list_name+"_copy"] for item in sublist]
@@ -112,10 +92,8 @@ def deepcopy_pt_internals(snap):
             print(list_name+"_copy has been fully copied")
             del pt.fitsnap_dict[list_name]
             print('original ', list_name, ' has been deleted')
-        #print('rank', rank, 'reports pt fitsnap_dict keys as:', pt.fitsnap_dict.keys())
     if parallel:
         comm.Barrier()
-        #gc.collect()
 
 #==============================
 #def objective_function(df, A_matrix_columns, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[None, None], objective_function='sum', norm_force_components=False, weight_by_relative_DFT_cost = True):
@@ -134,7 +112,6 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
             weight_by_relative_DFT_cost: scale each structures objective function based off of 1/(number of atoms)^3 - rough approximation of DFT cost scaling
         outputs:
             chosen_structures: a pandas dataframe containing the group and config as multi-index of the top nadd structures 
-            x_vector_for_each_structure: numpy array, shape = (nadd, num_basis_functions)
     """
     m_df = df.copy()  # the dataframe to be manipulated below, copying to be safe
 
@@ -403,7 +380,6 @@ if parallel:
 config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
 directory = config.sections['PATH'].datapath.split('/')[0:-1]
 config.sections['PATH'].datapath = '/'.join(directory + ['unlabeled_JSON'])
-#config.sections['PATH'].datapath = '/'.join(directory + ['training_JSON']) #trying flipping the order for debugging
 
 # create a fitsnap object - uses the previously defined pt and config objects!
 from fitsnap3lib.fitsnap import FitSnap
@@ -416,13 +392,8 @@ if rank==0:
     print(current_timestamp - last_timestamp)
     last_timestamp = current_timestamp
 
-# tell ParallelTool not to create SharedArrays
-#pt.create_shared_bool = False
 # tell ParallelTools not to check for existing fitsnap objects
 pt.check_fitsnap_exist = False
-# tell FitSNAP not to delete the data object after processing configs - we can probably actually delete this, we don't currently use the data object, just the dataframe outputted later
-#snap.delete_data = False
-
 
 snap.scraper.scrape_groups()
 if parallel:
@@ -519,12 +490,13 @@ if parallel:
     comm.Barrier()
 config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
 
-#switch out our solver to the ANL solver to get the covariance matrix that we need.
-#config.sections['PATH'].datapath = '/'.join(directory + ['unlabeled_JSON'])  ##trying to flip the order for debugging
+
 config.sections['PATH'].datapath = '/'.join(directory + ['training_JSON'])
+#switch out our solver to the ANL solver to get the covariance matrix that we need.
 config.sections['SOLVER'].solver = 'ANL'
-#TODO: put in test for existance of directory
-config.sections['GROUPS'].group_table['testing_json_group'] = {'training_size': 0.0, 'testing_size': 1.0, 'eweight': 1.0, 'fweight': 1.0, 'vweight': 1.0}
+
+if path.isdir(config.sections['PATH'].datapath+'/testing_json_group/'):
+    config.sections['GROUPS'].group_table['testing_json_group'] = {'training_size': 0.0, 'testing_size': 1.0, 'eweight': 1.0, 'fweight': 1.0, 'vweight': 1.0}
 
 # create a fitsnap object
 if parallel:
@@ -620,7 +592,8 @@ if rank==0:
         # so we need to deactivate it
         logging.getLogger('matplotlib.ticker').disabled = True
         logging.getLogger('matplotlib.font_manager').disabled = True
-        #if plotting, plot the correlation between errors (if known) and uncertainty
+        
+        #if plotting, plot the correlation between errors (if known) and sqrt(uncertainty)
         if plot_stuff:
             #this only makes sense if you actually have the truth values in your 'unlabeled pool'
             if known_truth_for_unlabeled:
@@ -629,14 +602,14 @@ if rank==0:
                 errors = truths - preds
                 plt.figure()
                 plt.scatter(abs(errors), np.sqrt(diag))
-                plt.ylabel('uncertainty - sqrt(prediction variance)')
+                plt.ylabel('sqrt(prediction variance)')
                 plt.xlabel('abs error')
                 plt.title('Active Learning Step ' + str(n_loop))
                 plt.savefig('uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
                 plt.figure()
                 ax = plt.gca()
                 plt.scatter(abs(errors), np.sqrt(diag))
-                plt.ylabel('uncertainty - sqrt(prediction variance)')
+                plt.ylabel('sqrt(prediction variance)')
                 plt.xlabel('abs error')
                 plt.title('Active Learning Step ' + str(n_loop))
                 ax.set_xscale("log")

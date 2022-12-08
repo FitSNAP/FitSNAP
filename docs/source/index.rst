@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to FitSNAP's documentation!
-===================================
+FitSNAP Documentation
+=====================
 
 **FitSNAP** is a molecular machine learning package for LAMMPS. 
 
@@ -20,8 +20,6 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-
 
 ----------
 

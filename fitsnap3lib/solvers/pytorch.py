@@ -12,6 +12,7 @@ import psutil
 
 try:
     from fitsnap3lib.lib.neural_networks.pytorch import FitTorch, create_torch_network
+    from fitsnap3lib.lib.neural_networks.pas import FitTorchPAS
     from fitsnap3lib.tools.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
     from fitsnap3lib.tools.configuration import Configuration
     import torch
@@ -20,51 +21,22 @@ try:
         """
         A class to wrap Modules to ensure lammps mliap compatability.
 
-        ...
+        Args:
+            name: Name of the solver class.
 
-        Attributes
-        ----------
-        optimizer : torch.optim.Adam
-            Torch Adam optimization object
-
-        model : torch.nn.Module
-            Network model that maps descriptors to a per atom attribute
-
-        loss_function : torch.loss.MSELoss
-            Mean squared error loss function
-
-        learning_rate: float
-            Learning rate for gradient descent
-
-        scheduler: torch.optim.lr_scheduler.ReduceLROnPlateau
-            Learning rate scheduler
-
-        device : torch.nn.Module (None)
-            Accelerator device
-
-        training_data: torch.utils.data.Dataset
-            Torch dataset for loading in pieces of the A matrix
-
-        training_loader: torch.utils.data.DataLoader
-            Data loader for loading in datasets
-
-        Methods
-        -------
-        create_datasets():
-            Creates the dataset to be used for training and the data loader for the batch system.
-
-        perform_fit():
-            Performs the pytorch fitting for a lammps potential
+        Attributes:
+            optimizer (torch.optim.Adam): PyTorch Adam optimization object.
+            model (torch.nn.Module): Network model that maps descriptors to a per atom quantity 
+                (e.g. energy).
+            loss_function (torch.loss.MSELoss): Mean squared error loss function.
+            learning_Rate (float): Learning rate for gradient descent.
+            scheduler (torch.optim.lr_scheduler.ReduceLROnPlateau): Torch learning rate scheduler.
+            device: Torch accelerator device.
+            training_data (torch.utils.data.Dataset): Torch dataset for training.
+            training_loader (torch.utils.data.DataLoader): Data loader for loading datasets.
         """
 
         def __init__(self, name):
-            """
-            Initializes attributes for the pytorch solver.
-
-                Parameters:
-                    name : Name of solver class
-
-            """
             super().__init__(name, linear=False)
 
             self.pt = ParallelTools()
@@ -105,12 +77,20 @@ try:
 
             self.optimizer = None
             self.force_bool = self.pt.fitsnap_dict['force']
-            self.model = FitTorch(self.networks, #config.sections["PYTORCH"].networks,
-                                  self.num_desc_per_element,
-                                  self.force_bool,
-                                  self.num_elements,
-                                  self.multi_element_option,
-                                  self.dtype)
+            self.per_atom_scalar_bool = self.pt.fitsnap_dict['per_atom_scalar']
+            if (self.pt.fitsnap_dict['energy'] or self.pt.fitsnap_dict['force']):
+                self.model = FitTorch(self.networks, #config.sections["PYTORCH"].networks,
+                                      self.num_desc_per_element,
+                                      self.force_bool,
+                                      self.num_elements,
+                                      self.multi_element_option,
+                                      self.dtype)
+            elif (self.pt.fitsnap_dict['per_atom_scalar']):
+                self.model = FitTorchPAS(self.networks,
+                                         self.num_desc_per_element,
+                                         self.num_elements,
+                                         self.multi_element_option,
+                                         self.dtype)            
             self.loss_function = torch.nn.MSELoss()
             self.learning_rate = self.config.sections["PYTORCH"].learning_rate
             if self.config.sections['PYTORCH'].save_state_input is not None:
@@ -163,25 +143,29 @@ try:
                 
                 indx_natoms_high = indx_natoms_low + config.natoms
                 indx_forces_high = indx_forces_low + 3*config.natoms
+
                 if (self.pt.fitsnap_dict['force']):
                     nrows_dgrad = int(self.pt.fitsnap_dict["NumDgradRows"][i])
                     indx_dgrad_high = indx_dgrad_low + nrows_dgrad
-
-                config.energy = self.pt.shared_arrays['b'].array[i]
-                config.filename = self.pt.fitsnap_dict['Configs'][i]
-                config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
-                config.weights = self.pt.shared_arrays['w'].array[i]
-                config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
-                config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
-                if (self.pt.fitsnap_dict['force']):
                     config.forces = self.pt.shared_arrays['c'].array[indx_forces_low:indx_forces_high]
                     config.dgrad = self.pt.shared_arrays['dgrad'].array[indx_dgrad_low:indx_dgrad_high]
                     config.dgrad_indices = self.pt.shared_arrays['dbdrindx'].array[indx_dgrad_low:indx_dgrad_high]
+                    indx_dgrad_low += nrows_dgrad
+
+                if (self.pt.fitsnap_dict['energy']):
+                    config.energy = self.pt.shared_arrays['b'].array[i]
+                    config.weights = self.pt.shared_arrays['w'].array[i]
+
+                if (self.pt.fitsnap_dict['per_atom_scalar']):
+                    config.pas = self.pt.shared_arrays['pas'].array[indx_natoms_low:indx_natoms_high]
+
+                config.filename = self.pt.fitsnap_dict['Configs'][i]
+                config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
+                config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
+                config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
 
                 indx_natoms_low += config.natoms
                 indx_forces_low += 3*config.natoms
-                if (self.pt.fitsnap_dict['force']):
-                    indx_dgrad_low += nrows_dgrad
 
             # check that we make assignments (not copies) of data, to save memory
 
@@ -231,7 +215,7 @@ try:
         #@pt.sub_rank_zero
         def perform_fit(self):
             """
-            Performs the pytorch fitting for a lammps potential
+            Performs PyTorch fitting using previously calculated descriptors. 
             """
 
             @self.pt.sub_rank_zero
@@ -255,7 +239,6 @@ try:
                     ntypes = self.num_elements
                     num_networks = len(self.networks)
                     keys = [*state_dict.keys()]
-                    #for t in range(0,ntypes):
                     for t in range(0,num_networks):
                         first_layer_weight = "network_architecture"+str(t)+".0.weight"
                         first_layer_bias = "network_architecture"+str(t)+".0.bias"
@@ -273,11 +256,15 @@ try:
                 model_force_plot = []
                 target_energy_plot = []
                 model_energy_plot = []
+                target_pas_plot = []
+                model_pas_plot = []
                 # lists for storing validation energies and forces
                 target_force_plot_val = []
                 model_force_plot_val = []
                 target_energy_plot_val = []
                 model_energy_plot_val = []
+                target_pas_plot_val = []
+                model_pas_plot_val = []
                 natoms_per_config = [] # stores natoms per config for calculating eV/atom errors later.
                 for epoch in range(self.config.sections["PYTORCH"].num_epochs):
                     print(f"----- epoch: {epoch}")
@@ -291,39 +278,57 @@ try:
                     for i, batch in enumerate(self.training_loader):
                         descriptors = batch['x'].to(self.device).requires_grad_(True)
                         atom_types = batch['t'].to(self.device)
-                        targets = batch['y'].to(self.device).requires_grad_(True)
                         indices = batch['i'].to(self.device)
                         num_atoms = batch['noa'].to(self.device)
-                        weights = batch['w'].to(self.device)
+                        targets = batch['y'].to(self.device).requires_grad_(True)
+
+                        if (self.pt.fitsnap_dict['energy']):
+                            #targets = batch['y'].to(self.device).requires_grad_(True)
+                            weights = batch['w'].to(self.device)
+                        else:
+                            #targets = None
+                            weights = None
+
                         if (self.pt.fitsnap_dict['force']):
                             target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                             dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                             dbdrindx = batch['dbdrindx'].to(self.device)
                             unique_j = batch['unique_j'].to(self.device)
                             unique_i = batch['unique_i'].to(self.device)
+                            # make indices showing which config a force belongs to
+                            indices_forces = torch.repeat_interleave(indices, 3)
+                            # get force weights
+                            force_weights = weights[indices_forces,1]
                         else:
                             target_forces = None
                             dgrad = None
                             dbdrindx = None
                             unique_j = None
                             unique_i = None
-                        testing_bools = batch['testing_bools']
-                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, unique_i, self.device)
-                        energies = torch.div(energies,num_atoms)
+
+                        if (self.pt.fitsnap_dict['energy'] or (self.pt.fitsnap_dict['force'])):
+                            # we are fitting energies/forces
+                            (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
+                                                           atom_types, dbdrindx, unique_j, unique_i, 
+                                                           self.device)
+                            energies = torch.div(energies,num_atoms)
+                        else:
+                            # calculate per-atom scalars
+                            pas = self.model(descriptors, num_atoms, atom_types, self.device)
+                            energies = None
+                            forces = None
 
                         # good assert for verifying that we have proper training configs:
+                        # testing_bools = batch['testing_bools']
                         #for test_bool in testing_bools:
                         #    assert(test_bool)
-
-                        # make indices showing which config a force belongs to
-
-                        indices_forces = torch.repeat_interleave(indices, 3)
-                        force_weights = weights[indices_forces,1]
 
                         if (self.pt.fitsnap_dict['energy']):
                             energies = energies.to(self.device)
                         if (self.pt.fitsnap_dict['force']):
                             forces = forces.to(self.device)
+                        if (self.pt.fitsnap_dict['per_atom_scalar']):
+                            pas = pas.to(self.device)
 
                         if (epoch == self.config.sections["PYTORCH"].num_epochs-1):
 
@@ -333,11 +338,16 @@ try:
                             if (self.pt.fitsnap_dict['energy']):
                                 target_energy_plot.append(targets.cpu().detach().numpy())
                                 model_energy_plot.append(energies.cpu().detach().numpy())
+                            if (self.pt.fitsnap_dict['per_atom_scalar']):
+                                target_pas_plot.append(targets.cpu().detach().numpy())
+                                model_pas_plot.append(pas.cpu().detach().numpy())
 
                         # assert that model and target force dimensions match
 
                         if (self.pt.fitsnap_dict['force']):
                             assert target_forces.size() == forces.size()
+
+                        # calculate loss
 
                         if (self.pt.fitsnap_dict['energy'] and self.pt.fitsnap_dict['force']):
                             if (self.global_weight_bool):
@@ -346,25 +356,17 @@ try:
                             else:
                                 loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
                                     + self.weighted_mse_loss(forces, target_forces, force_weights)
-                        elif (not self.pt.fitsnap_dict['force']):
+                        elif (self.pt.fitsnap_dict['energy']):
                             if (self.global_weight_bool):
                                 loss = self.energy_weight*self.loss_function(energies, targets)
                             else:
                                 loss = self.weighted_mse_loss(energies, targets, weights[:,0])
-                            
-                        """
-                        if (self.energy_weight==0.0):
-                            loss = self.force_weight*self.loss_function(forces, target_forces)
-                        elif (self.pt.fitsnap_dict['force']):
-                            loss = self.energy_weight*self.loss_function(energies, targets)
-                        else:
-                            if (self.global_weight_bool):
-                                loss = self.energy_weight*self.loss_function(energies, targets) \
-                                     + self.force_weight*self.loss_function(forces, target_forces)
-                            else:
-                                loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
-                                    + self.weighted_mse_loss(forces, target_forces, force_weights)
-                        """
+                        elif (self.pt.fitsnap_dict['per_atom_scalar']):
+                            # currently just using MSE on entire set, no weights
+                            # TODO: add groups weights
+                            #loss = torch.sqrt(self.loss_function(pas, targets))
+                            loss = self.loss_function(pas, targets)
+
                         self.optimizer.zero_grad()
                         loss.backward()
                         self.optimizer.step()
@@ -377,35 +379,52 @@ try:
                     for i, batch in enumerate(self.validation_loader):
                         descriptors = batch['x'].to(self.device).requires_grad_(True)
                         atom_types = batch['t'].to(self.device)
-                        targets = batch['y'].to(self.device).requires_grad_(True)
-                        #target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                         indices = batch['i'].to(self.device)
                         num_atoms = batch['noa'].to(self.device)
-                        weights = batch['w'].to(self.device)
+                        targets = batch['y'].to(self.device).requires_grad_(True)
+
+                        if (self.pt.fitsnap_dict['energy']):
+                            #targets = batch['y'].to(self.device).requires_grad_(True)
+                            weights = batch['w'].to(self.device)
+                        else:
+                            #targets = None
+                            weights = None
+
                         if (self.pt.fitsnap_dict['force']):
                             target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
                             dgrad = batch['dgrad'].to(self.device).requires_grad_(True)
                             dbdrindx = batch['dbdrindx'].to(self.device)
                             unique_j = batch['unique_j'].to(self.device)
                             unique_i = batch['unique_i'].to(self.device)
+                            # make indices showing which config a force belongs to
+                            indices_forces = torch.repeat_interleave(indices, 3)
+                            # get force weights
+                            force_weights = weights[indices_forces,1]
                         else:
                             target_forces = None
                             dgrad = None
                             dbdrindx = None
                             unique_j = None
                             unique_i = None
-                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, unique_i, self.device)
-                        energies = torch.div(energies,num_atoms)
-                        
-                        # make indices showing which config a force belongs to
 
-                        indices_forces = torch.repeat_interleave(indices, 3)
-                        force_weights = weights[indices_forces,1]
+                        if (self.pt.fitsnap_dict['energy'] or (self.pt.fitsnap_dict['force'])):
+                            # we are fitting energies/forces
+                            (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
+                                                           atom_types, dbdrindx, unique_j, unique_i, 
+                                                           self.device)
+                            energies = torch.div(energies,num_atoms)
+                        else:
+                            # calculate per-atom scalars
+                            pas = self.model(descriptors, num_atoms, atom_types, self.device)
+                            energies = None
+                            forces = None
 
                         if (self.pt.fitsnap_dict['energy']):
                             energies = energies.to(self.device)
                         if (self.pt.fitsnap_dict['force']):
                             forces = forces.to(self.device)
+                        if (self.pt.fitsnap_dict['per_atom_scalar']):
+                            pas = pas.to(self.device)
 
                         if (epoch == self.config.sections["PYTORCH"].num_epochs-1):
 
@@ -416,6 +435,9 @@ try:
                             if (self.pt.fitsnap_dict['energy']):
                                 target_energy_plot_val.append(targets.cpu().detach().numpy())
                                 model_energy_plot_val.append(energies.cpu().detach().numpy())
+                            if (self.pt.fitsnap_dict['per_atom_scalar']):
+                                target_pas_plot_val.append(targets.cpu().detach().numpy())
+                                model_pas_plot_val.append(pas.cpu().detach().numpy())
 
                         # assert that model and target force dimensions match
 
@@ -439,25 +461,16 @@ try:
                             else:
                                 loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
                                     + self.weighted_mse_loss(forces, target_forces, force_weights)
-                        elif (not self.pt.fitsnap_dict['force']):
+                        elif (self.pt.fitsnap_dict['energy']):
                             if (self.global_weight_bool):
                                 loss = self.energy_weight*self.loss_function(energies, targets)
                             else:
                                 loss = self.weighted_mse_loss(energies, targets, weights[:,0])
-                                
-                        """
-                        if (self.energy_weight==0.0):
-                            loss = self.force_weight*self.loss_function(forces, target_forces)
-                        elif (self.force_weight==0.0):
-                            loss = self.energy_weight*self.loss_function(energies, targets)
-                        else:
-                            if (self.global_weight_bool):
-                                loss = self.energy_weight*self.loss_function(energies, targets) \
-                                     + self.force_weight*self.loss_function(forces, target_forces)
-                            else:
-                                loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
-                                    + self.weighted_mse_loss(forces, target_forces, force_weights)
-                        """
+                        elif (self.pt.fitsnap_dict['per_atom_scalar']):
+                            # currently just using MSE on entire set, no weights
+                            # TODO: add groups weights
+                            #loss = torch.sqrt(self.loss_function(pas, targets))
+                            loss = self.loss_function(pas, targets)
                         
                         val_losses_step.append(loss.item())
 
@@ -495,28 +508,51 @@ try:
                         dat_val = np.concatenate((model_force_plot_val, target_force_plot_val), axis=1)
                         np.savetxt("force_comparison_val.dat", dat_val) 
 
-                #if (self.pt.fitsnap_dict['energy']):
+                if (self.pt.fitsnap_dict['energy']):
 
-                # print target and model energies
-                # training
-                target_energy_plot = np.concatenate(target_energy_plot)
-                model_energy_plot = np.concatenate(model_energy_plot)
+                    # print target and model energies
+                    # training
+                    target_energy_plot = np.concatenate(target_energy_plot)
+                    model_energy_plot = np.concatenate(model_energy_plot)
 
-                target_energy_plot = np.array([target_energy_plot]).T
-                model_energy_plot = np.array([model_energy_plot]).T
+                    target_energy_plot = np.array([target_energy_plot]).T
+                    model_energy_plot = np.array([model_energy_plot]).T
 
-                dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
-                np.savetxt("energy_comparison.dat", dat)
-                # validation
-                if (target_energy_plot_val):
-                    target_energy_plot_val = np.concatenate(target_energy_plot_val)
-                    model_energy_plot_val = np.concatenate(model_energy_plot_val)
-                    #natoms_per_config = np.concatenate(natoms_per_config)
-                    target_energy_plot_val = np.array([target_energy_plot_val]).T
-                    model_energy_plot_val = np.array([model_energy_plot_val]).T
-                    #natoms_per_config = np.array([natoms_per_config]).T
-                    dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val), axis=1)
-                    np.savetxt("energy_comparison_val.dat", dat_val)
+                    dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
+                    np.savetxt("energy_comparison.dat", dat)
+                    # validation
+                    if (target_energy_plot_val):
+                        target_energy_plot_val = np.concatenate(target_energy_plot_val)
+                        model_energy_plot_val = np.concatenate(model_energy_plot_val)
+                        #natoms_per_config = np.concatenate(natoms_per_config)
+                        target_energy_plot_val = np.array([target_energy_plot_val]).T
+                        model_energy_plot_val = np.array([model_energy_plot_val]).T
+                        #natoms_per_config = np.array([natoms_per_config]).T
+                        dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val), axis=1)
+                        np.savetxt("energy_comparison_val.dat", dat_val)
+
+                if (self.pt.fitsnap_dict['per_atom_scalar']):
+
+                    # print target and model energies
+                    # training
+                    target_pas_plot = np.concatenate(target_pas_plot)
+                    model_pas_plot = np.concatenate(model_pas_plot)
+
+                    target_pas_plot = np.array([target_pas_plot]).T
+                    model_pas_plot = np.array([model_pas_plot]).T
+
+                    dat = np.concatenate((model_pas_plot, target_pas_plot), axis=1)
+                    np.savetxt("pas_comparison.dat", dat)
+                    # validation
+                    if (target_pas_plot_val):
+                        target_pas_plot_val = np.concatenate(target_pas_plot_val)
+                        model_pas_plot_val = np.concatenate(model_pas_plot_val)
+                        #natoms_per_config = np.concatenate(natoms_per_config)
+                        target_pas_plot_val = np.array([target_pas_plot_val]).T
+                        model_pas_plot_val = np.array([model_pas_plot_val]).T
+                        #natoms_per_config = np.array([natoms_per_config]).T
+                        dat_val = np.concatenate((model_pas_plot_val, target_pas_plot_val), axis=1)
+                        np.savetxt("pas_comparison_val.dat", dat_val)
 
                 # print training loss vs. epoch data
 
@@ -544,18 +580,12 @@ try:
             """
             Evaluates energies and forces on configs for testing purposes. 
 
-            Attributes
-            ----------
-            option : int
-                1 - evaluate energies/forces for all configs separately
-                2 - evaluate energies/forces using the dataloader/batch procedure
-
-            standardize_bool : bool
-                True - Standardize weights
-                False - Do not standardize weights, useful if you are comparing inputs on a previously standardized model
-
-            dtype : torch.dtype
-                Optional override of the global dtype
+            Args:
+                option (int): 1 to evaluate energies/forces for all configs separately, 2 for using 
+                    dataloader/batch procedure. Currently only 1 is implemented.
+                standardize_bool (bool): True to standardize weights, False otherwise. Useful if 
+                    comparing inputs with a previously standardized model.
+                dtype (torch.dtype): Optional override of the global dtype. 
             """
 
             @self.pt.sub_rank_zero

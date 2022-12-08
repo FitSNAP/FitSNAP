@@ -1,10 +1,17 @@
 # global settings for the sym_ACE library
 import sys
-# Name of the directory the repo is stored in:
+import pathlib
+
+# store CG and wigner files in fitsnap3lib/lib/sym_ACE/lib:
+
 import fitsnap3lib
 topfile = fitsnap3lib.__file__
 top_dir = topfile.split('/__')[0]
 lib_path = '%s/lib/sym_ACE/lib' % top_dir
+
+# store CG and wigner files in current directory:
+
+#lib_path = str(pathlib.Path(__name__).parent.resolve())
 
 #-------------------------------
 # Coupling coefficient settings

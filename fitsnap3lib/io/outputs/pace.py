@@ -3,14 +3,14 @@ from fitsnap3lib.parallel_tools import ParallelTools
 from datetime import datetime
 from fitsnap3lib.io.input import Config
 import numpy as np
-
+import itertools
 
 #config = Config()
 #pt = ParallelTools()
 
 try:
 
-    from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import *
+    from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import AcePot
 
     class Pace(Output):
 

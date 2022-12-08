@@ -19,51 +19,21 @@ try:
         """
         A class to use custom networks
 
-        ...
+        Args:
+            name: Name of the solver class.
 
-        Attributes
-        ----------
-        optimizer : torch.optim.Adam
-            Torch Adam optimization object
-
-        model : torch.nn.Module
-            Network model that maps descriptors to a per atom attribute
-
-        loss_function : torch.loss.MSELoss
-            Mean squared error loss function
-
-        learning_rate: float
-            Learning rate for gradient descent
-
-        scheduler: torch.optim.lr_scheduler.ReduceLROnPlateau
-            Learning rate scheduler
-
-        device : torch.nn.Module (None)
-            Accelerator device
-
-        training_data: torch.utils.data.Dataset
-            Torch dataset for loading in pieces of the A matrix
-
-        training_loader: torch.utils.data.DataLoader
-            Data loader for loading in datasets
-
-        Methods
-        -------
-        create_datasets():
-            Creates the dataset to be used for training and the data loader for the batch system.
-
-        perform_fit():
-            Performs the pytorch fitting for a lammps potential
+        Attributes:
+            optimizer (:obj:`torch.optim.Adam`): Torch Adam optimization object
+            model (:obj:`torch.nn.Module`): Network model that maps descriptors to a per atom attribute
+            loss_function (:obj:`torch.loss.MSELoss`): Mean squared error loss function
+            learning_rate (:obj:`float`): Learning rate for gradient descent
+            scheduler (:obj:`torch.optim.lr_scheduler.ReduceLROnPlateau`): Learning rate scheduler
+            device: Accelerator device
+            training_data (:obj:`torch.utils.data.Dataset`): Torch dataset for training
+            training_loader (:obj:`torch.utils.data.DataLoader`): Data loader for loading in datasets
         """
 
         def __init__(self, name):
-            """
-            Initializes attributes for the pytorch solver.
-
-                Parameters:
-                    name : Name of solver class
-
-            """
             super().__init__(name, linear=False)
 
             self.pt = ParallelTools()
@@ -79,14 +49,16 @@ try:
             self.multi_element_option = self.config.sections["NETWORK"].multi_element_option
             if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
                 self.num_elements = self.config.sections["CUSTOM"].numtypes
+                self.num_radial = self.config.sections["CUSTOM"].num_radial
+                self.num_3body = self.config.sections["CUSTOM"].num_3body
                 self.num_desc_per_element = self.config.sections["CUSTOM"].num_descriptors/self.num_elements
                 self.num_desc = self.config.sections["CUSTOM"].num_descriptors
                 self.cutoff = self.config.sections["CUSTOM"].cutoff
 
+
             self.dtype = self.config.sections["NETWORK"].dtype
             self.layer_sizes = self.config.sections["NETWORK"].layer_sizes
             if self.layer_sizes[0] == "num_desc":
-                #assert (Section.num_desc % self.num_elements == 0)
                 self.layer_sizes[0] = int(self.num_desc)
             self.layer_sizes = [int(layer_size) for layer_size in self.layer_sizes]
 
@@ -100,10 +72,10 @@ try:
                     self.networks.append(create_torch_network(self.layer_sizes))
 
             self.optimizer = None
-            self.model = FitTorch(self.networks, #config.sections["PYTORCH"].networks,
+            self.model = FitTorch(self.networks,
                                   self.num_desc,
-                                  self.energy_weight,
-                                  self.force_weight,
+                                  self.num_radial,
+                                  self.num_3body,
                                   self.cutoff,
                                   self.num_elements,
                                   self.multi_element_option,
@@ -189,6 +161,8 @@ try:
 
                 config.neighlist = self.pt.shared_arrays['neighlist'].array[indx_neighlist_low:indx_neighlist_high,0:2]
                 config.xneigh = self.pt.shared_arrays['xneigh'].array[indx_neighlist_low:indx_neighlist_high, :]
+                config.transform_x = self.pt.shared_arrays['transform_x'].array[indx_neighlist_low:indx_neighlist_high, :]
+                assert(np.all(np.round(config.xneigh,6) == np.round(config.transform_x + config.x[config.neighlist[:,1].astype(np.int),:],6)) )
 
                 indx_natoms_low += config.natoms
                 indx_forces_low += 3*config.natoms
@@ -253,10 +227,6 @@ try:
 
                 # standardization
                 # need to perform on all network types in the model
-                # TODO for pairwise networks: move this somewhere else, since we don't yet have the descriptors.
-                # TODO perhaps move this to wherever we calculate the descriptors?
-                # TODO we should only have to calculate pairwise descriptors once in order to do this.
-                # TODO only standardize the descriptors, not the derivatives
 
                 inv_std = 1/np.std(self.pt.shared_arrays['descriptors'].array, axis=0)
                 mean_inv_std = np.mean(self.pt.shared_arrays['descriptors'].array, axis=0) * inv_std
@@ -294,8 +264,6 @@ try:
             target_energy_plot_val = []
             model_energy_plot_val = []
             natoms_per_config = [] # stores natoms per config for calculating eV/atom errors later.
-            #for epoch in range(self.config.sections['NETWORK'].num_epochs):
-            #    print(f"----- epoch: {epoch}")
             for epoch in range(self.config.sections['NETWORK'].num_epochs):
                 print(f"----- epoch: {epoch}")
                 start = time()
@@ -308,6 +276,7 @@ try:
                 for i, batch in enumerate(self.training_loader):
                     positions = batch['x'].to(self.device).requires_grad_(True)
                     xneigh = batch['xneigh'].to(self.device)
+                    transform_x = batch['transform_x'].to(self.device)
                     atom_types = batch['t'].to(self.device)
                     targets = batch['y'].to(self.device).requires_grad_(True)
                     target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
@@ -318,9 +287,10 @@ try:
                     neighlist = batch['neighlist'].to(self.device)
                     numneigh = batch['numneigh'].to(self.device)
                     unique_i = batch['unique_i'].to(self.device)
+                    unique_j = batch['unique_j'].to(self.device)
                     testing_bools = batch['testing_bools']
-                    (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms, 
-                                                  atom_types, unique_i, self.device)
+                    (energies,forces) = self.model(positions, neighlist, transform_x, 
+                                                   indices, num_atoms, atom_types, unique_i, unique_j, self.device)
                     energies = torch.div(energies,num_atoms)
 
                     # ravel the forces for calculating loss
@@ -379,6 +349,7 @@ try:
                 for i, batch in enumerate(self.validation_loader):
                     positions = batch['x'].to(self.device).requires_grad_(True)
                     xneigh = batch['xneigh'].to(self.device)
+                    transform_x = batch['transform_x'].to(self.device)
                     atom_types = batch['t'].to(self.device)
                     targets = batch['y'].to(self.device).requires_grad_(True)
                     target_forces = batch['y_forces'].to(self.device).requires_grad_(True)
@@ -389,9 +360,10 @@ try:
                     neighlist = batch['neighlist'].to(self.device)
                     numneigh = batch['numneigh'].to(self.device)
                     unique_i = batch['unique_i'].to(self.device)
+                    unique_j = batch['unique_j'].to(self.device)
                     testing_bools = batch['testing_bools']
-                    (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms, 
-                                                  atom_types, unique_i, self.device)
+                    (energies,forces) = self.model(positions, neighlist, transform_x, 
+                                                   indices, num_atoms, atom_types, unique_i, unique_j, self.device)
                     energies = torch.div(energies,num_atoms)
 
                     # ravel the forces for calculating loss
@@ -468,6 +440,7 @@ try:
             if (self.force_weight != 0.0):
 
                 # print target and model forces
+
                 # training
                 target_force_plot = np.concatenate(target_force_plot)
                 model_force_plot = np.concatenate(model_force_plot)
@@ -487,6 +460,7 @@ try:
             if (self.energy_weight != 0.0):
 
                 # print target and model energies
+
                 # training
                 target_energy_plot = np.concatenate(target_energy_plot)
                 model_energy_plot = np.concatenate(model_energy_plot)
@@ -518,11 +492,7 @@ try:
 
             self.pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
             
-            #if 'lammps.mliap' in sys.modules:
             self.model.write_lammps_torch(self.config.sections['NETWORK'].output_file)
-            #else:
-            #    print("Warning: This interpreter is not compatible with python-based mliap for LAMMPS. If you are using a Mac please make sure you have compiled python from source with './configure --enabled-shared' ")
-            #    print("Warning: FitSNAP will continue without ML-IAP")
             
             self.fit = None
 
@@ -530,26 +500,17 @@ try:
             """
             Evaluates energies and forces on configs for testing purposes. 
 
-            Attributes
-            ----------
-            option : int
-                1 - evaluate energies/forces for all configs separately
-                2 - evaluate energies/forces using the dataloader/batch procedure
-
-            standardize_bool : bool
-                True - Standardize weights
-                False - Do not standardize weights, useful if you are comparing inputs on a previously
-                        standardized model
-
-            dtype : torch.dtype
-                Optional override of the global dtype
+            Args:
+            option (int): 1 if evaluating energies/forces for all configs separately.
+                2 if evaluating energies/forces using the dataloader/batch procedure
+            standardize_bool (bool): True will standardize the weights. Not standardizing is useful 
+                if comparing inputs on a previously trained standardized model, such as when doing 
+                finite difference checks. 
+            dtype (torch.dtype): Optional override of the global dtype.
             """
 
-            print("^^^^^ evaluate config")
-            #standardize_bool = True # TODO fix this later
             @self.pt.sub_rank_zero
             def decorated_evaluate_configs():
-                #self.create_datasets()
 
                 if (standardize_bool):
                     if self.config.sections['NETWORK'].save_state_input is None:
@@ -594,18 +555,14 @@ try:
 
                     if (evaluate_all):
 
-                        print("^^^^^ EVALUATING ALL")
-
                         energies_configs = []
                         forces_configs = []
-                        #config=self.configs[config_index]
-
-                        #print(f"^^^^^ {config.filename}")
                         for config in self.configs:
                           
                             #positions = torch.tensor(config.positions).requires_grad_(True)
                             positions = torch.tensor(config.x).requires_grad_(True)
                             xneigh = torch.tensor(config.xneigh)
+                            transform_x = torch.tensor(config.transform_x)
                             atom_types = torch.tensor(config.types).long()
                             target = torch.tensor(config.energy).reshape(-1)
                             # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
@@ -617,6 +574,7 @@ try:
                             # convert quantities to desired dtype
                       
                             positions = positions.to(dtype)
+                            transform_x = transform_x.to(dtype)
                             target = target.to(dtype)
                             weights = weights.to(dtype)
                             target_forces = target_forces.to(dtype)
@@ -624,14 +582,15 @@ try:
                             # make indices upon which to contract per-atom energies for this config
 
                             config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
-                            #indices = torch.repeat_interleave(config_indices, num_atoms)
                             indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
                             unique_i = neighlist[:,0]
+                            unique_j = neighlist[:,1]
                             
                             # need to unsqueeze num_atoms to get a tensor of definable size
 
-                            (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms.unsqueeze(0), 
-                                                          atom_types, unique_i, self.device, dtype)
+                            (energies,forces) = self.model(positions, neighlist, transform_x, 
+                                                          indices, num_atoms.unsqueeze(0), 
+                                                          atom_types, unique_i, unique_j, self.device, dtype)
 
                             energies_configs.append(energies)
                             forces_configs.append(forces)
@@ -642,13 +601,11 @@ try:
                         energies_configs = []
                         forces_configs = []
                         config=self.configs[config_index]
-
-                        #print(f"^^^^^ {config.filename}")
-                        #for config in self.configs:
                           
                         #positions = torch.tensor(config.positions).requires_grad_(True)
                         positions = torch.tensor(config.x).requires_grad_(True)
                         xneigh = torch.tensor(config.xneigh)
+                        transform_x = torch.tensor(config.transform_x)
                         atom_types = torch.tensor(config.types).long()
                         target = torch.tensor(config.energy).reshape(-1)
                         # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
@@ -660,6 +617,7 @@ try:
                         # convert quantities to desired dtype
                   
                         positions = positions.to(dtype)
+                        transform_x = transform_x.to(dtype)
                         target = target.to(dtype)
                         weights = weights.to(dtype)
                         target_forces = target_forces.to(dtype)
@@ -667,14 +625,15 @@ try:
                         # make indices upon which to contract per-atom energies for this config
 
                         config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
-                        #indices = torch.repeat_interleave(config_indices, num_atoms)
                         indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
                         unique_i = neighlist[:,0]
+                        unique_j = neighlist[:,1]
                         
                         # need to unsqueeze num_atoms to get a tensor of definable size
 
-                        (energies,forces) = self.model(positions, neighlist, xneigh, indices, num_atoms.unsqueeze(0), 
-                                                      atom_types, unique_i, self.device, dtype)
+                        (energies,forces) = self.model(positions, neighlist, transform_x, 
+                                                       indices, num_atoms.unsqueeze(0), 
+                                                       atom_types, unique_i, unique_j, self.device, dtype)
 
                         energies_configs.append(energies)
                         forces_configs.append(forces)

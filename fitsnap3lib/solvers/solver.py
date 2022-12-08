@@ -75,6 +75,15 @@ class Solver:
         assert not (self.config.sections['CALCULATOR'].linear and self.config.sections['CALCULATOR'].per_atom_energy and self.config.args.perform_fit)
 
     def _ncount_mae_rmse_rsq_unweighted_and_weighted(self, g):
+        """
+        Calculate errors given a dataframe.
+
+        Args:
+            g: Pandas dataframe
+
+        Returns:
+            A Pandas series of floats, although some quantities like nconfig are cast to int later.
+        """
         res = g['truths'] - g['preds']
         mae = np.mean(abs(res))
         ssr = np.square(res).sum()
@@ -103,32 +112,67 @@ class Solver:
             if not self.linear:
                 self.pt.single_print("No Error Analysis for non-linear potentials")
                 return
+
+            # collect remaining arrays to write dataframe
+
             self.df = DataFrame(self.pt.shared_arrays['a'].array)
             self.df['truths'] = self.pt.shared_arrays['b'].array.tolist()
-            self.df['preds'] = self.pt.shared_arrays['a'].array @ self.fit
+            if self.fit is not None:
+                self.df['preds'] = self.pt.shared_arrays['a'].array @ self.fit
             self.df['weights'] = self.pt.shared_arrays['w'].array.tolist()
             for key in self.pt.fitsnap_dict.keys():
-                if isinstance(self.pt.fitsnap_dict[key], list) and len(self.pt.fitsnap_dict[key]) == len(self.df.index):
+                if isinstance(self.pt.fitsnap_dict[key], list) and \
+                    len(self.pt.fitsnap_dict[key]) == len(self.df.index):
                     self.df[key] = self.pt.fitsnap_dict[key]
             if self.config.sections["EXTRAS"].dump_dataframe:
                 self.df.to_pickle(self.config.sections['EXTRAS'].dataframe_file)
-            grouped = self.df.groupby(['Groups', 'Testing', 'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted) #return data for each group
-            grouped = concat({'Unweighted':grouped[['ncount', 'mae', 'rmse', 'rsq']], \
-                     'weighted':grouped[['w_ncount', 'w_mae', 'w_rmse', 'w_rsq']].\
-                      rename(columns={'w_ncount':'ncount', 'w_mae':'mae', 'w_rmse':'rmse', 'w_rsq':'rsq'})}, \
-                      names=['Weighting']).reorder_levels(['Groups','Weighting','Testing', 'Row_Type']).sort_index() #reformat the weighted and unweighted data into separate rows
-            all = self.df.groupby(['Testing', 'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted) #return data for dataset as a whole
-            all = concat({'Unweighted':all[['ncount', 'mae', 'rmse', 'rsq']], \
-                 'weighted':all[['w_ncount', 'w_mae', 'w_rmse', 'w_rsq']].\
-                  rename(columns={'w_ncount':'ncount', 'w_mae':'mae', 'w_rmse':'rmse', 'w_rsq':'rsq'})}, \
-                  names=['Weighting']).reorder_levels(['Weighting','Testing', 'Row_Type']).sort_index() #reformat the weighted and unweighted data into separate rows
-            self.errors = concat([concat({'*ALL':all}, names=['Groups']), grouped]) #combine dataframes
-            self.errors.ncount = self.errors.ncount.astype(int) #the _ncount_mae_rmse_rsq_unweighted_and_weighted() function returns a series of all floats, but these are just ints
-            self.errors.index.rename(["Group", "Weighting", "Testing", "Subsystem", ], inplace=True) #matching legacy format
-            self.errors.index = self.errors.index.set_levels(['Testing' if e else 'Training' for e in self.errors.index.levels[2]], level=2) #so it prints out pretty in markdown later
-            
-            if self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and self.config.sections["BISPECTRUM"].bzeroflag:
-                self._offset()
+
+            # proceed with error analysis if doing a fit
+
+            if self.fit is not None:
+
+                #return data for each group
+
+                grouped = self.df.groupby(['Groups', \
+                    'Testing', \
+                    'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
+
+                # reformat the weighted and unweighted data into separate rows
+
+                grouped = concat({'Unweighted':grouped[['ncount', 'mae', 'rmse', 'rsq']], \
+                    'weighted':grouped[['w_ncount', 'w_mae', 'w_rmse', 'w_rsq']].\
+                        rename(columns={'w_ncount':'ncount', 'w_mae':'mae', 'w_rmse':'rmse', 'w_rsq':'rsq'})}, \
+                    names=['Weighting']).reorder_levels(['Groups','Weighting','Testing', 'Row_Type']).sort_index()
+
+                # return data for dataset as a whole
+
+                all = self.df.groupby(['Testing', 'Row_Type']).\
+                    apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
+
+                # reformat the weighted and unweighted data into separate rows
+
+                all = concat({'Unweighted':all[['ncount', 'mae', 'rmse', 'rsq']], \
+                    'weighted':all[['w_ncount', 'w_mae', 'w_rmse', 'w_rsq']].\
+                        rename(columns={'w_ncount':'ncount', 'w_mae':'mae', 'w_rmse':'rmse', 'w_rsq':'rsq'})}, \
+                        names=['Weighting']).\
+                            reorder_levels(['Weighting','Testing', 'Row_Type']).sort_index()
+
+                # combine dataframes
+
+                self.errors = concat([concat({'*ALL':all}, names=['Groups']), grouped])
+                self.errors.ncount = self.errors.ncount.astype(int)
+                self.errors.index.rename(["Group", "Weighting", "Testing", "Subsystem", ], inplace=True)
+
+                # format for markdown printing
+
+                self.errors.index = self.errors.index.set_levels(['Testing' if e else 'Training' \
+                    for e in self.errors.index.levels[2]], \
+                        level=2)
+                
+                if (self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and \
+                    self.config.sections["BISPECTRUM"].bzeroflag):
+                    self._offset()
+
         decorated_error_analysis()
 
     def _all_error(self):

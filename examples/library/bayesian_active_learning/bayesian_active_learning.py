@@ -637,6 +637,7 @@ if rank==0:
                 ax.set_xscale("log")
                 ax.set_yscale("log")
                 plt.savefig('loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
+                plt.close()
                 print('loop uncertainty error correlation plotting', n_loop, 'done')
                 current_timestamp =datetime.now()
                 print(current_timestamp - last_timestamp)
@@ -771,6 +772,23 @@ if rank==0:
 if parallel:
     comm.Barrier()
 
+plot_stuff = True
+if plot_stuff:
+    if rank==0:
+        for metric in ['mae', 'rmse']:
+            for ind in error_log_list[-1].loc['testing_json_group', 'Unweighted', 'Testing'].index:  #'Energy', 'Force', 'Stress'
+                x = [d.loc['*ALL', 'Unweighted', 'Training', ind]['ncount'] for d in error_log_list]
+                y = [d.loc['testing_json_group', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
+                plt.figure()
+                plt.loglog(x,y, color='blue', label='Testing', marker='o',markersize=1)
+                y = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
+                plt.loglog(x,y, color='dodgerblue', label='Training', marker='o',markersize=1)
+                plt.ylabel(metric)
+                plt.xlabel('# of training datapoints of same type')
+                plt.title(ind)
+                plt.savefig('convergence_'+ind+'_'+metric+'.png')
+                plt.close()
+                
 plot_stuff = False
 if plot_stuff:
     if rank==0:
@@ -789,3 +807,4 @@ if plot_stuff:
 
 if parallel:
     comm.Barrier()
+    

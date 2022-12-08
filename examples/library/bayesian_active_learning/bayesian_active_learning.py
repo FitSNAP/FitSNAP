@@ -11,6 +11,7 @@ import inspect
 import copy 
 import pandas as pd
 #import gc
+import logging
 
 ##usage: python -i bayesian_active_learning.py --fitsnap_in Ta-example.in
 
@@ -62,11 +63,11 @@ def deepcopy_pt_internals(snap):
                 print('original ', array_name, ' has been deleted')
             #print('rank', rank, 'reports pt arrays existing as:', pt.shared_arrays)
         else: #just copy over the little lists on the head proc
-            if rank == 0:
-                print(pt.shared_arrays[array_name].array)
-                print(len(array_dims))
-                print(array_dims)
-                print(array_name+'_copy')
+            #if rank == 0:
+            #    print(pt.shared_arrays[array_name].array)
+            #    print(len(array_dims))
+            #    print(array_dims)
+            #    print(array_name+'_copy')
             if len(array_dims) == 2:
                 pt.create_shared_array(array_name+'_copy', array_dims[0], array_dims[1], dtype='i')
             elif len(array_dims) == 1:
@@ -615,6 +616,10 @@ if rank==0:
         print(current_timestamp - last_timestamp)
         last_timestamp = current_timestamp
 
+        # this get's activated in io/outputs/output.py
+        # so we need to deactivate it
+        logging.getLogger('matplotlib.ticker').disabled = True
+        logging.getLogger('matplotlib.font_manager').disabled = True
         #if plotting, plot the correlation between errors (if known) and uncertainty
         if plot_stuff:
             #this only makes sense if you actually have the truth values in your 'unlabeled pool'
@@ -780,9 +785,9 @@ if plot_stuff:
                 x = [d.loc['*ALL', 'Unweighted', 'Training', ind]['ncount'] for d in error_log_list]
                 y = [d.loc['testing_json_group', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
                 plt.figure()
-                plt.loglog(x,y, color='blue', label='Testing', marker='o',markersize=1)
+                plt.loglog(x,y, color='blue', label='Testing', marker='o',markersize=10)
                 y = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
-                plt.loglog(x,y, color='dodgerblue', label='Training', marker='o',markersize=1)
+                plt.loglog(x,y, color='dodgerblue', label='Training', marker='o',markersize=10)
                 plt.ylabel(metric)
                 plt.xlabel('# of training datapoints of same type')
                 plt.title(ind)

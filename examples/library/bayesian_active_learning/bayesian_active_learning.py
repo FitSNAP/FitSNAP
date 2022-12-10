@@ -400,6 +400,9 @@ if parallel:
 config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
 directory = config.sections['PATH'].datapath.split('/')[0:-1]
 config.sections['PATH'].datapath = '/'.join(directory + ['unlabeled_JSON'])
+for key in list(config.sections['GROUPS'].group_table.keys()):
+    if not path.isdir(config.sections['PATH'].datapath+'/'+key):
+        config.sections['GROUPS'].group_table.pop(key)
 
 # create a fitsnap object - uses the previously defined pt and config objects!
 from fitsnap3lib.fitsnap import FitSnap
@@ -518,6 +521,10 @@ config.sections['SOLVER'].solver = 'ANL'
 if path.isdir(config.sections['PATH'].datapath+'/testing_json_group/'):
     config.sections['GROUPS'].group_table['testing_json_group'] = {'training_size': 0.0, 'testing_size': 1.0, 'eweight': 1.0, 'fweight': 1.0, 'vweight': 1.0}
 
+for key in list(config.sections['GROUPS'].group_table.keys()):
+    if not path.isdir(config.sections['PATH'].datapath+'/'+key):
+        config.sections['GROUPS'].group_table.pop(key)
+    
 # create a fitsnap object
 if parallel:
     comm.Barrier()

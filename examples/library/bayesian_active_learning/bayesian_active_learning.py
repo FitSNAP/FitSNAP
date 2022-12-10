@@ -18,7 +18,25 @@ plot_stuff = True
 if plot_stuff:
     import matplotlib.pyplot as plt
 known_truth_for_unlabeled = True
-    
+
+#==============================
+class AL_settings_class():
+    """
+    This loads all the settings needed from the config_parser object, filling them with default values if they don't exist. 
+    It doesn't check for any extraneous or nonsensical values.
+    """
+    def __init__(self, AL_config):
+        self.number_of_iterations = AL_config.getint('GENERAL', 'number_of_iterations', fallback = 10)
+        self.E_weight = AL_config.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)
+        self.F_weight = AL_config.getfloat('OBJECTIVE', 'F_weight', fallback = 1.0)
+        self.S_weight = AL_config.getfloat('OBJECTIVE', 's_weight', fallback = 1.0)
+        self.EFS_reweighting = [self.E_weight, self.F_weight, self.S_weight]
+        self.F_agg_function = AL_config.get('OBJECTIVE', 'F_aggregation_function', fallback = None)
+        self.S_agg_function = AL_config.get('OBJECTIVE', 'S_aggregation_function', fallback = None)
+        self.FS_agg_functions = [self.F_agg_function, self.S_agg_function]
+        self.obj_function = AL_config.get('OBJECTIVE', 'objective_function', fallback = 'sum')
+        self.weight_by_relative_DFT_cost = AL_config.getboolean('OBJECTIVE', 'weight_by_relative_DFT_cost', fallback = True)
+        
 #==============================
 def deepcopy_pt_internals(snap):
     pt = snap.pt
@@ -107,7 +125,7 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
             nadd: int, the number of structures to choose
             EFS_reweighting = weights to apply to the uncertainty of E, F, and S rows - possibly also allow % or other modes than straight multiplicative weights
             FS_agg_functions = functions to apply to F, S rows before inputting into objective function - format is string name of any numpy function, or None - e.g. 'mean'
-            objective_function = function to apply to each structure's collection of (potentially modified by above variables) rows; options are 'max' and 'average'
+            objective_function = function to apply to each structure's collection of (potentially modified by above variables) rows; options are 'sum, 'max', and 'average'
             norm_force_components = whether to turn the x,y,z components of the forces into a force magnitude (and average the A matrix values TODO: better options here) - also might be better to do sum than 2-norm
             weight_by_relative_DFT_cost: scale each structures objective function based off of 1/(number of atoms)^3 - rough approximation of DFT cost scaling
         outputs:
@@ -171,11 +189,13 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
     return ranked_structures#, x_vector_for_each_structure
 #=======================================================================
 class VASP_runner():
-    def __init__(self, AL_settings):
+    def __init__(self, AL_config, AL_settings):
+        self.config = AL_config
         self.settings = AL_settings
         timestamp = datetime.now()
         self.VASP_working_directory = timestamp.strftime('%Y-%m-%d__%H-%M-%S')+'__run_VASP_calculations'
-        self.settings['VASP']['VASP_working_directory'] = self.VASP_working_directory
+        self.config['VASP']['VASP_working_directory'] = self.VASP_working_directory
+        self.settings.VASP_working_directory = self.VASP_working_directory
         mkdir(self.VASP_working_directory)
         self.job_count = 0
         self.nodes = int(getenv('nodes', 1))
@@ -183,9 +203,9 @@ class VASP_runner():
         self.cores_per_node = int(getenv('cores', 1))
         print('The VASP_runner class found it has', self.cores_per_node, 'cores to use per node. If incorrect, make sure to export the "cores" environment variable.')
         
-        self.VASP_executable_path = self.settings.get('VASP', 'VASP_executable_path',
+        self.settings.VASP_executable_path = self.config.get('VASP', 'VASP_executable_path',
                                                       fallback='/projects/vasp/2020-build/clusters/vasp6.1.1/bin/vasp_std') # location on Attaway and similar; will need to be set on other clusters
-        self.VASP_kpoints_auto_generation_Rk = self.settings.get('VASP', 'VASP_kpoints_auto_generation_Rk',
+        self.settings.VASP_kpoints_auto_generation_Rk = self.config.getint('VASP', 'VASP_kpoints_auto_generation_Rk',
                                                                  fallback = 30)  #can go as low as 10 for large gap insulators or as high as 100 for metals; see https://www.vasp.at/wiki/index.php/KPOINTS
         ## TODO: add option to read from training data and match if value specified in the training set
 
@@ -255,7 +275,7 @@ class VASP_runner():
             element_POTCAR_paths = []
             for element in atom_type_ordered_list:
                 try:
-                    element_POTCAR_paths.append(self.settings['VASP'][element+'_POTCAR_location']) 
+                    element_POTCAR_paths.append(self.config['VASP'][element+'_POTCAR_location']) 
                 except: #failure to find POTCAR location in the inputs for the given atom type
                     print("ERROR! No POTCAR filepath give for atoms of type", element)
                     print("You must include a filepath in the Active Learning input file under the VASP heading named", str(element)+"_POTCAR_location")
@@ -272,7 +292,7 @@ class VASP_runner():
                     with open('../../KPOINTS', 'rb') as source_KPOINTS:
                         copyfileobj(source_KPOINTS, KPOINTS)
             else:
-                print('Creating a KPOINTS file with an Rk of', self.settings['VASP']["VASP_kpoints_auto_generation_Rk"])
+                print('Creating a KPOINTS file with an Rk of', self.settings.VASP_kpoints_auto_generation_Rk)
                 with open('KPOINTS', 'w') as KPOINTS:
                     KPOINTS.write("K-Points\n 0\n Auto\n ")
                     KPOINTS.write(str(self.settings['VASP']["VASP_kpoints_auto_generation_Rk"])+"\n")
@@ -300,7 +320,7 @@ class VASP_runner():
                     ## TODO: The ENCUT should be determined once and saved for all future passes through the oracle.
                     ## TODO: After setting up ability to use default or file-read POTCARs, will need to adjust this section
                     largest_ENMAX = 0
-                    for dict_key, dict_val in self.settings['VASP'].items():
+                    for dict_key, dict_val in self.config['VASP'].items():
                         if dict_key.endswith("_POTCAR_location"):
                             with open(dict_val) as e_POT_file:
                                 for line in e_POT_file:
@@ -321,7 +341,7 @@ class VASP_runner():
                     INCAR.write("KPAR = "+str(self.nodes))
                     
             ## run VASP in current instance
-            args = ['mpiexec', '--bind-to', 'core', '--npernode', str(self.cores_per_node), '--n', str(self.nodes*self.cores_per_node), self.input_dict['VASP_executable_path']]
+            args = ['mpiexec', '--bind-to', 'core', '--npernode', str(self.cores_per_node), '--n', str(self.nodes*self.cores_per_node), self.settings.VASP_executable_path]
             print("running command:", args)
             run(args)
                 
@@ -364,9 +384,9 @@ if rank == 0:
     print(args.fitsnap_in)
     print("Active Learning input script:")
     print(args.AL_in)
-AL_settings = configparser.ConfigParser()
-AL_settings.read(args.AL_in)
-
+AL_config = configparser.ConfigParser()
+AL_config.read(args.AL_in)
+AL_settings = AL_settings_class(AL_config)
 
 if rank==0:
     print("----- main script")
@@ -555,7 +575,7 @@ if rank==0:
     print(current_timestamp - last_timestamp)
     last_timestamp = current_timestamp
     error_log_list = []
-    for n_loop in range(10):
+    for n_loop in range(AL_settings.number_of_iterations):
         snap.solver.perform_fit()
         print('loop fit', n_loop, 'done')
         current_timestamp =datetime.now()
@@ -606,6 +626,7 @@ if rank==0:
                 plt.xlabel('abs error')
                 plt.title('Active Learning Step ' + str(n_loop))
                 plt.savefig('uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
+                plt.close()
                 plt.figure()
                 ax = plt.gca()
                 plt.scatter(abs(errors), np.sqrt(diag))
@@ -623,7 +644,8 @@ if rank==0:
                 
         ##implement the objective function here to pick some structures - ID by group and config
         #ranked_structures, x_vector_for_each_structure = objective_function(unlabeled_df, num_col)
-        ranked_structures = objective_function(unlabeled_df)
+        ranked_structures = objective_function(unlabeled_df, EFS_reweighting = AL_settings.EFS_reweighting, FS_agg_functions=AL_settings.FS_agg_functions, objective_function = AL_settings.obj_function, \
+                                               weight_by_relative_DFT_cost=AL_settings.weight_by_relative_DFT_cost)
 
         #if use_fitsnap_coeffs_to_scale_bispectrum_representation:
         #    x_vector_for_each_structure = x_vector_for_each_structure * snap.solver.fit
@@ -764,23 +786,24 @@ if plot_stuff:
                 plt.ylabel(metric)
                 plt.xlabel('# of training datapoints of same type')
                 plt.title(ind)
+                plt.legend()
                 plt.savefig('convergence_'+ind+'_'+metric+'.png')
                 plt.close()
                 
-plot_stuff = False
-if plot_stuff:
-    if rank==0:
-        EFS_used = []
-        if snap.config.sections['CALCULATOR'].energy:
-            EFS_used.append('Energy')
-        if snap.config.sections['CALCULATOR'].force:
-            EFS_used.append('Force')
-        if snap.config.sections['CALCULATOR'].stress:
-            EFS_used.append('Stress')
-        for quantity_type in EFS_used:
-            ncounts = [d.loc['testing_json_group', 'Unweighted', quantity_type]['ncount'] for d in error_log_list]
-            for error_metric in ['mae', 'rmse']:
-                error_metrics =  [d.loc['*ALL', 'Unweighted', quantity_type][error_metric] for d in error_log_list]
+#plot_stuff = False
+#if plot_stuff:
+#    if rank==0:
+#        EFS_used = []
+#        if snap.config.sections['CALCULATOR'].energy:
+#            EFS_used.append('Energy')
+#        if snap.config.sections['CALCULATOR'].force:
+#            EFS_used.append('Force')
+#        if snap.config.sections['CALCULATOR'].stress:
+#            EFS_used.append('Stress')
+#        for quantity_type in EFS_used:
+#            ncounts = [d.loc['testing_json_group', 'Unweighted', quantity_type]['ncount'] for d in error_log_list]
+#            for error_metric in ['mae', 'rmse']:
+#                error_metrics =  [d.loc['*ALL', 'Unweighted', quantity_type][error_metric] for d in error_log_list]
                 
 
 if parallel:

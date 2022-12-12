@@ -1,9 +1,18 @@
+"""
+Bayesian active learning script using the FitSNAP library.
+
+Usage:
+    python -m bayesian_active_learning.py --fitsnap_in Ta-example.in
+
+Variables in this script to change:
+    plot_stuff : determines whether uncertainties are plotted
+"""
+
 import numpy as np
 import configparser
 import argparse
 from datetime import datetime
 from os import chdir, mkdir, getenv, getcwd, path
-#from json import loads
 import json
 from subprocess import run
 from shutil import copyfileobj
@@ -12,14 +21,11 @@ import copy
 import pandas as pd
 import logging
 
-##usage: python -i bayesian_active_learning.py --fitsnap_in Ta-example.in
-
 plot_stuff = True
 if plot_stuff:
     import matplotlib.pyplot as plt
 known_truth_for_unlabeled = True
 
-#==============================
 class AL_settings_class():
     """
     This loads all the settings needed from the config_parser object, filling them with default values if they don't exist. 
@@ -41,14 +47,18 @@ class AL_settings_class():
         self.obj_function = AL_config.get('OBJECTIVE', 'objective_function', fallback = 'sum')
         self.weight_by_relative_DFT_cost = AL_config.getboolean('OBJECTIVE', 'weight_by_relative_DFT_cost', fallback = True)
         
-#==============================
 def deepcopy_pt_internals(snap):
+    """
+    Deep copy SNAP arrays from the parallel tools shared arrays.
+    """
     pt = snap.pt
-    #make our deepcopied arrays
     i1, i2 = pt.fitsnap_dict['sub_a_indices']
     i2 += 1  
     a_len = pt.shared_arrays['a'].array.shape[0]
-    shared_array_names = list(pt.shared_arrays.keys()) # must separate from the dictionary otherwise will throw a silent runtime error when the dictionary changes size
+
+    # obtain separated dictionary names else silent runtime error when dict changes size
+
+    shared_array_names = list(pt.shared_arrays.keys())
     for array_name in shared_array_names:
         array_dims = pt.shared_arrays[array_name].array.shape
         if array_dims[0] == a_len:
@@ -60,7 +70,9 @@ def deepcopy_pt_internals(snap):
                 raise Error('I did not code for more than 2d arrays.')
             if rank == 0:
                 print(array_name+'_copy has been instantiated')
-            #fill the cloned arrays - each processor should be doing the segment it originally handled
+
+            # fill the cloned arrays - each processor should be doing the segment it originally handled
+
             if parallel:
                 comm.Barrier()
             pt.shared_arrays[array_name+'_copy'].array[i1:i2] = copy.deepcopy(pt.shared_arrays[array_name].array[i1:i2])
@@ -75,7 +87,10 @@ def deepcopy_pt_internals(snap):
                 comm.Barrier()
             if rank == 0:
                 print('original ', array_name, ' has been deleted')
-        else: #just copy over the little lists on the head proc
+        else: 
+            
+            # just copy over the little lists on the head proc
+            
             if len(array_dims) == 2:
                 pt.create_shared_array(array_name+'_copy', array_dims[0], array_dims[1], dtype='i')
             elif len(array_dims) == 1:
@@ -95,7 +110,9 @@ def deepcopy_pt_internals(snap):
             if parallel:
                 comm.Barrier()
         
-    #copy our metadata - all of this is only on the head processor as process_configs() sent everything back to it with a calculator.collect_distrubuted_lists() call
+    # copy our metadata - all of this is only on the head processor as process_configs() sent 
+    # everything back to it with a calculator.collect_distrubuted_lists() call
+    
     if rank == 0:
         fictsnap_dict_metadata_lists = [name for name in pt.fitsnap_dict.keys() if type(pt.fitsnap_dict[name]) is list]
         for list_name in fictsnap_dict_metadata_lists:
@@ -117,34 +134,49 @@ def deepcopy_pt_internals(snap):
     if parallel:
         comm.Barrier()
 
-#==============================
-#def objective_function(df, A_matrix_columns, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[None, None], objective_function='sum', norm_force_components=False, weight_by_relative_DFT_cost = True):
+
 def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[None, None], objective_function='sum', norm_force_components=False, weight_by_relative_DFT_cost = True):
     """
     Evaluates an objective function on all structures within the pandas dataframe
     Returns ranked structures
-        
-        inputs:
-            df: pandas dataframe, output of FitSNAP with 'uncertainty' column added
-            nadd: int, the number of structures to choose
-            EFS_reweighting = weights to apply to the uncertainty of E, F, and S rows - possibly also allow % or other modes than straight multiplicative weights
-            FS_agg_functions = functions to apply to F, S rows before inputting into objective function - format is string name of any numpy function, or None - e.g. 'mean'
-            objective_function = function to apply to each structure's collection of (potentially modified by above variables) rows; options are 'sum, 'max', and 'average'
-            norm_force_components = whether to turn the x,y,z components of the forces into a force magnitude (and average the A matrix values TODO: better options here) - also might be better to do sum than 2-norm
-            weight_by_relative_DFT_cost: scale each structures objective function based off of 1/(number of atoms)^3 - rough approximation of DFT cost scaling
-        outputs:
-            chosen_structures: a pandas dataframe containing the group and config as multi-index of the top nadd structures 
+
+    Args:
+        df: pandas dataframe, output of FitSNAP with 'uncertainty' column added
+        nadd: int, the number of structures to choose
+        EFS_reweighting : weights to apply to the uncertainty of E, F, and S rows - possibly also 
+            allow % or other modes than straight multiplicative weights
+        FS_agg_functions : functions to apply to F, S rows before inputting into objective function 
+            - format is string name of any numpy function, or None - e.g. 'mean'
+        objective_function : function to apply to each structure's collection of (potentially 
+            modified by above variables) rows; options are 'sum, 'max', and 'average'
+        norm_force_components : whether to turn the x,y,z components of the forces into a force 
+            magnitude (and average the A matrix values)
+            TODO: better options here, might be better to do sum than 2-norm
+        weight_by_relative_DFT_cost: scale each structures objective function based off of 
+            1/(number of atoms)^3 - rough approximation of DFT cost scaling
+    
+    Returns:
+        chosen_structures: a pandas dataframe containing the group and config as multi-index of 
+        the top nadd structures 
     """
     m_df = df.copy()  # the dataframe to be manipulated below, copying to be safe
 
-    ## first, get count of number of atoms in each structure from number of forces
-    ## can only be done this way if fitting forces - could rewrite to pull data from elsewhere in snap object for energy only fitting
+    """
+    First, get count of the number of atoms in each structure from number of forces.
+    Can only be done this way if fitting forces, could rewrite to pull data from elsewhere in 
+    snap object for energy only fitting.
+    """
+
     if weight_by_relative_DFT_cost:
         m_df = m_df.join((m_df[m_df["Row_Type"]=="Force"].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int).rename('num_atoms'), on=['Groups', 'Configs'])
         m_df['relative_cost_factor'] = m_df['num_atoms']**3
         m_df['uncertainty'] = m_df['uncertainty']/m_df['relative_cost_factor']
         
-    ## second, convert x,y,z components of forces on each atom to force magnitudes (if desired) - note, might be better to do sum rather than 2-norm
+    """
+    Second, convert x,y,z components of forces on each atom to force magnitudes (if desired).
+    Note, might better to do sum rather than 2-norm.
+    """
+
     if norm_force_components:
         d3 = {i : 'mean' for i in A_matrix_columns}   ## averaging the A matrix elements of the three force component rows TODO: give more options for how to handle this
         d2 = {i : 'first' for i in (set(df.columns) - set(A_matrix_columns) - {'Groups', 'Configs', 'Atom_I', 'uncertainty'})} ##grabbing the remaining columns - should all be the same for each atom - Rowtype, weights, test/train identifier
@@ -152,30 +184,42 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
         m_df = pd.concat(m_df[m_df["Row_Type"].isin(["Energy", "Stress"])], FM_df)
         del FM_df
         
-    ## third, apply any desired aggregating functions to the force magnitudes/components and stress components
+    """
+    Third, apply any desired aggregating functions to the force magnitudes/components and stress 
+    components.
+    """
+
     if FS_agg_functions[0] or FS_agg_functions[1]:
         d2 = {i : 'first' for i in set(df.columns) - set(A_matrix_columns) - {'Groups', 'Configs', 'Atom_I', 'uncertainty'}}
         if FS_agg_functions[0]:
             d1 = {'uncertainty' : getattr(np, FS_agg_functions[0])}
-            F_df = m_df[m_df["Row_Type"] == "Force"].groupby(['Groups', 'Configs'], observed=True).agg(d1|d2)  #A matrix terms do not directly correlate to structure aggregated uncertainty predictions
+            # A matrix terms do not directly correlate to structure aggregated uncertainty predictions
+            F_df = m_df[m_df["Row_Type"] == "Force"].groupby(['Groups', 'Configs'], observed=True).agg(d1|d2) 
         else:
             F_df = m_df[m_df["Row_Type"] == "Force"]
             
         if FS_agg_functions[1]:
             d1 = {'uncertainty' : getattr(np, FS_agg_functions[1])}
-            S_df = m_df[m_df["Row_Type"] == "Stress"].groupby(['Groups', 'Configs'], observed=True).agg(d1|d2)  #A matrix terms do not directly correlate to structure aggregated uncertainty predictions
+            # A matrix terms do not directly correlate to structure aggregated uncertainty predictions
+            S_df = m_df[m_df["Row_Type"] == "Stress"].groupby(['Groups', 'Configs'], observed=True).agg(d1|d2)
         else:
             S_df = m_df[m_df["Row_Type"] == "Stress"]        
         m_df = pd.concat([m_df[m_df["Row_Type"]=="Energy"], F_df, S_df])
         del F_df
         del S_df
         
-    ## fourth, apply any weighting effects to the EFS uncertainty predictions
+    """
+    Fourth, apply an weighting effects to the EFS uncertainty predictions.
+    """
+
     conditions = [m_df['Row_Type']=="Energy", m_df['Row_Type']=="Force", m_df['Row_Type']=="Stress"]
     values = EFS_reweighting
     m_df['uncertainty'] *= np.select(conditions, values)
 
-    ## last, apply the objective function on the transformed df
+    """
+    Last, apply the objective function on the transformed df
+    """
+
     if objective_function=='max': #simplest case - return the highest uncertainty row in each structure, taking the top nadd structures
         ranked_structures = m_df.sort_values("uncertainty", ascending=False, key=abs).groupby(['Groups', 'Configs'], observed=True, sort=False).first()
         #x_vector_for_each_structure = ranked_structures[A_matrix_columns].values  ## TODO: will need to update how I'm grabbing this when aggregating F or S rows
@@ -191,7 +235,8 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
         print("Specified objective function does not match any coded options!")
 
     return ranked_structures#, x_vector_for_each_structure
-#=======================================================================
+
+
 class VASP_runner():
     def __init__(self, AL_config, AL_settings):
         self.config = AL_config
@@ -273,9 +318,10 @@ class VASP_runner():
                         if atom_types_list[i] == atom_type_ordered_list[j]: #if atom is the type of atom currently looking for
                             poscar.write(str(current_positions[i][0]) + ' ' + str(current_positions[i][1]) + ' ' + str(current_positions[i][2]) + '\n') #then add atom to POSCAR file
 
-            ## make POTCAR - currently relying on user input paths
-            ## TODO: add in option for defaults for elements and just a path to the VASP pseudopotential library
-            ## TODO: add in ability to read training JSONs and parse to see if they have POTCAR data
+            # make POTCAR - currently relying on user input paths
+            # TODO: add in option for defaults for elements and just a path to the VASP pseudopotential library
+            # TODO: add in ability to read training JSONs and parse to see if they have POTCAR data
+
             element_POTCAR_paths = []
             for element in atom_type_ordered_list:
                 try:
@@ -289,7 +335,8 @@ class VASP_runner():
                     with open(elem_POTCAR_path, 'rb') as e_POT_file:
                         copyfileobj(e_POT_file, potcar)
 
-            ## copy or create KPOINTS file
+            # copy or create KPOINTS file
+
             if exists('../../KPOINTS'):
                 print('Using the existing KPOINTS file in the top active learning directory')
                 with open('KPOINTS', 'wb') as KPOINTS:
@@ -301,7 +348,8 @@ class VASP_runner():
                     KPOINTS.write("K-Points\n 0\n Auto\n ")
                     KPOINTS.write(str(self.settings['VASP']["VASP_kpoints_auto_generation_Rk"])+"\n")
                               
-            ## copy or make INCAR, but adjust settings that need to change with system
+            # copy or make INCAR, but adjust settings that need to change with system
+
             if exists('../../INCAR'):
                 print('Using the existing INCAR file in the top active learning directory')
                 with open('INCAR', 'w') as INCAR:
@@ -309,7 +357,8 @@ class VASP_runner():
                         lines = source_INCAR.readlines()
                         for i, line in enumerate(lines):
                             if "MAGMOM" in line:
-                                lines[i] = "MAGMOM = " + str(len(current_positions)) + "*4 \n" # Just give everything an initial magnetic moment of 4 and let things relax down
+                                # Just give everything an initial magnetic moment of 4 and let things relax down
+                                lines[i] = "MAGMOM = " + str(len(current_positions)) + "*4 \n"
                     INCAR.write(''.join(lines))
             else:
                 print('Creating an INCAR file from scratch, ENCUT determined by POTCAR file')
@@ -321,8 +370,8 @@ class VASP_runner():
                     INCAR.write("ISPIN = 2 \n")      # Perform spin polarized calculations
                     INCAR.write("MAGMOM = " + str(len(current_positions)) + "*4 \n")  # Just give everything an initial magnetic moment of 4 and let things relax down
                     INCAR.write("PREC = Accurate \n")  # Good to be safe.
-                    ## TODO: The ENCUT should be determined once and saved for all future passes through the oracle.
-                    ## TODO: After setting up ability to use default or file-read POTCARs, will need to adjust this section
+                    # TODO: The ENCUT should be determined once and saved for all future passes through the oracle.
+                    # TODO: After setting up ability to use default or file-read POTCARs, will need to adjust this section
                     largest_ENMAX = 0
                     for dict_key, dict_val in self.config['VASP'].items():
                         if dict_key.endswith("_POTCAR_location"):
@@ -339,26 +388,25 @@ class VASP_runner():
                     INCAR.write("SIGMA = 0.03 \n")   # This is a small sigma. It should be good for insulators. It may not be the best for metals.
                     INCAR.write("LWAVE = .FALSE. \n")  # Do not write out the wavefunctions to the WAVECAR file.
                     INCAR.write("LCHARG = .FALSE. \n") # Do not write out the charge density to the CHGCAR and CHG files.
-                    ## This seems generally a good set of parallelization settings, and avoids some instability issues in VASP 6 on the Attaway cluster
-                    ## TODO: maybe do some more intelligent parallelization settings based on number of atoms and size of unit cell?
+                    # This seems generally a good set of parallelization settings, and avoids some instability issues in VASP 6 on the Attaway cluster
+                    # TODO: maybe do some more intelligent parallelization settings based on number of atoms and size of unit cell?
                     INCAR.write("NCORE = "+str(self.cores_per_node)) 
                     INCAR.write("KPAR = "+str(self.nodes))
                     
-            ## run VASP in current instance
+            # run VASP in current instance
+
             args = ['mpiexec', '--bind-to', 'core', '--npernode', str(self.cores_per_node), '--n', str(self.nodes*self.cores_per_node), self.settings.VASP_executable_path]
             print("running command:", args)
             run(args)
                 
-            ## TODO: some error checking to confirm the VASP job ran successfully
+            # TODO: some error checking to confirm the VASP job ran successfully
 
-            ## return to top directory and add directory to list to be returned for the running of VASP2JSON.py on
+            # return to top directory and add directory to list to be returned for the running of VASP2JSON.py on
+
             chdir('../..')
             output_directories.append(self.VASP_working_directory + '/' + VASP_job_directory)  #may want to do absolute paths instead of relative paths
             
         return output_directories
-#================================
-
-
 
 # import parallel tools and create pt object
 # this is the backbone of FitSNAP
@@ -377,7 +425,13 @@ except ModuleNotFoundError:
     rank = 0
     parallel = False
 
-#read the fitsnap.in (or user provided filename) input file 
+"""
+Read user supplied input scripts and create config objects.
+We have two config objects here - `config` is the typical FitSNAP object while `AL_config` will 
+read from a custom active learning config file, to be impelemented later. This AL config file will
+contain settings such as number of iterations used in active learning.
+"""
+
 parser = argparse.ArgumentParser(description='FitSNAP example.')
 parser.add_argument("--fitsnap_in", help="FitSNAP input script.", default='fitsnap.in')
 parser.add_argument("--AL_in", help="Active learning input script.", default='AL.in')
@@ -413,7 +467,8 @@ for key in list(config.sections['GROUPS'].group_table.keys()):
     if not path.isdir(config.sections['PATH'].datapath+'/'+key):
         config.sections['GROUPS'].group_table.pop(key)
 
-# create a fitsnap object - uses the previously defined pt and config objects!
+# create a fitsnap object - uses the previously defined pt and config objects
+
 from fitsnap3lib.fitsnap import FitSnap
 if parallel:
     comm.Barrier()
@@ -425,6 +480,7 @@ if rank==0:
     last_timestamp = current_timestamp
 
 # tell ParallelTools not to check for existing fitsnap objects
+
 pt.check_fitsnap_exist = False
 
 snap.scraper.scrape_groups()
@@ -457,8 +513,12 @@ if parallel:
     comm.Barrier()
 snap.process_configs()
 
-#these are only being done to access the pandas dataframe
-#should update the fitsnap calculator section that can dump a dataframe to also have a function for returning a handle to a pandas dataframe - then can avoid doing the fit step
+"""
+These are only being done to access the pandas dataframe.
+Should update the fitsnap calculate section that can dump a dataframe to also have a function for 
+returning a handle to a pandas dataframe, then can avoid doing the fit step.
+"""
+
 if parallel:
     comm.Barrier()
 if rank==0:
@@ -502,19 +562,22 @@ if rank == 0:
     metadata_labels_for_objective_function = ['Groups_copy', 'Configs_copy', 'Atom_I_copy', 'Row_Type_copy', 'Atom_Type_copy'] #Atom_Type_copy not actually needed here, could be left out 
     unlabeled_df = pd.DataFrame()
     for key in metadata_labels_for_objective_function:
-        unlabeled_df[key[0:-5]] = pd.Categorical(pt.fitsnap_dict[key])  #I could take these out of the pt internals deepcopying and just put them into the dataframe immediately if I'm going to stick with the df for metadata. ##TODO
+        # TODO: Take these out of the pt internals deepcopying and just put them into the dataframe
+        #       immediately, if sticking to the df for metadata
+        unlabeled_df[key[0:-5]] = pd.Categorical(pt.fitsnap_dict[key])
     mask_of_still_unused = [True]*len(pt.shared_arrays['a_copy'].array)
-    #unlabeled_df = snap.solver.df.copy(deep=True)
-    #num_col, not_num_col = [], []
-    #for x in unlabeled_df.columns:
-        #(num_col if type(x) is int else not_num_col).append(x)
+
 if parallel:
     comm.Barrier()
+
+# need to del and reinstantiate pt and config here - modified during run to add training set sizes 
+# and other changes
+# TODO: could be nice to make a .reset functionality in them to return them to state just after 
+#       instantiation (after taking input but before process configs)
+
 del snap
 del config
 del pt
-#need to del and reinstantiate pt and config here - modified during run to add training set sizes, etc
-#could be nice to make a .reset functionality in them to return them to state just after instantiation (after taking input but before process configs)
 if parallel:
     comm.Barrier()
 pt = ParallelTools()
@@ -526,7 +589,7 @@ if AL_settings.training_path:
     config.sections['PATH'].datapath = AL_settings.training_path
 else:
     config.sections['PATH'].datapath = '/'.join(directory + ['training_JSON/'])
-#switch out our solver to the ANL solver to get the covariance matrix that we need.
+# switch out our solver to the ANL solver to get the covariance matrix that we need.
 config.sections['SOLVER'].solver = 'ANL'
 
 if path.isdir(config.sections['PATH'].datapath+'/testing_json_group/'):
@@ -537,6 +600,7 @@ for key in list(config.sections['GROUPS'].group_table.keys()):
         config.sections['GROUPS'].group_table.pop(key)
     
 # create a fitsnap object
+
 if parallel:
     comm.Barrier()
 snap = FitSnap()
@@ -546,12 +610,8 @@ if rank==0:
     print(current_timestamp - last_timestamp)
     last_timestamp = current_timestamp
 
-# tell ParallelTool not to create SharedArrays
-#pt.create_shared_bool = False
 # tell ParallelTools not to check for existing fitsnap objects
 pt.check_fitsnap_exist = False
-# tell FitSNAP not to delete the data object after processing configs - we can probably actually delete this, we don't currently use the data object
-#snap.delete_data = False
 
 if parallel:
     comm.Barrier()
@@ -606,7 +666,8 @@ if rank==0:
         print(current_timestamp - last_timestamp)
         last_timestamp = current_timestamp
         snap.solver.errors = [] # this doesn't get cleared and will cause an error when fitsnap tries to append a dictionary onto it
-        #I should generally check the code for other places where things get appended instead of overwritten when called multiple times in library mode
+        # TODO: should generally check the code for other places where things get appended instead 
+        #       of overwritten when called multiple times in library mode
         snap.solver.error_analysis()
         print('loop error_analysis', n_loop, 'done')
         current_timestamp =datetime.now()
@@ -622,21 +683,22 @@ if rank==0:
         A = pt.shared_arrays['a_copy'].array[mask_of_still_unused]
         diag = (A.dot(C) * A).sum(-1)
 
-        ##TODO: make a metadata df for objective function calculations? Can leave out the a matrix and just return indices - always represent with E of structure
+        # TODO: make a metadata df for objective function calculations? Can leave out the a matrix 
+        #       and just return indices - always represent with E of structure
+
         unlabeled_df['uncertainty'] = diag
         print('loop uncertainty calculation', n_loop, 'done')
         current_timestamp =datetime.now()
         print(current_timestamp - last_timestamp)
         last_timestamp = current_timestamp
 
-        # this get's activated in io/outputs/output.py
-        # so we need to deactivate it
+        # this get's activated in io/outputs/output.py so we need to deactivate it
         logging.getLogger('matplotlib.ticker').disabled = True
         logging.getLogger('matplotlib.font_manager').disabled = True
         
-        #if plotting, plot the correlation between errors (if known) and sqrt(uncertainty)
+        # if plotting, plot the correlation between errors (if known) and sqrt(uncertainty)
         if plot_stuff:
-            #this only makes sense if you actually have the truth values in your 'unlabeled pool'
+            # this only makes sense if you actually have the truth values in your 'unlabeled pool'
             if known_truth_for_unlabeled:
                 preds = np.dot(A,snap.solver.fit)
                 truths = pt.shared_arrays['b_copy'].array[mask_of_still_unused]
@@ -663,8 +725,8 @@ if rank==0:
                 print(current_timestamp - last_timestamp)
                 last_timestamp = current_timestamp
                 
-        ##implement the objective function here to pick some structures - ID by group and config
-        #ranked_structures, x_vector_for_each_structure = objective_function(unlabeled_df, num_col)
+        # implement the objective function here to pick some structures - ID by group and config
+
         ranked_structures = objective_function(unlabeled_df, EFS_reweighting = AL_settings.EFS_reweighting, FS_agg_functions=AL_settings.FS_agg_functions, objective_function = AL_settings.obj_function, \
                                                weight_by_relative_DFT_cost=AL_settings.weight_by_relative_DFT_cost)
 
@@ -679,21 +741,20 @@ if rank==0:
         #rand_int = np.random.randint(0,len(A))
         #(group, structure) = unlabeled_df.loc[rand_int][['Groups','Configs']].tolist()
 
-        #TODO: implement the clustering subselection here
-        #currently just take the top structure
+        # TODO: implement the clustering subselection here
+        # currently just take the top structure
+
         if AL_settings.cluster_structures:
             pass
         else:
             chosen_structures = ranked_structures.head(AL_settings.batch_size)
             structures_chosen_list.append(chosen_structures.index.to_list())
-            #print(chosen_structures)
 
         cwd = getcwd()
     
         for (group, structure) in chosen_structures.index:
-            #chosen structures data to add to training data
+            # chosen structures data to add to training data
             mask_of_structure = (unlabeled_df['Groups']==group) & (unlabeled_df['Configs']==structure)
-            #a_to_append = unlabeled_df[mask_of_structure][num_col]
             a_to_append = pt.shared_arrays['a_copy'].array[mask_of_still_unused][mask_of_structure]
             
             
@@ -710,7 +771,9 @@ if rank==0:
 
 
             input_json_path = AL_settings.unlabeled_path + '/'.join([group] + [structure])
-            with open(input_json_path, 'r') as json_file:  # I could store the first snap.data and pull from it, but that is a list and I would need to store the indices corresponding to each structure
+            # could store the first snap.data and pull from it, but that is a list and I would need 
+            # to store the indices corresponding to each structure
+            with open(input_json_path, 'r') as json_file:
                 if json_file.readline()[0] == '{': #skip past comment line if it exists, otherwise start from beginning
                     json_file.seek(0)
                 j = json.loads(json_file.read())
@@ -727,9 +790,9 @@ if rank==0:
                     vasp_output_directory = vasp_caller(input_json_path)
                     args = ['python', VASP2JSON_location, "OUTCAR", structure]
                     run(args)
-                    os.rename(structure+'1.json', structure+'.json')  ##name format isn't quite what we want so just renaming the file
-                    ## TODO: add support for doing relaxations and grabbing all the .json files (each ionic step will make one .json, sequentially numbered)
-                    ## TODO: put some error checking here for failed json creation
+                    os.rename(structure+'1.json', structure+'.json')  # name format isn't quite what we want so just renaming the file
+                    # TODO: add support for doing relaxations and grabbing all the .json files (each ionic step will make one .json, sequentially numbered)
+                    # TODO: put some error checking here for failed json creation
                     with open(structure+'.json', 'r') as completed_json_file:
                         if completed_json_file.readline()[0] == '{':
                             completed_json_file.seek(0)

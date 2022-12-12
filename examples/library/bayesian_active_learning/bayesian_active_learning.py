@@ -21,9 +21,7 @@ import copy
 import pandas as pd
 import logging
 
-plot_stuff = True
-if plot_stuff:
-    import matplotlib.pyplot as plt
+# TODO: check and set this in script instead of just hard-coding it here
 known_truth_for_unlabeled = True
 
 class AL_settings_class():
@@ -31,22 +29,30 @@ class AL_settings_class():
     This loads all the settings needed from the config_parser object, filling them with default values if they don't exist. 
     It doesn't check for any extraneous or nonsensical values.
     """
-    def __init__(self, AL_config):
-        self.number_of_iterations = AL_config.getint('GENERAL', 'number_of_iterations', fallback = 10)
-        self.cluster_structures = AL_config.getboolean('GENERAL', 'cluster_structures', fallback = False)
-        self.batch_size = AL_config.getint('GENERAL', 'batch_size', fallback = 1)
-        self.training_path = AL_config.get('GENERAL', 'training_path', fallback = None)
-        self.unlabeled_path = AL_config.get('GENERAL', 'unlabeled_path', fallback = None)
-        self.E_weight = AL_config.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)
-        self.F_weight = AL_config.getfloat('OBJECTIVE', 'F_weight', fallback = 1.0)
-        self.S_weight = AL_config.getfloat('OBJECTIVE', 's_weight', fallback = 1.0)
+    def __init__(self, AL_configparser):
+        self.active_learning = AL_configparser.getboolean('GENERAL', 'active_learning', fallback=True)
+        self.number_of_iterations = AL_configparser.getint('GENERAL', 'number_of_iterations', fallback = 10)
+        self.cluster_structures = AL_configparser.getboolean('GENERAL', 'cluster_structures', fallback = False)
+        self.batch_size = AL_configparser.getint('GENERAL', 'batch_size', fallback = 1)
+        self.training_path = AL_configparser.get('GENERAL', 'training_path', fallback = None)
+        self.unlabeled_path = AL_configparser.get('GENERAL', 'unlabeled_path', fallback = None)
+        self.E_weight = AL_configparser.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)
+        self.F_weight = AL_configparser.getfloat('OBJECTIVE', 'F_weight', fallback = 1.0)
+        self.S_weight = AL_configparser.getfloat('OBJECTIVE', 's_weight', fallback = 1.0)
         self.EFS_reweighting = [self.E_weight, self.F_weight, self.S_weight]
-        self.F_agg_function = AL_config.get('OBJECTIVE', 'F_aggregation_function', fallback = None)
-        self.S_agg_function = AL_config.get('OBJECTIVE', 'S_aggregation_function', fallback = None)
+        self.F_agg_function = AL_configparser.get('OBJECTIVE', 'F_aggregation_function', fallback = None)
+        self.S_agg_function = AL_configparser.get('OBJECTIVE', 'S_aggregation_function', fallback = None)
         self.FS_agg_functions = [self.F_agg_function, self.S_agg_function]
-        self.obj_function = AL_config.get('OBJECTIVE', 'objective_function', fallback = 'sum')
-        self.weight_by_relative_DFT_cost = AL_config.getboolean('OBJECTIVE', 'weight_by_relative_DFT_cost', fallback = True)
-        
+        self.obj_function = AL_configparser.get('OBJECTIVE', 'objective_function', fallback = 'sum')
+        self.weight_by_relative_DFT_cost = AL_configparser.getboolean('OBJECTIVE', 'weight_by_relative_DFT_cost', fallback = True)
+        self.plot_uncertainty_error_correlation = AL_configparser.getboolean('PLOTTING', 'plot_uncertainty_error_correlation', fallback=False)
+        self.plot_convergence_plots = AL_configparser.getboolean('PLOTTING', 'plot_convergence_plots', fallback=True)
+        if any([self.plot_uncertainty_error_correlation, self.plot_convergence_plots]):
+            self.plotting_something = True
+        else:
+            self.plotting_something = False
+
+            
 def deepcopy_pt_internals(snap):
     """
     Deep copy SNAP arrays from the parallel tools shared arrays.
@@ -238,8 +244,8 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
 
 
 class VASP_runner():
-    def __init__(self, AL_config, AL_settings):
-        self.config = AL_config
+    def __init__(self, AL_configparser, AL_settings):
+        self.config = AL_configparser
         self.settings = AL_settings
         timestamp = datetime.now()
         self.VASP_working_directory = timestamp.strftime('%Y-%m-%d__%H-%M-%S')+'__run_VASP_calculations'
@@ -442,9 +448,12 @@ if rank == 0:
     print(args.fitsnap_in)
     print("Active Learning input script:")
     print(args.AL_in)
-AL_config = configparser.ConfigParser()
-AL_config.read(args.AL_in)
-AL_settings = AL_settings_class(AL_config)
+AL_configparser = configparser.ConfigParser()
+AL_configparser.read(args.AL_in)
+AL_settings = AL_settings_class(AL_configparser)
+
+if AL_settings.plotting_something:
+    import matplotlib.pyplot as plt
 
 if rank==0:
     print("----- main script")
@@ -462,7 +471,9 @@ if AL_settings.unlabeled_path:
 else:
     AL_settings.unlabeled_path = '/'.join(directory + ['unlabeled_JSON/'])
     config.sections['PATH'].datapath = AL_settings.unlabeled_path
+
     
+#remove the entries from the groups table that exist in the fitsnap.in file but not in the JSON directory
 for key in list(config.sections['GROUPS'].group_table.keys()):
     if not path.isdir(config.sections['PATH'].datapath+'/'+key):
         config.sections['GROUPS'].group_table.pop(key)
@@ -697,7 +708,7 @@ if rank==0:
         logging.getLogger('matplotlib.font_manager').disabled = True
         
         # if plotting, plot the correlation between errors (if known) and sqrt(uncertainty)
-        if plot_stuff:
+        if AL_settings.plot_uncertainty_error_correlation:
             # this only makes sense if you actually have the truth values in your 'unlabeled pool'
             if known_truth_for_unlabeled:
                 preds = np.dot(A,snap.solver.fit)
@@ -720,10 +731,12 @@ if rank==0:
                 ax.set_yscale("log")
                 plt.savefig('loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
                 plt.close()
-                print('loop uncertainty error correlation plotting', n_loop, 'done')
-                current_timestamp =datetime.now()
-                print(current_timestamp - last_timestamp)
-                last_timestamp = current_timestamp
+            else:
+                print('TRUTH VALUES FOR UNLABELED POOL ARE NOT YET KNOWN, CAN NOT PLOT UNCERTAINTY ERROR CORRELATION FOR THEM!')
+            print('loop uncertainty error correlation plotting', n_loop, 'done')
+            current_timestamp =datetime.now()
+            print(current_timestamp - last_timestamp)
+            last_timestamp = current_timestamp
                 
         # implement the objective function here to pick some structures - ID by group and config
 
@@ -743,13 +756,17 @@ if rank==0:
 
         # TODO: implement the clustering subselection here
         # currently just take the top structure
-
-        if AL_settings.cluster_structures:
-            pass
+        if AL_settings.active_learning:
+            if AL_settings.cluster_structures:
+                pass
+            else:
+                chosen_structures = ranked_structures.head(AL_settings.batch_size)
+                structures_chosen_list.append(chosen_structures.index.to_list())
+                #print(chosen_structures)
         else:
-            chosen_structures = ranked_structures.head(AL_settings.batch_size)
+            chosen_structures = ranked_structures.sample(AL_settings.batch_size)  #randomly sample, TODO: could turn off objective function or make a dummy passthrough if need more speed
             structures_chosen_list.append(chosen_structures.index.to_list())
-
+            
         cwd = getcwd()
     
         for (group, structure) in chosen_structures.index:
@@ -866,23 +883,26 @@ if rank==0:
         for i in range(len(structures_chosen_list)):
             f.write(str(i)+  ' : ' + ', '.join('/'.join(groupconfig) for groupconfig in structures_chosen_list[i]) + '\n')
 
-plot_stuff = True
-if plot_stuff:
+if AL_settings.plot_convergence_plots:
     if rank==0:
         for metric in ['mae', 'rmse']:
             for ind in error_log_list[-1].loc['testing_json_group', 'Unweighted', 'Testing'].index:  #'Energy', 'Force', 'Stress'
                 x = [d.loc['*ALL', 'Unweighted', 'Training', ind]['ncount'] for d in error_log_list]
-                y = [d.loc['testing_json_group', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
+                y_test = [d.loc['testing_json_group', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
                 plt.figure()
-                plt.loglog(x,y, color='blue', label='Testing', marker='o',markersize=10)
-                y = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
-                plt.loglog(x,y, color='dodgerblue', label='Training', marker='o',markersize=10)
+                plt.loglog(x,y_test, color='blue', label='Testing', marker='o',markersize=10)
+                y_train = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
+                plt.loglog(x,y_train, color='dodgerblue', label='Training', marker='o',markersize=10)
                 plt.ylabel(metric)
                 plt.xlabel('# of training datapoints of same type')
                 plt.title(ind)
                 plt.legend()
                 plt.savefig('convergence_'+ind+'_'+metric+'.png')
                 plt.close()
+                np.save('convergence_'+ind+'_'+metric+'data.npy', np.array([x,y_test,y_train]))
+#                with open('convergence_'+ind+'_'+metric+'data.npy', 'w') as f:
+#                    np.save(f, np.array([x,y_test,y_train]))
+                    
                 
 #plot_stuff = False
 #if plot_stuff:

@@ -27,6 +27,8 @@ class AL_settings_class():
     """
     def __init__(self, AL_config):
         self.number_of_iterations = AL_config.getint('GENERAL', 'number_of_iterations', fallback = 10)
+        self.cluster_structures = AL_config.getboolean('GENERAL', 'cluster_structures', fallback = False)
+        self.batch_size = AL_config.getint('GENERAL', 'batch_size', fallback = 1)
         self.E_weight = AL_config.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)
         self.F_weight = AL_config.getfloat('OBJECTIVE', 'F_weight', fallback = 1.0)
         self.S_weight = AL_config.getfloat('OBJECTIVE', 's_weight', fallback = 1.0)
@@ -136,7 +138,7 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
     ## first, get count of number of atoms in each structure from number of forces
     ## can only be done this way if fitting forces - could rewrite to pull data from elsewhere in snap object for energy only fitting
     if weight_by_relative_DFT_cost:
-        m_df = m_df.join((m_df[m_df["Row_Type"]=="Force"].groupby(['Groups', 'Configs'], sort=False).size()/3).astype(int).rename('num_atoms'), on=['Groups', 'Configs'])
+        m_df = m_df.join((m_df[m_df["Row_Type"]=="Force"].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int).rename('num_atoms'), on=['Groups', 'Configs'])
         m_df['relative_cost_factor'] = m_df['num_atoms']**3
         m_df['uncertainty'] = m_df['uncertainty']/m_df['relative_cost_factor']
         
@@ -144,7 +146,7 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
     if norm_force_components:
         d3 = {i : 'mean' for i in A_matrix_columns}   ## averaging the A matrix elements of the three force component rows TODO: give more options for how to handle this
         d2 = {i : 'first' for i in (set(df.columns) - set(A_matrix_columns) - {'Groups', 'Configs', 'Atom_I', 'uncertainty'})} ##grabbing the remaining columns - should all be the same for each atom - Rowtype, weights, test/train identifier
-        FM_df = m_df[m_df["Row_Type"] == "Force"].groupby(['Groups', 'Configs', 'Atom_I']).agg({'uncertainty':np.linalg.norm}|d3|d2)
+        FM_df = m_df[m_df["Row_Type"] == "Force"].groupby(['Groups', 'Configs', 'Atom_I'], observed=True).agg({'uncertainty':np.linalg.norm}|d3|d2)
         m_df = pd.concat(m_df[m_df["Row_Type"].isin(["Energy", "Stress"])], FM_df)
         del FM_df
         
@@ -153,13 +155,13 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
         d2 = {i : 'first' for i in set(df.columns) - set(A_matrix_columns) - {'Groups', 'Configs', 'Atom_I', 'uncertainty'}}
         if FS_agg_functions[0]:
             d1 = {'uncertainty' : getattr(np, FS_agg_functions[0])}
-            F_df = m_df[m_df["Row_Type"] == "Force"].groupby(['Groups', 'Configs']).agg(d1|d2)  #A matrix terms do not directly correlate to structure aggregated uncertainty predictions
+            F_df = m_df[m_df["Row_Type"] == "Force"].groupby(['Groups', 'Configs'], observed=True).agg(d1|d2)  #A matrix terms do not directly correlate to structure aggregated uncertainty predictions
         else:
             F_df = m_df[m_df["Row_Type"] == "Force"]
             
         if FS_agg_functions[1]:
             d1 = {'uncertainty' : getattr(np, FS_agg_functions[1])}
-            S_df = m_df[m_df["Row_Type"] == "Stress"].groupby(['Groups', 'Configs']).agg(d1|d2)  #A matrix terms do not directly correlate to structure aggregated uncertainty predictions
+            S_df = m_df[m_df["Row_Type"] == "Stress"].groupby(['Groups', 'Configs'], observed=True).agg(d1|d2)  #A matrix terms do not directly correlate to structure aggregated uncertainty predictions
         else:
             S_df = m_df[m_df["Row_Type"] == "Stress"]        
         m_df = pd.concat([m_df[m_df["Row_Type"]=="Energy"], F_df, S_df])
@@ -173,14 +175,14 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
 
     ## last, apply the objective function on the transformed df
     if objective_function=='max': #simplest case - return the highest uncertainty row in each structure, taking the top nadd structures
-        ranked_structures = m_df.sort_values("uncertainty", ascending=False, key=abs).groupby(['Groups', 'Configs'], sort=False).first()
+        ranked_structures = m_df.sort_values("uncertainty", ascending=False, key=abs).groupby(['Groups', 'Configs'], observed=True, sort=False).first()
         #x_vector_for_each_structure = ranked_structures[A_matrix_columns].values  ## TODO: will need to update how I'm grabbing this when aggregating F or S rows
     elif objective_function=='average':
-        ranked_structures = m_df.groupby(['Groups', 'Configs'], sort=False).agg({'uncertainty':np.average}).sort_values("uncertainty", ascending=False, key=abs)
+        ranked_structures = m_df.groupby(['Groups', 'Configs'], observed=True, sort=False).agg({'uncertainty':np.average}).sort_values("uncertainty", ascending=False, key=abs)
         #x_vector_for_each_structure = np.concatenate([df[(df['Row_Type']=='Energy') & (df['Groups']==group) &\
         #                                                 (df['Configs']==config)][A_matrix_columns].values for group, config in ranked_structures.index]) #just using the energy A-matrix line for this case, note - pulling from the original df, not m_df!
     elif objective_function=='sum':
-        ranked_structures = m_df.groupby(['Groups', 'Configs'], sort=False).agg({'uncertainty':np.sum}).sort_values("uncertainty", ascending=False, key=abs)
+        ranked_structures = m_df.groupby(['Groups', 'Configs'], observed=True, sort=False).agg({'uncertainty':np.sum}).sort_values("uncertainty", ascending=False, key=abs)
         #x_vector_for_each_structure = np.concatenate([df[(df['Row_Type']=='Energy') & (df['Groups']==group) &\
         #                                                 (df['Configs']==config)][A_matrix_columns].values for group, config in ranked_structures.index]) #just using the energy A-matrix line for this case, note - pulling from the original df, not m_df!
     else:
@@ -602,8 +604,10 @@ if rank==0:
         last_timestamp = current_timestamp
         print(snap.solver.errors.loc['*ALL'])
         error_log_list.append(snap.solver.errors)
+
+        if len(unlabeled_df)==0: #have fully exhausted the unlabeled pool
+            break
         C = snap.solver.cov
-        
         #A = unlabeled_df[num_col].to_numpy()
         A = pt.shared_arrays['a_copy'].array[mask_of_still_unused]
         diag = (A.dot(C) * A).sum(-1)
@@ -667,7 +671,11 @@ if rank==0:
 
         #TODO: implement the clustering subselection here
         #currently just take the top structure
-        chosen_structures = ranked_structures.head(1)
+        if AL_settings.cluster_structures:
+            pass
+        else:
+            chosen_structures = ranked_structures.head(AL_settings.batch_size)
+            print(chosen_structures)
 
         cwd = getcwd()
     

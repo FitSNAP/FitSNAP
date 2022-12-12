@@ -29,6 +29,8 @@ class AL_settings_class():
         self.number_of_iterations = AL_config.getint('GENERAL', 'number_of_iterations', fallback = 10)
         self.cluster_structures = AL_config.getboolean('GENERAL', 'cluster_structures', fallback = False)
         self.batch_size = AL_config.getint('GENERAL', 'batch_size', fallback = 1)
+        self.training_path = AL_config.get('GENERAL', 'training_path', fallback = None)
+        self.unlabeled_path = AL_config.get('GENERAL', 'unlabeled_path', fallback = None)
         self.E_weight = AL_config.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)
         self.F_weight = AL_config.getfloat('OBJECTIVE', 'F_weight', fallback = 1.0)
         self.S_weight = AL_config.getfloat('OBJECTIVE', 's_weight', fallback = 1.0)
@@ -401,7 +403,12 @@ if parallel:
     comm.Barrier()
 config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
 directory = config.sections['PATH'].datapath.split('/')[0:-1]
-config.sections['PATH'].datapath = '/'.join(directory + ['unlabeled_JSON'])
+if AL_settings.unlabeled_path:
+    config.sections['PATH'].datapath = AL_settings.unlabeled_path
+else:
+    AL_settings.unlabeled_path = '/'.join(directory + ['unlabeled_JSON'])
+    config.sections['PATH'].datapath = '/'.join(directory + ['unlabeled_JSON'])
+    
 for key in list(config.sections['GROUPS'].group_table.keys()):
     if not path.isdir(config.sections['PATH'].datapath+'/'+key):
         config.sections['GROUPS'].group_table.pop(key)
@@ -515,8 +522,10 @@ if parallel:
     comm.Barrier()
 config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
 
-
-config.sections['PATH'].datapath = '/'.join(directory + ['training_JSON'])
+if AL_settings.training_path:
+    config.sections['PATH'].datapath = AL_settings.training_path
+else:
+    config.sections['PATH'].datapath = '/'.join(directory + ['training_JSON'])
 #switch out our solver to the ANL solver to get the covariance matrix that we need.
 config.sections['SOLVER'].solver = 'ANL'
 
@@ -697,8 +706,8 @@ if rank==0:
             #b,p,w,g,c,r,ai,t,at = [],[],[],[],[],[],[],[],[]
             #b,p,w,g,c,r,ai,t,at = [unlabeled_df[mask_of_structure][x].tolist() for x in not_num_col]
 
-            input_json_path = '/'.join(directory + ['unlabeled_JSON'] + [group] + [structure])
-            #input_json_path = '/'.join(directory + ['training_JSON'] + [group] + [structure]) ##trying flipping datasets to debug
+
+            input_json_path = AL_settings.unlabeled_path + '/'.join([group] + [structure])
             with open(input_json_path, 'r') as json_file:  # I could store the first snap.data and pull from it, but that is a list and I would need to store the indices corresponding to each structure
                 if json_file.readline()[0] == '{': #skip past comment line if it exists, otherwise start from beginning
                     json_file.seek(0)

@@ -17,3 +17,7 @@ weight_by_relative_DFT_cost: default = True, divides each structure by its numbe
 VASP_executable_path: default = /projects/vasp/2020-build/clusters/vasp6.1.1/bin/vasp_std, path to the VASP executable
 VASP_kpoints_auto_generation_Rk: default = 30, density of auto-generated kpoints grid, reasonable values can be as low as 10 for large gap insulators or as high as 100 for metals; see https://www.vasp.at/wiki/index.php/KPOINTS
 [element]_POTCAR_location: no defaults, path to each elemental POTCAR for each element in your dataset
+
+[PLOTTING]
+plot_uncertainty_error_correlation: default = False, makes normal and loglog plots of the absolute errors (if known on the unlabeled set) vs the std_dev of the prediction (sqrt of our prediction variance - 'uncertainty' in the code)
+plot_convergence_plots: default = True, makes plots for the E,F,S mean absolute error (MAE) and root mean squared error (RMSE) of the training and testing sets separately as a function of the # of training datapoints in each category

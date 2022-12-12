@@ -12,12 +12,9 @@ import copy
 import pandas as pd
 import logging
 
-##usage: python -i bayesian_active_learning.py --fitsnap_in Ta-example.in
+##usage: python bayesian_active_learning.py --fitsnap_in Ta-example.in
 
-plot_stuff = True
-if plot_stuff:
-    import matplotlib.pyplot as plt
-known_truth_for_unlabeled = True
+known_truth_for_unlabeled = True  #TODO: check and set this in script instead of just hard-coding it here
 
 #==============================
 class AL_settings_class():
@@ -41,7 +38,14 @@ class AL_settings_class():
         self.FS_agg_functions = [self.F_agg_function, self.S_agg_function]
         self.obj_function = AL_config.get('OBJECTIVE', 'objective_function', fallback = 'sum')
         self.weight_by_relative_DFT_cost = AL_config.getboolean('OBJECTIVE', 'weight_by_relative_DFT_cost', fallback = True)
-        
+        self.plot_uncertainty_error_correlation = AL_config.getboolean('PLOTTING', 'plot_uncertainty_error_correlation', fallback=False)
+        self.plot_convergence_plots = AL_config.getboolean('PLOTTING', 'plot_convergence_plots', fallback=True)
+        if any([self.plot_uncertainty_error_correlation, self.plot_convergence_plots]):
+            self.plotting_something = True
+        else:
+            self.plotting_something = False
+
+            
 #==============================
 def deepcopy_pt_internals(snap):
     pt = snap.pt
@@ -393,6 +397,9 @@ AL_config = configparser.ConfigParser()
 AL_config.read(args.AL_in)
 AL_settings = AL_settings_class(AL_config)
 
+if AL_settings.plotting_something:
+    import matplotlib.pyplot as plt
+
 if rank==0:
     print("----- main script")
     current_timestamp = datetime.now()
@@ -409,7 +416,9 @@ if AL_settings.unlabeled_path:
 else:
     AL_settings.unlabeled_path = '/'.join(directory + ['unlabeled_JSON/'])
     config.sections['PATH'].datapath = AL_settings.unlabeled_path
+
     
+#remove the entries from the groups table that exist in the fitsnap.in file but not in the JSON directory
 for key in list(config.sections['GROUPS'].group_table.keys()):
     if not path.isdir(config.sections['PATH'].datapath+'/'+key):
         config.sections['GROUPS'].group_table.pop(key)
@@ -636,7 +645,7 @@ if rank==0:
         logging.getLogger('matplotlib.font_manager').disabled = True
         
         #if plotting, plot the correlation between errors (if known) and sqrt(uncertainty)
-        if plot_stuff:
+        if AL_settings.plot_uncertainty_error_correlation:
             #this only makes sense if you actually have the truth values in your 'unlabeled pool'
             if known_truth_for_unlabeled:
                 preds = np.dot(A,snap.solver.fit)
@@ -659,10 +668,12 @@ if rank==0:
                 ax.set_yscale("log")
                 plt.savefig('loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
                 plt.close()
-                print('loop uncertainty error correlation plotting', n_loop, 'done')
-                current_timestamp =datetime.now()
-                print(current_timestamp - last_timestamp)
-                last_timestamp = current_timestamp
+            else:
+                print('TRUTH VALUES FOR UNLABELED POOL ARE NOT YET KNOWN, CAN NOT PLOT UNCERTAINTY ERROR CORRELATION FOR THEM!')
+            print('loop uncertainty error correlation plotting', n_loop, 'done')
+            current_timestamp =datetime.now()
+            print(current_timestamp - last_timestamp)
+            last_timestamp = current_timestamp
                 
         ##implement the objective function here to pick some structures - ID by group and config
         #ranked_structures, x_vector_for_each_structure = objective_function(unlabeled_df, num_col)
@@ -808,23 +819,26 @@ if rank==0:
         for i in range(len(structures_chosen_list)):
             f.write(str(i)+  ' : ' + ', '.join('/'.join(groupconfig) for groupconfig in structures_chosen_list[i]) + '\n')
 
-plot_stuff = True
-if plot_stuff:
+if AL_settings.plot_convergence_plots:
     if rank==0:
         for metric in ['mae', 'rmse']:
             for ind in error_log_list[-1].loc['testing_json_group', 'Unweighted', 'Testing'].index:  #'Energy', 'Force', 'Stress'
                 x = [d.loc['*ALL', 'Unweighted', 'Training', ind]['ncount'] for d in error_log_list]
-                y = [d.loc['testing_json_group', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
+                y_test = [d.loc['testing_json_group', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
                 plt.figure()
-                plt.loglog(x,y, color='blue', label='Testing', marker='o',markersize=10)
-                y = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
-                plt.loglog(x,y, color='dodgerblue', label='Training', marker='o',markersize=10)
+                plt.loglog(x,y_test, color='blue', label='Testing', marker='o',markersize=10)
+                y_train = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
+                plt.loglog(x,y_train, color='dodgerblue', label='Training', marker='o',markersize=10)
                 plt.ylabel(metric)
                 plt.xlabel('# of training datapoints of same type')
                 plt.title(ind)
                 plt.legend()
                 plt.savefig('convergence_'+ind+'_'+metric+'.png')
                 plt.close()
+                np.save('convergence_'+ind+'_'+metric+'data.npy', np.array([x,y_test,y_train]))
+#                with open('convergence_'+ind+'_'+metric+'data.npy', 'w') as f:
+#                    np.save(f, np.array([x,y_test,y_train]))
+                    
                 
 #plot_stuff = False
 #if plot_stuff:

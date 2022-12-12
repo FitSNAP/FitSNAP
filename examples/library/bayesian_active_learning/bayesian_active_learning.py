@@ -899,7 +899,7 @@ if AL_settings.plot_convergence_plots:
                 plt.legend()
                 plt.savefig('convergence_'+ind+'_'+metric+'.png')
                 plt.close()
-                np.save('convergence_'+ind+'_'+metric+'data.npy', np.array([x,y_test,y_train]))
+                np.save('data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
 #                with open('convergence_'+ind+'_'+metric+'data.npy', 'w') as f:
 #                    np.save(f, np.array([x,y_test,y_train]))
                     

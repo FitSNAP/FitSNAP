@@ -406,8 +406,8 @@ directory = config.sections['PATH'].datapath.split('/')[0:-1]
 if AL_settings.unlabeled_path:
     config.sections['PATH'].datapath = AL_settings.unlabeled_path
 else:
-    AL_settings.unlabeled_path = '/'.join(directory + ['unlabeled_JSON'])
-    config.sections['PATH'].datapath = '/'.join(directory + ['unlabeled_JSON'])
+    AL_settings.unlabeled_path = '/'.join(directory + ['unlabeled_JSON/'])
+    config.sections['PATH'].datapath = AL_settings.unlabeled_path
     
 for key in list(config.sections['GROUPS'].group_table.keys()):
     if not path.isdir(config.sections['PATH'].datapath+'/'+key):
@@ -525,7 +525,7 @@ config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
 if AL_settings.training_path:
     config.sections['PATH'].datapath = AL_settings.training_path
 else:
-    config.sections['PATH'].datapath = '/'.join(directory + ['training_JSON'])
+    config.sections['PATH'].datapath = '/'.join(directory + ['training_JSON/'])
 #switch out our solver to the ANL solver to get the covariance matrix that we need.
 config.sections['SOLVER'].solver = 'ANL'
 
@@ -593,6 +593,7 @@ if rank==0:
     print(current_timestamp - last_timestamp)
     last_timestamp = current_timestamp
     error_log_list = []
+    structures_chosen_list = []
     for n_loop in range(AL_settings.number_of_iterations):
         snap.solver.perform_fit()
         print('loop fit', n_loop, 'done')
@@ -684,7 +685,8 @@ if rank==0:
             pass
         else:
             chosen_structures = ranked_structures.head(AL_settings.batch_size)
-            print(chosen_structures)
+            structures_chosen_list.append(chosen_structures.index.to_list())
+            #print(chosen_structures)
 
         cwd = getcwd()
     
@@ -795,6 +797,11 @@ if rank==0:
 
 if parallel:
     comm.Barrier()
+
+if rank==0:
+    with open('structures_chosen.dat', 'w') as f:
+        for i in range(len(structures_chosen_list)):
+            f.write(str(i)+  ' : ' + ', '.join('/'.join(groupconfig) for groupconfig in structures_chosen_list[i]) + '\n')
 
 plot_stuff = True
 if plot_stuff:

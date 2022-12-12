@@ -617,7 +617,8 @@ if rank==0:
         last_timestamp = current_timestamp
         snap.solver.errors = [] # this doesn't get cleared and will cause an error when fitsnap tries to append a dictionary onto it
         #I should generally check the code for other places where things get appended instead of overwritten when called multiple times in library mode
-        snap.solver.error_analysis()
+        with np.errstate(divide='ignore', invalid='ignore'): #ignore division by 0 warnings from the r^2 calculation for groups with only 1 entry
+            snap.solver.error_analysis()
         print('loop error_analysis', n_loop, 'done')
         current_timestamp =datetime.now()
         print(current_timestamp - last_timestamp)

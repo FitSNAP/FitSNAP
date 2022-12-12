@@ -2,7 +2,7 @@
 Bayesian active learning script using the FitSNAP library.
 
 Usage:
-    python -m bayesian_active_learning.py --fitsnap_in Ta-example.in
+    python bayesian_active_learning.py --fitsnap_in Ta-example.in
 
 Variables in this script to change:
     plot_stuff : determines whether uncertainties are plotted
@@ -473,7 +473,7 @@ else:
     config.sections['PATH'].datapath = AL_settings.unlabeled_path
 
     
-#remove the entries from the groups table that exist in the fitsnap.in file but not in the JSON directory
+# remove the entries from the groups table that exist in the fitsnap.in file but not in the JSON directory
 for key in list(config.sections['GROUPS'].group_table.keys()):
     if not path.isdir(config.sections['PATH'].datapath+'/'+key):
         config.sections['GROUPS'].group_table.pop(key)

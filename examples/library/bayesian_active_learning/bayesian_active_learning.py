@@ -1,5 +1,12 @@
 """
 Bayesian active learning script using the FitSNAP library.
+Here we have two pools of data: (1) a training pool and (2) an unlabeled pool.
+(2) can either contain energies, forces, and stresses from DFT or have no data.
+This script performs active learning by training on the training pool, then selecting structures from the 
+unlabeled pool to add to the training data for the next training loop. The structures are chosen by an objective function
+that gives a weighted representation of the Bayesian prediction variances for the energy, force, and stress values of the structure.
+If DFT is lacking from (2), it is calculated for the selected structures using VASP.
+
 
 Usage:
     python bayesian_active_learning.py --fitsnap_in Ta-example.in
@@ -36,6 +43,9 @@ class AL_settings_class():
         self.batch_size = AL_configparser.getint('GENERAL', 'batch_size', fallback = 1)
         self.training_path = AL_configparser.get('GENERAL', 'training_path', fallback = None)
         self.unlabeled_path = AL_configparser.get('GENERAL', 'unlabeled_path', fallback = None)
+        self.output_directory = AL_configparser.get('GENERAL', 'output_directory', fallback = getcwd())
+        if self.output_directory[-1] != '/':
+            self.output_directory += '/'
         self.E_weight = AL_configparser.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)
         self.F_weight = AL_configparser.getfloat('OBJECTIVE', 'F_weight', fallback = 1.0)
         self.S_weight = AL_configparser.getfloat('OBJECTIVE', 's_weight', fallback = 1.0)
@@ -248,7 +258,7 @@ class VASP_runner():
         self.config = AL_configparser
         self.settings = AL_settings
         timestamp = datetime.now()
-        self.VASP_working_directory = timestamp.strftime('%Y-%m-%d__%H-%M-%S')+'__run_VASP_calculations'
+        self.VASP_working_directory = self.settings.output_directory + timestamp.strftime('%Y-%m-%d__%H-%M-%S')+'__run_VASP_calculations'
         self.config['VASP']['VASP_working_directory'] = self.VASP_working_directory
         self.settings.VASP_working_directory = self.VASP_working_directory
         mkdir(self.VASP_working_directory)
@@ -433,9 +443,9 @@ except ModuleNotFoundError:
 
 """
 Read user supplied input scripts and create config objects.
-We have two config objects here - `config` is the typical FitSNAP object while `AL_config` will 
-read from a custom active learning config file, to be impelemented later. This AL config file will
-contain settings such as number of iterations used in active learning.
+We have two config objects here - `config` is the typical FitSNAP object while `AL_configparser`
+reads from a custom active learning config file, by default called AL.in. This AL config file
+contains settings such as number of iterations used in active learning.
 """
 
 parser = argparse.ArgumentParser(description='FitSNAP example.')
@@ -581,17 +591,12 @@ if rank == 0:
 if parallel:
     comm.Barrier()
 
-# need to del and reinstantiate pt and config here - modified during run to add training set sizes 
-# and other changes
-# TODO: could be nice to make a .reset functionality in them to return them to state just after 
+# reinstantiate config here - modified during run to add training set sizes 
+# and other changes (might not be necessary, actually)
+# TODO: could be nice to make a .reset functionality in config to return them to state just after 
 #       instantiation (after taking input but before process configs)
 
 del snap
-del config
-del pt
-if parallel:
-    comm.Barrier()
-pt = ParallelTools()
 if parallel:
     comm.Barrier()
 config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
@@ -692,12 +697,8 @@ if rank==0:
         if len(unlabeled_df)==0: #have fully exhausted the unlabeled pool
             break
         C = snap.solver.cov
-        #A = unlabeled_df[num_col].to_numpy()
         A = pt.shared_arrays['a_copy'].array[mask_of_still_unused]
         diag = (A.dot(C) * A).sum(-1)
-
-        # TODO: make a metadata df for objective function calculations? Can leave out the a matrix 
-        #       and just return indices - always represent with E of structure
 
         unlabeled_df['uncertainty'] = diag
         print('loop uncertainty calculation', n_loop, 'done')
@@ -721,7 +722,7 @@ if rank==0:
                 plt.ylabel('sqrt(prediction variance)')
                 plt.xlabel('abs error')
                 plt.title('Active Learning Step ' + str(n_loop))
-                plt.savefig('uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
+                plt.savefig(AL_settings.output_directory+'uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
                 plt.close()
                 plt.figure()
                 ax = plt.gca()
@@ -731,7 +732,7 @@ if rank==0:
                 plt.title('Active Learning Step ' + str(n_loop))
                 ax.set_xscale("log")
                 ax.set_yscale("log")
-                plt.savefig('loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
+                plt.savefig(AL_settings.output_directory+'loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
                 plt.close()
             else:
                 print('TRUTH VALUES FOR UNLABELED POOL ARE NOT YET KNOWN, CAN NOT PLOT UNCERTAINTY ERROR CORRELATION FOR THEM!')
@@ -752,12 +753,9 @@ if rank==0:
         current_timestamp =datetime.now()
         print(current_timestamp - last_timestamp)
         last_timestamp = current_timestamp    
-        #dummy random selector for the moment
-        #rand_int = np.random.randint(0,len(A))
-        #(group, structure) = unlabeled_df.loc[rand_int][['Groups','Configs']].tolist()
 
-        # TODO: implement the clustering subselection here
-        # currently just take the top structure
+        # TODO: implement the clustering subselection as an option here
+        # currently just take the top [batch_size] structures
         if AL_settings.active_learning:
             if AL_settings.cluster_structures:
                 pass
@@ -899,12 +897,9 @@ if AL_settings.plot_convergence_plots:
                 plt.xlabel('# of training datapoints of same type')
                 plt.title(ind)
                 plt.legend()
-                plt.savefig('convergence_'+ind+'_'+metric+'.png')
+                plt.savefig(AL_settings.output_directory+'convergence_'+ind+'_'+metric+'.png')
                 plt.close()
-                np.save('data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
-#                with open('convergence_'+ind+'_'+metric+'data.npy', 'w') as f:
-#                    np.save(f, np.array([x,y_test,y_train]))
-                    
+                np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
                 
 #plot_stuff = False
 #if plot_stuff:

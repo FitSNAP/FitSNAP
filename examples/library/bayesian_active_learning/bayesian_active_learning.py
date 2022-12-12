@@ -26,6 +26,7 @@ class AL_settings_class():
     It doesn't check for any extraneous or nonsensical values.
     """
     def __init__(self, AL_config):
+        self.active_learning = AL_config.getboolean('GENERAL', 'active_learning', fallback=True)
         self.number_of_iterations = AL_config.getint('GENERAL', 'number_of_iterations', fallback = 10)
         self.cluster_structures = AL_config.getboolean('GENERAL', 'cluster_structures', fallback = False)
         self.batch_size = AL_config.getint('GENERAL', 'batch_size', fallback = 1)
@@ -681,13 +682,17 @@ if rank==0:
 
         #TODO: implement the clustering subselection here
         #currently just take the top structure
-        if AL_settings.cluster_structures:
-            pass
+        if AL_settings.active_learning:
+            if AL_settings.cluster_structures:
+                pass
+            else:
+                chosen_structures = ranked_structures.head(AL_settings.batch_size)
+                structures_chosen_list.append(chosen_structures.index.to_list())
+                #print(chosen_structures)
         else:
-            chosen_structures = ranked_structures.head(AL_settings.batch_size)
+            chosen_structures = ranked_structures.sample(AL_settings.batch_size)  #randomly sample, TODO: could turn off objective function or make a dummy passthrough if need more speed
             structures_chosen_list.append(chosen_structures.index.to_list())
-            #print(chosen_structures)
-
+            
         cwd = getcwd()
     
         for (group, structure) in chosen_structures.index:

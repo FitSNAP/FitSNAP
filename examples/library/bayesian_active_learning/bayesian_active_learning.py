@@ -888,7 +888,7 @@ if parallel:
     comm.Barrier()
 
 if rank==0:
-    with open('structures_chosen.dat', 'w') as f:
+    with open(AL_settings.output_directory+'structures_chosen.dat', 'w') as f:
         for i in range(len(structures_chosen_list)):
             f.write(str(i)+  ' : ' + ', '.join('/'.join(groupconfig) for groupconfig in structures_chosen_list[i]) + '\n')
 

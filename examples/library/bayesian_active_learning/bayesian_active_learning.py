@@ -674,6 +674,7 @@ if rank==0:
     last_timestamp = current_timestamp
     error_log_list = []
     structures_chosen_list = []
+    DFT_cost_estimates = []
     for n_loop in range(AL_settings.number_of_iterations):
         snap.solver.perform_fit()
         print('loop fit', n_loop, 'done')
@@ -698,6 +699,10 @@ if rank==0:
         print(snap.solver.errors.loc['*ALL'])
         error_log_list.append(snap.solver.errors)
 
+        # TODO: just add the amount from each new set of structures to the previous total instead of recalculating every step
+        rough_DFT_cost_estimate = ((snap.solver.df[snap.solver.df["Row_Type"]=="Force"].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
+        DFT_cost_estimates.append(rough_DFT_cost_estimate)
+        
         if len(unlabeled_df)==0: #have fully exhausted the unlabeled pool
             break
         C = snap.solver.cov
@@ -903,7 +908,7 @@ if AL_settings.plot_convergence_plots:
                 plt.legend()
                 plt.savefig(AL_settings.output_directory+'convergence_'+ind+'_'+metric+'.png')
                 plt.close()
-                np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
+                np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train, DFT_cost_estimates]))
                 
 #plot_stuff = False
 #if plot_stuff:

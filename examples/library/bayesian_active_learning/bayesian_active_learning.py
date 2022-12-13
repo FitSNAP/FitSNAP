@@ -44,11 +44,10 @@ class AL_settings_class():
         self.training_path = AL_configparser.get('GENERAL', 'training_path', fallback = None)
         self.unlabeled_path = AL_configparser.get('GENERAL', 'unlabeled_path', fallback = None)
         self.output_directory = AL_configparser.get('GENERAL', 'output_directory', fallback = getcwd())
-
-        if self.output_directory[-1] != '/':
-            self.output_directory += '/'
         if self.output_directory[0] != '/':
             self.output_directory = getcwd()+'/'+self.output_directory
+        if self.output_directory[-1] != '/':
+            self.output_directory += '/'
         if not path.isdir(self.output_directory):
             mkdir(self.output_directory)
         self.E_weight = AL_configparser.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)

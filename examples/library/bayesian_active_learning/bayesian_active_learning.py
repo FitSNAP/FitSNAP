@@ -727,7 +727,7 @@ if rank==0:
                 truths = pt.shared_arrays['b_copy'].array[mask_of_still_unused]
                 errors = truths - preds
                 plt.figure()
-                plt.scatter(abs(errors), np.sqrt(diag))
+                plt.scatter(abs(errors), np.sqrt(diag), s=2, color='black')
                 plt.ylabel('sqrt(prediction variance)')
                 plt.xlabel('abs error')
                 plt.title('Active Learning Step ' + str(n_loop))
@@ -735,7 +735,7 @@ if rank==0:
                 plt.close()
                 plt.figure()
                 ax = plt.gca()
-                plt.scatter(abs(errors), np.sqrt(diag))
+                plt.scatter(abs(errors), np.sqrt(diag), s=2, color='black')
                 plt.ylabel('sqrt(prediction variance)')
                 plt.xlabel('abs error')
                 plt.title('Active Learning Step ' + str(n_loop))

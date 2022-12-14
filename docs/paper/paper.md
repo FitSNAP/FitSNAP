@@ -40,17 +40,17 @@ authors:
     affiliation: 1
 
 affiliations:
- - name: Center for Computing Research, Sandia National Laboratories, Albuquerque, NM, USA
+ - name: Center for Computing Research, Sandia National Laboratories, Albuquerque, NM, United States of America
    index: 1
- - name: Boeing, Seattle, WA, USA
+ - name: Boeing, Seattle, WA, United States of America
    index: 2
- - name: Los Alamos National Laboratory, Los Alamos, NM, USA
+ - name: Los Alamos National Laboratory, Los Alamos, NM, United States of America
    index: 3
- - name: Material, Physical, and Chemical Sciences Center, Sandia National Laboratories, Albuquerque, NM, USA
+ - name: Material, Physical, and Chemical Sciences Center, Sandia National Laboratories, Albuquerque, NM, United States of America
    index: 4
- - name: Center for Integrated Nanotechnologies, Sandia National Laboratories, Albuquerque, NM, USA
+ - name: Center for Integrated Nanotechnologies, Sandia National Laboratories, Albuquerque, NM, United States of America
    index: 5
- - name: Chemistry, Combustion and Materials Science Center, Sandia National Laboratories, Livermore, CA, USA
+ - name: Chemistry, Combustion and Materials Science Center, Sandia National Laboratories, Livermore, CA, United States of America
    index: 6
 date: 29 November 2022
 bibliography: paper.bib
@@ -167,7 +167,7 @@ accessible to the FitSNAP components on all processors in a node, throughout the
 The typical workflow begins with the Scraper class, which also uses `ParallelTools` to collect 
 training data in parallel.
 
-### `Scraper`
+### Scraper
 
 The first step in the typical FitSNAP flow of control is a file I/O step to scrape the training 
 data, the configurations of atoms and their associated energies, forces, spins, charges, or whatever 
@@ -187,7 +187,7 @@ Environment (ASE), stored in RAM, and inserted into the FitSNAP data dictionary 
 data. Nonetheless, the FitSNAP data dictionary contains atomic positions that are then converted to 
 atomic environment descriptors in the `Calculator` class.
 
-### `Calculator`
+### Calculator
 
 To transform this structural information into physically appropriate models, we employ the 
 `Calculator` class which provides permutation, translationally and rotationally invariant 
@@ -201,7 +201,7 @@ these calculations are parallelized via MPI over configurations of atoms stored 
 dictionary. Currently we include Spectral Neighbor Analysis Potential (SNAP) [@thompson2015spectral] 
 and Atomic Cluster Environment (ACE) [@drautz2019atomic] descriptors which are both calculated in LAMMPS.
 
-### `Solver`
+### Solver
 
 After collating the necessary descriptors and their target fitting quantities, the `Solver` 
 class can either proceed to regression of the ML problem or evaluating the model. The connection 

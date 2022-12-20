@@ -48,8 +48,13 @@ class AL_settings_class():
             self.output_directory = getcwd()+'/'+self.output_directory
         if self.output_directory[-1] != '/':
             self.output_directory += '/'
-        if not path.isdir(self.output_directory):
-            mkdir(self.output_directory)
+        if parallel:
+            comm.Barrier()
+        if rank==0:
+            if not path.isdir(self.output_directory):
+                mkdir(self.output_directory)
+        if parallel:
+            comm.Barrier()
         self.E_weight = AL_configparser.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)
         self.F_weight = AL_configparser.getfloat('OBJECTIVE', 'F_weight', fallback = 1.0)
         self.S_weight = AL_configparser.getfloat('OBJECTIVE', 's_weight', fallback = 1.0)

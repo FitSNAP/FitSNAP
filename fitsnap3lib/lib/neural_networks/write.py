@@ -479,7 +479,8 @@ class PairNN(torch.nn.Module):
 
         return descriptors_3body
 
-    def forward(self, elems, descriptors, beta, energy, rij, unique_i, unique_j):
+    def forward(self, elems, descriptors, beta, energy, rij, unique_i, unique_j,\
+                tag_i, tag_j):
         """
         Takes element types and descriptors calculated via lammps and
         calculates the per atom energies and forces.
@@ -504,6 +505,8 @@ class PairNN(torch.nn.Module):
 
         unique_i (:obj:`torch.Tensor.long`): Atoms i for all pairs in this config.
 
+        tag_i and tag_j : Tags (actually tag-1) for atoms in all pairs.
+
         Returns
         -------
         None
@@ -516,8 +519,16 @@ class PairNN(torch.nn.Module):
         #print(self.cutoff)
 
         rij = torch.from_numpy(rij).to(dtype=self.dtype, device=self.device).requires_grad_(True)
-        unique_i = torch.from_numpy(unique_i).to(dtype=self.dtype, device=self.device).requires_grad_(True)
-        unique_j = torch.from_numpy(unique_j).to(dtype=self.dtype, device=self.device).requires_grad_(True)
+        unique_i = torch.from_numpy(unique_i).to(dtype=torch.long, device=self.device) #.requires_grad_(True)
+        unique_j = torch.from_numpy(unique_j).to(dtype=torch.long, device=self.device) #.requires_grad_(True)
+        tag_i = torch.from_numpy(tag_i).to(dtype=torch.long, device=self.device) #.requires_grad_(True)
+        tag_j = torch.from_numpy(tag_j).to(dtype=torch.long, device=self.device) #.requires_grad_(True)
+
+        print(unique_i)
+        print(tag_i)
+        print(unique_j)
+        print(tag_j)
+        #assert(False)
 
         diff_norm = torch.nn.functional.normalize(rij, dim=1) # need for g3b
                                                               # size (npairs, 3)
@@ -573,14 +584,44 @@ class PairNN(torch.nn.Module):
         eij = torch.mul(eij,cutoff_functions)
         assert(eij.size()[0] == rij.size()[0])
 
+        # differentiate energy wrt interatomic displacements (rij)
         energy = torch.sum(eij)
         #print(energy/54.)
-
-        # differentiate energy wrt interatomic displacements (rij)
-
         gradients_wrt_rij = torch.autograd.grad(energy, rij)[0]
 
-        print(gradients_wrt_rij.size())
+        # differentiate pairwise energies wrt rij
+        # NOTE: this doesn't work, gives (npair,3) derivative tensor but should be more like a Jacobian
+        #depair_drij = torch.autograd.grad(eij, 
+        #                        rij, 
+        #                        grad_outputs=torch.ones_like(eij))[0]
+
+        #print("Size of gradients_wrt_rij:")
+        #print(gradients_wrt_rij.size())
+
+        #print("Size of depair_drij:")
+        #print(depair_drij.size())
+
+        # calculate force on atom 1
+        # this gives correct force on atom 1 (tag-1 = 0), compare with force_comparison.dat:
+        """
+        npairs = rij.size()[0]
+        f0x = 0.
+        f0y = 0.
+        f0z = 0.
+        for p in range(0,npairs):
+            if tag_i[p] == 0:
+                f0x -= gradients_wrt_rij[p,0]
+                f0y -= gradients_wrt_rij[p,1]
+                f0z -= gradients_wrt_rij[p,2]
+            elif tag_j[p] == 0:
+                f0x += gradients_wrt_rij[p,0]
+                f0y += gradients_wrt_rij[p,1]
+                f0z += gradients_wrt_rij[p,2]
+        print(-1.0*f0x)
+        print(-1.0*f0y)
+        print(-1.0*f0z)
+        #print(tag_i.size())
+        """
 
         # useful to see how autograd will work:
         """

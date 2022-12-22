@@ -1,24 +1,23 @@
 # Initialize simulation
 
 variable nsteps index 0
-variable nrep equal 3
-variable a equal 3.316
 units           metal
 
 # generate the box and atom positions using a BCC lattice
 
-variable nx equal ${nrep}
-variable ny equal ${nrep}
-variable nz equal ${nrep}
-
 boundary        p p p
+read_data DATA
 
-lattice         bcc $a
-region          box block 0 ${nx} 0 ${ny} 0 ${nz}
-create_box      1 box
-create_atoms    1 box
-
-mass 1 180.88
+#variable nrep equal 3
+#variable a equal 3.316
+#variable nx equal ${nrep}
+#variable ny equal ${nrep}
+#variable nz equal ${nrep}
+#lattice         bcc $a
+#region          box block 0 ${nx} 0 ${ny} 0 ${nz}
+#create_box      1 box
+#create_atoms    1 box
+#mass 1 180.88
 
 # choose potential
 
@@ -27,13 +26,12 @@ variable zblcutouter equal 4.8
 variable zblz equal 73
 
 # Specify hybrid with SNAP, ZBL
+# The "1" is a flag saying to use PairNN
 
-pair_style hybrid/overlay &
-zbl ${zblcutinner} ${zblcutouter} &
-mliap model mliappy  ../FitTorch_Pytorch.pt 1 & # The "1" is a flag saying to use PairNN
+pair_style &
+mliap model mliappy  ../FitTorch_Pytorch.pt 1 &
 descriptor sna Ta.mliap.descriptor
-pair_coeff 1 1 zbl ${zblz} ${zblz}
-pair_coeff * * mliap Ta
+pair_coeff * * Ta
 
 compute  eatom all pe/atom
 compute  energy all reduce sum c_eatom

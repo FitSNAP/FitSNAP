@@ -344,7 +344,7 @@ class PairNN(torch.nn.Module):
 
         # Parameters of model that will be used by LAMMPS:
 
-        self.cutoff = 5.0
+        self.cutoff = 3.0
         self.num_radial_descriptors = 5
         self.num_3body_descriptors = 12
 
@@ -462,6 +462,8 @@ class PairNN(torch.nn.Module):
         # cutoff function for all pairs, size (num_neigh)
 
         fcrik = self.cutoff_function_g3b(rij) #.flatten()
+        print(np.shape(rij))
+        print(f"Max fcrik: {torch.max(fcrik)}")
 
         ui = unique_i.unique()
 
@@ -477,7 +479,7 @@ class PairNN(torch.nn.Module):
 
         return descriptors_3body
 
-    def forward(self, elems, descriptors, beta, energy, rij, unique_i):
+    def forward(self, elems, descriptors, beta, energy, rij, unique_i, unique_j):
         """
         Takes element types and descriptors calculated via lammps and
         calculates the per atom energies and forces.
@@ -509,17 +511,26 @@ class PairNN(torch.nn.Module):
 
         print("^^^^^ write.py pairnn forward")
 
-        print("^^^^^ write.py rij:")
-        print(rij)
-        print(self.cutoff)
+        #print("^^^^^ write.py rij:")
+        #print(rij)
+        #print(self.cutoff)
 
         rij = torch.from_numpy(rij).to(dtype=self.dtype, device=self.device).requires_grad_(True)
         unique_i = torch.from_numpy(unique_i).to(dtype=self.dtype, device=self.device).requires_grad_(True)
+        unique_j = torch.from_numpy(unique_j).to(dtype=self.dtype, device=self.device).requires_grad_(True)
 
         diff_norm = torch.nn.functional.normalize(rij, dim=1) # need for g3b
                                                               # size (npairs, 3)
         distance_ij = torch.linalg.norm(rij, dim=1).unsqueeze(1)  # need for cutoff and various other functions
                                                                   # size (npairs, 1)
+
+        #print(distance_ij)
+
+        #print(unique_i)
+        #neighlist = torch.cat((unique_i, unique_j), dim=1)
+
+        maxr = torch.max(distance_ij)
+        print(f"Max pairwise distance: {maxr}")
 
         # Calculate cutoff functions once for pairwise terms here, because we use the same cutoff 
         # function for both radial basis and eij.
@@ -532,9 +543,13 @@ class PairNN(torch.nn.Module):
         rbf = self.radial_bessel_basis(distance_ij, cutoff_functions)
         assert(rbf.size()[0] == rij.size()[0])
 
+        print(f"Max RBF: {torch.max(rbf)}")
+
         # calculate 3 body descriptors 
 
-        descriptors_3body = self.calculate_g3b(rij, diff_norm, unique_i)
+        descriptors_3body = self.calculate_g3b(distance_ij, diff_norm, unique_i)
+
+        print(f"Max d3body: {torch.max(descriptors_3body)}")
 
         # concatenate radial descriptors and 3body descriptors
 
@@ -549,12 +564,17 @@ class PairNN(torch.nn.Module):
 
         eij = self.model(descriptors)
 
+        print(f"Max eij: {torch.max(eij)}")
+
+        #for param_tensor in self.state_dict():
+        #    print(param_tensor, "\t", self.state_dict()[param_tensor]) 
+
         assert(cutoff_functions.size() == eij.size())
         eij = torch.mul(eij,cutoff_functions)
         assert(eij.size()[0] == rij.size()[0])
 
         energy = torch.sum(eij)
-        print(energy)
+        print(energy/54.)
 
         # useful to see how autograd will work:
         """

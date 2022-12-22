@@ -574,7 +574,13 @@ class PairNN(torch.nn.Module):
         assert(eij.size()[0] == rij.size()[0])
 
         energy = torch.sum(eij)
-        print(energy/54.)
+        #print(energy/54.)
+
+        # differentiate energy wrt interatomic displacements (rij)
+
+        gradients_wrt_rij = torch.autograd.grad(energy, rij)[0]
+
+        print(gradients_wrt_rij.size())
 
         # useful to see how autograd will work:
         """

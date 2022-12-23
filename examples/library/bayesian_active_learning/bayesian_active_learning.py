@@ -734,21 +734,28 @@ if rank==0:
                     truths = pt.shared_arrays['b_copy'].array[mask_of_still_unused]
                     errors = truths - preds
                     #plt.figure()
+                    #ax = plt.gca()
                     #plt.scatter(abs(errors), np.sqrt(diag), s=2, color='black')
                     #plt.ylabel('sqrt(prediction variance)')
-                    #plt.xlabel('abs error')
+                    #plt.xlabel('absolute error')
                     #plt.title('Active Learning Step ' + str(n_loop))
-                    #plt.savefig(AL_settings.output_directory+'uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
+                    #ax.set_xscale("log")
+                    #ax.set_yscale("log")
+                    #plt.savefig(AL_settings.output_directory+'loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
                     #plt.close()
                     plt.figure()
                     ax = plt.gca()
-                    plt.scatter(abs(errors), np.sqrt(diag), s=2, color='black')
+                    colors = ['black', 'blue', 'red']
+                    for k, row_type in enumerate(['Force', 'Stress', 'Energy']):
+                        row_type_mask = (unlabeled_df['Row_Type']==row_type).tolist()
+                        plt.scatter(abs(errors[row_type_mask]), np.sqrt(diag[row_type_mask]), s=2, color=colors[k], label=row_type)
                     plt.ylabel('sqrt(prediction variance)')
                     plt.xlabel('absolute error')
                     plt.title('Active Learning Step ' + str(n_loop))
                     ax.set_xscale("log")
                     ax.set_yscale("log")
-                    plt.savefig(AL_settings.output_directory+'loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
+                    plt.legend()
+                    plt.savefig(AL_settings.output_directory+'loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '_colorcoded.png')
                     plt.close()
             else:
                 print('TRUTH VALUES FOR UNLABELED POOL ARE NOT YET KNOWN, CAN NOT PLOT UNCERTAINTY ERROR CORRELATION FOR THEM!')

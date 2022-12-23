@@ -65,6 +65,7 @@ class AL_settings_class():
         self.obj_function = AL_configparser.get('OBJECTIVE', 'objective_function', fallback = 'sum')
         self.weight_by_relative_DFT_cost = AL_configparser.getboolean('OBJECTIVE', 'weight_by_relative_DFT_cost', fallback = True)
         self.plot_uncertainty_error_correlation = AL_configparser.getboolean('PLOTTING', 'plot_uncertainty_error_correlation', fallback=False)
+        self.n_steps_per_plot_uncertainty_error_correlation = AL_configparser.getint('PLOTTING', 'n_steps_per_plot_uncertainty_error_correlation', fallback=1)
         self.plot_convergence_plots = AL_configparser.getboolean('PLOTTING', 'plot_convergence_plots', fallback=True)
         if any([self.plot_uncertainty_error_correlation, self.plot_convergence_plots]):
             self.plotting_something = True
@@ -728,26 +729,27 @@ if rank==0:
         if AL_settings.plot_uncertainty_error_correlation:
             # this only makes sense if you actually have the truth values in your 'unlabeled pool'
             if known_truth_for_unlabeled:
-                preds = np.dot(A,snap.solver.fit)
-                truths = pt.shared_arrays['b_copy'].array[mask_of_still_unused]
-                errors = truths - preds
-                plt.figure()
-                plt.scatter(abs(errors), np.sqrt(diag), s=2, color='black')
-                plt.ylabel('sqrt(prediction variance)')
-                plt.xlabel('abs error')
-                plt.title('Active Learning Step ' + str(n_loop))
-                plt.savefig(AL_settings.output_directory+'uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
-                plt.close()
-                plt.figure()
-                ax = plt.gca()
-                plt.scatter(abs(errors), np.sqrt(diag), s=2, color='black')
-                plt.ylabel('sqrt(prediction variance)')
-                plt.xlabel('abs error')
-                plt.title('Active Learning Step ' + str(n_loop))
-                ax.set_xscale("log")
-                ax.set_yscale("log")
-                plt.savefig(AL_settings.output_directory+'loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
-                plt.close()
+                if not (n_loop%AL_settings.n_steps_per_plot_uncertainty_error_correlation):
+                    preds = np.dot(A,snap.solver.fit)
+                    truths = pt.shared_arrays['b_copy'].array[mask_of_still_unused]
+                    errors = truths - preds
+                    #plt.figure()
+                    #plt.scatter(abs(errors), np.sqrt(diag), s=2, color='black')
+                    #plt.ylabel('sqrt(prediction variance)')
+                    #plt.xlabel('abs error')
+                    #plt.title('Active Learning Step ' + str(n_loop))
+                    #plt.savefig(AL_settings.output_directory+'uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
+                    #plt.close()
+                    plt.figure()
+                    ax = plt.gca()
+                    plt.scatter(abs(errors), np.sqrt(diag), s=2, color='black')
+                    plt.ylabel('sqrt(prediction variance)')
+                    plt.xlabel('absolute error')
+                    plt.title('Active Learning Step ' + str(n_loop))
+                    ax.set_xscale("log")
+                    ax.set_yscale("log")
+                    plt.savefig(AL_settings.output_directory+'loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
+                    plt.close()
             else:
                 print('TRUTH VALUES FOR UNLABELED POOL ARE NOT YET KNOWN, CAN NOT PLOT UNCERTAINTY ERROR CORRELATION FOR THEM!')
             print('loop uncertainty error correlation plotting', n_loop, 'done')

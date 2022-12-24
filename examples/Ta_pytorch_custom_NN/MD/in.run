@@ -30,7 +30,7 @@ variable zblz equal 73
 
 pair_style &
 mliap model mliappy  ../FitTorch_Pytorch.pt 1 &
-descriptor sna Ta.mliap.descriptor
+descriptor fitsnap Ta.mliap.descriptor
 pair_coeff * * Ta
 
 compute  eatom all pe/atom

@@ -588,6 +588,7 @@ class PairNN(torch.nn.Module):
         energy = torch.sum(eij)
         #print(energy/54.)
         gradients_wrt_rij = torch.autograd.grad(energy, rij)[0]
+        beta[:,:] = gradients_wrt_rij.detach().cpu().numpy().astype(np.float64)
 
         # differentiate pairwise energies wrt rij
         # NOTE: this doesn't work, gives (npair,3) derivative tensor but should be more like a Jacobian
@@ -623,7 +624,20 @@ class PairNN(torch.nn.Module):
         #print(tag_i.size())
         """
 
-        # useful to see how autograd will work:
+        # this also gives the correct force for atom 1 (tag-1 = 0) using a mask:
+        """
+        mask_i = tag_i == 0
+        mask_j = tag_j == 0
+        add = torch.sum(gradients_wrt_rij[mask_i], axis=0)
+        subtract = torch.sum(gradients_wrt_rij[mask_j], axis=0)
+        print(add-subtract)
+        """
+
+        # might be best to give this function a pointer to dE/dRij which gets
+        # populated inside here, then do the loop to calculate per-atom forces
+        # in LAMMPS later.
+
+        # useful to see how autograd works:
         """
         energy = 2.0*rij
         energy = torch.sum(energy)
@@ -635,9 +649,7 @@ class PairNN(torch.nn.Module):
         print(gradients_wrt_rij)
         """
 
-        assert(False)
-
-
+        """
         descriptors = torch.from_numpy(descriptors).to(dtype=self.dtype, device=self.device).requires_grad_(True)
         elems = torch.from_numpy(elems).to(dtype=torch.long, device=self.device) - 1
 
@@ -651,3 +663,4 @@ class PairNN(torch.nn.Module):
 
         beta[:] = beta_nn.detach().cpu().numpy().astype(np.float64)
         energy[:] = energy_nn.detach().cpu().numpy().astype(np.float64)
+        """

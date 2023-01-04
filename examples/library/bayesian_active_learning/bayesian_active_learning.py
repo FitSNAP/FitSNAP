@@ -705,9 +705,10 @@ if rank==0:
         print(snap.solver.errors.loc['*ALL'])
         error_log_list.append(snap.solver.errors)
 
-        # TODO: just add the amount from each new set of structures to the previous total instead of recalculating every step
-        rough_DFT_cost_estimate = ((snap.solver.df[snap.solver.df["Row_Type"]=="Force"].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
-        DFT_cost_estimates.append(rough_DFT_cost_estimate)
+        # only calculate full amount first time - then just add the amount from each new set of structures to the previous total instead of recalculating every step - at the data shuffling step later
+        if DFT_cost_estimates==[]:
+            rough_DFT_cost_estimate = ((snap.solver.df[snap.solver.df["Row_Type"]=="Force"].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
+            DFT_cost_estimates.append(rough_DFT_cost_estimate)
         
         if len(unlabeled_df)==0: #have fully exhausted the unlabeled pool
             break
@@ -792,9 +793,12 @@ if rank==0:
             
         cwd = getcwd()
     
+        DFT_cost_current_selection = 0
         for (group, structure) in chosen_structures.index:
             # chosen structures data to add to training data
             mask_of_structure = (unlabeled_df['Groups']==group) & (unlabeled_df['Configs']==structure)
+            # the groupby command below is overkill - there should only ever be one group at a time in these loops. This mimics the full calculation but if slow can be rewritten much simpler
+            DFT_cost_current_selection += ((unlabeled_df[(mask_of_structure) & (unlabeled_df["Row_Type"]=="Force")].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
             a_to_append = pt.shared_arrays['a_copy'].array[mask_of_still_unused][mask_of_structure]
             
             
@@ -891,6 +895,7 @@ if rank==0:
             #snap.pt.shared_arrays['number_of_atoms']
             #snap.pt.shared_arrays['number_of_dgrad_rows']
             #snap.pt.shared_arrays['ref']
+        DFT_cost_estimates.append(DFT_cost_estimates[-1]+DFT_cost_current_selection)
         print('loop data movement', n_loop, 'done')
         current_timestamp =datetime.now()
         print(current_timestamp - last_timestamp)

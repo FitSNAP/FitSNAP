@@ -13,7 +13,8 @@ try:
             super().__init__(name, config, args)
             self.allowedkeys = ['layer_sizes', 'learning_rate', 'num_epochs', 'batch_size', 'save_state_output',
                                 'save_freq', 'save_state_input', 'output_file', 'energy_weight', 'force_weight',
-                                'training_fraction', 'multi_element_option', 'num_elements', 'manual_seed_flag']
+                                'training_fraction', 'multi_element_option', 'num_elements', 'manual_seed_flag',
+                                'shuffle_flag']
             self._check_section()
 
             self._check_if_used("SOLVER", "solver", "SVD")
@@ -44,6 +45,8 @@ try:
                 self.dtype = torch.float32
             else:
                 self.dtype = torch.float64
+            self.shuffle_flag = self.get_value("PYTORCH", "shuffle_flag", "True", "bool")
+            print(self.shuffle_flag)
 
             # catch errors associated with settings, and set necessary flags for later
 

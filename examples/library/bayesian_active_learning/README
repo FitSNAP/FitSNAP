@@ -3,6 +3,7 @@ active_learning: default = True, whether to select structures based on some crit
 number_of_iterations: default = 10, number of times to select new structure(s) and retrain model
 batch_size: default = 1, number of structures to select per active learning loop (iteration)
 cluster_structures: default = False, whether or not to cluster structures before selecting which to add to training set
+number_of_clusters: default = 0, 0 will auto-determine the number of clusters using the 'knee' method (requires multiple clustering runs at each number of clusters)
 output_directory: default = the working directory that the script is ran in, controls what directory all the output files are written into
 
 [OBJECTIVE]

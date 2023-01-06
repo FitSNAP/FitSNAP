@@ -1,6 +1,6 @@
 <!----------------BEGIN-HEADER------------------------------------>
 
-<img width="300" alt="FitSNAP" src="https://github.com/rohskopf/FitSNAP/blob/master/FitSNAP.png">
+<img width="300" alt="FitSNAP" src="https://github.com/FitSNAP/FitSNAP/blob/master/docs/images/FitSNAP.png">
 
 
 [![FitSNAP Pytests](https://github.com/FitSNAP/FitSNAP/actions/workflows/pytests.yaml/badge.svg?branch=master)](https://github.com/FitSNAP/FitSNAP/actions/workflows/pytests.yaml)

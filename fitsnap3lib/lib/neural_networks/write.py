@@ -97,7 +97,7 @@ class TorchWrapper(torch.nn.Module):
         Parameters
         ----------
         elems : numpy.array
-            Per atom element types
+            Per atom element types, starting from -1
 
         descriptors : numpy.array
             Per atom descriptors
@@ -116,7 +116,9 @@ class TorchWrapper(torch.nn.Module):
         """
 
         descriptors = torch.from_numpy(descriptors).to(dtype=self.dtype, device=self.device).requires_grad_(True)
-        elems = torch.from_numpy(elems).to(dtype=torch.long, device=self.device) - 1
+        elems = torch.from_numpy(elems).to(dtype=torch.long, device=self.device)
+        #print(elems)
+        #print(self.model)
 
         with torch.autograd.enable_grad():
 
@@ -128,6 +130,8 @@ class TorchWrapper(torch.nn.Module):
 
         beta[:] = beta_nn.detach().cpu().numpy().astype(np.float64)
         energy[:] = energy_nn.detach().cpu().numpy().astype(np.float64)
+
+        #print(np.sum(energy)/192)
 
 
 class IgnoreElems(torch.nn.Module):
@@ -308,7 +312,9 @@ class ElemwiseModels(torch.nn.Module):
 
         per_atom_attributes = torch.zeros(elems.size(dim=0), dtype=self.dtype)
         given_elems, elem_indices = torch.unique(elems, return_inverse=True)
+        print(self.subnets)
         for i, elem in enumerate(given_elems):
+            print(f"{i} {elem}")
             self.subnets[elem].to(self.dtype) 
             per_atom_attributes[elem_indices == i] = self.subnets[elem](descriptors[elem_indices == i]).flatten()
         return per_atom_attributes
@@ -512,7 +518,7 @@ class PairNN(torch.nn.Module):
         None
         """
 
-        print("^^^^^ write.py pairnn forward")
+        #print("^^^^^ write.py pairnn forward")
 
         #print("^^^^^ write.py rij:")
         #print(rij)
@@ -541,7 +547,7 @@ class PairNN(torch.nn.Module):
         #neighlist = torch.cat((unique_i, unique_j), dim=1)
 
         maxr = torch.max(distance_ij)
-        print(f"Max pairwise distance: {maxr}")
+        #print(f"Max pairwise distance: {maxr}")
 
         # Calculate cutoff functions once for pairwise terms here, because we use the same cutoff 
         # function for both radial basis and eij.
@@ -554,13 +560,13 @@ class PairNN(torch.nn.Module):
         rbf = self.radial_bessel_basis(distance_ij, cutoff_functions)
         assert(rbf.size()[0] == rij.size()[0])
 
-        print(f"Max RBF: {torch.max(rbf)}")
+        #print(f"Max RBF: {torch.max(rbf)}")
 
         # calculate 3 body descriptors 
 
         descriptors_3body = self.calculate_g3b(distance_ij, diff_norm, unique_i)
 
-        print(f"Max d3body: {torch.max(descriptors_3body)}")
+        #print(f"Max d3body: {torch.max(descriptors_3body)}")
 
         # concatenate radial descriptors and 3body descriptors
 
@@ -569,13 +575,13 @@ class PairNN(torch.nn.Module):
 
         # input descriptors to a network for each pair; calculate pairwise energies
 
-        print(rbf.size())
-        print(descriptors_3body.size())
-        print(descriptors.size())
+        #print(rbf.size())
+        #print(descriptors_3body.size())
+        #print(descriptors.size())
 
         eij = self.model(descriptors)
 
-        print(f"Max eij: {torch.max(eij)}")
+        #print(f"Max eij: {torch.max(eij)}")
 
         #for param_tensor in self.state_dict():
         #    print(param_tensor, "\t", self.state_dict()[param_tensor]) 

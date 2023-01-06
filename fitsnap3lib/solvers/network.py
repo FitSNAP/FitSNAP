@@ -245,6 +245,7 @@ try:
                     first_layer_weight = "network_architecture"+str(t)+".0.weight"
                     first_layer_bias = "network_architecture"+str(t)+".0.bias"
                     state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
+                    #print(state_dict[first_layer_weight])
                     state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
 
                 # load the new state_dict with the standardized weights

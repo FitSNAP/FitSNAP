@@ -141,6 +141,10 @@ class FitTorch(torch.nn.Module):
         else:
             predicted_energy_total = None
 
+
+        #print(predicted_energy_total/192)
+        #assert(False)
+
         # calculate forces
 
         if (self.force_bool):

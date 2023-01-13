@@ -507,7 +507,7 @@ class ParallelTools(metaclass=Singleton):
             self._bcast_fitsnap("sub_a_indices")
             self.fitsnap_dict["sub_a_indices"] = self.fitsnap_dict["sub_a_indices"][self._sub_rank]
             return
-        sub_a_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+        sub_a_sizes = np.zeros((self._sub_size, ), dtype=int)
 
         for i in range(nof):
             proc_number = i % self._sub_size
@@ -538,7 +538,7 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_a_size"] = sub_a_sizes[self._sub_rank]
 
         count = 0
-        indices = np.zeros((self._sub_size, 2), dtype=np.int)
+        indices = np.zeros((self._sub_size, 2), dtype=int)
         for i, value in enumerate(sub_a_sizes):
             indices[i] = count, count+value-1
             count += value
@@ -557,7 +557,7 @@ class ParallelTools(metaclass=Singleton):
             self._bcast_fitsnap("sub_b_indices")
             self.fitsnap_dict["sub_b_indices"] = self.fitsnap_dict["sub_b_indices"][self._sub_rank]
             return
-        sub_b_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+        sub_b_sizes = np.zeros((self._sub_size, ), dtype=int)
 
         for i in range(nof):
             proc_number = i % self._sub_size
@@ -570,7 +570,7 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_b_size"] = sub_b_sizes[self._sub_rank]
 
         count = 0
-        indices = np.zeros((self._sub_size, 2), dtype=np.int)
+        indices = np.zeros((self._sub_size, 2), dtype=int)
         for i, value in enumerate(sub_b_sizes):
             indices[i] = count, count+value-1
             count += value
@@ -589,7 +589,7 @@ class ParallelTools(metaclass=Singleton):
             self._bcast_fitsnap("sub_c_indices")
             self.fitsnap_dict["sub_c_indices"] = self.fitsnap_dict["sub_c_indices"][self._sub_rank]
             return
-        sub_c_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+        sub_c_sizes = np.zeros((self._sub_size, ), dtype=int)
 
         for i in range(nof):
             proc_number = i % self._sub_size
@@ -602,7 +602,7 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_c_size"] = sub_c_sizes[self._sub_rank]
 
         count = 0
-        indices = np.zeros((self._sub_size, 2), dtype=np.int)
+        indices = np.zeros((self._sub_size, 2), dtype=int)
         for i, value in enumerate(sub_c_sizes):
             indices[i] = count, count+value-1
             count += value
@@ -620,7 +620,7 @@ class ParallelTools(metaclass=Singleton):
             self._bcast_fitsnap("sub_t_indices")
             self.fitsnap_dict["sub_t_indices"] = self.fitsnap_dict["sub_t_indices"][self._sub_rank]
             return
-        sub_t_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+        sub_t_sizes = np.zeros((self._sub_size, ), dtype=int)
 
         for i in range(nof):
             proc_number = i % self._sub_size
@@ -636,7 +636,7 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_t_size"] = sub_t_sizes[self._sub_rank]
 
         count = 0
-        indices = np.zeros((self._sub_size, 2), dtype=np.int)
+        indices = np.zeros((self._sub_size, 2), dtype=int)
         for i, value in enumerate(sub_t_sizes):
             indices[i] = count, count+value-1
             count += value
@@ -655,7 +655,7 @@ class ParallelTools(metaclass=Singleton):
             self._bcast_fitsnap("sub_dgrad_indices")
             self.fitsnap_dict["sub_dgrad_indices"] = self.fitsnap_dict["sub_dgrad_indices"][self._sub_rank]
             return
-        sub_dgrad_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+        sub_dgrad_sizes = np.zeros((self._sub_size, ), dtype=int)
 
         for i in range(nof):
             proc_number = i % self._sub_size
@@ -669,7 +669,7 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_dgrad_size"] = sub_dgrad_sizes[self._sub_rank]
 
         count = 0
-        indices = np.zeros((self._sub_size, 2), dtype=np.int)
+        indices = np.zeros((self._sub_size, 2), dtype=int)
         for i, value in enumerate(sub_dgrad_sizes):
             indices[i] = count, count+value-1
             count += value
@@ -689,7 +689,7 @@ class ParallelTools(metaclass=Singleton):
             self._bcast_fitsnap("sub_neighlist_indices")
             self.fitsnap_dict["sub_neighlist_indices"] = self.fitsnap_dict["sub_neighlist_indices"][self._sub_rank]
             return
-        sub_neighlist_sizes = np.zeros((self._sub_size, ), dtype=np.int)
+        sub_neighlist_sizes = np.zeros((self._sub_size, ), dtype=int)
 
         for i in range(nof):
             proc_number = i % self._sub_size
@@ -702,7 +702,7 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict["sub_neighlist_size"] = sub_neighlist_sizes[self._sub_rank]
 
         count = 0
-        indices = np.zeros((self._sub_size, 2), dtype=np.int)
+        indices = np.zeros((self._sub_size, 2), dtype=int)
         for i, value in enumerate(sub_neighlist_sizes):
             indices[i] = count, count+value-1
             count += value

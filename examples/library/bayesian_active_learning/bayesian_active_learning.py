@@ -798,11 +798,13 @@ if rank==0:
         print(snap.solver.errors.loc['*ALL'])
         error_log_list.append(snap.solver.errors)
 
-        # only calculate full amount first time - then just add the amount from each new set of structures to the previous total instead of recalculating every step - at the data shuffling step later
+        # only calculate full amount first time - then just add the amount from each new set of structures to the previous total instead of recalculating every step
         if DFT_cost_estimates==[]:
             rough_DFT_cost_estimate = ((snap.solver.df[snap.solver.df["Row_Type"]=="Force"].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
             DFT_cost_estimates.append(rough_DFT_cost_estimate)
-        
+        else:
+            DFT_cost_estimates.append(DFT_cost_estimates[-1]+DFT_cost_current_selection)
+            
         if len(unlabeled_df)==0: #have fully exhausted the unlabeled pool
             break
         C = snap.solver.cov
@@ -989,7 +991,6 @@ if rank==0:
             #snap.pt.shared_arrays['number_of_atoms']
             #snap.pt.shared_arrays['number_of_dgrad_rows']
             #snap.pt.shared_arrays['ref']
-        DFT_cost_estimates.append(DFT_cost_estimates[-1]+DFT_cost_current_selection)
         print('loop data movement', n_loop, 'done')
         current_timestamp =datetime.now()
         print(current_timestamp - last_timestamp)

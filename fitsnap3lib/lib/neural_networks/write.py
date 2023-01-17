@@ -518,23 +518,16 @@ class PairNN(torch.nn.Module):
         None
         """
 
-        #print("^^^^^ write.py pairnn forward")
-
-        #print("^^^^^ write.py rij:")
-        #print(rij)
-        #print(self.cutoff)
-
         rij = torch.from_numpy(rij).to(dtype=self.dtype, device=self.device).requires_grad_(True)
         unique_i = torch.from_numpy(unique_i).to(dtype=torch.long, device=self.device) #.requires_grad_(True)
         unique_j = torch.from_numpy(unique_j).to(dtype=torch.long, device=self.device) #.requires_grad_(True)
         tag_i = torch.from_numpy(tag_i).to(dtype=torch.long, device=self.device) #.requires_grad_(True)
         tag_j = torch.from_numpy(tag_j).to(dtype=torch.long, device=self.device) #.requires_grad_(True)
 
-        print(unique_i)
-        print(tag_i)
-        print(unique_j)
-        print(tag_j)
-        #assert(False)
+        #print(unique_i)
+        #print(tag_i)
+        #print(unique_j)
+        #print(tag_j)
 
         diff_norm = torch.nn.functional.normalize(rij, dim=1) # need for g3b
                                                               # size (npairs, 3)
@@ -543,10 +536,8 @@ class PairNN(torch.nn.Module):
 
         #print(distance_ij)
 
-        #print(unique_i)
-        #neighlist = torch.cat((unique_i, unique_j), dim=1)
-
-        maxr = torch.max(distance_ij)
+        # max pairwise distance is good for debugging match with fitting code
+        #maxr = torch.max(distance_ij)
         #print(f"Max pairwise distance: {maxr}")
 
         # Calculate cutoff functions once for pairwise terms here, because we use the same cutoff 
@@ -560,17 +551,19 @@ class PairNN(torch.nn.Module):
         rbf = self.radial_bessel_basis(distance_ij, cutoff_functions)
         assert(rbf.size()[0] == rij.size()[0])
 
+        # max rbf good for debugging match with fitting code
         #print(f"Max RBF: {torch.max(rbf)}")
 
         # calculate 3 body descriptors 
 
         descriptors_3body = self.calculate_g3b(distance_ij, diff_norm, unique_i)
 
+        # max d3b good for debugging match with fitting code
         #print(f"Max d3body: {torch.max(descriptors_3body)}")
 
         # concatenate radial descriptors and 3body descriptors
 
-        descriptors = torch.cat([rbf, descriptors_3body], dim=1) # num_pairs x num_descriptors
+        descriptors = torch.cat([rbf, descriptors_3body], dim=1) # size (num_pairs, num_descriptors)
         assert(descriptors.size()[0] == rij.size()[0])
 
         # input descriptors to a network for each pair; calculate pairwise energies
@@ -595,78 +588,3 @@ class PairNN(torch.nn.Module):
         #print(energy/54.)
         gradients_wrt_rij = torch.autograd.grad(energy, rij)[0]
         beta[:,:] = gradients_wrt_rij.detach().cpu().numpy().astype(np.float64)
-
-        # differentiate pairwise energies wrt rij
-        # NOTE: this doesn't work, gives (npair,3) derivative tensor but should be more like a Jacobian
-        #depair_drij = torch.autograd.grad(eij, 
-        #                        rij, 
-        #                        grad_outputs=torch.ones_like(eij))[0]
-
-        #print("Size of gradients_wrt_rij:")
-        #print(gradients_wrt_rij.size())
-
-        #print("Size of depair_drij:")
-        #print(depair_drij.size())
-
-        # calculate force on atom 1
-        # this gives correct force on atom 1 (tag-1 = 0), compare with force_comparison.dat:
-        """
-        npairs = rij.size()[0]
-        f0x = 0.
-        f0y = 0.
-        f0z = 0.
-        for p in range(0,npairs):
-            if tag_i[p] == 0:
-                f0x -= gradients_wrt_rij[p,0]
-                f0y -= gradients_wrt_rij[p,1]
-                f0z -= gradients_wrt_rij[p,2]
-            elif tag_j[p] == 0:
-                f0x += gradients_wrt_rij[p,0]
-                f0y += gradients_wrt_rij[p,1]
-                f0z += gradients_wrt_rij[p,2]
-        print(-1.0*f0x)
-        print(-1.0*f0y)
-        print(-1.0*f0z)
-        #print(tag_i.size())
-        """
-
-        # this also gives the correct force for atom 1 (tag-1 = 0) using a mask:
-        """
-        mask_i = tag_i == 0
-        mask_j = tag_j == 0
-        add = torch.sum(gradients_wrt_rij[mask_i], axis=0)
-        subtract = torch.sum(gradients_wrt_rij[mask_j], axis=0)
-        print(add-subtract)
-        """
-
-        # might be best to give this function a pointer to dE/dRij which gets
-        # populated inside here, then do the loop to calculate per-atom forces
-        # in LAMMPS later.
-
-        # useful to see how autograd works:
-        """
-        energy = 2.0*rij
-        energy = torch.sum(energy)
-        #gradients_wrt_rij = torch.autograd.grad(energy, 
-        #                        rij, 
-        #                        grad_outputs=torch.ones_like(energy))[0]
-        # this also works and looks simpler:
-        gradients_wrt_rij = torch.autograd.grad(energy, rij)[0]
-        print(gradients_wrt_rij)
-        """
-
-        """
-        descriptors = torch.from_numpy(descriptors).to(dtype=self.dtype, device=self.device).requires_grad_(True)
-        elems = torch.from_numpy(elems).to(dtype=torch.long, device=self.device) - 1
-
-        with torch.autograd.enable_grad():
-
-            energy_nn = self.model(descriptors, elems)
-            if energy_nn.ndim > 1:
-                energy_nn = energy_nn.flatten()
-
-            beta_nn = torch.autograd.grad(energy_nn.sum(), descriptors)[0]
-
-        beta[:] = beta_nn.detach().cpu().numpy().astype(np.float64)
-        energy[:] = energy_nn.detach().cpu().numpy().astype(np.float64)
-        """

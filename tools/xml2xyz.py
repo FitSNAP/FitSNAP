@@ -183,8 +183,10 @@ elif is_dir:
         print(single_file)
         tree = ET.iterparse(single_file, events=['start', 'end'])
         try:
-            test = list(tree) # this will raise exception if faulty file
+            #test = list(tree) # this will raise exception if faulty file
+            #print("asdf")
             for event, elem in tree:
+                #print("asdf")
                 if elem.tag == 'parameters' and event=='end': #once at the start
                     NELM = int(elem.find('separator[@name="electronic"]/separator[@name="electronic convergence"]/i[@name="NELM"]').text)
                     #print(NELM)
@@ -212,6 +214,7 @@ elif is_dir:
                     #print(atom_coords)
                     
                 elif elem.tag == 'calculation' and event=='end': #this triggers each ionic step
+                    #print("inside")
                     atom_force = []
                     force_block = elem.find("varray[@name='forces']")
                     if force_block:

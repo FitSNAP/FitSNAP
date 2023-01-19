@@ -23,3 +23,6 @@ VASP_kpoints_auto_generation_Rk: default = 30, density of auto-generated kpoints
 [PLOTTING]
 plot_uncertainty_error_correlation: default = False, makes normal and loglog plots of the absolute errors (if known on the unlabeled set) vs the std_dev of the prediction (sqrt of our prediction variance - 'uncertainty' in the code)
 plot_convergence_plots: default = True, makes plots for the E,F,S mean absolute error (MAE) and root mean squared error (RMSE) of the training and testing sets separately as a function of the # of training datapoints in each category
+n_steps_per_plot_uncertainty_error_correlation: default = 1, how often to plot the uncertainty - error correlation plots
+track_estimated_DFT_cost: default = False, adds a datacolumn in the error logs that estimates DFT cost using the number of atoms in each structure cubed
+

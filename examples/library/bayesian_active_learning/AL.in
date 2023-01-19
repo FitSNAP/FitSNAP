@@ -15,3 +15,4 @@ weight_by_relative_DFT_cost = True
 [PLOTTING]
 plot_uncertainty_error_correlation = False
 plot_convergence_plots = True
+track_estimated_DFT_cost = False

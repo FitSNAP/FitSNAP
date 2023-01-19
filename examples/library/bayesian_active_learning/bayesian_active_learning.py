@@ -70,6 +70,7 @@ class AL_settings_class():
         self.plot_uncertainty_error_correlation = AL_configparser.getboolean('PLOTTING', 'plot_uncertainty_error_correlation', fallback=False)
         self.n_steps_per_plot_uncertainty_error_correlation = AL_configparser.getint('PLOTTING', 'n_steps_per_plot_uncertainty_error_correlation', fallback=1)
         self.plot_convergence_plots = AL_configparser.getboolean('PLOTTING', 'plot_convergence_plots', fallback=True)
+        self.track_estimated_DFT_cost = AL_configparser.getboolean('PLOTTING', 'track_estimated_DFT_cost', fallback=False)
         if any([self.plot_uncertainty_error_correlation, self.plot_convergence_plots]):
             self.plotting_something = True
         else:
@@ -799,11 +800,12 @@ if rank==0:
         error_log_list.append(snap.solver.errors)
 
         # only calculate full amount first time - then just add the amount from each new set of structures to the previous total instead of recalculating every step
-        if DFT_cost_estimates==[]:
-            rough_DFT_cost_estimate = ((snap.solver.df[snap.solver.df["Row_Type"]=="Force"].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
-            DFT_cost_estimates.append(rough_DFT_cost_estimate)
-        else:
-            DFT_cost_estimates.append(DFT_cost_estimates[-1]+DFT_cost_current_selection)
+        if AL_settings.track_estimated_DFT_cost:
+            if DFT_cost_estimates==[]:
+                rough_DFT_cost_estimate = ((snap.solver.df[snap.solver.df["Row_Type"]=="Force"].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
+                DFT_cost_estimates.append(rough_DFT_cost_estimate)
+            else:
+                DFT_cost_estimates.append(DFT_cost_estimates[-1]+DFT_cost_current_selection)
             
         if len(unlabeled_df)==0: #have fully exhausted the unlabeled pool
             break
@@ -893,10 +895,12 @@ if rank==0:
         for (group, structure) in chosen_structures.index:
             # chosen structures data to add to training data
             mask_of_structure = (unlabeled_df['Groups']==group) & (unlabeled_df['Configs']==structure)
-            # the groupby command below is overkill - there should only ever be one group at a time in these loops. This mimics the full calculation but if slow can be rewritten much simpler
-            DFT_cost_current_selection += ((unlabeled_df[(mask_of_structure) & (unlabeled_df["Row_Type"]=="Force")].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
+
+            if AL_settings.track_estimated_DFT_cost:
+                # the groupby command below is overkill - there should only ever be one group at a time in these loops. This mimics the full calculation but if slow can be rewritten much simpler
+                DFT_cost_current_selection += ((unlabeled_df[(mask_of_structure) & (unlabeled_df["Row_Type"]=="Force")].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
+
             a_to_append = pt.shared_arrays['a_copy'].array[mask_of_still_unused][mask_of_structure]
-            
             
             b,w,g,c,r,ai,at = [],[],[],[],[],[],[]
             b = pt.shared_arrays['b_copy'].array[mask_of_still_unused][mask_of_structure].tolist()
@@ -1022,8 +1026,10 @@ if AL_settings.plot_convergence_plots:
                 plt.legend()
                 plt.savefig(AL_settings.output_directory+'convergence_'+ind+'_'+metric+'.png')
                 plt.close()
-                np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train, DFT_cost_estimates]))
-                
+                if AL_settings.track_estimated_DFT_cost:
+                    np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train, DFT_cost_estimates]))
+                else:
+                    np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
 #plot_stuff = False
 #if plot_stuff:
 #    if rank==0:

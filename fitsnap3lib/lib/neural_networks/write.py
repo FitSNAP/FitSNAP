@@ -6,11 +6,11 @@ def calc_n_params(model):
     """
     Returns the sum of two decimal numbers in binary digits.
 
-        Parameters:
-                model (torch.nn.Module): Network model that maps descriptors to a per atom attribute
+    Args:
+        model (torch.nn.Module): Network model that maps descriptors to a per atom attribute
 
-        Returns:
-                n_params (int): Number of NN model parameters
+    Returns:
+        n_params (int): Number of NN model parameters
     """
     return sum(p.nelement() for p in model.parameters())
 
@@ -18,59 +18,16 @@ class TorchWrapper(torch.nn.Module):
     """
     A class to wrap Modules to ensure lammps mliap compatability.
 
-    ...
-
-    Attributes
-    ----------
-    model : torch.nn.Module
-        Network model that maps descriptors to a per atom attribute
-
-    device : torch.nn.Module (None)
-        Accelerator device
-
-    dtype : torch.dtype (torch.float64)
-        Dtype to use on device
-
-    n_params : torch.nn.Module (None)
-        Number of NN model parameters
-
-    n_descriptors : int
-        Max number of per atom descriptors
-
-    n_elements : int
-        Max number of elements
-
-
-    Methods
-    -------
-    forward(descriptors, elems):
-        Feeds descriptors to network model to produce per atom energies and forces.
+    Attributes:
+        model (torch.nn.Module) : Network model that maps descriptors to a per atom attribute.
+        device (torch.nn.Module) : Accelerator device.
+        dtype (torch.dtype) : Data type to use on device. Default torch.float64.
+        n_params (int) : Number of NN model parameters.
+        n_descriptors (int) : Max number of per-atom descriptors.
+        n_elements (int) : Max number of element types.
     """
 
     def __init__(self, model, n_descriptors, n_elements, n_params=None, device=None, dtype=torch.float64):
-        """
-        Constructs all the necessary attributes for the network module.
-
-        Parameters
-        ----------
-            model : torch.nn.Module
-                Network model that maps descriptors to a per atom attribute
-
-            n_descriptors : int
-                Max number of per atom descriptors
-
-            n_elements : int
-                Max number of elements
-
-            n_params : torch.nn.Module (None)
-                Number of NN model parameters
-            
-            device : torch.nn.Module (None)
-                Accelerator device
-            
-            dtype : torch.dtype (torch.float64)
-                Dtype to use on device
-        """
 
         super().__init__()
 
@@ -94,31 +51,18 @@ class TorchWrapper(torch.nn.Module):
         Takes element types and descriptors calculated via lammps and
         calculates the per atom energies and forces.
 
-        Parameters
-        ----------
-        elems : numpy.array
-            Per atom element types, starting from -1
+        Args:
+            elems (np.array) : Per-atom element types. Used to start from -1.
+            descriptors (np.array) : Per-atom descriptors.
+            beta (np.array) : Expired beta array to be filled with new betas.
+            energy (np.array) : Expired per-atom energy array to be filled with new per-atom energies.
 
-        descriptors : numpy.array
-            Per atom descriptors
-
-        beta : numpy.array
-            Expired beta array to be filled with new betas
-
-        energy : numpy.array
-            Expired per atom energy array to be filled with new per atom energy
-            (Note: This is a pointer to the lammps per atom energies)
-
-
-        Returns
-        -------
-        None
+        Returns:
+            No return.
         """
 
         descriptors = torch.from_numpy(descriptors).to(dtype=self.dtype, device=self.device).requires_grad_(True)
         elems = torch.from_numpy(elems).to(dtype=torch.long, device=self.device)
-        #print(elems)
-        #print(self.model)
 
         with torch.autograd.enable_grad():
 
@@ -131,36 +75,15 @@ class TorchWrapper(torch.nn.Module):
         beta[:] = beta_nn.detach().cpu().numpy().astype(np.float64)
         energy[:] = energy_nn.detach().cpu().numpy().astype(np.float64)
 
-        #print(np.sum(energy)/192)
-
-
 class IgnoreElems(torch.nn.Module):
     """
     A class to represent a NN model agnostic of element typing.
 
-    ...
-
-    Attributes
-    ----------
-    subnet : torch.nn.Module
-        Network model that maps descriptors to a per atom attribute
-
-    Methods
-    -------
-    forward(descriptors, elems):
-        Feeds descriptors to network model
+    Attributes:
+        subnet (torch.nn.Module) : Network model that maps descriptors to a per atom attribute
     """
 
     def __init__(self, subnet):
-        """
-        Constructs all the necessary attributes for the network module.
-
-        Parameters
-        ----------
-            subnet : torch.nn.Module
-                Network model that maps descriptors to a per atom attribute
-        """
-
         super().__init__()
         self.subnet = subnet
 
@@ -168,18 +91,12 @@ class IgnoreElems(torch.nn.Module):
         """
         Feeds descriptors to network model
 
-        Parameters
-        ----------
-        descriptors : torch.tensor
-            Per atom descriptors
+        Args:
+            descriptors (torch.tensor) : Per-atom descriptors.
+            elems (torch.tensor) : Per-atom element types.
 
-        elems : torch.tensor
-            Per atom element types
-
-        Returns
-        -------
-        self.subnet(descriptors) : torch.tensor
-            Per atom attribute computed by the network model
+        Returns:
+            (torch.tensor) Per atom attribute computed by the network model.
         """
 
         return self.subnet(descriptors)
@@ -190,35 +107,12 @@ class UnpackElems(torch.nn.Module):
     A class to represent a NN model pseudo-agnostic of element typing for
     systems with multiple element typings.
 
-    ...
-
-    Attributes
-    ----------
-    subnet : torch.nn.Module
-        Network model that maps descriptors to a per atom attribute
-
-    n_types : int
-        Number of atom types used in training the NN model.
-
-    Methods
-    -------
-    forward(descriptors, elems):
-        Feeds descriptors to network model after adding zeros into
-        descriptor columns relating to different atom types
+    Attributes:
+        subnet (torch.nn.Module) : Network model that maps descriptors to a per atom attribute.
+        n_types (int) : Number of atom types used in training the NN model.
     """
 
     def __init__(self, subnet, n_types):
-        """
-        Constructs all the necessary attributes for the network module.
-
-        Parameters
-        ----------
-            subnet : torch.nn.Module
-                Network model that maps descriptors to a per atom attribute.
-
-            n_types : int
-                Number of atom types used in training the NN model.
-        """
         super().__init__()
         self.subnet = subnet
         self.n_types = n_types
@@ -228,18 +122,12 @@ class UnpackElems(torch.nn.Module):
         Feeds descriptors to network model after adding zeros into
         descriptor columns relating to different atom types
 
-        Parameters
-        ----------
-        descriptors : torch.tensor
-            Per atom descriptors
+        Args:
+            descriptors (torch.tensor) : Per-atom descriptors.
+            elems (torch.tensor) : Per-atom element types.
 
-        elems : torch.tensor
-            Per atom element types
-
-        Returns
-        -------
-        self.subnet(descriptors) : torch.tensor
-            Per atom attribute computed by the network model
+        Returns:
+            (torch.tensor) Per atom attribute computed by the network model.
         """
 
         unpacked_descriptors = torch.zeros(elems.shape[0], self.n_types, descriptors.shape[1], dtype=torch.float64)
@@ -254,36 +142,13 @@ class ElemwiseModels(torch.nn.Module):
 
     ...
 
-    Attributes
-    ----------
-    subnets : list of torch.nn.Modules
-        Per element type network models that maps per element type
-        descriptors to a per atom attribute.
-
-    n_types : int
-        Number of atom types used in training the NN model.
-
-    Methods
-    -------
-    forward(descriptors, elems):
-        Feeds descriptors to network model after adding zeros into
-        descriptor columns relating to different atom types
+    Attributes:
+        subnets (list of torch.nn.Modules) : Per element type network models that maps per element 
+            type descriptors to a per atom attribute.
+        n_types (int) : Number of atom types used in training the NN model.
     """
 
     def __init__(self, subnets, n_types):
-        """
-        Constructs all the necessary attributes for the network module.
-
-        Parameters
-        ----------
-            subnets : list of torch.nn.Modules
-                Per element type network models that maps per element
-                type descriptors to a per atom attribute.
-
-            n_types : int
-                Number of atom types used in training the NN model.
-        """
-
         super().__init__()
         self.subnets = subnets
         self.n_types = n_types
@@ -293,18 +158,12 @@ class ElemwiseModels(torch.nn.Module):
         Feeds descriptors to network model after adding zeros into
         descriptor columns relating to different atom types
 
-        Parameters
-        ----------
-        descriptors : torch.tensor
-            Per atom descriptors
+        Args:
+            descriptors (torch.tensor) : Per atom descriptors.
+            elems (torch.tensor) : Per atom element types.
 
-        elems : torch.tensor
-            Per atom element types
-
-        Returns
-        -------
-        self.subnets(descriptors) : torch.tensor
-            Per atom attribute computed by the network model
+        Returns:
+            (torch.tensor) Per atom attribute computed by the network model.
         """
 
         self.dtype=dtype
@@ -314,7 +173,7 @@ class ElemwiseModels(torch.nn.Module):
         given_elems, elem_indices = torch.unique(elems, return_inverse=True)
         print(self.subnets)
         for i, elem in enumerate(given_elems):
-            print(f"{i} {elem}")
+            #print(f"{i} {elem}")
             self.subnets[elem].to(self.dtype) 
             per_atom_attributes[elem_indices == i] = self.subnets[elem](descriptors[elem_indices == i]).flatten()
         return per_atom_attributes
@@ -325,13 +184,7 @@ class PairNN(torch.nn.Module):
     """
 
     def __init__(self, model, n_descriptors, n_elements, n_params=None, device=None, dtype=torch.float64):
-        """
-        Constructs all the necessary attributes for the network module.
-        """
-
         super().__init__()
-
-        print("^^^^^ write.py PairNN init")
 
         self.model = model
         self.device = device
@@ -491,31 +344,19 @@ class PairNN(torch.nn.Module):
         Takes element types and descriptors calculated via lammps and
         calculates the per atom energies and forces.
 
-        Parameters
-        ----------
-        elems : numpy.array
-            Per atom element types
+        Args:
+            elems (np.array) : Per atom element types.
+            descriptors (np.array) : Per atom descriptors.
+            beta (np.array) : Expired beta array to be filled with new betas.
+            energy (np.array) : Expired per atom energy array to be filled with new per atom energy
+                This is a pointer to the LAMMPS per atom energies.
+            rij (np.array) : Vector of pairwise displacements xj - xi.
+            unique_i (torch.Tensor.long) : Atoms i for all pairs in this config.
+            tag_i : LAMMPS tags minus one for all atoms i in all pairs.
+            tag_j : LAMMPS tags minus one for all atoms j in all pairs.
 
-        descriptors : numpy.array
-            Per atom descriptors
-
-        beta : numpy.array
-            Expired beta array to be filled with new betas
-
-        energy : numpy.array
-            Expired per atom energy array to be filled with new per atom energy
-            (Note: This is a pointer to the lammps per atom energies)
-
-        rij : numpy.array
-            Vector of pairwise displacements xj - xi
-
-        unique_i (:obj:`torch.Tensor.long`): Atoms i for all pairs in this config.
-
-        tag_i and tag_j : Tags (actually tag-1) for atoms in all pairs.
-
-        Returns
-        -------
-        None
+        Returns:
+            None
         """
 
         rij = torch.from_numpy(rij).to(dtype=self.dtype, device=self.device).requires_grad_(True)

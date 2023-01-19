@@ -60,7 +60,8 @@ jobs:
         cd ../
 
         # increase postbuffer size
-        
+
+        git config --global http.version HTTP/1.1
         git config --global http.postBuffer 157286400
 
         # Procedure for installing our custom branch with compute pace:

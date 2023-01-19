@@ -53,8 +53,6 @@ try:
 
             fcrik = self.cutoff_function(rij) #.flatten()
 
-            #print(f"Max fcrik: {torch.max(fcrik)}")
-
             ui = unique_i.unique()
 
             # Cram a bunch of calculations into a single list comprehension to reduce overhead.

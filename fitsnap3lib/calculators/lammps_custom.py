@@ -169,14 +169,6 @@ class LammpsCustom(LammpsBase):
         xneighs = np.array(xneighs)
         transform_x = np.array(transform_x)
 
-        #for i in range(0,len(neighlist)):
-        #    print(f"{neighlist[i,0]} {neighlist[i,1]}")
-        #for i in range(0, len(num_neighs_per_atom)):
-        #    print(f"{} {}")
-
-        #print("NEIGHLIST SHAPE:")
-        #print(np.shape(neighlist))
-
         # populate the per-atom array 'a'
 
         self.pt.shared_arrays['a'].array[index:index+num_atoms,0] = lmp_types

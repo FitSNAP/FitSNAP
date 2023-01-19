@@ -8,8 +8,8 @@ Usage:
 
 where sample_every specifies to collect data every that many timesteps.
 
-Alternatively, if you want to parse many vasprun.xml files in a directory, where each vasprun.xml
-contains a single configuration, do
+Alternatively, if you want to parse many vasprun.xml files in a single directory, where each 
+vasprun.xml contains a single configuration, do
 
     python xml2xyz/py path/to/directory path/to/file.xyz sample_every
 

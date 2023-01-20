@@ -587,7 +587,6 @@ for key in list(config.sections['GROUPS'].group_table.keys()):
         config.sections['GROUPS'].group_table.pop(key)
 
 # create a fitsnap object - uses the previously defined pt and config objects
-
 from fitsnap3lib.fitsnap import FitSnap
 if parallel:
     comm.Barrier()
@@ -599,7 +598,6 @@ if rank==0:
     last_timestamp = current_timestamp
 
 # tell ParallelTools not to check for existing fitsnap objects
-
 pt.check_fitsnap_exist = False
 
 snap.scraper.scrape_groups()
@@ -786,8 +784,6 @@ if rank==0:
         print(current_timestamp - last_timestamp)
         last_timestamp = current_timestamp
         snap.solver.errors = [] # this doesn't get cleared and will cause an error when fitsnap tries to append a dictionary onto it
-        # TODO: should generally check the code for other places where things get appended instead 
-        #       of overwritten when called multiple times in library mode
         
         # ignore division by 0 warnings from the r^2 calculation for groups with only 1 entry
         with np.errstate(divide='ignore', invalid='ignore'):
@@ -867,6 +863,7 @@ if rank==0:
         ranked_structures = objective_function(unlabeled_df, EFS_reweighting = AL_settings.EFS_reweighting, FS_agg_functions=AL_settings.FS_agg_functions, objective_function = AL_settings.obj_function, \
                                                weight_by_relative_DFT_cost=AL_settings.weight_by_relative_DFT_cost)
 
+        ## LEGACY CODE: objective function used to return descriptor vectors for per-loop clustering
         #if use_fitsnap_coeffs_to_scale_bispectrum_representation:
         #    x_vector_for_each_structure = x_vector_for_each_structure * snap.solver.fit
 
@@ -875,8 +872,7 @@ if rank==0:
         print(current_timestamp - last_timestamp)
         last_timestamp = current_timestamp    
 
-        # TODO: implement the clustering subselection as an option here
-        # currently just take the top [batch_size] structures
+        # select structures based on objective function and clustering, batchsize options
         if AL_settings.active_learning:
             if AL_settings.cluster_structures:
                 if AL_settings.batch_size == 0:

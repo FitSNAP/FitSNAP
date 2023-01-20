@@ -131,6 +131,10 @@ class FitTorch(torch.nn.Module):
         diff_norm = torch.nn.functional.normalize(diff, dim=1) # need for g3b
         rij = torch.linalg.norm(diff, dim=1).unsqueeze(1)  # need for cutoff and various other functions
 
+        #print(rij.size())
+        #print(diff[:8,:])
+        #print(rij.size())
+        #print(neighlist)
         # Calculate cutoff functions once for pairwise terms here, because we use the same cutoff 
         # function for both radial basis and eij.
 
@@ -141,9 +145,14 @@ class FitTorch(torch.nn.Module):
         rbf = self.bessel.radial_bessel_basis(rij, cutoff_functions)
         assert(rbf.size()[0] == neighlist.size()[0])
 
+        #print("Max RBF:")
+        #print(torch.max(rbf))
+
         # calculate 3 body descriptors 
 
         descriptors_3body = self.g3b.calculate(rij, diff_norm, unique_i)
+
+        #print(f"Max d3body: {torch.max(descriptors_3body)}")
 
         # concatenate radial descriptors and 3body descriptors
 
@@ -154,6 +163,13 @@ class FitTorch(torch.nn.Module):
         # input descriptors to a network for each pair; calculate pairwise energies
 
         eij = self.networks[0](descriptors)
+
+        #print(f"Max eij: {torch.max(eij)}")
+
+        # now self.state_dict is populated with the attributes declared above 
+        # print("Model's state_dict:")
+        #for param_tensor in self.state_dict():
+        #    print(param_tensor, "\t", self.state_dict()[param_tensor]) 
 
         assert(cutoff_functions.size() == eij.size())
         eij = torch.mul(eij,cutoff_functions)
@@ -217,17 +233,20 @@ class FitTorch(torch.nn.Module):
         """
         
         #from lammps.mliap.pytorch import IgnoreElems, TorchWrapper, ElemwiseModels
-        from fitsnap3lib.lib.neural_networks.write import IgnoreElems, TorchWrapper, ElemwiseModels
+        from fitsnap3lib.lib.neural_networks.write import PairNN, IgnoreElems
 
         # self.network_architecture0 is network model for the first element type
 
+        """
         if self.n_elem == 1:
             print("Single element, saving model with IgnoreElems ML-IAP wrapper")
             model = IgnoreElems(self.network_architecture0)
         else:
             print("Multi element, saving model with ElemwiseModels ML-IAP wrapper")
             model = ElemwiseModels(self.networks, self.n_elem)
-        linked_model = TorchWrapper(model, n_descriptors=self.num_descriptors, n_elements=self.n_elem)
+        """
+        model = IgnoreElems(self.network_architecture0)
+        linked_model = PairNN(model, n_descriptors=self.num_descriptors, n_elements=self.n_elem)
         torch.save(linked_model, filename)
         
 

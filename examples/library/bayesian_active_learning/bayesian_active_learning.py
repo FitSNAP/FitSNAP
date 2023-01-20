@@ -825,7 +825,7 @@ if rank==0:
             if known_truth_for_unlabeled:
                 if not (n_loop%AL_settings.n_steps_per_plot_uncertainty_error_correlation):
                     if snap.config.sections['BISPECTRUM'].bzeroflag: #different dimensions, need to remove 0.0 at start of each atoms section
-                        preds = np.dot(A, np.trim_zeros(snap.solver.fit)) # this will break if there are extra 0.0 values in the fit besides the bzeroflag terms
+                        preds = np.dot(A, snap.solver.fit[snap.solver.fit != 0.0]) # this will break if there are extra 0.0 values in the fit besides the bzeroflag terms
                     else:
                         preds = np.dot(A,snap.solver.fit)
                     truths = pt.shared_arrays['b_copy'].array[mask_of_still_unused]

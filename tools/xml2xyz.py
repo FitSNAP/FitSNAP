@@ -40,9 +40,7 @@ def write_xyz(atom_coords, atom_force, stress_component, all_lattice, totalEnerg
     #print(f"natoms: {natoms}")
 
     fh.write(f"{natoms}\n")
-    line = f'Lattice = "{all_lattice[0][0]} {all_lattice[0][1]} {all_lattice[0][2]} \
-                        {all_lattice[1][0]} {all_lattice[1][1]} {all_lattice[1][2]} \
-                        {all_lattice[2][0]} {all_lattice[2][1]} {all_lattice[2][2]}"'
+    line = f'Lattice = "{all_lattice[0][0]} {all_lattice[0][1]} {all_lattice[0][2]} {all_lattice[1][0]} {all_lattice[1][1]} {all_lattice[1][2]} {all_lattice[2][0]} {all_lattice[2][1]} {all_lattice[2][2]}"'
     line += " Properties=species:S:1:pos:R:3:forces:R:3 "
     line += f"energy={totalEnergy} "
     if (stress_component == []):

@@ -83,6 +83,8 @@ The :code:`PYTORCH` section keys are explained in more detail below.
 - :code:`manual_seed_flag` set to 0 by default, can set to 1 if want to force a random seed which is
   useful for debugging purposes.
 
+- :code:`shuffle_flag` set to 1 by default, determines whether to shuffle the training data every epoch.
+
 Loss Function
 -------------
 

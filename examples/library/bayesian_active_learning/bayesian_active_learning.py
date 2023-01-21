@@ -830,21 +830,25 @@ if rank==0:
                         preds = np.dot(A,snap.solver.fit)
                     truths = pt.shared_arrays['b_copy'].array[mask_of_still_unused]
                     errors = truths - preds
-                    #plt.figure()
-                    #ax = plt.gca()
-                    #plt.scatter(abs(errors), np.sqrt(diag), s=2, color='black')
-                    #plt.ylabel('sqrt(prediction variance)')
-                    #plt.xlabel('absolute error')
-                    #plt.title('Active Learning Step ' + str(n_loop))
-                    #ax.set_xscale("log")
-                    #ax.set_yscale("log")
-                    #plt.savefig(AL_settings.output_directory+'loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
-                    #plt.close()
                     plt.figure()
                     ax = plt.gca()
                     colors = ['black', 'blue', 'red']
+
+                    ### Commented out below is some code for spitting out group separated correlation plots - can be useful but too many groups makes it mostly a cluttered mess
+                    #color_cycler = plt.cycler('color', ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#000000'])
+                    #markercycle = plt.cycler(marker=['o', '+', 'x', '*', 'X'])
+                    #ax.set_prop_cycle(color_cycler)# * markercycle)
+                    #for group_type in unlabeled_df.Groups.unique(): 
+                        #group_type_mask = (unlabeled_df['Groups']==group_type).tolist()
+                        #plt.scatter(abs(errors[group_type_mask]), np.sqrt(diag[group_type_mask]), s=2, label=group_type)
                     for k, row_type in enumerate(['Force', 'Stress', 'Energy']):
                         row_type_mask = (unlabeled_df['Row_Type']==row_type).tolist()
+
+                        #for group_type in unlabeled_df.Groups.unique():
+                            #group_type_mask = (unlabeled_df['Groups']==group_type).tolist()
+                            #group_and_row_type_mask = [a and b for a,b in zip(group_type_mask, row_type_mask)]
+                            #plt.scatter(abs(errors[group_and_row_type_mask]), np.sqrt(diag[group_and_row_type_mask]), s=2, label=row_type+'_'+group_type)
+
                         plt.scatter(abs(errors[row_type_mask]), np.sqrt(diag[row_type_mask]), s=2, color=colors[k], label=row_type)
                     plt.ylabel('sqrt(prediction variance)')
                     plt.xlabel('absolute error')
@@ -852,6 +856,7 @@ if rank==0:
                     ax.set_xscale("log")
                     ax.set_yscale("log")
                     plt.legend()
+                    #plt.legend(fontsize=5)
                     plt.savefig(AL_settings.output_directory+'loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '_colorcoded.png')
                     plt.close()
             else:

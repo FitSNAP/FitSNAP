@@ -214,7 +214,7 @@ class DataframeTools():
 
             return mae 
 
-    def plot_agreement(self, quantity,fitting_set="Testing", mode="Distribution", group_set=None, legend=True):
+    def plot_agreement(self, quantity,fitting_set="Testing", mode="Distribution", group_set=None, legend=True, peratom=True):
         """
         Plot agreement between truth and pred for some quantity. 
 
@@ -231,6 +231,9 @@ class DataframeTools():
 
         mode: str
             "Distribution" or "Linear" for different ways of looking at disagreements
+
+        peratom: bool
+            Default True divides energies by natoms. Not used for force plotting.
         """
 
         preds = None
@@ -260,7 +263,6 @@ class DataframeTools():
 
             nconfigs = row_type.tolist().count("Energy")
             natoms_per_config = np.zeros(nconfigs).astype(int)
-
             config_indx = -1
             for element in row_type.tolist():
                 if element=="Energy":
@@ -330,8 +332,13 @@ class DataframeTools():
 
             natoms_test = natoms_per_config[test_configs]
 
-            truths = test_truths/natoms_test
-            preds = test_preds/natoms_test
+            if (peratom):
+                # values from fitsnap are already per-atom
+                truths = test_truths
+                preds = test_preds
+            else:
+                truths = test_truths*natoms_test
+                preds = test_preds*natoms_test
 
             # get all groups associated with fitting set
 
@@ -352,23 +359,27 @@ class DataframeTools():
             for i in range(0,len(truths)):
                 plt.plot(truths[i], preds[i], c=colors[i], marker='o',markersize=8, alpha=0.5)
 
+            units_str = "(eV/atom)"
+            if not peratom:
+                units_str = "(eV)"
             if (mode=="Distribution"):
                 abs_diff = np.abs(truths-preds)
                 abs_truth = np.abs(truths)
-                plt.scatter(abs_truth, abs_diff, c=colors, marker='o', alpha=0.5)
+                mae = np.mean(abs_diff)
+                print(f"Energy MAE: {mae} {units_str}")
+                plt.scatter(abs_truth, abs_diff, c=colors, marker='o', alpha=0.3)
                 plt.xscale("log")
                 plt.yscale("log")
-                plt.gca().set_xlim(left=1e-1)
-                plt.xlabel(r"Target energy magnitude (eV/atom)")
-                plt.ylabel(r"Absolute error (eV/atom)")
+                plt.xlabel(f"Target energy magnitude {units_str}")
+                plt.ylabel(f"Absolute error {units_str}")
             elif(mode=="Linear"):
-                plt.scatter(truths, preds, c=colors, marker='o',alpha=0.5)
+                plt.scatter(truths, preds, c=colors, marker='o',alpha=0.3)
                 min_val = np.min(truths)
                 max_val = np.max(truths)
                 lims = [min_val, max_val]
                 plt.plot(lims, lims, 'k-')
-                plt.xlabel(r"Target energy (eV/atom)")
-                plt.ylabel(r"Model energy (eV/atom)")
+                plt.xlabel(f"Target energy {units_str}")
+                plt.ylabel(f"Model energy {units_str}")
 
             if (legend):
                 legend_handle = [mpatches.Patch(color=cmap[i], 
@@ -433,6 +444,8 @@ class DataframeTools():
             if (mode=="Distribution"):
                 abs_diff = np.abs(truths-preds)
                 abs_truth = np.abs(truths)
+                mae = np.mean(abs_diff)
+                print(f"Force MAE: {mae} (eV/A)")
                 plt.scatter(abs_truth, abs_diff, c=colors, marker='o', alpha=0.5)
                 plt.xscale("log")
                 plt.yscale("log")

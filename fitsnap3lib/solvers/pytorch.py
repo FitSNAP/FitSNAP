@@ -203,12 +203,12 @@ try:
 
             self.training_loader = DataLoader(self.training_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              shuffle=False, #True
+                                              shuffle=self.config.sections['PYTORCH'].shuffle_flag, #True
                                               collate_fn=torch_collate,
                                               num_workers=0)
             self.validation_loader = DataLoader(self.validation_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              shuffle=False, #True
+                                              shuffle=self.config.sections['PYTORCH'].shuffle_flag, #True
                                               collate_fn=torch_collate,
                                               num_workers=0)
 

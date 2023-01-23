@@ -236,7 +236,7 @@ class Calculator:
             self.pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('b', a_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('w', a_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('ref', a_len, tm=self.config.sections["SOLVER"].true_multinode)
+            #self.pt.create_shared_array('ref', a_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.new_slice_a()
             self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0]
             # pt.slice_array('a')

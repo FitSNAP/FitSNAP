@@ -3,7 +3,15 @@ PyTorch Models
 
 Interfacing with PyTorch allows us to conveniently fit neural network potentials using descriptors
 that exist in LAMMPS. We may then use these neural network models to run high-performance MD 
-simulations in LAMMPS. These capabilities are explained below.
+simulations in LAMMPS. When fitting atom-centered neural network potentials, we incorporate a 
+general and performant approach that allows any descriptor as input to the network. This is achieved 
+by pre-calculating descriptors in LAMMPS which are then fed into the network, as shown below.
+
+.. figure:: ../images/lammps_fitsnap_connection.png
+   :scale: 60 %
+
+To calculate forces, we use the general chain rule expression above, where the descriptor derivatives 
+are analytically extracted from LAMMPS. These capabilities are further explained below.
 
 Fitting Neural Network Potentials
 ---------------------------------
@@ -74,6 +82,8 @@ The :code:`PYTORCH` section keys are explained in more detail below.
 
 - :code:`manual_seed_flag` set to 0 by default, can set to 1 if want to force a random seed which is
   useful for debugging purposes.
+
+- :code:`shuffle_flag` set to 1 by default, determines whether to shuffle the training data every epoch.
 
 Loss Function
 -------------

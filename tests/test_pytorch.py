@@ -35,6 +35,7 @@ def test_fd_single_elem():
     config.sections['BISPECTRUM'].switchflag = 1 # required for smooth finite difference
     config.sections['PYTORCH'].manual_seed_flag = 1
     config.sections['PYTORCH'].dtype = torch.float64
+    config.sections['PYTORCH'].shuffle_flag = False # helps these finite difference tests
     # only perform calculations on displaced BCC structures
     config.sections['GROUPS'].group_table = {'Displaced_BCC': \
         {'training_size': 1.0, \
@@ -141,6 +142,7 @@ def test_fd_multi_elem():
     config.sections['BISPECTRUM'].switchflag = 1 # required for smooth finite difference
     config.sections['PYTORCH'].manual_seed_flag = 1
     config.sections['PYTORCH'].dtype = torch.float64
+    config.sections['PYTORCH'].shuffle_flag = False # helps these finite difference tests
     # only perform calculations on a certain group
     config.sections['GROUPS'].group_table = {'DFT_MD_300K': \
         {'training_size': 0.01, \
@@ -247,6 +249,7 @@ def test_fd_ace_single_elem():
     #config.sections['ACE'].switchflag = 1 # required for smooth finite difference
     config.sections['PYTORCH'].manual_seed_flag = 1
     config.sections['PYTORCH'].dtype = torch.float64
+    config.sections['PYTORCH'].shuffle_flag = False # helps these finite difference tests
     # only perform calculations on displaced BCC structures
     config.sections['GROUPS'].group_table = {'Displaced_BCC': \
         {'training_size': 1.0, \

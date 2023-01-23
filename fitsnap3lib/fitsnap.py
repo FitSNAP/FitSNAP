@@ -75,7 +75,7 @@ class FitSnap:
        
     #@pt.single_timeit 
     def scrape_configs(self):
-        """Scrapes configurations of atoms and creates the :code:`data` list"""
+        """Scrapes configurations of atoms and creates a list of configurations called `data`."""
 
         @self.pt.single_timeit
         def decorated_scrape_configs():

@@ -9,10 +9,21 @@ If DFT is lacking from (2), it is calculated for the selected structures using V
 
 
 Usage:
-    python bayesian_active_learning.py --fitsnap_in Ta-example.in
+    python bayesian_active_learning.py --fitsnap_in Ta-example.in --AL_in AL.in
 
-Variables in this script to change:
-    plot_stuff : determines whether uncertainties are plotted
+defaults:
+--fitsnap_in : fitsnap.in
+--AL_in : AL.in
+
+Outputs:
+structures_chosen.dat
+convergence_{Energy\Force\Stress}_{mae\rmse}.png
+data_for_convergence_{Energy\Force\Stress}_{mae\rmse}.npy
+fitsnap output for final trained mode
+
+Note: if you make a folder called 'testing_json_group' in your training directory an place some (DFT pre-calculated) json files there, 
+the script will use that as an independent test set for plotting the convergence plots at the end
+
 """
 
 import numpy as np
@@ -1014,27 +1025,52 @@ if rank==0:
         for i in range(len(structures_chosen_list)):
             f.write(str(i)+  ' : ' + ', '.join('/'.join(groupconfig) for groupconfig in structures_chosen_list[i]) + '\n')
 
+if parallel:
+    comm.Barrier()
+if rank==0:    
+    snap.write_output()
+            
 if AL_settings.plot_convergence_plots:
     if rank==0:
         for metric in ['mae', 'rmse']:
-            for ind in error_log_list[-1].loc['testing_json_group', 'Unweighted', 'Testing'].index:  #'Energy', 'Force', 'Stress'
-                x = [d.loc['*ALL', 'Unweighted', 'Training', ind]['ncount'] for d in error_log_list]
-                y_test = [d.loc['testing_json_group', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
-                plt.figure()
-                plt.loglog(x,y_test, color='blue', label='Testing', marker='o',markersize=10)
-                y_train = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
-                plt.loglog(x,y_train, color='dodgerblue', label='Training', marker='o',markersize=10)
-                plt.ylabel(metric)
-                plt.xlabel('# of training datapoints of same type')
-                plt.title(ind)
-                plt.legend()
-                plt.savefig(AL_settings.output_directory+'convergence_'+ind+'_'+metric+'.png')
-                plt.close()
-                if AL_settings.track_estimated_DFT_cost:
-                    np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train, DFT_cost_estimates]))
-                else:
-                    np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
-#plot_stuff = False
+            try:
+                for ind in error_log_list[-1].loc['testing_json_group', 'Unweighted', 'Testing'].index:  #'Energy', 'Force', 'Stress'
+                    x = [d.loc['*ALL', 'Unweighted', 'Training', ind]['ncount'] for d in error_log_list]
+                    y_test = [d.loc['testing_json_group', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
+                    plt.figure()
+                    plt.loglog(x,y_test, color='blue', label='Testing', marker='o',markersize=10)
+                    y_train = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
+                    plt.loglog(x,y_train, color='dodgerblue', label='Training', marker='o',markersize=10)
+                    plt.ylabel(metric)
+                    plt.xlabel('# of training datapoints of same type')
+                    plt.title(ind)
+                    plt.legend()
+                    plt.savefig(AL_settings.output_directory+'convergence_'+ind+'_'+metric+'.png')
+                    plt.close()
+                    if AL_settings.track_estimated_DFT_cost:
+                        np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train, DFT_cost_estimates]))
+                    else:
+                        np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
+            except KeyError:
+                for ind in error_log_list[-1].loc['*ALL', 'Unweighted', 'Testing'].index:  #'Energy', 'Force', 'Stress'
+                    x = [d.loc['*ALL', 'Unweighted', 'Training', ind]['ncount'] for d in error_log_list]
+                    y_test = [d.loc['*ALL', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
+                    plt.figure()
+                    plt.loglog(x,y_test, color='blue', label='Testing', marker='o',markersize=10)
+                    y_train = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
+                    plt.loglog(x,y_train, color='dodgerblue', label='Training', marker='o',markersize=10)
+                    plt.ylabel(metric)
+                    plt.xlabel('# of training datapoints of same type')
+                    plt.title(ind)
+                    plt.legend()
+                    plt.savefig(AL_settings.output_directory+'convergence_'+ind+'_'+metric+'.png')
+                    plt.close()
+                    if AL_settings.track_estimated_DFT_cost:
+                        np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train, DFT_cost_estimates]))
+                    else:
+                        np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
+
+    #plot_stuff = False
 #if plot_stuff:
 #    if rank==0:
 #        EFS_used = []
@@ -1052,5 +1088,3 @@ if AL_settings.plot_convergence_plots:
 
 if parallel:
     comm.Barrier()
-    
-snap.write_output()

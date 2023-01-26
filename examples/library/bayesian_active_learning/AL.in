@@ -4,6 +4,7 @@ number_of_iterations= 10
 batch_size = 1
 cluster_structures = False
 number_of_clusters = 0
+n_steps_per_outputting_model = 0
 
 
 [OBJECTIVE]

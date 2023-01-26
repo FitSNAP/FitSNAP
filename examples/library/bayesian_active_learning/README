@@ -5,6 +5,7 @@ batch_size: default = 1, number of structures to select per active learning loop
 cluster_structures: default = False, whether or not to cluster structures before selecting which to add to training set
 number_of_clusters: default = 0, 0 will auto-determine the number of clusters using the 'knee' method (requires multiple clustering runs at each number of clusters)
 output_directory: default = the working directory that the script is ran in, controls what directory all the output files are written into
+n_steps_per_outputting_model: default = 0,  0 will only output at the end, otherwise output every n steps
 
 [OBJECTIVE]
 E_weight: default = 1.0, weight to apply to energy uncertainties when combining in objective function

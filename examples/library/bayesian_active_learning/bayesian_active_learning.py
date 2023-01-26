@@ -33,7 +33,7 @@ from datetime import datetime
 from os import chdir, mkdir, getenv, getcwd, path
 import json
 from subprocess import run
-from shutil import copyfileobj
+from shutil import copyfileobj, copy2
 import inspect
 import copy 
 import pandas as pd
@@ -69,6 +69,7 @@ class AL_settings_class():
                 mkdir(self.output_directory)
         if parallel:
             comm.Barrier()
+        self.n_steps_per_outputting_model = AL_configparser.getint('GENERAL', n_steps_per_outputting_model, 0)
         self.E_weight = AL_configparser.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)
         self.F_weight = AL_configparser.getfloat('OBJECTIVE', 'F_weight', fallback = 1.0)
         self.S_weight = AL_configparser.getfloat('OBJECTIVE', 's_weight', fallback = 1.0)
@@ -806,6 +807,12 @@ if rank==0:
         print(snap.solver.errors.loc['*ALL'])
         error_log_list.append(snap.solver.errors)
 
+        # output model if set to do so
+        if AL_settings.n_steps_per_outputting_model and not n_loop%AL_settings.n_steps_per_outputting_model: #every n loops unless n = 0
+            snap.write_output()
+            copy2(snap.config.sections["OUTFILE"].potential_name + '.snapcoeff', AL_settings.output_directory+'loop_'+n_loop+snap.config.sections["OUTFILE"].potential_name + '.snapcoeff')
+            copy2(snap.config.sections["OUTFILE"].potential_name + '.snapcoeff', AL_settings.output_directory+'loop_'+n_loop+snap.config.sections["OUTFILE"].potential_name + '.snapcoeff')
+        
         # only calculate full amount first time - then just add the amount from each new set of structures to the previous total instead of recalculating every step
         if AL_settings.track_estimated_DFT_cost:
             if DFT_cost_estimates==[]:
@@ -1029,6 +1036,8 @@ if parallel:
     comm.Barrier()
 if rank==0:    
     snap.write_output()
+    copy2(snap.config.sections["OUTFILE"].potential_name + '.snapcoeff', AL_settings.output_directory+snap.config.sections["OUTFILE"].potential_name + '.snapcoeff')
+    copy2(snap.config.sections["OUTFILE"].potential_name + '.snapcoeff', AL_settings.output_directory+snap.config.sections["OUTFILE"].potential_name + '.snapcoeff')
             
 if AL_settings.plot_convergence_plots:
     if rank==0:

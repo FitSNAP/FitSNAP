@@ -9,10 +9,21 @@ If DFT is lacking from (2), it is calculated for the selected structures using V
 
 
 Usage:
-    python bayesian_active_learning.py --fitsnap_in Ta-example.in
+    python bayesian_active_learning.py --fitsnap_in Ta-example.in --AL_in AL.in
 
-Variables in this script to change:
-    plot_stuff : determines whether uncertainties are plotted
+defaults:
+--fitsnap_in : fitsnap.in
+--AL_in : AL.in
+
+Outputs:
+structures_chosen.dat
+convergence_{Energy\Force\Stress}_{mae\rmse}.png
+data_for_convergence_{Energy\Force\Stress}_{mae\rmse}.npy
+fitsnap output for final trained mode
+
+Note: if you make a folder called 'testing_json_group' in your training directory an place some (DFT pre-calculated) json files there, 
+the script will use that as an independent test set for plotting the convergence plots at the end
+
 """
 
 import numpy as np
@@ -22,7 +33,7 @@ from datetime import datetime
 from os import chdir, mkdir, getenv, getcwd, path
 import json
 from subprocess import run
-from shutil import copyfileobj
+from shutil import copyfileobj, copy2, move
 import inspect
 import copy 
 import pandas as pd
@@ -40,17 +51,25 @@ class AL_settings_class():
         self.active_learning = AL_configparser.getboolean('GENERAL', 'active_learning', fallback=True)
         self.number_of_iterations = AL_configparser.getint('GENERAL', 'number_of_iterations', fallback = 10)
         self.cluster_structures = AL_configparser.getboolean('GENERAL', 'cluster_structures', fallback = False)
-        self.batch_size = AL_configparser.getint('GENERAL', 'batch_size', fallback = 1)
+        #self.cluster_every_step = AL_configparser.getboolean('GENERAL', 'cluster_every_step', fallback = False)
+        # if wanting to implement, something like: pt.shared_arrays['a_copy'].array[mask_of_still_unused & (unlabeled_df['Row_Type']=='Energy')] as array to cluster
+        self.number_of_clusters = AL_configparser.getint('GENERAL', 'number_of_clusters', fallback = 0) #0 means to auto-determine number of clusters
+        self.batch_size = AL_configparser.getint('GENERAL', 'batch_size', fallback = 1) #0 can be used with clustering to take 1 structure from each cluster
         self.training_path = AL_configparser.get('GENERAL', 'training_path', fallback = None)
         self.unlabeled_path = AL_configparser.get('GENERAL', 'unlabeled_path', fallback = None)
         self.output_directory = AL_configparser.get('GENERAL', 'output_directory', fallback = getcwd())
-
-        if self.output_directory[-1] != '/':
-            self.output_directory += '/'
         if self.output_directory[0] != '/':
             self.output_directory = getcwd()+'/'+self.output_directory
-        if not path.isdir(self.output_directory):
-            mkdir(self.output_directory)
+        if self.output_directory[-1] != '/':
+            self.output_directory += '/'
+        if parallel:
+            comm.Barrier()
+        if rank==0:
+            if not path.isdir(self.output_directory):
+                mkdir(self.output_directory)
+        if parallel:
+            comm.Barrier()
+        self.n_steps_per_outputting_model = AL_configparser.getint('GENERAL', 'n_steps_per_outputting_model', fallback = 0)
         self.E_weight = AL_configparser.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)
         self.F_weight = AL_configparser.getfloat('OBJECTIVE', 'F_weight', fallback = 1.0)
         self.S_weight = AL_configparser.getfloat('OBJECTIVE', 's_weight', fallback = 1.0)
@@ -61,7 +80,9 @@ class AL_settings_class():
         self.obj_function = AL_configparser.get('OBJECTIVE', 'objective_function', fallback = 'sum')
         self.weight_by_relative_DFT_cost = AL_configparser.getboolean('OBJECTIVE', 'weight_by_relative_DFT_cost', fallback = True)
         self.plot_uncertainty_error_correlation = AL_configparser.getboolean('PLOTTING', 'plot_uncertainty_error_correlation', fallback=False)
+        self.n_steps_per_plot_uncertainty_error_correlation = AL_configparser.getint('PLOTTING', 'n_steps_per_plot_uncertainty_error_correlation', fallback=1)
         self.plot_convergence_plots = AL_configparser.getboolean('PLOTTING', 'plot_convergence_plots', fallback=True)
+        self.track_estimated_DFT_cost = AL_configparser.getboolean('PLOTTING', 'track_estimated_DFT_cost', fallback=False)
         if any([self.plot_uncertainty_error_correlation, self.plot_convergence_plots]):
             self.plotting_something = True
         else:
@@ -242,7 +263,7 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
     """
 
     if objective_function=='max': #simplest case - return the highest uncertainty row in each structure, taking the top nadd structures
-        ranked_structures = m_df.sort_values("uncertainty", ascending=False, key=abs).groupby(['Groups', 'Configs'], observed=True, sort=False).first()
+        ranked_structures = m_df.sort_values("uncertainty", ascending=False, key=abs).groupby(['Groups', 'Configs'], observed=True, sort=False).first() #first() could techinically get screwy if NaNs appear
         #x_vector_for_each_structure = ranked_structures[A_matrix_columns].values  ## TODO: will need to update how I'm grabbing this when aggregating F or S rows
     elif objective_function=='average':
         ranked_structures = m_df.groupby(['Groups', 'Configs'], observed=True, sort=False).agg({'uncertainty':np.average}).sort_values("uncertainty", ascending=False, key=abs)
@@ -258,6 +279,90 @@ def objective_function(df, EFS_reweighting=[1.0, 1.0, 1.0], FS_agg_functions=[No
     return ranked_structures#, x_vector_for_each_structure
 
 
+
+# K-means clustering, optionally using the elbow method for establishing best no. of clusters
+def eval_clustering(features, nc=None, need_centers=False, need_distances=False):
+    """
+        Evaluates clusters on a set of datapoints
+
+        inputs:
+        x_uq: some representation of datapoints - will be a matrix 'Energy' row of each structure or a transformation of it in this script
+        nc: number of clusters to make, if none, will determine number
+        need_distances: boolean (False), whether to return a matrix with the distance of each datapoint from each cluster center
+    
+        outputs:
+        icl: icl[i][:] is a torch tensor of local (x_uq) indices of data points in x_uq belonging to cluster i
+        distances (if need_distances=True): distance of each data point to each cluster center
+    """
+    scaler   = StandardScaler()
+    scaled_features = scaler.fit_transform(features)
+
+    # define parameters for the KMeans class setup
+    # n_init: the initial number of random cluster centers used in each iteration
+    # max_iter: number of iterations
+    # random_state: by setting it as any integer, get repeatable results
+    
+    # npt is the number of data points
+    # n_init has to be no bigger than npt
+    
+    npt = features.shape[0]
+    n_init = min(10,npt)
+
+    kmeans_kwargs = {
+        "init": "random",
+        "n_init": n_init,
+        "max_iter": 300,
+        "random_state": 42,
+    }
+        
+    # sse: a list that holds the Sum Squared Error values for each choice of number of clusters k
+    # kmn: list of kmeans objects created
+    if nc == 0:
+        sse = []
+        kmn = []
+        for k in range(1, n_init+1):
+            kmeans = KMeans(n_clusters=k, **kmeans_kwargs)
+            kmeans.fit(scaled_features)
+            sse.append(kmeans.inertia_)
+            kmn.append(kmeans)
+
+        # kl: knee-locator object
+        from kneed import KneeLocator
+        kl     = KneeLocator(range(1, n_init+1), sse, curve="convex", direction="decreasing")
+        nc     = kl.elbow   # number of clusters we choose
+        try:
+            kmeans = kmn[nc-1]  # the kmeans handle for the case with nc clusters we pick
+        except:
+            #if something goes wrong, plot the function that gets the elbow
+            # kl.plot_knee()
+            plt.figure()
+            plt.plot(range(1, n_init+1), sse)
+            plt.savefig("elbow_figure.pdf")
+            plt.close()
+            print("something wrong with kl.elbow")
+            nc = 1  #probably no distinct clusters
+    else: #nc already defined
+        kmeans = KMeans(n_clusters=nc, **kmeans_kwargs)
+        kmeans.fit(scaled_features)
+
+    # cluster index vector for the data points in xp[i_uq]=x_uq
+    clusters = kmeans.predict(scaled_features)
+    # i.e. x_uq[i] belongs to cluster ic[i] = 0,1,...
+    #ic = torch.tensor(kmeans.predict(scaled_features),dtype=torch.int64)
+
+    # icl[i][:] is a torch tensor of local (x_uq) indices of data points in x_uq belonging to cluster i
+    #icl = []
+    #for i in range(nc):
+        #id = torch.where(ic==i)[0]
+        #icl.append(id)         #to store indexes in local (x_uq) index
+        ###icl.append(i_uq[id])   #to store indexes in global (xp) index
+        
+    if need_distances:
+        return clusters, kmeans.transform(scaled_features)
+
+    return clusters
+
+        
 class VASP_runner():
     def __init__(self, AL_configparser, AL_settings):
         self.config = AL_configparser
@@ -494,7 +599,6 @@ for key in list(config.sections['GROUPS'].group_table.keys()):
         config.sections['GROUPS'].group_table.pop(key)
 
 # create a fitsnap object - uses the previously defined pt and config objects
-
 from fitsnap3lib.fitsnap import FitSnap
 if parallel:
     comm.Barrier()
@@ -506,7 +610,6 @@ if rank==0:
     last_timestamp = current_timestamp
 
 # tell ParallelTools not to check for existing fitsnap objects
-
 pt.check_fitsnap_exist = False
 
 snap.scraper.scrape_groups()
@@ -591,6 +694,11 @@ if rank == 0:
         # TODO: Take these out of the pt internals deepcopying and just put them into the dataframe
         #       immediately, if sticking to the df for metadata
         unlabeled_df[key[0:-5]] = pd.Categorical(pt.fitsnap_dict[key])
+    if AL_settings.cluster_structures:
+        from sklearn.cluster import KMeans
+        from sklearn.preprocessing import StandardScaler
+        clusters = eval_clustering(pt.shared_arrays['a_copy'].array[unlabeled_df['Row_Type']=='Energy'], nc=AL_settings.number_of_clusters)
+        clusters_frame = pd.DataFrame(clusters, index = pd.MultiIndex.from_frame(unlabeled_df[unlabeled_df['Row_Type']=='Energy'][['Groups','Configs']]), columns=['cluster'])
     mask_of_still_unused = [True]*len(pt.shared_arrays['a_copy'].array)
 
 if parallel:
@@ -675,6 +783,7 @@ if rank==0:
     last_timestamp = current_timestamp
     error_log_list = []
     structures_chosen_list = []
+    DFT_cost_estimates = []
     for n_loop in range(AL_settings.number_of_iterations):
         snap.solver.perform_fit()
         print('loop fit', n_loop, 'done')
@@ -687,8 +796,7 @@ if rank==0:
         print(current_timestamp - last_timestamp)
         last_timestamp = current_timestamp
         snap.solver.errors = [] # this doesn't get cleared and will cause an error when fitsnap tries to append a dictionary onto it
-        # TODO: should generally check the code for other places where things get appended instead 
-        #       of overwritten when called multiple times in library mode
+        
         # ignore division by 0 warnings from the r^2 calculation for groups with only 1 entry
         with np.errstate(divide='ignore', invalid='ignore'):
             snap.solver.error_analysis()
@@ -699,6 +807,20 @@ if rank==0:
         print(snap.solver.errors.loc['*ALL'])
         error_log_list.append(snap.solver.errors)
 
+        # output model if set to do so
+        if AL_settings.n_steps_per_outputting_model and not n_loop%AL_settings.n_steps_per_outputting_model: #every n loops unless n = 0
+            snap.write_output()
+            move(snap.config.sections["OUTFILE"].potential_name + '.snapcoeff', AL_settings.output_directory+'loop_'+str(n_loop)+'_'+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapcoeff')
+            move(snap.config.sections["OUTFILE"].potential_name + '.snapparam', AL_settings.output_directory+'loop_'+str(n_loop)+'_'+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapparam')
+        
+        # only calculate full amount first time - then just add the amount from each new set of structures to the previous total instead of recalculating every step
+        if AL_settings.track_estimated_DFT_cost:
+            if DFT_cost_estimates==[]:
+                rough_DFT_cost_estimate = ((snap.solver.df[snap.solver.df["Row_Type"]=="Force"].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
+                DFT_cost_estimates.append(rough_DFT_cost_estimate)
+            else:
+                DFT_cost_estimates.append(DFT_cost_estimates[-1]+DFT_cost_current_selection)
+            
         if len(unlabeled_df)==0: #have fully exhausted the unlabeled pool
             break
         C = snap.solver.cov
@@ -719,26 +841,42 @@ if rank==0:
         if AL_settings.plot_uncertainty_error_correlation:
             # this only makes sense if you actually have the truth values in your 'unlabeled pool'
             if known_truth_for_unlabeled:
-                preds = np.dot(A,snap.solver.fit)
-                truths = pt.shared_arrays['b_copy'].array[mask_of_still_unused]
-                errors = truths - preds
-                plt.figure()
-                plt.scatter(abs(errors), np.sqrt(diag))
-                plt.ylabel('sqrt(prediction variance)')
-                plt.xlabel('abs error')
-                plt.title('Active Learning Step ' + str(n_loop))
-                plt.savefig(AL_settings.output_directory+'uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
-                plt.close()
-                plt.figure()
-                ax = plt.gca()
-                plt.scatter(abs(errors), np.sqrt(diag))
-                plt.ylabel('sqrt(prediction variance)')
-                plt.xlabel('abs error')
-                plt.title('Active Learning Step ' + str(n_loop))
-                ax.set_xscale("log")
-                ax.set_yscale("log")
-                plt.savefig(AL_settings.output_directory+'loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '.png')
-                plt.close()
+                if not (n_loop%AL_settings.n_steps_per_plot_uncertainty_error_correlation):
+                    if snap.config.sections['BISPECTRUM'].bzeroflag: #different dimensions, need to remove 0.0 at start of each atoms section
+                        preds = np.dot(A, snap.solver.fit[snap.solver.fit != 0.0]) # this will break if there are extra 0.0 values in the fit besides the bzeroflag terms
+                    else:
+                        preds = np.dot(A,snap.solver.fit)
+                    truths = pt.shared_arrays['b_copy'].array[mask_of_still_unused]
+                    errors = truths - preds
+                    plt.figure()
+                    ax = plt.gca()
+                    colors = ['black', 'blue', 'red']
+
+                    ### Commented out below is some code for spitting out group separated correlation plots - can be useful but too many groups makes it mostly a cluttered mess
+                    #color_cycler = plt.cycler('color', ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#000000'])
+                    #markercycle = plt.cycler(marker=['o', '+', 'x', '*', 'X'])
+                    #ax.set_prop_cycle(color_cycler)# * markercycle)
+                    #for group_type in unlabeled_df.Groups.unique(): 
+                        #group_type_mask = (unlabeled_df['Groups']==group_type).tolist()
+                        #plt.scatter(abs(errors[group_type_mask]), np.sqrt(diag[group_type_mask]), s=2, label=group_type)
+                    for k, row_type in enumerate(['Force', 'Stress', 'Energy']):
+                        row_type_mask = (unlabeled_df['Row_Type']==row_type).tolist()
+
+                        #for group_type in unlabeled_df.Groups.unique():
+                            #group_type_mask = (unlabeled_df['Groups']==group_type).tolist()
+                            #group_and_row_type_mask = [a and b for a,b in zip(group_type_mask, row_type_mask)]
+                            #plt.scatter(abs(errors[group_and_row_type_mask]), np.sqrt(diag[group_and_row_type_mask]), s=2, label=row_type+'_'+group_type)
+
+                        plt.scatter(abs(errors[row_type_mask]), np.sqrt(diag[row_type_mask]), s=2, color=colors[k], label=row_type)
+                    plt.ylabel('sqrt(prediction variance)')
+                    plt.xlabel('absolute error')
+                    plt.title('Active Learning Step ' + str(n_loop))
+                    ax.set_xscale("log")
+                    ax.set_yscale("log")
+                    plt.legend()
+                    #plt.legend(fontsize=5)
+                    plt.savefig(AL_settings.output_directory+'loglog_uncertainty_abs_error_correlation_step_' + str(n_loop)  + '_colorcoded.png')
+                    plt.close()
             else:
                 print('TRUTH VALUES FOR UNLABELED POOL ARE NOT YET KNOWN, CAN NOT PLOT UNCERTAINTY ERROR CORRELATION FOR THEM!')
             print('loop uncertainty error correlation plotting', n_loop, 'done')
@@ -751,6 +889,7 @@ if rank==0:
         ranked_structures = objective_function(unlabeled_df, EFS_reweighting = AL_settings.EFS_reweighting, FS_agg_functions=AL_settings.FS_agg_functions, objective_function = AL_settings.obj_function, \
                                                weight_by_relative_DFT_cost=AL_settings.weight_by_relative_DFT_cost)
 
+        ## LEGACY CODE: objective function used to return descriptor vectors for per-loop clustering
         #if use_fitsnap_coeffs_to_scale_bispectrum_representation:
         #    x_vector_for_each_structure = x_vector_for_each_structure * snap.solver.fit
 
@@ -759,26 +898,31 @@ if rank==0:
         print(current_timestamp - last_timestamp)
         last_timestamp = current_timestamp    
 
-        # TODO: implement the clustering subselection as an option here
-        # currently just take the top [batch_size] structures
+        # select structures based on objective function and clustering, batchsize options
         if AL_settings.active_learning:
             if AL_settings.cluster_structures:
-                pass
+                if AL_settings.batch_size == 0:
+                    AL_settings.batch_size = AL_settings.number_of_clusters
+                ranked_structures = ranked_structures.join(clusters_frame)
+                chosen_structures = ranked_structures.drop_duplicates(['cluster']).head(AL_settings.batch_size) # drop duplicates method only support grabbing top (when sorted, should always be here) one from each cluster
             else:
                 chosen_structures = ranked_structures.head(AL_settings.batch_size)
-                structures_chosen_list.append(chosen_structures.index.to_list())
-                #print(chosen_structures)
         else:
             chosen_structures = ranked_structures.sample(AL_settings.batch_size)  #randomly sample, TODO: could turn off objective function or make a dummy passthrough if need more speed
-            structures_chosen_list.append(chosen_structures.index.to_list())
+        structures_chosen_list.append(chosen_structures.index.to_list())
             
         cwd = getcwd()
     
+        DFT_cost_current_selection = 0
         for (group, structure) in chosen_structures.index:
             # chosen structures data to add to training data
             mask_of_structure = (unlabeled_df['Groups']==group) & (unlabeled_df['Configs']==structure)
+
+            if AL_settings.track_estimated_DFT_cost:
+                # the groupby command below is overkill - there should only ever be one group at a time in these loops. This mimics the full calculation but if slow can be rewritten much simpler
+                DFT_cost_current_selection += ((unlabeled_df[(mask_of_structure) & (unlabeled_df["Row_Type"]=="Force")].groupby(['Groups', 'Configs'], observed=True, sort=False).size()/3).astype(int)**3).sum()
+
             a_to_append = pt.shared_arrays['a_copy'].array[mask_of_still_unused][mask_of_structure]
-            
             
             b,w,g,c,r,ai,at = [],[],[],[],[],[],[]
             b = pt.shared_arrays['b_copy'].array[mask_of_still_unused][mask_of_structure].tolist()
@@ -884,29 +1028,59 @@ if parallel:
     comm.Barrier()
 
 if rank==0:
-    with open('structures_chosen.dat', 'w') as f:
+    with open(AL_settings.output_directory+'structures_chosen.dat', 'w') as f:
         for i in range(len(structures_chosen_list)):
             f.write(str(i)+  ' : ' + ', '.join('/'.join(groupconfig) for groupconfig in structures_chosen_list[i]) + '\n')
 
+if parallel:
+    comm.Barrier()
+if rank==0:    
+    snap.write_output()
+    if not snap.config.sections["OUTFILE"].potential_name == AL_settings.output_directory + snap.config.sections["OUTFILE"].potential_name.split('/')[-1]:
+        move(snap.config.sections["OUTFILE"].potential_name + '.snapcoeff', AL_settings.output_directory+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapcoeff')
+        move(snap.config.sections["OUTFILE"].potential_name + '.snapparam', AL_settings.output_directory+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapparam')
+            
 if AL_settings.plot_convergence_plots:
     if rank==0:
         for metric in ['mae', 'rmse']:
-            for ind in error_log_list[-1].loc['testing_json_group', 'Unweighted', 'Testing'].index:  #'Energy', 'Force', 'Stress'
-                x = [d.loc['*ALL', 'Unweighted', 'Training', ind]['ncount'] for d in error_log_list]
-                y_test = [d.loc['testing_json_group', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
-                plt.figure()
-                plt.loglog(x,y_test, color='blue', label='Testing', marker='o',markersize=10)
-                y_train = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
-                plt.loglog(x,y_train, color='dodgerblue', label='Training', marker='o',markersize=10)
-                plt.ylabel(metric)
-                plt.xlabel('# of training datapoints of same type')
-                plt.title(ind)
-                plt.legend()
-                plt.savefig(AL_settings.output_directory+'convergence_'+ind+'_'+metric+'.png')
-                plt.close()
-                np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
-                
-#plot_stuff = False
+            try:
+                for ind in error_log_list[-1].loc['testing_json_group', 'Unweighted', 'Testing'].index:  #'Energy', 'Force', 'Stress'
+                    x = [d.loc['*ALL', 'Unweighted', 'Training', ind]['ncount'] for d in error_log_list]
+                    y_test = [d.loc['testing_json_group', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
+                    plt.figure()
+                    plt.loglog(x,y_test, color='blue', label='Testing', marker='o',markersize=10)
+                    y_train = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
+                    plt.loglog(x,y_train, color='dodgerblue', label='Training', marker='o',markersize=10)
+                    plt.ylabel(metric)
+                    plt.xlabel('# of training datapoints of same type')
+                    plt.title(ind)
+                    plt.legend()
+                    plt.savefig(AL_settings.output_directory+'convergence_'+ind+'_'+metric+'.png')
+                    plt.close()
+                    if AL_settings.track_estimated_DFT_cost:
+                        np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train, DFT_cost_estimates]))
+                    else:
+                        np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
+            except KeyError:
+                for ind in error_log_list[-1].loc['*ALL', 'Unweighted', 'Testing'].index:  #'Energy', 'Force', 'Stress'
+                    x = [d.loc['*ALL', 'Unweighted', 'Training', ind]['ncount'] for d in error_log_list]
+                    y_test = [d.loc['*ALL', 'Unweighted', 'Testing', ind][metric] for d in error_log_list]
+                    plt.figure()
+                    plt.loglog(x,y_test, color='blue', label='Testing', marker='o',markersize=10)
+                    y_train = [d.loc['*ALL', 'Unweighted', 'Training', ind][metric] for d in error_log_list]
+                    plt.loglog(x,y_train, color='dodgerblue', label='Training', marker='o',markersize=10)
+                    plt.ylabel(metric)
+                    plt.xlabel('# of training datapoints of same type')
+                    plt.title(ind)
+                    plt.legend()
+                    plt.savefig(AL_settings.output_directory+'convergence_'+ind+'_'+metric+'.png')
+                    plt.close()
+                    if AL_settings.track_estimated_DFT_cost:
+                        np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train, DFT_cost_estimates]))
+                    else:
+                        np.save(AL_settings.output_directory+'data_for_convergence_'+ind+'_'+metric+'.npy', np.array([x,y_test,y_train]))
+
+    #plot_stuff = False
 #if plot_stuff:
 #    if rank==0:
 #        EFS_used = []
@@ -924,4 +1098,3 @@ if AL_settings.plot_convergence_plots:
 
 if parallel:
     comm.Barrier()
-    

@@ -3,7 +3,9 @@ active_learning: default = True, whether to select structures based on some crit
 number_of_iterations: default = 10, number of times to select new structure(s) and retrain model
 batch_size: default = 1, number of structures to select per active learning loop (iteration)
 cluster_structures: default = False, whether or not to cluster structures before selecting which to add to training set
+number_of_clusters: default = 0, 0 will auto-determine the number of clusters using the 'knee' method (requires multiple clustering runs at each number of clusters)
 output_directory: default = the working directory that the script is ran in, controls what directory all the output files are written into
+n_steps_per_outputting_model: default = 0,  0 will only output at the end, otherwise output every n steps
 
 [OBJECTIVE]
 E_weight: default = 1.0, weight to apply to energy uncertainties when combining in objective function
@@ -22,3 +24,6 @@ VASP_kpoints_auto_generation_Rk: default = 30, density of auto-generated kpoints
 [PLOTTING]
 plot_uncertainty_error_correlation: default = False, makes normal and loglog plots of the absolute errors (if known on the unlabeled set) vs the std_dev of the prediction (sqrt of our prediction variance - 'uncertainty' in the code)
 plot_convergence_plots: default = True, makes plots for the E,F,S mean absolute error (MAE) and root mean squared error (RMSE) of the training and testing sets separately as a function of the # of training datapoints in each category
+n_steps_per_plot_uncertainty_error_correlation: default = 1, how often to plot the uncertainty - error correlation plots
+track_estimated_DFT_cost: default = False, adds a datacolumn in the error logs that estimates DFT cost using the number of atoms in each structure cubed
+

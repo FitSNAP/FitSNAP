@@ -69,7 +69,7 @@ class AL_settings_class():
                 mkdir(self.output_directory)
         if parallel:
             comm.Barrier()
-        self.n_steps_per_outputting_model = AL_configparser.getint('GENERAL', n_steps_per_outputting_model, 0)
+        self.n_steps_per_outputting_model = AL_configparser.getint('GENERAL', 'n_steps_per_outputting_model', fallback = 0)
         self.E_weight = AL_configparser.getfloat('OBJECTIVE', 'E_weight', fallback = 1.0)
         self.F_weight = AL_configparser.getfloat('OBJECTIVE', 'F_weight', fallback = 1.0)
         self.S_weight = AL_configparser.getfloat('OBJECTIVE', 's_weight', fallback = 1.0)

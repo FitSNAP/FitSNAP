@@ -28,19 +28,6 @@ class DataframeTools():
     df: Pickled Pandas dataframe
     """
     def __init__(self, dataframe):
-
-        #if (filename==None and df==None):
-        #    raise ValueError('You must supply a filename or a pickled pandas DF.')
-
-        #print(type(dataframe))
-
-        """
-        self.filename = filename
-        self.df = df
-
-        if(filename is not None):
-            print("filename!")
-        """
         if(isinstance(dataframe, str)):
             self.dftype = "file"
             self.dataframe = dataframe
@@ -51,8 +38,8 @@ class DataframeTools():
             raise ValueError('Dataframe must be filename of pickled pd dataframe or pd.core.frame.DataFrame')
 
     def get_cmap(self, n, name='hsv'):
-        '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
-        RGB color; the keyword argument name must be a standard mpl colormap name.'''
+        """Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
+        RGB color; the keyword argument name must be a standard mpl colormap name."""
         return plt.cm.get_cmap(name, n)
 
     def read_dataframe(self):
@@ -174,7 +161,7 @@ class DataframeTools():
             natoms_test = natoms_per_config[test_configs]
             
             diff = np.abs(test_preds - test_truths)
-            diff_per_atom = diff #/natoms_test
+            diff_per_atom = diff # energies are already per-atom, no need to divide by natoms
             mae = np.mean(diff_per_atom)
 
             return(mae)
@@ -222,13 +209,12 @@ class DataframeTools():
             testing_force_preds = np.reshape(testing_force_preds, (natoms_test, 3))
 
             diff = testing_force_preds - testing_force_truths
-            #norm = np.linalg.norm(diff, axis=1)
+            #norm = np.linalg.norm(diff, axis=1) # use this if doing mean force vector difference
             mae = np.mean(np.abs(diff))
-            #mae = np.mean(norm)
 
             return mae 
 
-    def plot_agreement(self, quantity,fitting_set="Testing", mode="Distribution", group_set=None, legend=True):
+    def plot_agreement(self, quantity,fitting_set="Testing", mode="Distribution", group_set=None, legend=True, peratom=True):
         """
         Plot agreement between truth and pred for some quantity. 
 
@@ -245,6 +231,9 @@ class DataframeTools():
 
         mode: str
             "Distribution" or "Linear" for different ways of looking at disagreements
+
+        peratom: bool
+            Default True divides energies by natoms. Not used for force plotting.
         """
 
         preds = None
@@ -274,7 +263,6 @@ class DataframeTools():
 
             nconfigs = row_type.tolist().count("Energy")
             natoms_per_config = np.zeros(nconfigs).astype(int)
-
             config_indx = -1
             for element in row_type.tolist():
                 if element=="Energy":
@@ -344,25 +332,22 @@ class DataframeTools():
 
             natoms_test = natoms_per_config[test_configs]
 
-            truths = test_truths/natoms_test
-            preds = test_preds/natoms_test
-
-            #print(truths)
-            # use group row indices to get
-            # print(groups.tolist()[group_row_indices])
+            if (peratom):
+                # values from fitsnap are already per-atom
+                truths = test_truths
+                preds = test_preds
+            else:
+                truths = test_truths*natoms_test
+                preds = test_preds*natoms_test
 
             # get all groups associated with fitting set
 
             filtered_groups = list(compress(groups.tolist(), test_row_indices))
-            #print(len(filtered_groups))
             assert (len(filtered_groups) == len(truths))
-            #print(filtered_groups[0])
             unique_groups_set = set()
             for x in filtered_groups:
                 unique_groups_set.add(x)
-            unique_groups = sorted(list(unique_groups_set)) #set(filtered_groups))
-            #print(unique_groups)
-            #print(unique_groups.sort(key=len))
+            unique_groups = sorted(list(unique_groups_set))
             cmap = self.get_cmap(n=len(unique_groups), name='gist_rainbow')
             cmap = [cmap(i) for i in range(0,len(unique_groups))]
             # assign color to each value based on group name
@@ -371,37 +356,30 @@ class DataframeTools():
                 indx_bool = [g==unique_groups[i] for i in range(0,len(unique_groups))]
                 indx = [i for i, x in enumerate(indx_bool) if x][0]
                 colors.append(cmap[indx])
-            #print(colors)
-            #print(truths[0], preds[0])
             for i in range(0,len(truths)):
                 plt.plot(truths[i], preds[i], c=colors[i], marker='o',markersize=8, alpha=0.5)
 
-            #plt.xlabel("Target energy (eV/atom)")
-            #plt.ylabel("Model energy (eV/atom)")
-
-            #min_val = np.min(np.abs(truths))
-            #max_val = np.max(np.abs(truths))
-            #lims = [min_test_force, max_test_force]
-            #plt.axline((0, 0.5), slope=1.0, color="black")
-
+            units_str = "(eV/atom)"
+            if not peratom:
+                units_str = "(eV)"
             if (mode=="Distribution"):
                 abs_diff = np.abs(truths-preds)
                 abs_truth = np.abs(truths)
-                plt.scatter(abs_truth, abs_diff, c=colors, marker='o', alpha=0.5)
+                mae = np.mean(abs_diff)
+                print(f"Energy MAE: {mae} {units_str}")
+                plt.scatter(abs_truth, abs_diff, c=colors, marker='o', alpha=0.3)
                 plt.xscale("log")
                 plt.yscale("log")
-                plt.gca().set_xlim(left=1e-1)
-                #plt.gca().set_ylim(bottom=1e-2)
-                plt.xlabel(r"Target energy magnitude (eV/atom)")
-                plt.ylabel(r"Absolute error (eV/atom)")
+                plt.xlabel(f"Target energy magnitude {units_str}")
+                plt.ylabel(f"Absolute error {units_str}")
             elif(mode=="Linear"):
-                plt.scatter(truths, preds, c=colors, marker='o',alpha=0.5)
+                plt.scatter(truths, preds, c=colors, marker='o',alpha=0.3)
                 min_val = np.min(truths)
                 max_val = np.max(truths)
                 lims = [min_val, max_val]
                 plt.plot(lims, lims, 'k-')
-                plt.xlabel(r"Target energy (eV/atom)")
-                plt.ylabel(r"Model energy (eV/atom)")
+                plt.xlabel(f"Target energy {units_str}")
+                plt.ylabel(f"Model energy {units_str}")
 
             if (legend):
                 legend_handle = [mpatches.Patch(color=cmap[i], 
@@ -434,7 +412,7 @@ class DataframeTools():
                 raise ValueError(f"{fitting_set} set is empty in this dataframe.")
 
             # use list comprehension to extract row indices that are both force and testing
-            #testing_force_row_indices = [force_row_indices and testing_bool for force_row_indices, testing_bool in zip(force_row_indices, testing_bool)]
+
             if (group_set is not None):
                 testing_force_row_indices = [force_row_indices and testing_bool and group_row_indices \
                                             for force_row_indices, testing_bool, group_row_indices \
@@ -449,14 +427,11 @@ class DataframeTools():
             # get all groups associated with fitting set
 
             filtered_groups = list(compress(groups.tolist(), testing_force_row_indices))
-            #print(len(filtered_groups))
             assert (len(filtered_groups) == len(truths))
             unique_groups_set = set()
             for x in filtered_groups:
                 unique_groups_set.add(x)
-            unique_groups = sorted(list(unique_groups_set)) #set(filtered_groups))
-            #print(unique_groups)
-            #print(unique_groups.sort(key=len))
+            unique_groups = sorted(list(unique_groups_set))
             cmap = self.get_cmap(n=len(unique_groups), name='gist_rainbow')
             cmap = [cmap(i) for i in range(0,len(unique_groups))]
             # assign color to each value based on group name
@@ -465,12 +440,12 @@ class DataframeTools():
                 indx_bool = [g==unique_groups[i] for i in range(0,len(unique_groups))]
                 indx = [i for i, x in enumerate(indx_bool) if x][0]
                 colors.append(cmap[indx])
-            #print(colors)
-            #print(truths[0], preds[0])
 
             if (mode=="Distribution"):
                 abs_diff = np.abs(truths-preds)
                 abs_truth = np.abs(truths)
+                mae = np.mean(abs_diff)
+                print(f"Force MAE: {mae} (eV/A)")
                 plt.scatter(abs_truth, abs_diff, c=colors, marker='o', alpha=0.5)
                 plt.xscale("log")
                 plt.yscale("log")
@@ -491,7 +466,6 @@ class DataframeTools():
                 legend_handle = [mpatches.Patch(color=cmap[i], 
                                  label=unique_groups[i]) for i in range(0,len(unique_groups))]
                 plt.legend(fancybox=True, framealpha=0.5, handles = legend_handle, bbox_to_anchor=(1.04, 1), loc="upper left")
-                #plt.tight_layout(rect=[0, 0, 1, 0.8])
             plt.savefig("force_agreement.png", bbox_inches="tight", dpi=500)
 
     def plot_tsne(self, num_descriptors, point_size=0.05):
@@ -499,7 +473,7 @@ class DataframeTools():
         from matplotlib.lines import Line2D 
         tsne = TSNE()
 
-        numeric_df = self.df.iloc[:,0:num_descriptors+1] #whatever your number of A matrix columns is
+        numeric_df = self.df.iloc[:,0:num_descriptors+1] # whatever your number of A matrix columns is
         label_df = self.df['Groups']
 
         X = numeric_df.to_numpy()

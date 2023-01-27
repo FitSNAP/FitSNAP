@@ -33,7 +33,7 @@ from datetime import datetime
 from os import chdir, mkdir, getenv, getcwd, path
 import json
 from subprocess import run
-from shutil import copyfileobj, copy2
+from shutil import copyfileobj, copy2, move
 import inspect
 import copy 
 import pandas as pd
@@ -810,8 +810,8 @@ if rank==0:
         # output model if set to do so
         if AL_settings.n_steps_per_outputting_model and not n_loop%AL_settings.n_steps_per_outputting_model: #every n loops unless n = 0
             snap.write_output()
-            copy2(snap.config.sections["OUTFILE"].potential_name + '.snapcoeff', AL_settings.output_directory+'loop_'+str(n_loop)+'_'+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapcoeff')
-            copy2(snap.config.sections["OUTFILE"].potential_name + '.snapparam', AL_settings.output_directory+'loop_'+str(n_loop)+'_'+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapparam')
+            move(snap.config.sections["OUTFILE"].potential_name + '.snapcoeff', AL_settings.output_directory+'loop_'+str(n_loop)+'_'+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapcoeff')
+            move(snap.config.sections["OUTFILE"].potential_name + '.snapparam', AL_settings.output_directory+'loop_'+str(n_loop)+'_'+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapparam')
         
         # only calculate full amount first time - then just add the amount from each new set of structures to the previous total instead of recalculating every step
         if AL_settings.track_estimated_DFT_cost:
@@ -1036,8 +1036,9 @@ if parallel:
     comm.Barrier()
 if rank==0:    
     snap.write_output()
-    copy2(snap.config.sections["OUTFILE"].potential_name + '.snapcoeff', AL_settings.output_directory+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapcoeff')
-    copy2(snap.config.sections["OUTFILE"].potential_name + '.snapparam', AL_settings.output_directory+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapparam')
+    if not snap.config.sections["OUTFILE"].potential_name == AL_settings.output_directory + snap.config.sections["OUTFILE"].potential_name.split('/')[-1]:
+        move(snap.config.sections["OUTFILE"].potential_name + '.snapcoeff', AL_settings.output_directory+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapcoeff')
+        move(snap.config.sections["OUTFILE"].potential_name + '.snapparam', AL_settings.output_directory+snap.config.sections["OUTFILE"].potential_name.split('/')[-1] + '.snapparam')
             
 if AL_settings.plot_convergence_plots:
     if rank==0:

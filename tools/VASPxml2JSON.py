@@ -2,7 +2,9 @@
 
 # This script will parse through a single vasprun.xml file from VASP, which may include one or more configurations, and will print out
 # a JSON file(s) that can then be read into fitSNAP.  To run this script, you will need to specify a vasprun.xml file, and
-# the name of the JSON file(s) that will be output in the command line  --->  python VASP2JSON.py myvasprun.xmlfile myJSONfile
+# the name of the JSON file(s) that will be output in the command line  --->  python VASPxml2JSON.py myvasprun.xmlfile myJSONfile
+# Script author: Logan Williams
+# Adjusted from VASP2JSON.py script by Mary Alice Cusentino
 
 import sys, os
 import json
@@ -13,6 +15,9 @@ xml_file = sys.argv[1]
 JSON_file = str(sys.argv[2])
 
 write_unconverged_steps_anyway = False
+energy_output_forms = ["e_fr_energy","e_wo_entrp","e_0_energy"]
+energy_output_default = "e_wo_entrp"
+energy_output_choice = energy_output_default
 
 def write_json(data, jsonfilename):
     """
@@ -53,6 +58,7 @@ order_atom_types = []
 listAtomTypes = []
 list_POTCARS = []
 config_number = 1
+version = None ## string, 1st three digits
 
 
 # Start parsing through vasprun.xml looking for entries that are associated with the
@@ -61,6 +67,10 @@ config_number = 1
 
 tree = ET.iterparse(xml_file, events=['start', 'end'])
 for event, elem in tree:
+
+    if elem.tag == 'generator': # grab VASP info
+        version = '.'.join(elem.find('i[@name="version"]').text.strip().split('.')[:3])
+
     if elem.tag == 'parameters' and event=='end': #once at the start
         NELM = int(elem.find('separator[@name="electronic"]/separator[@name="electronic convergence"]/i[@name="NELM"]').text)
         #print(NELM)
@@ -83,28 +93,58 @@ for event, elem in tree:
         frac_atom_coords = []
         for entry in elem.find("varray[@name='positions']"):
             frac_atom_coords.append([float(x) for x in entry.text.split()])
-        atom_coords = dot(frac_atom_coords, all_lattice).tolist()
+
+        ## Ensures identical JSON output by matching precision between this and VASP2JSON.py 
+        coords_to_outcar_precision = 5 
+        atom_coords = [[round(x, coords_to_outcar_precision) for x in coord] for coord in dot(frac_atom_coords, all_lattice).tolist()]
+        ## If you want to retain XML precision, comment the 2 lines above out and uncomment the line below
+        # atom_coords = dot(frac_atom_coords, all_lattice).tolist()
         #print(atom_coords)
-        
+                 
     elif elem.tag == 'calculation' and event=='end': #this triggers each ionic step
         atom_force = []
         force_block = elem.find("varray[@name='forces']")
         if force_block:
             for entry in force_block:
-                atom_force.append([float(x) for x in entry.text.split()])
+                ## Ensures identical JSON output by matching precision between this and VASP2JSON.py 
+                forces_to_outcar_precision = 6 ## ensures identical precision between this and VASP2JSON.py
+                atom_force.append([round(float(x), forces_to_outcar_precision) for x in entry.text.split()])
+                # atom_force.append([float(x) for x in entry.text.split()])
         #print(atom_force)
-        stress_block = elem.find("varray[@name='stress']")
+
         stress_component = []
+        stress_block = elem.find("varray[@name='stress']")
         if stress_block:
             for entry in stress_block:
-                stress_component.append([float(x) for x in entry.text.split()])
-        totalEnergy = float(elem.find('energy/i[@name="e_0_energy"]').text)  ##NOTE! this value is incorrectly reported by VASP in version 5.4 (fixed in 6.1), see https://www.vasp.at/forum/viewtopic.php?t=17839
-        ## ASE vasprun.xml io reader has a more complex workaround to get the correct energy - we can update to include if needed
-        #print(totalEnergy)
+                ## Ensures identical JSON output by matching precision between this and VASP2JSON.py 
+                stresses_to_outcar_precision = 5
+                stress_component.append([round(float(x), stresses_to_outcar_precision) for x in entry.text.split()])
+                ## If you want to retain XML precision, comment the 2 lines above out and uncomment the line below
+                #stress_component.append([float(x) for x in entry.text.split()])
+        #print(stress_component)
+        
+        ## Check for VASP v5.4 bug in energy assignment
+        if version[:3] == '5.4' and energy_output_choice != 'e_fr_energy':
+            if 0:  ## toggle to 1 to print warning
+                print(f"-> INFO: Detected VASP v5.4 - this version has a bug where '{energy_output_choice}' is written incorrectly in final energy output (corrected in v6.1). \n"
+                f"\t-> Taking '{energy_output_choice}' from final scstep calculation instead (check with OUTCAR values if uncertain).\n"
+                "\t-> See https://www.vasp.at/forum/viewtopic.php?t=17839# for more details.\n")
+            
+            bad_energy = float(elem.find(f'energy/i[@name="{energy_output_choice}"]').text)
+            final_scstep = elem.findall("scstep")[-1]
+            # print(final_scstep)
+            totalEnergy = float(final_scstep.find(f"energy/i[@name='{energy_output_choice}']").text)
+            # print(totalEnergy, bad_energy)
+ 
+        else:        
+            totalEnergy = float(elem.find(f'energy/i[@name="{energy_output_choice}"]').text)  
+        # print('TOTAL ENERGY:', totalEnergy)
+
         if len(elem.findall("scstep")) == NELM:
             electronic_convergence = False ##This isn't the best way to check this, but not sure if info is directly available. Could try to calculate energy diff from scstep entries and compare to EDIFF
         else:
             electronic_convergence = True
+
         
         # Here is where all the data is put together for each ionic step
         # After this, all these values will be overwritten
@@ -126,7 +166,7 @@ for event, elem in tree:
         # json files should be output now.  The configuration number will be increased by one
         # to keep track of which configuration is associated with which json file.
 
-        jsonfilename = JSON_file + str(config_number) + ".json"
+        jsonfilename = f"{JSON_file}_{str(config_number)}.json"
 
         if electronic_convergence:
             write_json(data, jsonfilename)

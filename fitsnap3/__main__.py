@@ -39,17 +39,24 @@ pt = ParallelTools()
 
 @pt.single_timeit
 def main():
-    try:
-        initialize_fitsnap_run()
-        snap = FitSnap()
-        snap.scrape_configs()
-        snap.process_configs()
-        pt.all_barrier()
-        snap.perform_fit()
-        snap.write_output()
-    except Exception as e:
-        output.exception(e)
-
+    initialize_fitsnap_run()
+    snap = FitSnap()
+    snap.scrape_configs()
+    snap.process_configs()
+    pt.all_barrier()
+    snap.perform_fit()
+    snap.write_output()
+        
+    #try:
+    #    initialize_fitsnap_run()
+    #    snap = FitSnap()
+    #    snap.scrape_configs()
+    #    snap.process_configs()
+    #    pt.all_barrier()
+    #    snap.perform_fit()
+    #    snap.write_output()
+    #except Exception as e:
+    #    output.exception(e)
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,3 @@
-from os import path
 from fitsnap3lib.io.sections.sections import Section
 from fitsnap3lib.parallel_tools import ParallelTools
 from os import path

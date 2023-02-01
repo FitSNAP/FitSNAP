@@ -36,6 +36,12 @@ class Snap(Output):
             with optional_open(self.config.sections["OUTFILE"].potential_name and
                                self.config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
                 file.write(_to_param_string())
+            with optional_open(self.config.sections["OUTFILE"].potential_name and
+                               self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
+                file.write(_to_potential_file())
+            with optional_open("in.lammps", 'wt') as file:
+                file.write(_to_lammps_input())
+
             self.write_errors(errors)
         decorated_write()
 
@@ -124,4 +130,77 @@ def _to_coeff_string(coeffs):
         out += "\n".join(f" {bval:<30.18} #  B{bname} " for bval, bname in zip(column, bnames))
         out += "\n"
     out += "\n# End of potential"
+    return out
+
+def _to_potential_file():
+    """
+    Use config settings to write a LAMMPS potential file.
+    """
+    config = Config()
+
+    ps = config.sections["REFERENCE"].lmp_pairdecl[0]
+    snap_filename = config.sections["OUTFILE"].potential_name.split("/")[-1]
+    pc_snap = f"pair_coeff * * {snap_filename}.snapcoeff {snap_filename}.snapparam"
+    for t in config.sections["BISPECTRUM"].types:
+        pc_snap += f" {t}"
+
+    if "hybrid" in ps:
+        # extract non zero parts of pair style
+        if "zero" in ps.split():
+            split = ps.split()
+            zero_indx = split.index("zero")
+            del split[zero_indx]
+            del split[zero_indx] # delete the zero pair cutoff
+            ps = ' '.join(split)
+        out = ps + " snap\n"
+        # add pair coeff commands from input, ignore if pair zero
+        for pc in config.sections["REFERENCE"].lmp_pairdecl[1:]:
+            out += f"{pc}\n" if "zero" not in pc else ""
+        # add pair coeff command from snap potential
+        out += pc_snap
+    else:
+        out = "pair_style snap\n"
+        out += pc_snap
+
+    return out
+
+def _to_lammps_input():
+    """
+    Use config settings to write a LAMMPS input script.
+    """
+
+    config = Config()
+
+    snap_filename = config.sections["OUTFILE"].potential_name.split("/")[-1]
+    pot_filename = snap_filename + ".mod"
+
+    out = "# LAMMPS template input written by FitSNAP.\n"
+    out += "# Runs a NVE simulation at specified temperature and timestep.\n"
+    out += "\n"
+    out += "# Declare simulation variables\n"
+    out += "\n"
+    out += "variable timestep equal 0.5e-3\n"
+    out += "variable temperature equal 600\n"
+    out += "\n"
+    out += f"units {config.sections['REFERENCE'].units}\n"
+    out += "\n"
+    out += "# Supply your own data file below\n"
+    out += "\n"
+    out += "read_data DATA\n"
+    out += "\n"
+    out += "# Include potential file\n"
+    out += "\n"
+    out += f"include {pot_filename}\n"
+    out += "\n"
+    out += "# Declare simulation settings\n"
+    out += "\n"
+    out += "timestep ${timestep}\n"
+    out += "neighbor 1.0 bin\n"
+    out += "velocity all create ${temperature} 10101 rot yes mom yes\n"
+    out += "fix 1 all nve\n"
+    out += "\n"
+    out += "# Run dynamics\n"
+    out += "\n"
+    out += "run 1000\n"
+
     return out

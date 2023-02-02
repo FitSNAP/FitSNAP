@@ -6,6 +6,7 @@ from fitsnap3lib.io.sections.section_factory import new_section
 from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.parallel_output import Output
 from pathlib import Path
+import random
 
 
 output = Output()
@@ -44,6 +45,11 @@ class Config(metaclass=Singleton):
         self.parse_cmdline(arguments_lst=arguments_lst)
         self.sections = {}
         self.parse_config()
+
+        # Generate random 128 bit hash to identify this fit
+
+        if self.pt._rank == 0:
+            self.hash = f"{random.getrandbits(128):032x}"
 
     def parse_cmdline(self, arguments_lst=None):
         parser = argparse.ArgumentParser(prog="FitSNAP3")

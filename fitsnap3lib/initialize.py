@@ -57,6 +57,8 @@ def initialize_fitsnap_run():
         pt.all_barrier()
         from fitsnap3lib.io.input import Config
         config = Config()
+        if (pt._rank==0):
+            print(f"Hash: {config.hash}")
         pt.single_print("Finished reading input")
         pt.single_print("------------------")
 

@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import gzip
 from datetime import datetime
 import logging
+import random
 
 
 #config = Config()
@@ -104,7 +105,7 @@ class Output:
 
 @contextmanager
 def optional_open(file, mode, *args, openfn=None, **kwargs):
-    # Note: this is suboptimal in that whatever write operations
+    # NOTE: this is suboptimal in that whatever write operations
     # are still performed ; this is negligible compared to the computation, at the moment.
     """If file is None, yields a dummy file object."""
     if file is None:

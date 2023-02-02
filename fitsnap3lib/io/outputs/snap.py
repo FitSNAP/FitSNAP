@@ -140,9 +140,6 @@ def _to_potential_file():
 
     ps = config.sections["REFERENCE"].lmp_pairdecl[0]
     snap_filename = config.sections["OUTFILE"].potential_name.split("/")[-1]
-    pc_snap = f"pair_coeff * * {snap_filename}.snapcoeff {snap_filename}.snapparam"
-    for t in config.sections["BISPECTRUM"].types:
-        pc_snap += f" {t}"
 
     if "hybrid" in ps:
         # extract non zero parts of pair style
@@ -156,10 +153,15 @@ def _to_potential_file():
         # add pair coeff commands from input, ignore if pair zero
         for pc in config.sections["REFERENCE"].lmp_pairdecl[1:]:
             out += f"{pc}\n" if "zero" not in pc else ""
-        # add pair coeff command from snap potential
+        pc_snap = f"pair_coeff * * snap {snap_filename}.snapcoeff {snap_filename}.snapparam"
+        for t in config.sections["BISPECTRUM"].types:
+            pc_snap += f" {t}"
         out += pc_snap
     else:
         out = "pair_style snap\n"
+        pc_snap = f"pair_coeff * * {snap_filename}.snapcoeff {snap_filename}.snapparam"
+        for t in config.sections["BISPECTRUM"].types:
+            pc_snap += f" {t}"
         out += pc_snap
 
     return out
@@ -168,7 +170,7 @@ def _to_lammps_input():
     """
     Use config settings to write a LAMMPS input script.
     """
-
+    
     config = Config()
 
     snap_filename = config.sections["OUTFILE"].potential_name.split("/")[-1]
@@ -183,6 +185,7 @@ def _to_lammps_input():
     out += "variable temperature equal 600\n"
     out += "\n"
     out += f"units {config.sections['REFERENCE'].units}\n"
+    out += f"atom_style {config.sections['REFERENCE'].atom_style}\n"
     out += "\n"
     out += "# Supply your own data file below\n"
     out += "\n"

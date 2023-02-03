@@ -32,6 +32,7 @@ class Snap(Output):
             if self.config.sections["EXTRAS"].only_test != 1:
                 if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
                     raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
+            print("--- WRITING")
             with optional_open(self.config.sections["OUTFILE"].potential_name and
                                self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
                 file.write(_to_coeff_string(coeffs))
@@ -43,14 +44,16 @@ class Snap(Output):
                 file.write(_to_potential_file())
             with optional_open("in.lammps", 'wt') as file:
                 file.write(_to_lammps_input())
-            # Add these files to a tarball
+            # Package these files into a tarball
             fp = tarfile.open(f"fit-{self.config.hash}.tar.gz", 'w:gz')
-            potname = self.config.sections["OUTFILE"].potential_name.split('/')[-1]
-            fp.add(potname + '.snapcoeff')
-            fp.add(potname + '.snapparam')
-            fp.add(potname + '.mod')
+            potname = self.config.sections["OUTFILE"].potential_name
+            potname_prefix = potname.split('/')[-1]
+            fp.add(potname + '.snapcoeff', arcname = potname_prefix + '.snapcoeff')
+            fp.add(potname + '.snapparam', arcname = potname_prefix + '.snapparam')
+            fp.add(potname + '.mod', arcname = potname_prefix)
             fp.add("in.lammps")
             fp.close()
+
             self.write_errors(errors)
         decorated_write()
 

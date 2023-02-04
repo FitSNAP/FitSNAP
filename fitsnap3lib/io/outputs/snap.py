@@ -317,7 +317,7 @@ def _to_mliap_mod():
             pc_snap += f" {t}"
         out += pc_snap
     else:
-        out += "pair_style mliap model mliappy FitTorch_Pytorch.pt descriptor sna {snap_filename}.mliap.descriptor\n"
+        out += f"pair_style mliap model mliappy FitTorch_Pytorch.pt descriptor sna {snap_filename}.mliap.descriptor\n"
         pc_snap = f"pair_coeff * *"
         for t in config.sections["BISPECTRUM"].types:
             pc_snap += f" {t}"

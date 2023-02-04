@@ -33,7 +33,7 @@ Indices and tables
 
    Introduction
    Installation
-   Run
+   Run/index.rst
    Linear
    Pytorch
    Uncertainty Quantification

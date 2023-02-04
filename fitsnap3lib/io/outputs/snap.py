@@ -32,7 +32,6 @@ class Snap(Output):
             if self.config.sections["EXTRAS"].only_test != 1:
                 if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
                     raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
-            print("--- WRITING")
             with optional_open(self.config.sections["OUTFILE"].potential_name and
                                self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
                 file.write(_to_coeff_string(coeffs))

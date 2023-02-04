@@ -158,9 +158,10 @@ class FitSnap:
             if not self.config.args.perform_fit:
                 return
             # prevent Output class from trying to process non-existing solver.fit when using nonlinear solvers
-            if self.solver.linear:
-                output.output(self.solver.fit, self.solver.errors)
-            else:
-                if (self.pt._rank==0):
-                    print("WARNING: Nonlinear solvers do not output generic output - see PyTorch/JAX model files.")
+            output.output(self.solver.fit, self.solver.errors)
+            #if self.solver.linear:
+            #    output.output(self.solver.fit, self.solver.errors)
+            #else:
+            #    if (self.pt._rank==0):
+            #        print("WARNING: Nonlinear solvers do not output generic output - see PyTorch/JAX model files.")
         decorated_write_output()

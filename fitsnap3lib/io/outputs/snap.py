@@ -41,17 +41,18 @@ class Snap(Output):
             with optional_open(self.config.sections["OUTFILE"].potential_name and
                                self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
                 file.write(_to_potential_file())
-            with optional_open("in.lammps", 'wt') as file:
-                file.write(_to_lammps_input())
-            # Package these files into a tarball
-            fp = tarfile.open(f"fit-{self.config.hash}.tar.gz", 'w:gz')
-            potname = self.config.sections["OUTFILE"].potential_name
-            potname_prefix = potname.split('/')[-1]
-            fp.add(potname + '.snapcoeff', arcname = potname_prefix + '.snapcoeff')
-            fp.add(potname + '.snapparam', arcname = potname_prefix + '.snapparam')
-            fp.add(potname + '.mod', arcname = potname_prefix)
-            fp.add("in.lammps")
-            fp.close()
+            if (self._tarball):
+                with optional_open("in.lammps", 'wt') as file:
+                    file.write(_to_lammps_input())
+                # Package these files into a tarball
+                fp = tarfile.open(f"fit-{self.config.hash}.tar.gz", 'w:gz')
+                potname = self.config.sections["OUTFILE"].potential_name
+                potname_prefix = potname.split('/')[-1]
+                fp.add(potname + '.snapcoeff', arcname = potname_prefix + '.snapcoeff')
+                fp.add(potname + '.snapparam', arcname = potname_prefix + '.snapparam')
+                fp.add(potname + '.mod', arcname = potname_prefix)
+                fp.add("in.lammps")
+                fp.close()
 
             self.write_errors(errors)
         decorated_write()

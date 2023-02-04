@@ -66,16 +66,18 @@ class Config(metaclass=Singleton):
                             help="Allow overwriting existing files")
         parser.add_argument("--verbose", "-v", action="store_true", dest="verbose",
                             default=False, help="Show more detailed information about processing")
-        # The following are poorly understood.
+        parser.add_argument("--tarball", "-tb", action="store_true", dest="tarball",
+                            default=False, help="Package SNAP fit files into a hashed tarball")
+        parser.add_argument("--relative", "-r", action="store_true", dest="relative",
+                            help='''Put output files in the directory of INFILE. If this flag
+                             is not not present, the files are stored in the
+                            current working directory.''')
         parser.add_argument("--keyword", "-k", nargs=3, metavar=("GROUP", "NAME", "VALUE"),
                             action="append", dest="keyword_replacements",
                             help='''Replace or add input keyword group GROUP, key NAME,
                             with value VALUE. Type carefully; a misspelled key name or value
                             may be silently ignored.''')
-        parser.add_argument("--relative", "-r", action="store_true", dest="relative",
-                            help='''Put output files in the directory of INFILE. If this flag
-                             is not not present, the files are stored in the
-                            current working directory.''')
+        # The following have questionable importance.
         parser.add_argument("--screen", "-sc", action="store_false", dest="screen",
                             help="Print fitsnap output to screen.")
         parser.add_argument("--nscreen", "-ns", action="store_true", dest="nscreen",

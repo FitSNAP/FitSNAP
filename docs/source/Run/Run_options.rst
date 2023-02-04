@@ -15,6 +15,7 @@ Either the full word or a one or two letter abbreviation can be used:
 * :ref:`-r or -\-relative <relative>`
 * :ref:`-sc or -\-screen <screen>`
 * :ref:`-s2f or -\-screen2file <screen2file>`
+* :ref:`-tb or -\-tarball <tarball>`
 * :ref:`-v or -\-verbose <verbose>`
 
 For example, the FitSNAP executable might be launched as follows:
@@ -118,6 +119,20 @@ Print outputs to screen.
 **-\-screen2file FILE**
 
 Print screen to a file named FILE.
+
+----------
+
+.. _tarball:
+
+**-\-tarball**
+
+Package SNAP fit files into a hashed tarball named :code:`fit-<hash>.tar.gz`. This is only useful 
+when fitting with SNAP descriptors since multiple files are used by LAMMPS. The tarball contains 
+a SNAP parameter file, a SNAP coefficient file, a :code:`*.mod` file containing the proper pair 
+style to use, and an example LAMMPS input file showing how to use this potential.
+
+ACE descriptors, on the other hand, only use :code:`*.yace` files in LAMMPS, therefore no need for a 
+tarball.
 
 ----------
 

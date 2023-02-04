@@ -4,7 +4,6 @@ from contextlib import contextmanager
 import gzip
 from datetime import datetime
 import logging
-import random
 
 
 #config = Config()
@@ -22,6 +21,7 @@ class Output:
         self._nscreen = self.config.args.nscreen
         self._logfile = self.config.args.log
         self._s2f = self.config.args.screen2file
+        self._tarball = self.config.args.tarball
         if self._s2f is not None:
             self.pt.set_output(self._s2f, ns=self._nscreen, ps=self._nscreen)
         self.logger = None

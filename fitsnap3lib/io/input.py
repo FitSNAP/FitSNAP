@@ -95,10 +95,6 @@ class Config(metaclass=Singleton):
                             help="Allow LAMMPS compiled without C++ exceptions handling enabled")
         parser.add_argument("--printlammps", "-pl", action="store_true", dest="printlammps",
                             help="Print all lammps commands")
-        parser.add_argument("--relative", "-r", action="store_true", dest="relative",
-                            help='''Put output files in the directory of INFILE. If this flag
-                             is not not present, the files are stored in the
-                            current working directory.''')
         """
 
         # Check if building docs, in which case we revert to using Ta Linear example.

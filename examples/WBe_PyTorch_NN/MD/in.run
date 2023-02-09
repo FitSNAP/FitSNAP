@@ -26,34 +26,32 @@ set     group all type/fraction 2 0.01 359015 # Change 1% of W to Be
 group   tungsten         type 1
 group   beryllium        type 2
 
-#create_atoms 2 random 6 1234 NULL
-#create_atoms 2 single 0.75 0.75 0.75
-#create_atoms 2 single 3.3 0.75 9.7
-#create_atoms 2 single 5 5 5
-
 # choose potential
 
 # include Ta.pytorch.mliap
 
 # DATE: 2014-09-05 UNITS: metal CONTRIBUTOR: Aidan Thompson athomps@sandia.gov CITATION: Thompson, Swiler, Trott, Foiles and Tucker, arxiv.org, 1409.3880 (2014)
 
-# Definition of SNAP potential Ta
+# specify potential
+
+include WBe_pot.mod
+
 # Assumes 1 LAMMPS atom type
 
-variable zblcutinner equal 4
-variable zblcutouter equal 4.8
-variable zblz equal 73
+#variable zblcutinner equal 4
+#variable zblcutouter equal 4.8
+#variable zblz equal 73
 
 # Specify hybrid with SNAP, ZBL
 
-pair_style hybrid/overlay &
-zbl ${zblcutinner} ${zblcutouter} &
-mliap model mliappy ../FitTorch_Pytorch.pt &
-descriptor sna WBe.mliap.descriptor
-pair_coeff 1 1 zbl 74 74
-pair_coeff 1 2 zbl 74 4
-pair_coeff 2 2 zbl 4 4 
-pair_coeff * * mliap W Be
+#pair_style hybrid/overlay &
+#zbl ${zblcutinner} ${zblcutouter} &
+#mliap model mliappy ../FitTorch_Pytorch.pt &
+#descriptor sna WBe.mliap.descriptor
+#pair_coeff 1 1 zbl 74 74
+#pair_coeff 1 2 zbl 74 4
+#pair_coeff 2 2 zbl 4 4 
+#pair_coeff * * mliap W Be
 
 # Setup output
 

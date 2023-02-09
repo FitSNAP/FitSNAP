@@ -171,9 +171,7 @@ class ElemwiseModels(torch.nn.Module):
 
         per_atom_attributes = torch.zeros(elems.size(dim=0), dtype=self.dtype)
         given_elems, elem_indices = torch.unique(elems, return_inverse=True)
-        print(self.subnets)
         for i, elem in enumerate(given_elems):
-            #print(f"{i} {elem}")
             self.subnets[elem].to(self.dtype) 
             per_atom_attributes[elem_indices == i] = self.subnets[elem](descriptors[elem_indices == i]).flatten()
         return per_atom_attributes
@@ -321,8 +319,8 @@ class PairNN(torch.nn.Module):
         # cutoff function for all pairs, size (num_neigh)
 
         fcrik = self.cutoff_function_g3b(rij) #.flatten()
-        print(np.shape(rij))
-        print(f"Max fcrik: {torch.max(fcrik)}")
+        #print(np.shape(rij))
+        #print(f"Max fcrik: {torch.max(fcrik)}")
 
         ui = unique_i.unique()
 

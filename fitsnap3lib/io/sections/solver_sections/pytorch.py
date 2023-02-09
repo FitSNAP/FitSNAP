@@ -46,7 +46,6 @@ try:
             else:
                 self.dtype = torch.float64
             self.shuffle_flag = self.get_value("PYTORCH", "shuffle_flag", "True", "bool")
-            print(self.shuffle_flag)
 
             # catch errors associated with settings, and set necessary flags for later
 

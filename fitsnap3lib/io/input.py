@@ -6,6 +6,7 @@ from fitsnap3lib.io.sections.section_factory import new_section
 from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.parallel_output import Output
 from pathlib import Path
+import random
 
 
 output = Output()
@@ -45,53 +46,62 @@ class Config(metaclass=Singleton):
         self.sections = {}
         self.parse_config()
 
+        # Generate random 128 bit hash to identify this fit
+
+        if self.pt._rank == 0:
+            self.hash = f"{random.getrandbits(128):032x}"
+
     def parse_cmdline(self, arguments_lst=None):
-        parser = argparse.ArgumentParser(prog="FitSNAP3")
+        parser = argparse.ArgumentParser(prog="fitsnap3")
 
         parser.add_argument("infile", action="store",
                             help="Input file with bispectrum etc. options")
 
-        # Not Implemented
-        parser.add_argument("--verbose", "-v", action="store_true", dest="verbose",
-                            default=False, help="Show more detailed information about processing")
+        # Optional args.
         parser.add_argument("--lammpslog", "-l", action="store_true", dest="lammpslog",
                             help="Write logs from LAMMPS. Logs will appear in current working directory.")
-        parser.add_argument("--printlammps", "-pl", action="store_true", dest="printlammps",
-                            help="Print all lammps commands")
-        parser.add_argument("--relative", "-r", action="store_true", dest="relative",
-                            help="""Put output files in the directory of INFILE. If this flag
-                             is not not present, the files are stored in the
-                            current working directory.""")
-
         parser.add_argument("--nofit", "-nf", action="store_false", dest="perform_fit",
                             help="Don't perform fit, just compute bispectrum data.")
-
         parser.add_argument("--overwrite", action="store_true", dest="overwrite",
                             help="Allow overwriting existing files")
-        # Not Implemented
-        parser.add_argument("--lammps_noexceptions", action="store_true",
-                            help="Allow LAMMPS compiled without C++ exceptions handling enabled")
-        # Not Implemented
+        parser.add_argument("--verbose", "-v", action="store_true", dest="verbose",
+                            default=False, help="Show more detailed information about processing")
+        parser.add_argument("--tarball", "-tb", action="store_true", dest="tarball",
+                            default=False, help="Package SNAP fit files into a hashed tarball")
+        parser.add_argument("--relative", "-r", action="store_true", dest="relative",
+                            help='''Put output files in the directory of INFILE. If this flag
+                             is not not present, the files are stored in the
+                            current working directory.''')
         parser.add_argument("--keyword", "-k", nargs=3, metavar=("GROUP", "NAME", "VALUE"),
                             action="append", dest="keyword_replacements",
-                            help="""Replace or add input keyword group GROUP, key NAME,
+                            help='''Replace or add input keyword group GROUP, key NAME,
                             with value VALUE. Type carefully; a misspelled key name or value
-                            may be silently ignored.""")
+                            may be silently ignored.''')
+        # The following have questionable importance.
         parser.add_argument("--screen", "-sc", action="store_false", dest="screen",
-                            help="Print to screen")
+                            help="Print fitsnap output to screen.")
         parser.add_argument("--nscreen", "-ns", action="store_true", dest="nscreen",
-                            help="Print each nodes screen")
+                            help="Print fitsnap output to each nodes screen.")
         parser.add_argument("--pscreen", "-ps", action="store_true", dest="pscreen",
-                            help="Print each processors screen")
+                            help="Print fitsnap output to each processors screen.")
         parser.add_argument("--log", action="store", dest="log",
-                            default=None, help="Write fitsnap log to this file")
+                            default=None, help="Write fitsnap log to this file.")
         parser.add_argument("--screen2file", "-s2f", action="store", dest="screen2file",
                             default=None, help="Print screen to a file")
 
-        # check if building docs, in which case we revert to using Ta Linear example
+        # Not Implemented.
+        """
+        parser.add_argument("--lammps_noexceptions", action="store_true",
+                            help="Allow LAMMPS compiled without C++ exceptions handling enabled")
+        parser.add_argument("--printlammps", "-pl", action="store_true", dest="printlammps",
+                            help="Print all lammps commands")
+        """
+
+        # Check if building docs, in which case we revert to using Ta Linear example.
 
         for item in sys.argv:
-            if (item=="build" or item=="html" or item=="source"): # we're building docs
+            if (item=="build" or item=="html" or item=="source"):
+                # We're building docs in this case.
                 arguments_lst = arguments_lst=["../examples/Ta_Linear_JCP2014/Ta-example-nodump.in", "--overwrite"]
         self.args = parser.parse_args(arguments_lst)
 

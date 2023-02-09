@@ -21,6 +21,7 @@ class Output:
         self._nscreen = self.config.args.nscreen
         self._logfile = self.config.args.log
         self._s2f = self.config.args.screen2file
+        self._tarball = self.config.args.tarball
         if self._s2f is not None:
             self.pt.set_output(self._s2f, ns=self._nscreen, ps=self._nscreen)
         self.logger = None
@@ -104,7 +105,7 @@ class Output:
 
 @contextmanager
 def optional_open(file, mode, *args, openfn=None, **kwargs):
-    # Note: this is suboptimal in that whatever write operations
+    # NOTE: this is suboptimal in that whatever write operations
     # are still performed ; this is negligible compared to the computation, at the moment.
     """If file is None, yields a dummy file object."""
     if file is None:

@@ -1,40 +1,5 @@
-Run FitSNAP
+Input files
 ===========
-
-**If you want to get started immediately with interactive examples**, please see our 
-`Colab Python notebook tutorial <tutorialnotebook_>`_
-
-.. _tutorialnotebook: https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb
-
-There are two ways to run FitSNAP: (1) the python executable or (2) as a python library. The 
-executable version is reserved for the most basic operation of fitting on a dataset, where data
-is scraped from a directory, configurations are input to LAMMPS to calculate descriptors, and the 
-machine learning problem is solved. The python library provides more flexibility and allows one to
-modify the steps in that fitting process.
-
-.. _Run Executable:
-
-Executable
-----------
-
-Before using the executable, you must set the path to your FitSNAP directoy in your 
-:code:`PYTHONPATH` environment variable, e.g.
-
-.. code-block:: console
-
-    export PYTHONPATH="path/to/FitSNAP:$PYTHONPATH"
-
-which is conveniently placed in a :code:`~/.bashrc` or :code:`~/.bash_profile` file. Then fits
-can be performed with the executable by doing
-
-.. code-block:: console
-
-   python -m fitsnap3 input.in
-
-where :code:`input.in` is a FitSNAP input script, which is explained in the next section.
-
-Input Scripts
--------------
 
 Input scripts contain settings that tell FitSNAP how to perform a fit. Our input scripts take the
 form of configuration files with a format explained by 
@@ -360,29 +325,6 @@ library tools for analyzing  this dataframe are found in our
 [MEMORY]
 ^^^^^^^^
 
-This section contains keywords for dealing with memory. We recommend using defaults. 
+This section contains keywords for dealing with memory. We recommend using defaults.
 
-Outputs
--------
-
-FitSNAP outputs include error metrics, detailed errors for each atom, configuration, or groups of 
-configurations, and LAMMPS-ready files for running MD simulations.
-
-Outputs are different for linear and nonlinear models. 
-
-For linear models, please see the `Linear models output section <Linear.html#outputs>`__
-
-For nonlinear models, please see the
-`PyTorch models output section <Pytorch.html#outputs-and-error-calculation>`__. After running a 
-linear model fit, the following outputs will be produced:
-
-Library
--------
-
-FitSNAP may also be run through the library interface. The `GitHub repo examples <libexamples_>`_ 
-may help set up scripts for your needs. More useful library functionality is found in our 
-`Colab Python notebook tutorial <tutorialnotebook_>`_.
-
-.. _libexamples: https://github.com/FitSNAP/FitSNAP/tree/master/examples/library
-
-
+.. _tutorialnotebook: https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb

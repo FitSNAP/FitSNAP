@@ -284,6 +284,7 @@ def _to_mliap_string():
     out += "# optional\n"
     out += f"rcutfac {config.sections['BISPECTRUM'].rfac0}\n"
     out += f"rmin0 {config.sections['BISPECTRUM'].rmin0}\n"
+    out += f"switchinnerflag {config.sections['BISPECTRUM'].switchinnerflag}\n"
     out += f"bzeroflag {config.sections['BISPECTRUM'].bzeroflag}\n\n"
 
     # Report reference section settings.

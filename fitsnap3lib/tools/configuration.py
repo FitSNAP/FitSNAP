@@ -8,6 +8,7 @@ class Configuration():
     def __init__(self, natoms):
         self.natoms = natoms
         self.filename = ""
+        self.group = ""
         self.energy = None
         self.testing_bool = None
         self.weights = None

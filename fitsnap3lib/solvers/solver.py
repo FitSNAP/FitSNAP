@@ -112,20 +112,15 @@ class Solver:
             if not self.linear:
                 self.pt.single_print("NN error analysis; using configuration class.")
                 (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False)
-                print(len(energies_model))
-                print(len(forces_model))
-                #self.df = DataFrame(self.pt.shared_arrays['a'].array)
-                #print(self.df)
-                # make a list of per-atom quantities like type, i, forces, etc
-                #fx_pred = [self.configs[m].forces[3*i+0] for i in range(self.configs[m].natoms) for m in range(len(self.configs))]
-                fha = open("per-atom.dat", 'w')
-                fhc = open("per-config.dat", 'w')
+                fha = open("peratom.dat", 'w')
+                fhc = open("perconfig.dat", 'w')
                 atom_indx = 0
                 m = 0
                 for c in self.configs:
                     e_pred = energies_model[m].detach().numpy()
                     f_pred = forces_model[m].detach().numpy()
-                    print(e_pred)
+                    line = f"{c.filename} {c.group} {c.natoms} {c.energy} {e_pred} {c.testing_bool}\n"
+                    fhc.write(line)
                     for i in range(c.natoms):
                         fx_truth = c.forces[3*i+0]
                         fy_truth = c.forces[3*i+1]
@@ -133,8 +128,10 @@ class Solver:
                         fx_pred = f_pred[3*i+0]
                         fy_pred = f_pred[3*i+1]
                         fz_pred = f_pred[3*i+2]
-                        line = f"{fx_truth} {fy_truth} {fz_truth} "
-                        line += f"{fx_pred} {fy_pred} {fz_pred}"
+                        line = f"{c.filename} {c.group} {i+1} {int(c.types[i]+1)} "
+                        line += f"{fx_truth} {fy_truth} {fz_truth} "
+                        line += f"{fx_pred} {fy_pred} {fz_pred} "
+                        line += f"{c.testing_bool}"
                         fha.write(line + "\n")
                         atom_indx += 1
                     m += 1

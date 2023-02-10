@@ -160,6 +160,7 @@ try:
                     config.pas = self.pt.shared_arrays['pas'].array[indx_natoms_low:indx_natoms_high]
 
                 config.filename = self.pt.fitsnap_dict['Configs'][i]
+                config.group = self.pt.fitsnap_dict['Groups'][i]
                 config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
                 config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
                 config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero

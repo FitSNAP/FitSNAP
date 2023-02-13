@@ -282,7 +282,7 @@ def _to_mliap_string():
         out += f"dinnerelems {config.sections['BISPECTRUM'].dinner}\n"
     out += "\n\n"
     out += "# optional\n"
-    out += f"rcutfac {config.sections['BISPECTRUM'].rfac0}\n"
+    out += f"rfac0 {config.sections['BISPECTRUM'].rfac0}\n"
     out += f"rmin0 {config.sections['BISPECTRUM'].rmin0}\n"
     out += f"switchinnerflag {config.sections['BISPECTRUM'].switchinnerflag}\n"
     out += f"bzeroflag {config.sections['BISPECTRUM'].bzeroflag}\n\n"

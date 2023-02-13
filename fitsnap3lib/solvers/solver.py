@@ -76,7 +76,8 @@ class Solver:
 
     def _ncount_mae_rmse_rsq_unweighted_and_weighted(self, g):
         """
-        Calculate errors given a dataframe.
+        Calculate errors given a dataframe. The name of this function denotes the quantities it 
+        returns as a Pandas series.
 
         Args:
             g: Pandas dataframe
@@ -110,14 +111,76 @@ class Solver:
         @self.pt.rank_zero
         def decorated_error_analysis():
             if not self.linear:
+                mae_f = {} # Force MAE of each group, train and test.
+                mae_e = {} # Test energy MAE of each group, train and test.
+                rmse_f = {} # Test force RMSE of each group, train and test.
+                rmse_e = {} # Test energy RMSE of each group, train and test.
+
+                count_train = {} # Nested dictionary with number of configs and atoms per group for training data.
+                count_test = {} # Nested dictionary with number of configs and atoms per group for testing data.
+                for group in self.config.sections['GROUPS'].group_table:
+                    mae_f[group] = {}
+                    mae_e[group] = {}
+                    rmse_f[group] = {}
+                    rmse_e[group] = {}
+
+                    mae_f[group]["train"],  mae_f[group]["test"] =  0.0, 0.0
+                    mae_e[group]["train"],  mae_e[group]["test"] =  0.0, 0.0
+                    rmse_f[group]["train"], rmse_f[group]["test"] = 0.0, 0.0
+                    rmse_e[group]["train"], rmse_e[group]["test"] = 0.0, 0.0
+
+                    count_test[group] = {}
+                    count_test[group]["nconfigs"] = 0 # Total number test configs in group.
+                    count_test[group]["natoms"] = 0 # Total number test atoms in group.
+                    count_train[group] = {}
+                    count_train[group]["nconfigs"] = 0 # Total number test configs in group.
+                    count_train[group]["natoms"] = 0 # Total number test atoms in group.
+
+                # Add dictionary keys for total data '*ALL'
+
+                mae_f['*ALL'] = {}
+                mae_e['*ALL'] = {}
+                rmse_f['*ALL'] = {}
+                rmse_e['*ALL'] = {}
+                mae_f['*ALL']["train"],  mae_f['*ALL']["test"] =  0.0, 0.0
+                mae_e['*ALL']["train"],  mae_e['*ALL']["test"] =  0.0, 0.0
+                rmse_f['*ALL']["train"], rmse_f['*ALL']["test"] = 0.0, 0.0
+                rmse_e['*ALL']["train"], rmse_e['*ALL']["test"] = 0.0, 0.0
+                count_test['*ALL'] = {}
+                count_test['*ALL']["nconfigs"] = 0 # Total number test configs in group.
+                count_test['*ALL']["natoms"] = 0 # Total number test atoms in group.
+                count_train['*ALL'] = {}
+                count_train['*ALL']["nconfigs"] = 0 # Total number test configs in group.
+                count_train['*ALL']["natoms"] = 0 # Total number test atoms in group.
+
                 self.pt.single_print("NN error analysis; using configuration class.")
+
                 (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False)
                 fha = open("peratom.dat", 'w')
                 fhc = open("perconfig.dat", 'w')
                 atom_indx = 0
                 m = 0
                 for c in self.configs:
-                    e_pred = energies_model[m].detach().numpy()
+                    e_pred = energies_model[m].detach().numpy()/c.natoms # Model per-atom energy.
+
+                    ae = abs(c.energy - e_pred)
+                    se = (c.energy - e_pred)**2
+                    
+                    if (c.testing_bool):
+                        mae_e[c.group]["test"] += ae
+                        rmse_e[c.group]["test"] += se
+                        count_test[c.group]["nconfigs"] += 1
+                        mae_e['*ALL']["test"] += ae
+                        rmse_e['*ALL']["test"] += se
+                        count_test['*ALL']["nconfigs"] += 1
+                    else:
+                        mae_e[c.group]["train"] += ae
+                        rmse_e[c.group]["train"] += se
+                        count_train[c.group]["nconfigs"] += 1
+                        mae_e['*ALL']["train"] += ae
+                        rmse_e['*ALL']["train"] += se
+                        count_train['*ALL']["nconfigs"] += 1
+
                     f_pred = forces_model[m].detach().numpy()
                     line = f"{c.filename} {c.group} {c.natoms} {c.energy} {e_pred} {c.testing_bool}\n"
                     fhc.write(line)
@@ -128,6 +191,29 @@ class Solver:
                         fx_pred = f_pred[3*i+0]
                         fy_pred = f_pred[3*i+1]
                         fz_pred = f_pred[3*i+2]
+
+                        ae = abs(fx_truth - fx_pred) + \
+                             abs(fx_truth - fx_pred) + \
+                             abs(fx_truth - fx_pred)
+                        se = ((fx_truth - fx_pred)**2 + \
+                              (fx_truth - fx_pred)**2 + \
+                              (fx_truth - fx_pred)**2)
+
+                        if (c.testing_bool):
+                            mae_f[c.group]["test"] += ae
+                            rmse_f[c.group]["test"] += se
+                            count_test[c.group]["natoms"] += 1
+                            mae_f['*ALL']["test"] += ae
+                            rmse_f['*ALL']["test"] += se
+                            count_test['*ALL']["natoms"] += 1
+                        else:
+                            mae_f[c.group]["train"] += ae
+                            rmse_f[c.group]["train"] += se
+                            count_train[c.group]["natoms"] += 1
+                            mae_f['*ALL']["train"] += ae
+                            rmse_f['*ALL']["train"] += se
+                            count_train['*ALL']["natoms"] += 1
+                        
                         line = f"{c.filename} {c.group} {i+1} {int(c.types[i]+1)} "
                         line += f"{fx_truth} {fy_truth} {fz_truth} "
                         line += f"{fx_pred} {fy_pred} {fz_pred} "
@@ -138,6 +224,40 @@ class Solver:
                 fha.close()
                 fhc.close()
                 #print(self.configs)
+
+                # Normalize to get average errors.
+                mae_f['*ALL']["test"] /= 3*count_test['*ALL']["natoms"]
+                mae_f['*ALL']["train"] /= 3*count_train['*ALL']["natoms"]
+                rmse_f['*ALL']["test"] /= 3*count_test['*ALL']["natoms"]
+                rmse_f['*ALL']["test"] /= np.sqrt(rmse_f['*ALL']["test"])
+                rmse_f['*ALL']["train"] /= 3*count_train['*ALL']["natoms"]
+                rmse_f['*ALL']["train"] /= np.sqrt(rmse_f['*ALL']["train"])
+                mae_e['*ALL']["test"] /= count_test['*ALL']["nconfigs"]
+                mae_e['*ALL']["train"] /= count_train['*ALL']["nconfigs"]
+                rmse_e['*ALL']["test"] /= count_test['*ALL']["nconfigs"]
+                rmse_e['*ALL']["test"] = np.sqrt(rmse_e['*ALL']["test"])
+                rmse_e['*ALL']["train"] /= count_train['*ALL']["nconfigs"]
+                rmse_e['*ALL']["train"] = np.sqrt(rmse_e['*ALL']["train"])
+                for group in self.config.sections['GROUPS'].group_table:
+                    # Force MAE
+                    mae_f[group]["test"] /= 3*count_test[group]["natoms"]
+                    mae_f[group]["train"] /= 3*count_train[group]["natoms"]
+                    # Force RMSE
+                    rmse_f[group]["test"] /= 3*count_test[group]["natoms"]
+                    rmse_f[group]["test"] /= np.sqrt(rmse_f[group]["test"])
+                    rmse_f[group]["train"] /= 3*count_train[group]["natoms"]
+                    rmse_f[group]["train"] /= np.sqrt(rmse_f[group]["train"])
+                    # Energy MAE
+                    mae_e[group]["test"] /= count_test[group]["nconfigs"]
+                    mae_e[group]["train"] /= count_train[group]["nconfigs"]
+                    # Energy RMSE
+                    rmse_e[group]["test"] /= count_test[group]["nconfigs"]
+                    rmse_e[group]["test"] = np.sqrt(rmse_e[group]["test"])
+                    rmse_e[group]["train"] /= count_train[group]["nconfigs"]
+                    rmse_e[group]["train"] = np.sqrt(rmse_e[group]["train"])
+
+                #self.errors = (group_mae_f, group_mae_e, group_rmse_f, group_rmse_e)
+                self.errors = (mae_f, mae_e, rmse_f, rmse_e)
 
                 return
 
@@ -159,11 +279,15 @@ class Solver:
 
             if self.fit is not None:
 
+                print(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
+
                 #return data for each group
 
                 grouped = self.df.groupby(['Groups', \
                     'Testing', \
                     'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
+
+                print(grouped)
 
                 # reformat the weighted and unweighted data into separate rows
 
@@ -188,6 +312,7 @@ class Solver:
                 # combine dataframes
 
                 self.errors = concat([concat({'*ALL':all}, names=['Groups']), grouped])
+                print(self.errors)
                 self.errors.ncount = self.errors.ncount.astype(int)
                 self.errors.index.rename(["Group", "Weighting", "Testing", "Subsystem", ], inplace=True)
 

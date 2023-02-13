@@ -102,6 +102,37 @@ class Output:
                 function(file, **arguments)
         decorated_write_errors()
 
+    def write_errors_nn(self, errors):
+        """ 
+        Write errors for nonlinear fits. 
+        
+        Args:
+            errors : sequence of dictionaries (group_mae_f, group_mae_e, group_rmse_e, group_rmse_f)
+        """
+        @self.pt.rank_zero
+        def decorated_write_errors_nn():
+            mae_f = errors[0]
+            mae_e = errors[1]
+            rmse_f = errors[2]
+            rmse_e = errors[3]
+            fname = self.config.sections["OUTFILE"].metric_file
+            fh = open(fname, 'w')
+
+            # Find longest group name for formatting.
+            longest = max([len(g) for g in self.config.sections['GROUPS'].group_table])
+
+            colnames = f"{'Group' : <{longest}}  {'Train/Test' : ^10}  {'Force MAE' : ^10}  {'Energy MAE' : ^10}  {'Force RMSE' : ^10}  {'Energy RMSE' : >10}\n"
+            fh.write(colnames)
+            line = f"{'*ALL' : <{longest}}  {'Train' : ^10}  {mae_f['*ALL']['train'] : ^10.3e}  {mae_e['*ALL']['train'] : ^10.3e}  {rmse_f['*ALL']['train'] : ^10.3e}  {rmse_e['*ALL']['train'] : >10.3e}\n"
+            line += f"{ '' : <{longest}}  {'Test' : ^10}  {mae_f['*ALL']['test'] : ^10.3e}  {mae_e['*ALL']['test'] : ^10.3e}  {rmse_f['*ALL']['test'] : ^10.3e}  {rmse_e['*ALL']['test'] : >10.3e}\n"
+            fh.write(line)
+            for group in self.config.sections['GROUPS'].group_table:
+                line = f"{group : <{longest}}  {'Train' : ^10}  {mae_f[group]['train'] : ^10.3e}  {mae_e[group]['train'] : ^10.3e}  {rmse_f[group]['train'] : ^10.3e}  {rmse_e[group]['train'] : >10.3e}\n"
+                line += f"{ '' : <{longest}}  {'Test' : ^10}  {mae_f[group]['test'] : ^10.3e}  {mae_e[group]['test'] : ^10.3e}  {rmse_f[group]['test'] : ^10.3e}  {rmse_e[group]['test'] : >10.3e}\n"
+                fh.write(line)
+            fh.close()
+        decorated_write_errors_nn()
+
 
 @contextmanager
 def optional_open(file, mode, *args, openfn=None, **kwargs):

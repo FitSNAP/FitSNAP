@@ -63,9 +63,12 @@ class Snap(Output):
         decorated_write()
 
     def write_nn(self, errors):
-        """ Write output for nonlinear fits. """
-        # TODO: Currently errors is empty; need to add error calculation and write same format 
-        #       file as linear.
+        """ 
+        Write output for nonlinear fits. 
+        
+        Args:
+            errors : sequence of dictionaries (group_mae_f, group_mae_e, group_rmse_e, group_rmse_f)
+        """
         @self.pt.rank_zero
         def decorated_write():
             if self.config.sections["EXTRAS"].only_test != 1:
@@ -77,6 +80,8 @@ class Snap(Output):
             with optional_open(self.config.sections["OUTFILE"].potential_name and
                                self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
                 file.write(_to_mliap_mod())
+
+            self.write_errors_nn(errors)
         decorated_write()
 
     #@pt.sub_rank_zero

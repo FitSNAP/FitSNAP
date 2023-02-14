@@ -489,6 +489,9 @@ try:
                             self.config.sections['PYTORCH'].save_state_output
                         )
 
+                # TODO: Remove the following commented block after long-term use confirms that new
+                #       detailed errors make this redundant. 
+                """
                 if (self.pt.fitsnap_dict['force']):
 
                     # print target and model forces
@@ -530,6 +533,7 @@ try:
                         #natoms_per_config = np.array([natoms_per_config]).T
                         dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val), axis=1)
                         np.savetxt("energy_comparison_val.dat", dat_val)
+                """
 
                 if (self.pt.fitsnap_dict['per_atom_scalar']):
 

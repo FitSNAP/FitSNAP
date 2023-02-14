@@ -19,10 +19,9 @@ When fitting forces AND energies, it was found to best have `energy_weight=1e-2`
 
 FitSNAP produces output files that we can use to calculate error ourselves. To do this, run
 
-    python calculate_fitting_errors.py
+    python plot_comparison.py
 
-which will calculate mean absolute errors for energy and forces, as well as plot a distribution of
-force errors, for the training and validation sets. 
+which will calculate errors and plot comparisons with the detailed fitting data. 
 
 ### Running MD with NN potential.
 

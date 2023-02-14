@@ -20,11 +20,16 @@ try:
             self.pt = ParallelTools()
 
         def output(self, coeffs, errors):
-            new_coeffs = None
-            # new_coeffs = pt.combine_coeffs(coeffs)
-            if new_coeffs is not None:
-                coeffs = new_coeffs
-            self.write(coeffs, errors)
+            if (self.config.sections["CALCULATOR"].nonlinear):
+                # Currently coeffs and errors are empty for nonlinear.
+                # TODO: Add nonlinear error calculation for output here, similar format as linear.
+                self.write_nn(errors)
+            else:
+                new_coeffs = None
+                # new_coeffs = pt.combine_coeffs(coeffs)
+                if new_coeffs is not None:
+                    coeffs = new_coeffs
+                self.write(coeffs, errors)
 
         #@pt.rank_zero
         def write(self, coeffs, errors):
@@ -38,6 +43,19 @@ try:
                         file.write(_to_coeff_string(coeffs))
                     self.write_potential(coeffs)
                 self.write_errors(errors)
+            decorated_write()
+
+        def write_nn(self, errors):
+            """ 
+            Write output for nonlinear fits. 
+            
+            Args:
+                errors : sequence of dictionaries (group_mae_f, group_mae_e, group_rmse_e, group_rmse_f)
+            """
+            @self.pt.rank_zero
+            def decorated_write():
+                # TODO: Add mliap decriptor writing when LAMMPS implementation of NN-ACE is complete.
+                self.write_errors_nn(errors)
             decorated_write()
 
         #@pt.sub_rank_zero

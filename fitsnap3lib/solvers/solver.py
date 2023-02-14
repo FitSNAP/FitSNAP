@@ -161,7 +161,7 @@ class Solver:
                 if (self.config.sections["EXTRAS"].dump_perconfig):
                     fhc = open(self.config.sections["EXTRAS"].perconfig_file, 'w')
                     line = f"Filename Group Natoms Energy_Truth Energy_Pred Testing_Bool"
-                    fha.write(line + "\n")
+                    fhc.write(line + "\n")
                 atom_indx = 0
                 m = 0
                 for c in self.configs:
@@ -231,7 +231,6 @@ class Solver:
                     fhc.close()
                 if (self.config.sections["EXTRAS"].dump_peratom):
                     fha.close()
-                #print(self.configs)
 
                 # Normalize to get average errors.
 
@@ -292,15 +291,11 @@ class Solver:
 
             if self.fit is not None:
 
-                print(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
-
-                #return data for each group
+                # return data for each group
 
                 grouped = self.df.groupby(['Groups', \
                     'Testing', \
                     'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
-
-                print(grouped)
 
                 # reformat the weighted and unweighted data into separate rows
 
@@ -325,7 +320,6 @@ class Solver:
                 # combine dataframes
 
                 self.errors = concat([concat({'*ALL':all}, names=['Groups']), grouped])
-                print(self.errors)
                 self.errors.ncount = self.errors.ncount.astype(int)
                 self.errors.index.rename(["Group", "Weighting", "Testing", "Subsystem", ], inplace=True)
 

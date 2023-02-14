@@ -153,11 +153,11 @@ class Solver:
                 count_train['*ALL']["nconfigs"] = 0 # Total number test configs in group.
                 count_train['*ALL']["natoms"] = 0 # Total number test atoms in group.
 
-                self.pt.single_print("NN error analysis; using configuration class.")
-
                 (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False)
-                fha = open("peratom.dat", 'w')
-                fhc = open("perconfig.dat", 'w')
+                if (self.config.sections["EXTRAS"].dump_peratom):
+                    fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
+                if (self.config.sections["EXTRAS"].dump_perconfig):
+                    fhc = open(self.config.sections["EXTRAS"].perconfig_file, 'w')
                 atom_indx = 0
                 m = 0
                 for c in self.configs:
@@ -182,8 +182,9 @@ class Solver:
                         count_train['*ALL']["nconfigs"] += 1
 
                     f_pred = forces_model[m].detach().numpy()
-                    line = f"{c.filename} {c.group} {c.natoms} {c.energy} {e_pred} {c.testing_bool}\n"
-                    fhc.write(line)
+                    if (self.config.sections["EXTRAS"].dump_perconfig):
+                        line = f"{c.filename} {c.group} {c.natoms} {c.energy} {e_pred} {c.testing_bool}\n"
+                        fhc.write(line)
                     for i in range(c.natoms):
                         fx_truth = c.forces[3*i+0]
                         fy_truth = c.forces[3*i+1]
@@ -214,15 +215,18 @@ class Solver:
                             rmse_f['*ALL']["train"] += se
                             count_train['*ALL']["natoms"] += 1
                         
-                        line = f"{c.filename} {c.group} {i+1} {int(c.types[i]+1)} "
-                        line += f"{fx_truth} {fy_truth} {fz_truth} "
-                        line += f"{fx_pred} {fy_pred} {fz_pred} "
-                        line += f"{c.testing_bool}"
-                        fha.write(line + "\n")
+                        if (self.config.sections["EXTRAS"].dump_peratom):
+                            line = f"{c.filename} {c.group} {i+1} {int(c.types[i]+1)} "
+                            line += f"{fx_truth} {fy_truth} {fz_truth} "
+                            line += f"{fx_pred} {fy_pred} {fz_pred} "
+                            line += f"{c.testing_bool}"
+                            fha.write(line + "\n")
                         atom_indx += 1
                     m += 1
-                fha.close()
-                fhc.close()
+                if (self.config.sections["EXTRAS"].dump_perconfig):
+                    fhc.close()
+                if (self.config.sections["EXTRAS"].dump_peratom):
+                    fha.close()
                 #print(self.configs)
 
                 # Normalize to get average errors.

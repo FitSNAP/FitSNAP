@@ -234,35 +234,40 @@ class Solver:
                 #print(self.configs)
 
                 # Normalize to get average errors.
-                mae_f['*ALL']["test"] /= 3*count_test['*ALL']["natoms"]
-                mae_f['*ALL']["train"] /= 3*count_train['*ALL']["natoms"]
-                rmse_f['*ALL']["test"] /= 3*count_test['*ALL']["natoms"]
-                rmse_f['*ALL']["test"] /= np.sqrt(rmse_f['*ALL']["test"])
-                rmse_f['*ALL']["train"] /= 3*count_train['*ALL']["natoms"]
-                rmse_f['*ALL']["train"] /= np.sqrt(rmse_f['*ALL']["train"])
-                mae_e['*ALL']["test"] /= count_test['*ALL']["nconfigs"]
-                mae_e['*ALL']["train"] /= count_train['*ALL']["nconfigs"]
-                rmse_e['*ALL']["test"] /= count_test['*ALL']["nconfigs"]
-                rmse_e['*ALL']["test"] = np.sqrt(rmse_e['*ALL']["test"])
-                rmse_e['*ALL']["train"] /= count_train['*ALL']["nconfigs"]
-                rmse_e['*ALL']["train"] = np.sqrt(rmse_e['*ALL']["train"])
+
+                # Force MAE.
+                mae_f['*ALL']["test"]   /= 3*count_test['*ALL']["natoms"]  if count_test[group]["natoms"]   > 0 else np.nan
+                mae_f['*ALL']["train"]  /= 3*count_train['*ALL']["natoms"] if count_train[group]["natoms"]  > 0 else np.nan
+                # Force RMSE. 
+                rmse_f['*ALL']["test"]  /= 3*count_test['*ALL']["natoms"]  if count_test[group]["natoms"]   > 0 else np.nan
+                rmse_f['*ALL']["test"]   = np.sqrt(rmse_f['*ALL']["test"])
+                rmse_f['*ALL']["train"] /= 3*count_train['*ALL']["natoms"] if count_train[group]["natoms"]  > 0 else np.nan
+                rmse_f['*ALL']["train"]  = np.sqrt(rmse_f['*ALL']["train"])
+                # Energy MAE.
+                mae_e['*ALL']["test"]   /= count_test['*ALL']["nconfigs"]  if count_test[group]["nconfigs"]  > 0 else np.nan
+                mae_e['*ALL']["train"]  /= count_train['*ALL']["nconfigs"] if count_train[group]["nconfigs"] > 0 else np.nan
+                # Energy RMSE.
+                rmse_e['*ALL']["test"]  /= count_test['*ALL']["nconfigs"]  if count_test[group]["nconfigs"]  > 0 else np.nan
+                rmse_e['*ALL']["test"]   = np.sqrt(rmse_e['*ALL']["test"])
+                rmse_e['*ALL']["train"] /= count_train['*ALL']["nconfigs"] if count_train[group]["nconfigs"] > 0 else np.nan
+                rmse_e['*ALL']["train"]  = np.sqrt(rmse_e['*ALL']["train"])
                 for group in self.config.sections['GROUPS'].group_table:
                     # Force MAE
-                    mae_f[group]["test"] /= 3*count_test[group]["natoms"]
-                    mae_f[group]["train"] /= 3*count_train[group]["natoms"]
+                    mae_f[group]["test"]   /= 3*count_test[group]["natoms"]  if count_test[group]["natoms"]    > 0  else np.nan
+                    mae_f[group]["train"]  /= 3*count_train[group]["natoms"] if count_train[group]["natoms"]   > 0  else np.nan
                     # Force RMSE
-                    rmse_f[group]["test"] /= 3*count_test[group]["natoms"]
-                    rmse_f[group]["test"] /= np.sqrt(rmse_f[group]["test"])
-                    rmse_f[group]["train"] /= 3*count_train[group]["natoms"]
-                    rmse_f[group]["train"] /= np.sqrt(rmse_f[group]["train"])
+                    rmse_f[group]["test"]  /= 3*count_test[group]["natoms"]  if count_test[group]["natoms"]    > 0  else np.nan
+                    rmse_f[group]["test"]   = np.sqrt(rmse_f[group]["test"])
+                    rmse_f[group]["train"] /= 3*count_train[group]["natoms"] if count_train[group]["natoms"]   > 0  else np.nan
+                    rmse_f[group]["train"]  = np.sqrt(rmse_f[group]["train"])
                     # Energy MAE
-                    mae_e[group]["test"] /= count_test[group]["nconfigs"]
-                    mae_e[group]["train"] /= count_train[group]["nconfigs"]
+                    mae_e[group]["test"]   /= count_test[group]["nconfigs"]  if count_test[group]["nconfigs"]  > 0  else np.nan
+                    mae_e[group]["train"]  /= count_train[group]["nconfigs"] if count_train[group]["nconfigs"] > 0  else np.nan
                     # Energy RMSE
-                    rmse_e[group]["test"] /= count_test[group]["nconfigs"]
-                    rmse_e[group]["test"] = np.sqrt(rmse_e[group]["test"])
-                    rmse_e[group]["train"] /= count_train[group]["nconfigs"]
-                    rmse_e[group]["train"] = np.sqrt(rmse_e[group]["train"])
+                    rmse_e[group]["test"]  /= count_test[group]["nconfigs"]  if count_test[group]["nconfigs"]  > 0  else np.nan
+                    rmse_e[group]["test"]   = np.sqrt(rmse_e[group]["test"])
+                    rmse_e[group]["train"] /= count_train[group]["nconfigs"] if count_train[group]["nconfigs"] > 0  else np.nan
+                    rmse_e[group]["train"]  = np.sqrt(rmse_e[group]["train"])
 
                 #self.errors = (group_mae_f, group_mae_e, group_rmse_f, group_rmse_e)
                 self.errors = (mae_f, mae_e, rmse_f, rmse_e)

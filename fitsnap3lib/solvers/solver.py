@@ -156,8 +156,12 @@ class Solver:
                 (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False)
                 if (self.config.sections["EXTRAS"].dump_peratom):
                     fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
+                    line = f"Filename Group ID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
+                    fha.write(line + "\n")
                 if (self.config.sections["EXTRAS"].dump_perconfig):
                     fhc = open(self.config.sections["EXTRAS"].perconfig_file, 'w')
+                    line = f"Filename Group Natoms Energy_Truth Energy_Pred Testing_Bool"
+                    fha.write(line + "\n")
                 atom_indx = 0
                 m = 0
                 for c in self.configs:

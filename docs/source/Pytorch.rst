@@ -159,27 +159,46 @@ Error/Comparison files
 ^^^^^^^^^^^^^^^^^^^^^^
 
 After training a potential, FitSNAP produces outputs that can be used to intrepret the quality of a 
-fit on the training and/or validation data. The following comparison files are written after a fit:
+fit on the training and/or validation data. Basic error metrics for the total set and groups are 
+output in the metric file declared in the :code:`[OUTFILE]` section::
 
-- :code:`energy_comparison.dat` energy comparisons for all configs in the training set. Each row 
-  corresponds to a specific configuration in the training set. The first column is the model energy, 
-  and the 2nd column is the target energy. 
+    [OUTFILE]
+    metrics = Ta_metrics.dat # filename for Ta example
 
-- :code:`energy_comparison_val.dat` energy comparisons for all configs in the validation set. 
-  Format is same as above.
+In this example, we write error metrics to a :code:`Ta_metrics.dat` file.
+The contents of this metrics file are self-explanatory, e.g. for the Ta example we may have::
 
-- :code:`force_comparison.dat` force comparisons for all atoms in all configs in the training set.
-  Each row corresponds to a single atom's Cartesian component for a specific config in the training 
-  set. The first column is the model energy, and the 2nd column is the target energy.
+    Group          Train/Test  Force MAE   Energy MAE  Force RMSE  Energy RMSE
+    *ALL             Train     3.651e-01   1.750e+01   7.743e-01    1.810e+01
+                      Test     3.853e-01   1.763e+01   8.212e-01    1.842e+01
+    Displaced_A15    Train     4.233e-01   1.731e+01   5.651e-01    1.731e+01
+                      Test     4.102e-01   1.731e+01   5.135e-01    1.731e+01
+    ...
 
-- :code:`force_comparison_val.dat` same as above, but for the validation set.
+The train and test errors are documented for each group. 
 
-- :code:`loss_vs_epochs.dat` training and validation loss as a function of epochs, to check convergence.
+Fitting progress may be tracked in the :code:`loss_vs_epochs.dat` file, which tracks training and validation losses.
 
-These outputs allow you to compare the configuration energies, or per-atom forces, however you want
-after a fit. For example, in the `Ta_PyTorch_NN example <https://github.com/FitSNAP/FitSNAP/tree/master/examples/Ta_PyTorch_NN>`_
-, we provide python scripts that help post-process these files to calculate mean absolute error or 
-plot comparisons in energies and forces.
+More detailed fitting metrics are obtained if the following flags are declared true in the
+:code:`[EXTRAS]` section::
+
+      [EXTRAS]
+      dump_peratom = 1
+      dump_perconfig = 1 
+
+The following comparison files are written after a fit:
+
+- :code:`peratom.dat` : Fitting information for each atom, such as truth and predicted forces.
+
+The first line of this file describes what the columns are::
+
+    Filename Group ID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool
+
+- :code:`perconfig.dat` : Fitting information for each configuration, such as truth and predicted energies.
+
+The first line of this file describes what the columns are::
+
+    Filename Group Natoms Energy_Truth Energy_Pred Testing_Bool
 
 PyTorch model files
 ^^^^^^^^^^^^^^^^^^^

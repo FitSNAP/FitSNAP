@@ -111,6 +111,7 @@ class Solver:
         @self.pt.rank_zero
         def decorated_error_analysis():
             if not self.linear:
+                import torch
                 mae_f = {} # Force MAE of each group, train and test.
                 mae_e = {} # Test energy MAE of each group, train and test.
                 rmse_f = {} # Test force RMSE of each group, train and test.
@@ -153,7 +154,7 @@ class Solver:
                 count_train['*ALL']["nconfigs"] = 0 # Total number test configs in group.
                 count_train['*ALL']["natoms"] = 0 # Total number test atoms in group.
 
-                (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False)
+                (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False, dtype=torch.float32)
                 if (self.config.sections["EXTRAS"].dump_peratom):
                     fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
                     line = f"Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
@@ -233,7 +234,6 @@ class Solver:
                     fha.close()
 
                 # Normalize to get average errors.
-                print(mae_f['*ALL']["test"])
 
                 # Force MAE.
                 mae_f['*ALL']["test"]   /= 3*count_test['*ALL']["natoms"]  if count_test[group]["natoms"]   > 0 else np.nan

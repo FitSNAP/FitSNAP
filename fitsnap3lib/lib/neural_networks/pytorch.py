@@ -131,7 +131,6 @@ class FitTorch(torch.nn.Module):
             per_atom_energies = torch.zeros(types.size(dim=0), dtype=dtype).to(device)
             given_elems, elem_indices = torch.unique(types, return_inverse=True)
             for i, elem in enumerate(given_elems):
-              test = elem_indices == i
               per_atom_energies[elem_indices == i] = self.networks[elem](x[elem_indices == i]).flatten()
 
         # calculate energies

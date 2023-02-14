@@ -128,7 +128,8 @@ class Scraper:
             if testing_size != 0 and (testing_size < 1 or (testing_size == 1 and testing_size_type == float)):
                 testing_size = max(1, int(abs(testing_size) * nfiles + 0.5))
             training_size = self._float_to_int(training_size)
-            testing_size = self._float_to_int(testing_size)
+            # Force testing size and training size to add up to nfiles.
+            testing_size = nfiles - training_size #self._float_to_int(testing_size)
             if nfiles-testing_size-training_size < 0:
                 raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
                     training_size, testing_size, nfiles))

@@ -21,8 +21,6 @@ try:
 
         def output(self, coeffs, errors):
             if (self.config.sections["CALCULATOR"].nonlinear):
-                # Currently coeffs and errors are empty for nonlinear.
-                # TODO: Add nonlinear error calculation for output here, similar format as linear.
                 self.write_nn(errors)
             else:
                 new_coeffs = None

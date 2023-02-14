@@ -156,7 +156,7 @@ class Solver:
                 (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False)
                 if (self.config.sections["EXTRAS"].dump_peratom):
                     fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
-                    line = f"Filename Group ID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
+                    line = f"Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
                     fha.write(line + "\n")
                 if (self.config.sections["EXTRAS"].dump_perconfig):
                     fhc = open(self.config.sections["EXTRAS"].perconfig_file, 'w')
@@ -198,11 +198,11 @@ class Solver:
                         fz_pred = f_pred[3*i+2]
 
                         ae = abs(fx_truth - fx_pred) + \
-                             abs(fx_truth - fx_pred) + \
-                             abs(fx_truth - fx_pred)
+                             abs(fy_truth - fy_pred) + \
+                             abs(fz_truth - fz_pred)
                         se = ((fx_truth - fx_pred)**2 + \
-                              (fx_truth - fx_pred)**2 + \
-                              (fx_truth - fx_pred)**2)
+                              (fy_truth - fy_pred)**2 + \
+                              (fz_truth - fz_pred)**2)
 
                         if (c.testing_bool):
                             mae_f[c.group]["test"] += ae
@@ -233,6 +233,7 @@ class Solver:
                     fha.close()
 
                 # Normalize to get average errors.
+                print(mae_f['*ALL']["test"])
 
                 # Force MAE.
                 mae_f['*ALL']["test"]   /= 3*count_test['*ALL']["natoms"]  if count_test[group]["natoms"]   > 0 else np.nan

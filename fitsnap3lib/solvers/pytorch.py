@@ -200,19 +200,18 @@ try:
                 self.validation_data = torch.utils.data.Subset(self.total_data, testing_indices)
 
             # make training and validation data loaders for batch training
-            # TODO: make shuffling=True an option; this shuffles data every epoch, could give more robust fits.
 
             self.training_loader = DataLoader(self.training_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              shuffle=self.config.sections['PYTORCH'].shuffle_flag, #True
-                                              collate_fn=torch_collate,
-                                              num_workers=0)
-            self.validation_loader = DataLoader(self.validation_data,
-                                              batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              shuffle=self.config.sections['PYTORCH'].shuffle_flag, #True
+                                              shuffle=self.config.sections['PYTORCH'].shuffle_flag,
                                               collate_fn=torch_collate,
                                               num_workers=0)
 
+            self.validation_loader = DataLoader(self.validation_data,
+                                              batch_size=self.config.sections["PYTORCH"].batch_size,
+                                              shuffle=self.config.sections['PYTORCH'].shuffle_flag,
+                                              collate_fn=torch_collate,
+                                              num_workers=0) if len(self.validation_data) > 1 else []
         #@pt.sub_rank_zero
         def perform_fit(self):
             """

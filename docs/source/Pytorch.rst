@@ -192,7 +192,7 @@ The following comparison files are written after a fit:
 
 The first line of this file describes what the columns are::
 
-    Filename Group ID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool
+    Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool
 
 - :code:`perconfig.dat` : Fitting information for each configuration, such as truth and predicted energies.
 

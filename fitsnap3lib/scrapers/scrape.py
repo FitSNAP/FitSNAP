@@ -122,7 +122,7 @@ class Scraper:
                 elif training_size == 0:
                     pass
                 else:
-                    training_size = max(1, int(abs(training_size) * nfiles - 0.5))
+                    training_size = max(1, int(abs(training_size) * nfiles + 0.5))
                 if bc_bool and testing_size == 0:
                     testing_size = nfiles - training_size
             if testing_size != 0 and (testing_size < 1 or (testing_size == 1 and testing_size_type == float)):

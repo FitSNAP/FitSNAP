@@ -125,7 +125,16 @@ class Output:
 
             colnames = f"{'Group' : <{longest}}  {'Train/Test' : ^10}  {'Property' : ^10}  {'Count' : ^10} {'MAE' : ^10}  {'RMSE' : ^10}\n"
             fh.write(colnames)
-            line = f"{'*ALL' : <{longest}} {'Train' : ^10} {'Energy' : ^10} {count_train['*ALL']['nconfigs'] : ^10} {mae_e['*ALL']['train'] : ^10.3e} {rmse_e['*ALL']['train'] : >10.3e}\n"
+            out  = f"{'*ALL' : <{longest}} {'Train' : ^10} {'Energy' : ^10} {count_train['*ALL']['nconfigs'] : ^10} {mae_e['*ALL']['train'] : ^10.3e} {rmse_e['*ALL']['train'] : >10.3e}\n"
+            out += f"{'*ALL' : <{longest}} {'Train' : ^10} {'Force' : ^10} {count_train['*ALL']['natoms'] : ^10} {mae_f['*ALL']['train'] : ^10.3e} {rmse_f['*ALL']['train'] : >10.3e}\n"
+            out += f"{'*ALL' : <{longest}} {'Test' : ^10} {'Energy' : ^10} {count_test['*ALL']['nconfigs'] : ^10} {mae_e['*ALL']['test'] : ^10.3e} {rmse_e['*ALL']['test'] : >10.3e}\n"
+            out += f"{'*ALL' : <{longest}} {'Test' : ^10} {'Force' : ^10} {count_test['*ALL']['natoms'] : ^10} {mae_f['*ALL']['test'] : ^10.3e} {rmse_f['*ALL']['test'] : >10.3e}\n"
+            for group in self.config.sections['GROUPS'].group_table:
+                out += f"{group : <{longest}} {'Train' : ^10} {'Energy' : ^10} {count_train[group]['nconfigs'] : ^10} {mae_e[group]['train'] : ^10.3e} {rmse_e[group]['train'] : >10.3e}\n"
+                out += f"{group : <{longest}} {'Train' : ^10} {'Force' : ^10} {count_train[group]['natoms'] : ^10} {mae_f[group]['train'] : ^10.3e} {rmse_f[group]['train'] : >10.3e}\n"
+                out += f"{group : <{longest}} {'Test' : ^10} {'Energy' : ^10} {count_test[group]['nconfigs'] : ^10} {mae_e[group]['test'] : ^10.3e} {rmse_e[group]['test'] : >10.3e}\n"
+                out += f"{group : <{longest}} {'Test' : ^10} {'Force' : ^10} {count_test[group]['natoms'] : ^10} {mae_f[group]['test'] : ^10.3e} {rmse_f[group]['test'] : >10.3e}\n"
+            fh.write(out)
             
             fh.close()
 

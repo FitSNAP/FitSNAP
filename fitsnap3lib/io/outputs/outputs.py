@@ -107,7 +107,7 @@ class Output:
         Write errors for nonlinear fits. 
         
         Args:
-            errors : sequence of dictionaries (group_mae_f, group_mae_e, group_rmse_e, group_rmse_f)
+            errors : sequence of dictionaries (mae_f, mae_e, rmse_e, rmse_f, count_train, count_test)
         """
         @self.pt.rank_zero
         def decorated_write_errors_nn():
@@ -115,12 +115,21 @@ class Output:
             mae_e = errors[1]
             rmse_f = errors[2]
             rmse_e = errors[3]
+            count_train = errors[4]
+            count_test = errors[5]
             fname = self.config.sections["OUTFILE"].metric_file
             fh = open(fname, 'w')
 
             # Find longest group name for formatting.
             longest = max([len(g) for g in self.config.sections['GROUPS'].group_table])
 
+            colnames = f"{'Group' : <{longest}}  {'Train/Test' : ^10}  {'Property' : ^10}  {'Count' : ^10} {'MAE' : ^10}  {'RMSE' : ^10}\n"
+            fh.write(colnames)
+            line = f"{'*ALL' : <{longest}} {'Train' : ^10} {'Energy' : ^10} {count_train['*ALL']['nconfigs'] : ^10} {mae_e['*ALL']['train'] : ^10.3e} {rmse_e['*ALL']['train'] : >10.3e}\n"
+            
+            fh.close()
+
+            """
             colnames = f"{'Group' : <{longest}}  {'Train/Test' : ^10}  {'Force MAE' : ^10}  {'Energy MAE' : ^10}  {'Force RMSE' : ^10}  {'Energy RMSE' : >10}\n"
             fh.write(colnames)
             line = f"{'*ALL' : <{longest}}  {'Train' : ^10}  {mae_f['*ALL']['train'] : ^10.3e}  {mae_e['*ALL']['train'] : ^10.3e}  {rmse_f['*ALL']['train'] : ^10.3e}  {rmse_e['*ALL']['train'] : >10.3e}\n"
@@ -131,6 +140,7 @@ class Output:
                 line += f"{ '' : <{longest}}  {'Test' : ^10}  {mae_f[group]['test'] : ^10.3e}  {mae_e[group]['test'] : ^10.3e}  {rmse_f[group]['test'] : ^10.3e}  {rmse_e[group]['test'] : >10.3e}\n"
                 fh.write(line)
             fh.close()
+            """
         decorated_write_errors_nn()
 
 

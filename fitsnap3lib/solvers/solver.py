@@ -154,7 +154,9 @@ class Solver:
                 count_train['*ALL']["nconfigs"] = 0 # Total number test configs in group.
                 count_train['*ALL']["natoms"] = 0 # Total number test atoms in group.
 
-                (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False, dtype=torch.float32)
+                # Evaluate errors with float64 dtype since this is what we use in production.
+
+                (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False, dtype=torch.float64)
                 if (self.config.sections["EXTRAS"].dump_peratom):
                     fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
                     line = f"Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
@@ -269,8 +271,7 @@ class Solver:
                     rmse_e[group]["train"] /= count_train[group]["nconfigs"] if count_train[group]["nconfigs"] > 0  else np.nan
                     rmse_e[group]["train"]  = np.sqrt(rmse_e[group]["train"])
 
-                #self.errors = (group_mae_f, group_mae_e, group_rmse_f, group_rmse_e)
-                self.errors = (mae_f, mae_e, rmse_f, rmse_e)
+                self.errors = (mae_f, mae_e, rmse_f, rmse_e, count_train, count_test)
 
                 return
 

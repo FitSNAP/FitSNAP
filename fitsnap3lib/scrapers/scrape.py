@@ -122,7 +122,6 @@ class Scraper:
                 elif training_size == 0:
                     pass
                 else:
-                    print(training_size)
                     training_size = max(1, int(abs(training_size) * nfiles - 0.5))
                 if bc_bool and testing_size == 0:
                     testing_size = nfiles - training_size

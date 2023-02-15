@@ -95,12 +95,13 @@ class NNTools():
 
         return ret
 
-    def plot_comparisons(self, quantity: str) -> dict:
+    def plot_comparisons(self, quantity: str, mode="Linear") -> dict:
         """
         Plot comparisons between truth/prediction energies or forces.
 
         Args:
             quantity : "Energy" or "Force".
+            mode : "Distribution" or "Linear".
         """
 
         if (quantity == "Energy"):
@@ -142,13 +143,21 @@ class NNTools():
         else:
             raise Exception(f"{quantity} should be either 'Force' or 'Energy'")
 
-        lims = [min(true_train), max(true_train)]
-        plt.plot(pred_train, true_train, 'bo', markersize=2)
-        plt.plot(pred_test, true_test, 'ro', markersize=2)
-        plt.plot(lims, lims, 'k-')
-        plt.legend(["Train", "Validation", "Ideal"])
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
-        plt.xlim(lims[0], lims[1])
-        plt.ylim(lims[0], lims[1])
-        plt.savefig(filename, dpi=500)
+
+        if (mode=="Linear"):
+            lims = [min(true_train), max(true_train)]
+            plt.plot(pred_train, true_train, 'bo', markersize=5)
+            plt.plot(pred_test, true_test, 'ro', markersize=5)
+            plt.plot(lims, lims, 'k-')
+            plt.legend(["Train", "Validation", "Ideal"])
+            plt.xlabel(xlabel)
+            plt.ylabel(ylabel)
+            plt.xlim(lims[0], lims[1])
+            plt.ylim(lims[0], lims[1])
+            plt.savefig(filename, dpi=500)
+        elif (mode=="Distribution"):
+            # Plot absolute error vs. target magnitude.
+            plt.plot(abs(true_train), abs(true_train-pred_train), 'bo', markersize=5)
+            plt.plot(abs(true_test), abs(true_test-pred_test), 'ro', markersize=5)
+            plt.legend(["Train", "Validation"])
+            plt.savefig(filename, dpi=500)

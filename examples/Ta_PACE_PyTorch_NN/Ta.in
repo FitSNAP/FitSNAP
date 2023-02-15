@@ -25,9 +25,9 @@ nonlinear = 1
 Ta = 0.0
 
 [PYTORCH]
-layer_sizes = num_desc 128 64 1 #1000 1000 8 1
+layer_sizes = num_desc 64 64 1 #1000 1000 8 1
 learning_rate = 1e-5 
-num_epochs = 300
+num_epochs = 1
 batch_size = 4 # 363 configs in entire set
 save_state_output = Ta_Pytorch.pt
 energy_weight = 1e-2
@@ -77,9 +77,8 @@ Volume_BCC    =  0.7    0.3       33.26362519     1.137553845        1.00E-08
 Volume_FCC    =  0.7    0.3       33.26362519     1.137553845            1.00E-08
 
 [EXTRAS]
-dump_descriptors = 1
-dump_truth = 1
-dump_weights = 1
+dump_peratom = 1
+dump_perconfig = 1
 
 [MEMORY]
 override = 0

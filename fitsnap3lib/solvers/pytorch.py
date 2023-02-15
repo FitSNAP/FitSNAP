@@ -160,6 +160,7 @@ try:
                     config.pas = self.pt.shared_arrays['pas'].array[indx_natoms_low:indx_natoms_high]
 
                 config.filename = self.pt.fitsnap_dict['Configs'][i]
+                config.group = self.pt.fitsnap_dict['Groups'][i]
                 config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
                 config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
                 config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
@@ -199,19 +200,18 @@ try:
                 self.validation_data = torch.utils.data.Subset(self.total_data, testing_indices)
 
             # make training and validation data loaders for batch training
-            # TODO: make shuffling=True an option; this shuffles data every epoch, could give more robust fits.
 
             self.training_loader = DataLoader(self.training_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              shuffle=self.config.sections['PYTORCH'].shuffle_flag, #True
-                                              collate_fn=torch_collate,
-                                              num_workers=0)
-            self.validation_loader = DataLoader(self.validation_data,
-                                              batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              shuffle=self.config.sections['PYTORCH'].shuffle_flag, #True
+                                              shuffle=self.config.sections['PYTORCH'].shuffle_flag,
                                               collate_fn=torch_collate,
                                               num_workers=0)
 
+            self.validation_loader = DataLoader(self.validation_data,
+                                              batch_size=self.config.sections["PYTORCH"].batch_size,
+                                              shuffle=self.config.sections['PYTORCH'].shuffle_flag,
+                                              collate_fn=torch_collate,
+                                              num_workers=0) if len(self.validation_data) > 1 else []
         #@pt.sub_rank_zero
         def perform_fit(self):
             """
@@ -489,6 +489,9 @@ try:
                             self.config.sections['PYTORCH'].save_state_output
                         )
 
+                # TODO: Remove the following commented block after long-term use confirms that new
+                #       detailed errors make this redundant. 
+                """
                 if (self.pt.fitsnap_dict['force']):
 
                     # print target and model forces
@@ -530,6 +533,7 @@ try:
                         #natoms_per_config = np.array([natoms_per_config]).T
                         dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val), axis=1)
                         np.savetxt("energy_comparison_val.dat", dat_val)
+                """
 
                 if (self.pt.fitsnap_dict['per_atom_scalar']):
 

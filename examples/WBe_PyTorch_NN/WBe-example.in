@@ -27,17 +27,15 @@ W = 0.0
 Be = 0.0
 
 [PYTORCH]
-layer_sizes = num_desc 32 16 8 1
+layer_sizes = num_desc 64 64 1
 learning_rate = 1.5e-4 
 num_epochs = 10
 batch_size = 4
 save_state_output = WBe_Pytorch.pt
-energy_weight = 1e-2
-force_weight = 1.0
-training_fraction = 0.7
 multi_element_option = 2 # 1 - single network for all types (less parameters)
                          # 2 - unique network for all types (more flexible)
 manual_seed_flag = 1
+#training_fraction = 0.7
 
 [SOLVER]
 solver = PYTORCH
@@ -51,7 +49,7 @@ scraper = JSON
 dataPath = ../WBe_PRB2019/JSON
 
 [OUTFILE]
-metrics = WBe_metrics.md
+metrics = WBe_metrics.dat
 potential = WBe_pot
 
 [REFERENCE]
@@ -68,17 +66,16 @@ group_sections = name training_size testing_size eweight fweight vweight
 group_types = str float float float float float
 smartweights = 0
 random_sampling = 1
-Elast_BCC_Shear         = 1.0 0.0 178.350842653746  793.596683274656 1.0e-12
-Elast_BCC_Vol           = 1.0 0.0 178.350842653746 1553.7039315755 1.0e-12
-EOS_BCC                 = 1.0 0.0 338.213923534691 1553.7039315755 1.0e-12
-Liquids                 = 1.0 0.0   0.0353125583595375 25.9225848378898 1.0e-12
-DFT_MD_1000K            = 1.0 0.0  44.162042355268    0.00227087929058201 1.0e-12
-DFT_MD_300K             = 1.0 0.0  44.162042355268    0.00227087929058201 1.0e-12
+Elast_BCC_Shear         = 0.7 0.3 1e-2 1.0 0.0
+Elast_BCC_Vol           = 0.7 0.3 1e-2 1.0 0.0
+EOS_BCC                 = 0.7 0.3 1e-2 1.0 0.0
+Liquids                 = 0.7 0.3 1e-2 1.0 0.0
+DFT_MD_1000K            = 0.7 0.3 1e-2 1.0 0.0
+DFT_MD_300K             = 0.7 0.3 1e-2 1.0 0.0
 
 [EXTRAS]
-dump_descriptors = 0
-dump_truth = 0
-dump_weights = 0
+dump_peratom = 1
+dump_perconfig = 1
 
 [MEMORY]
 override = 0

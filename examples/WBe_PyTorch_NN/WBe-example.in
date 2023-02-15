@@ -27,7 +27,7 @@ W = 0.0
 Be = 0.0
 
 [PYTORCH]
-layer_sizes = num_desc 32 32 1
+layer_sizes = num_desc 64 64 1
 learning_rate = 1.5e-4 
 num_epochs = 10
 batch_size = 4
@@ -35,6 +35,7 @@ save_state_output = WBe_Pytorch.pt
 multi_element_option = 2 # 1 - single network for all types (less parameters)
                          # 2 - unique network for all types (more flexible)
 manual_seed_flag = 1
+#training_fraction = 0.7
 
 [SOLVER]
 solver = PYTORCH

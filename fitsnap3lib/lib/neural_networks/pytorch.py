@@ -114,14 +114,9 @@ class FitTorch(torch.nn.Module):
                 correct force calculations.
             device: pytorch accelerator device object
 
-        """
-
-        #print(x.dtype)
-        #for param_tensor in self.state_dict():
-        #    print(param_tensor, "\t", self.state_dict()[param_tensor].dtype)   
+        """   
         if (self.multi_element_option==1):
             per_atom_energies = self.network_architecture0(x)
-   
         elif (self.multi_element_option==2):
             # Working, but not ideal due to stacking
             #atom_indices = torch.arange(x.size()[0])

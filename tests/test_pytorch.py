@@ -210,6 +210,7 @@ def test_fd_multi_elem():
                   force_indx = 3*i + a 
                   force_model = forces_model[m][force_indx].item()
                   percent_error = abs(force_model - force_fd) #((force_model - force_fd)/force_model)*100.
+                  print(f"absolute error: {percent_error}")
                   assert(percent_error < 0.1) # nice assertion to have for all forces
                   percent_errors.append(percent_error)
 
@@ -223,6 +224,8 @@ def test_fd_multi_elem():
 
     # mean and max percent error should be < 0.001 %
     # max percent error should be < 0.1 %
+
+    print(f"max_err: {max_err}")
 
     assert(mean_err < 0.001 and max_err < 0.1)
 

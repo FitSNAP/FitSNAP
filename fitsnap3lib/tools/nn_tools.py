@@ -118,7 +118,7 @@ class NNTools():
             ylabel = "Target energy (eV/atom)"
             filename = "energy_comparison.png"
         elif (quantity == "Force"):
-            test_bool = self.dfc.loc[:, "Testing_Bool"].tolist()
+            test_bool = self.dfa.loc[:, "Testing_Bool"].tolist()
             test_idx = [i for i, x in enumerate(test_bool) if x]
             train_idx = [i for i, x in enumerate(test_bool) if not x]
             # Extract train forces
@@ -143,7 +143,7 @@ class NNTools():
             raise Exception(f"{quantity} should be either 'Force' or 'Energy'")
 
         lims = [min(true_train), max(true_train)]
-        plt.plot(pred_train, true_train, 'bo', markersize=1)
+        plt.plot(pred_train, true_train, 'bo', markersize=2)
         plt.plot(pred_test, true_test, 'ro', markersize=2)
         plt.plot(lims, lims, 'k-')
         plt.legend(["Train", "Validation", "Ideal"])

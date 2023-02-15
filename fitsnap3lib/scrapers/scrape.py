@@ -130,8 +130,13 @@ class Scraper:
             training_size = self._float_to_int(training_size)
             testing_size = self._float_to_int(testing_size)
             if nfiles-testing_size-training_size < 0:
-                raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
-                    training_size, testing_size, nfiles))
+                # Force testing_size and training_size to add up to nfiles.
+                #raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
+                #    training_size, testing_size, nfiles))
+                warnstr = f"\nWARNING: {key} train size {training_size} + test size {testing_size} > nfiles {nfiles}\n"
+                warnstr += "         Forcing testing size to add up properly.\n"
+                self.pt.single_print(warnstr)
+                testing_size = nfiles - training_size
             output.screen(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
             if self.tests is None:
                 self.tests = {}

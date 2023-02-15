@@ -115,8 +115,12 @@ class NNTools():
             true_test = np.array(self.dfc.loc[test_idx, "Energy_Truth"].tolist())
             pred_test = np.array(self.dfc.loc[test_idx, "Energy_Pred"].tolist())
             # Axes labels
-            xlabel = "Model energy (eV/atom)"
-            ylabel = "Target energy (eV/atom)"
+            if (mode=="Linear"):
+                xlabel = "Model energy (eV/atom)"
+                ylabel = "Target energy (eV/atom)"
+            elif (mode=="Distribution"):
+                xlabel = "Abs. target energy (eV/atom)"
+                ylabel = "Abs. error (eV/atom)"
             filename = "energy_comparison.png"
         elif (quantity == "Force"):
             test_bool = self.dfa.loc[:, "Testing_Bool"].tolist()
@@ -137,8 +141,12 @@ class NNTools():
                                  self.dfa.loc[test_idx, "Fy_Pred"].tolist() + \
                                  self.dfa.loc[test_idx, "Fz_Pred"].tolist())
             # Axes labels
-            xlabel = r"Model force component (eV/$\AA$)"
-            ylabel = r"Target force component (eV/$\AA$)"
+            if (mode=="Linear"):
+                xlabel = r"Model force component (eV/$\AA$)"
+                ylabel = r"Target force component (eV/$\AA$)"
+            elif (mode=="Distribution"):
+                xlabel = r"Abs. target force component (eV/$\AA$)"
+                ylabel = r"Abs. error (eV/$\AA$)"
             filename = "force_comparison.png"
         else:
             raise Exception(f"{quantity} should be either 'Force' or 'Energy'")
@@ -155,9 +163,13 @@ class NNTools():
             plt.xlim(lims[0], lims[1])
             plt.ylim(lims[0], lims[1])
             plt.savefig(filename, dpi=500)
+            plt.clf()
         elif (mode=="Distribution"):
             # Plot absolute error vs. target magnitude.
             plt.plot(abs(true_train), abs(true_train-pred_train), 'bo', markersize=5)
             plt.plot(abs(true_test), abs(true_test-pred_test), 'ro', markersize=5)
             plt.legend(["Train", "Validation"])
+            plt.xlabel(xlabel)
+            plt.ylabel(ylabel)
             plt.savefig(filename, dpi=500)
+            plt.clf()

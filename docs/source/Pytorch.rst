@@ -166,16 +166,12 @@ output in the metric file declared in the :code:`[OUTFILE]` section::
     metrics = Ta_metrics.dat # filename for Ta example
 
 In this example, we write error metrics to a :code:`Ta_metrics.dat` file.
-The contents of this metrics file are self-explanatory, e.g. for the Ta example we may have::
+The first line of this file describes what the columns are::
 
-    Group          Train/Test  Force MAE   Energy MAE  Force RMSE  Energy RMSE
-    *ALL             Train     3.651e-01   1.750e+01   7.743e-01    1.810e+01
-                      Test     3.853e-01   1.763e+01   8.212e-01    1.842e+01
-    Displaced_A15    Train     4.233e-01   1.731e+01   5.651e-01    1.731e+01
-                      Test     4.102e-01   1.731e+01   5.135e-01    1.731e+01
+    Group  Train/Test   Property   Count   MAE    RMSE 
     ...
 
-The train and test errors are documented for each group. 
+where :code:`Count` is the number of configurations used for energy error, or atoms used for force error.
 
 Fitting progress may be tracked in the :code:`loss_vs_epochs.dat` file, which tracks training and validation losses.
 

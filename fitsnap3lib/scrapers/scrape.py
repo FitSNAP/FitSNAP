@@ -122,8 +122,7 @@ class Scraper:
                 elif training_size == 0:
                     pass
                 else:
-                    print(training_size)
-                    training_size = max(1, int(abs(training_size) * nfiles - 0.5))
+                    training_size = max(1, int(abs(training_size) * nfiles + 0.5))
                 if bc_bool and testing_size == 0:
                     testing_size = nfiles - training_size
             if testing_size != 0 and (testing_size < 1 or (testing_size == 1 and testing_size_type == float)):
@@ -131,8 +130,13 @@ class Scraper:
             training_size = self._float_to_int(training_size)
             testing_size = self._float_to_int(testing_size)
             if nfiles-testing_size-training_size < 0:
-                raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
-                    training_size, testing_size, nfiles))
+                # Force testing_size and training_size to add up to nfiles.
+                #raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
+                #    training_size, testing_size, nfiles))
+                warnstr = f"\nWARNING: {key} train size {training_size} + test size {testing_size} > nfiles {nfiles}\n"
+                warnstr += "         Forcing testing size to add up properly.\n"
+                self.pt.single_print(warnstr)
+                testing_size = nfiles - training_size
             output.screen(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
             if self.tests is None:
                 self.tests = {}

@@ -74,7 +74,6 @@ class FitTorch(torch.nn.Module):
             networks[indx].to(self.dtype)
             setattr(self, "network_architecture"+str(indx), networks[indx])
 
-
         self.networks = networks
 
         # now self.state_dict is populated with the attributes declared above 
@@ -115,11 +114,9 @@ class FitTorch(torch.nn.Module):
                 correct force calculations.
             device: pytorch accelerator device object
 
-        """
-
+        """   
         if (self.multi_element_option==1):
             per_atom_energies = self.network_architecture0(x)
-   
         elif (self.multi_element_option==2):
             # Working, but not ideal due to stacking
             #atom_indices = torch.arange(x.size()[0])

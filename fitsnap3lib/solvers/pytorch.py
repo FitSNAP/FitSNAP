@@ -596,6 +596,9 @@ try:
             def decorated_evaluate_configs():
                 #self.create_datasets()
 
+                # Convert model to dtype
+                self.model.to(dtype)
+
                 if (standardize_bool):
                   if self.config.sections['PYTORCH'].save_state_input is None:
 

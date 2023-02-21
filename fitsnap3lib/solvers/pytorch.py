@@ -580,7 +580,7 @@ try:
             decorated_perform_fit()
 
         #@pt.sub_rank_zero
-        def evaluate_configs(self, option = 1, standardize_bool = True, dtype=torch.float64):
+        def evaluate_configs(self, option = 1, standardize_bool = True, dtype=torch.float64, eval_device='cpu'):
             """
             Evaluates energies and forces on configs for testing purposes. 
 
@@ -589,7 +589,9 @@ try:
                     dataloader/batch procedure. Currently only 1 is implemented.
                 standardize_bool (bool): True to standardize weights, False otherwise. Useful if 
                     comparing inputs with a previously standardized model.
-                dtype (torch.dtype): Optional override of the global dtype. 
+                dtype (torch.dtype): Optional override of the global dtype.
+                eval_device (torch.device): Optional device to evaluate on, defaults to CPU to
+                    prevent device mismatch when training on GPU.
             """
 
             @self.pt.sub_rank_zero
@@ -598,6 +600,8 @@ try:
 
                 # Convert model to dtype
                 self.model.to(dtype)
+                # Send model to device
+                self.model.to(eval_device)
 
                 if (standardize_bool):
                   if self.config.sections['PYTORCH'].save_state_input is None:
@@ -671,7 +675,7 @@ try:
 
                         (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
                                                       atom_types, dbdrindx, unique_j, unique_i, 
-                                                      self.device, dtype)
+                                                      eval_device, dtype)
                         energies_configs.append(energies)
                         forces_configs.append(forces)
 

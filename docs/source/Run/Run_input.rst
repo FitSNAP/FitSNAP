@@ -140,7 +140,8 @@ in our examples, which are often well behaved for other systems.**
   neighbors of type 2. We recommend taking values from the existing multi-element examples.
 
 - :code:`radelem` list of cutoff radii, one for each element type. These values get multiplied by 
-  :code:`rcutfac` to determine the effective cutoff of a particular type.
+  :code:`2 * rcutfac` to determine the effective cutoff of a particular type. For each element, the 
+  effective cutoff radius is :code:`2 * rcutfac * radelem`.
 
 - :code:`wselfallflag` is 0 or 1, determining whether self-contribution is for elements of a central 
   atom or for all elements, respectively.

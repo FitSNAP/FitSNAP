@@ -32,7 +32,9 @@ class TorchWrapper(torch.nn.Module):
         super().__init__()
 
         self.model = model
-        self.device = device
+        # Send model to CPU for deploying to LAMMPS.
+        # TODO: Make GPU option, need to implement into ML-IAP.
+        self.device = "cpu" #device
         self.dtype = dtype
 
         # Put model on device and convert to dtype
@@ -152,6 +154,10 @@ class ElemwiseModels(torch.nn.Module):
         super().__init__()
         self.subnets = subnets
         self.n_types = n_types
+        # Send element networks to CPU for deploying to LAMMPS.
+        # TODO: Make GPU option, need to implement into ML-IAP.
+        for net in subnets:
+            net.to("cpu")
 
     def forward(self, descriptors, elems, dtype=torch.float64):
         """
@@ -172,7 +178,7 @@ class ElemwiseModels(torch.nn.Module):
         per_atom_attributes = torch.zeros(elems.size(dim=0), dtype=self.dtype)
         given_elems, elem_indices = torch.unique(elems, return_inverse=True)
         for i, elem in enumerate(given_elems):
-            self.subnets[elem].to(self.dtype) 
+            self.subnets[elem].to(self.dtype)
             per_atom_attributes[elem_indices == i] = self.subnets[elem](descriptors[elem_indices == i]).flatten()
         return per_atom_attributes
 

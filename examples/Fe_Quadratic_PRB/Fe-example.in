@@ -41,13 +41,14 @@ group_types = str float float float float float
 random_sampling = 0
 smartweights = 0
 
-MD-bcc_Te300K                   = 1.0 0.0 7248.125779  7.175309915 1.0E-12
-EOS_100                         = 1.0 0.0 10.37680984  3.074864006 1.0E-12
-BCC-HCP-transition              = 1.0 0.0 2.39808552  2.320864338 1.0E-12
-liquid_mag_old                  = 1.0 0.0 5.541998374  6.473010639 1.0E-12
-point_def                       = 1.0 0.0 17.23319884  11.24367978 1.0E-12
-CCMC-bcc-hcp-elastic_Jun2020    = 1.0 0.0 1.382681069  1.963203872 1.0E-12
-liquid_nonmag                   = 1.0 0.0 63.68593312  1.29692425 1.0E-12
+MD-bcc_Te300K                   1.0 0.0 464.5455603  4037.492645 1.0E-12
+EOS_100                         1.0 0.0 4017.27554  51.33301336 1.0E-12
+BCC-HCP-transition_recomputed   1.0 0.0 40096955.73  165643.4997 1.0E-12
+liquid_mag_old                  1.0 0.0 711760239.9  2134327.719 1.0E-12
+point_def                       1.0 0.0 7460970.22  1397609.943 1.0E-12
+EOS_GS                          1.0 0.0 2143967049  12.94099381 1.0E-12
+liquid_nonmag                   1.0 0.0 106972619.3  108630.8516 1.0E-12
+CCMC				1.0 0.0 171192767.2  17087514.07 1.0E-12
 
 [OUTFILE]
 metrics = Fe_metrics.md

@@ -597,7 +597,6 @@ try:
             @self.pt.sub_rank_zero
             def decorated_evaluate_configs():
                 #self.create_datasets()
-
                 # Convert model to dtype
                 self.model.to(dtype)
                 # Send model to device

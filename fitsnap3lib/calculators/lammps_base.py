@@ -51,14 +51,14 @@ class LammpsBase(Calculator):
             self._collect_lammps_preprocess()
             self._lmp = self.pt.close_lammps()
         except Exception as e:
-            if self.config.args.printlammps:
-                self._data = data
-                self._i = i
-                self._initialize_lammps(1)
-                self._prepare_lammps()
-                self._run_lammps()
-                self._collect_lammps_preprocess()
-                self._lmp = self.pt.close_lammps()
+            #if self.config.args.printlammps:
+            self._data = data
+            self._i = i
+            self._initialize_lammps(1)
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps_preprocess()
+            self._lmp = self.pt.close_lammps()
             raise e
 
     def process_configs(self, data, i):
@@ -91,14 +91,14 @@ class LammpsBase(Calculator):
             self._collect_lammps_nonlinear()
             self._lmp = self.pt.close_lammps()
         except Exception as e:
-            if self.config.args.printlammps:
-                self._data = data
-                self._i = i
-                self._initialize_lammps(1)
-                self._prepare_lammps()
-                self._run_lammps()
-                self._collect_lammps_nonlinear()
-                self._lmp = self.pt.close_lammps()
+            #if self.config.args.printlammps:
+            self._data = data
+            self._i = i
+            self._initialize_lammps(1)
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps_nonlinear()
+            self._lmp = self.pt.close_lammps()
             raise e
 
     def _prepare_lammps(self):

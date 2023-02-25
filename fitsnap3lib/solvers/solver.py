@@ -156,7 +156,10 @@ class Solver:
 
                 # Evaluate errors with float64 dtype since this is what we use in production.
 
-                (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False, dtype=torch.float64)
+                if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
+                    (energies_model, forces_model) = self.evaluate_configs(option=1, evaluate_all = True, standardize_bool=False, dtype=torch.float64)
+                else:
+                    (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False, dtype=torch.float64)
                 if (self.config.sections["EXTRAS"].dump_peratom):
                     fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
                     line = f"Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
@@ -169,6 +172,9 @@ class Solver:
                 m = 0
                 for c in self.configs:
                     e_pred = energies_model[m].detach().numpy()/c.natoms # Model per-atom energy.
+                    # Custom networks need a further index.
+                    if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
+                        e_pred = e_pred[0]
 
                     ae = abs(c.energy - e_pred)
                     se = (c.energy - e_pred)**2
@@ -189,6 +195,11 @@ class Solver:
                         count_train['*ALL']["nconfigs"] += 1
 
                     f_pred = forces_model[m].detach().numpy()
+                    # Custom calculator returns Nx3 force array but we need 3*N here.
+                    if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
+                        f_pred = f_pred.flatten()
+
+
                     if (self.config.sections["EXTRAS"].dump_perconfig):
                         line = f"{c.filename} {c.group} {c.natoms} {c.energy} {e_pred} {c.testing_bool}\n"
                         fhc.write(line)

@@ -21,7 +21,7 @@ Ta = 0.0
 [NETWORK]
 layer_sizes = num_desc 32 32 1 
 learning_rate = 5e-4
-num_epochs = 10 # Run for ~150 epochs to get < 100 meV/A error
+num_epochs = 20 # Run for ~150 epochs to get < 100 meV/A error
 batch_size = 4 # 363 configs in entire set
 save_state_output = Ta_Pytorch.pt
 energy_weight = 1e-2

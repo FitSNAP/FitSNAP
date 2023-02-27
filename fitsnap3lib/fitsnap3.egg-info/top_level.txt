@@ -1,7 +1,0 @@
-calculators
-io
-lib
-scrapers
-solvers
-tools
-units

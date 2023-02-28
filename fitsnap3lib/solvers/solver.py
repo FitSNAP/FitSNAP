@@ -111,7 +111,7 @@ class Solver:
         @self.pt.rank_zero
         def decorated_error_analysis():
             if not self.linear:
-                import torch
+                import torch # Needed to declare dtype. TODO: Move this into NN evaluate function.
                 mae_f = {} # Force MAE of each group, train and test.
                 mae_e = {} # Test energy MAE of each group, train and test.
                 rmse_f = {} # Test force RMSE of each group, train and test.
@@ -159,7 +159,11 @@ class Solver:
                 if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
                     (energies_model, forces_model) = self.evaluate_configs(option=1, evaluate_all = True, standardize_bool=False, dtype=torch.float64)
                 else:
-                    (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False, dtype=torch.float64)
+                    #(energies_model, forces_model) = self.evaluate_configs(config_idx=0, option=1, standardize_bool=False, dtype=torch.float64)
+                    #print(energies_model)
+                    #print(forces_model)
+                    #assert(False)
+                    pass
                 if (self.config.sections["EXTRAS"].dump_peratom):
                     fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
                     line = f"Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
@@ -170,8 +174,12 @@ class Solver:
                     fhc.write(line + "\n")
                 atom_indx = 0
                 m = 0
-                for c in self.configs:
-                    e_pred = energies_model[m].detach().numpy()/c.natoms # Model per-atom energy.
+                for idx, c in enumerate(self.configs):
+                    (energies_model, forces_model) = self.evaluate_configs(config_idx=idx, \
+                                                                           option=1, \
+                                                                           standardize_bool=False, \
+                                                                           dtype=torch.float64)
+                    e_pred = energies_model.detach().numpy()/c.natoms # Model per-atom energy.
                     # Custom networks need a further index.
                     if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
                         e_pred = e_pred[0]
@@ -194,11 +202,10 @@ class Solver:
                         rmse_e['*ALL']["train"] += se
                         count_train['*ALL']["nconfigs"] += 1
 
-                    f_pred = forces_model[m].detach().numpy()
+                    f_pred = forces_model.detach().numpy()
                     # Custom calculator returns Nx3 force array but we need 3*N here.
                     if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
                         f_pred = f_pred.flatten()
-
 
                     if (self.config.sections["EXTRAS"].dump_perconfig):
                         line = f"{c.filename} {c.group} {c.natoms} {c.energy} {e_pred} {c.testing_bool}\n"

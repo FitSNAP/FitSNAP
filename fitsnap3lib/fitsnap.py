@@ -54,7 +54,6 @@ class FitSnap:
                                    if looping over fits.
     """
     def __init__(self): 
-
         self.pt = ParallelTools()
         self.config = Config()
 

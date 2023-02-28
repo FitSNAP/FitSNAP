@@ -1,0 +1,53 @@
+[build-system]
+#requires = ['setuptools>=42', 'numpy', 'scipy', 'scikit-learn', 'virtualenv', 'psutil', 'pandas', 'tabulate', 'mpi4py', 'Cython', 'torch', 'sympy', 'pyyaml']
+requires = [
+    "setuptools>=42",
+]
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = "fitsnap3"
+version = "3.0.0.1"
+description = "Molecular Machine Learning Interface"
+license = {file = "LICENSE"}
+readme = "README.md"
+requires-python = ">=3.8.0"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+authors = [
+    { name = "Drew Rohskopf", email = "adrohsk@sandia.gov" },
+]
+maintainers = [
+    { name = "Drew Rohskopf", email = "adrohsk@sandia.gov" },
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "virtualenv",
+    "psutil",
+    "pandas",
+    "tabulate",
+    "mpi4py",
+    "Cython",
+    "torch",
+    "sympy",
+    "pyyaml",
+]
+
+[project.urls]
+repository = "https://github.com/FitSNAP/FitSNAP"
+documentation = "https://fitsnap.github.io/"
+
+#[tool.setuptools]
+#packages = [
+#    "fitsnap3",
+#    "fitsnap3lib",
+#]
+
+[tool.setuptools.packages.find]
+include = ["fitsnap3*", "fitsnap3lib*"]  # alternatively: `exclude = ["additional*"]`
+namespaces = false

@@ -66,12 +66,12 @@ group_sections = name training_size testing_size eweight fweight vweight
 group_types = str float float float float float
 smartweights = 0
 random_sampling = 1
-Elast_BCC_Shear         = 0.7 0.3 1e-2 1.0 0.0
-Elast_BCC_Vol           = 0.7 0.3 1e-2 1.0 0.0
-EOS_BCC                 = 0.7 0.3 1e-2 1.0 0.0
-Liquids                 = 0.7 0.3 1e-2 1.0 0.0
-DFT_MD_1000K            = 0.7 0.3 1e-2 1.0 0.0
-DFT_MD_300K             = 0.7 0.3 1e-2 1.0 0.0
+Elast_BCC_Shear         = 0.1 0.1 1e-2 1.0 0.0
+Elast_BCC_Vol           = 0.1 0.1 1e-2 1.0 0.0
+EOS_BCC                 = 0.1 0.1 1e-2 1.0 0.0
+Liquids                 = 0.1 0.1 1e-2 1.0 0.0
+DFT_MD_1000K            = 0.3 0.1 1e-2 1.0 0.0
+DFT_MD_300K             = 0.3 0.1 1e-2 1.0 0.0
 
 [EXTRAS]
 dump_peratom = 1

@@ -72,7 +72,7 @@ class Snap(Output):
         @self.pt.rank_zero
         def decorated_write():
             if self.config.sections["EXTRAS"].only_test != 1:
-                if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
+                if (self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP"):
                     raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
             with optional_open(self.config.sections["OUTFILE"].potential_name and
                                self.config.sections["OUTFILE"].potential_name + '.mliap.descriptor', 'wt') as file:

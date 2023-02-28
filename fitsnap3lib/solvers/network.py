@@ -154,6 +154,7 @@ try:
                 # dictionaries contain per-config quantities
 
                 config.filename = self.pt.fitsnap_dict['Configs'][i]
+                config.group = self.pt.fitsnap_dict['Groups'][i]
                 config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
                 config.numneigh = int(self.pt.fitsnap_dict['NumNeighs'][i])
                 
@@ -162,7 +163,7 @@ try:
                 config.neighlist = self.pt.shared_arrays['neighlist'].array[indx_neighlist_low:indx_neighlist_high,0:2]
                 config.xneigh = self.pt.shared_arrays['xneigh'].array[indx_neighlist_low:indx_neighlist_high, :]
                 config.transform_x = self.pt.shared_arrays['transform_x'].array[indx_neighlist_low:indx_neighlist_high, :]
-                assert(np.all(np.round(config.xneigh,6) == np.round(config.transform_x + config.x[config.neighlist[:,1].astype(np.int),:],6)) )
+                assert(np.all(np.round(config.xneigh,6) == np.round(config.transform_x + config.x[config.neighlist[:,1].astype(int),:],6)) )
 
                 indx_natoms_low += config.natoms
                 indx_forces_low += 3*config.natoms
@@ -501,6 +502,7 @@ try:
             Evaluates energies and forces on configs for testing purposes. 
 
             Args:
+            config_index (int): index of config to evaluate
             option (int): 1 if evaluating energies/forces for all configs separately.
                 2 if evaluating energies/forces using the dataloader/batch procedure
             standardize_bool (bool): True will standardize the weights. Not standardizing is useful 

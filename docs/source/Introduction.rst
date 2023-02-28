@@ -9,13 +9,14 @@ potential energy, depends on geometry between atoms. In this sense the machine l
 learning the mapping between atomic coordinates and potential energy. Since the physics of 
 interatomic interactions are invariant to translation, rotation, and permutation, we must describe
 interatomic geometry in such a way that these symmetries are satisfied. We do this using invariant
-"descriptors" such as `SNAP descriptors <snap_>`_, and others. 
+"descriptors" such as `SNAP descriptors <snap_>`_ and `ACE descriptors <ace_>`_. 
 
 The resulting machine learned models therefore predict interatomic interaction energies as a 
 function of these geometric descriptors. Once these models are obtained from FitSNAP, they may be
 used directly in `LAMMPS <lammps_>`_ to perform high-performance molecular dynamics simulations.
 
 .. _snap: https://www.sciencedirect.com/science/article/pii/S0021999114008353
+.. _ace: https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.014104
 .. _lammps: https://docs.lammps.org/
 
 FitSNAP Components

@@ -580,19 +580,21 @@ try:
             decorated_perform_fit()
 
         #@pt.sub_rank_zero
-        def evaluate_configs(self, config_idx = 0, option = 1, standardize_bool = True, dtype=torch.float64, eval_device='cpu'):
+        def evaluate_configs(self, config_idx = 0, standardize_bool = True, dtype=torch.float64, eval_device='cpu'):
             """
             Evaluates energies and forces on configs for testing purposes. 
 
             Args:
                 config_idx (int): Index of config to evaluate. None if evaluating all configs.
-                option (int): 1 to evaluate energies/forces for all configs separately, 2 for using 
-                    dataloader/batch procedure. Currently only 1 is implemented.
                 standardize_bool (bool): True to standardize weights, False otherwise. Useful if 
                     comparing inputs with a previously standardized model.
                 dtype (torch.dtype): Optional override of the global dtype.
                 eval_device (torch.device): Optional device to evaluate on, defaults to CPU to
                     prevent device mismatch when training on GPU.
+
+            Returns:
+                A tuple (energy, force) for the config given by `config_idx`. The tuple will contain 
+                lists of energy/force for each config if `config_idx` is None.
             """
 
             @self.pt.sub_rank_zero
@@ -677,8 +679,8 @@ try:
 
                 else:
 
-                    energies_configs = []
-                    forces_configs = []
+                    energies = []
+                    forces = []
                     for config in self.configs:
                       
                         descriptors = torch.tensor(config.descriptors).requires_grad_(True)
@@ -709,11 +711,11 @@ try:
                         unique_i = dbdrindx[:,0]
                         unique_j = dbdrindx[:,1]
 
-                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
+                        (e_model,f_model) = self.model(descriptors, dgrad, indices, num_atoms, 
                                                       atom_types, dbdrindx, unique_j, unique_i, 
                                                       eval_device, dtype)
-                        energies_configs.append(energies)
-                        forces_configs.append(forces)
+                        energies.append(e_model)
+                        forces.append(f_model)
 
                 return(energies, forces)
 

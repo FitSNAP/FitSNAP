@@ -497,18 +497,21 @@ try:
             
             self.fit = None
 
-        def evaluate_configs(self, config_index=0, option = 1, evaluate_all = False, standardize_bool = True, dtype=torch.float64):
+        def evaluate_configs(self, config_idx = 0, standardize_bool = True, dtype=torch.float64, eval_device='cpu'):
             """
             Evaluates energies and forces on configs for testing purposes. 
 
             Args:
-            config_index (int): index of config to evaluate
-            option (int): 1 if evaluating energies/forces for all configs separately.
-                2 if evaluating energies/forces using the dataloader/batch procedure
-            standardize_bool (bool): True will standardize the weights. Not standardizing is useful 
-                if comparing inputs on a previously trained standardized model, such as when doing 
-                finite difference checks. 
-            dtype (torch.dtype): Optional override of the global dtype.
+                config_idx (int): Index of config to evaluate. None if evaluating all configs.
+                standardize_bool (bool): True to standardize weights, False otherwise. Useful if 
+                    comparing inputs with a previously standardized model.
+                dtype (torch.dtype): Optional override of the global dtype.
+                eval_device (torch.device): Optional device to evaluate on, defaults to CPU to
+                    prevent device mismatch when training on GPU.
+
+            Returns:
+                A tuple (energy, force) for the config given by `config_idx`. The tuple will contain 
+                lists of energy/force for each config if `config_idx` is None.
             """
 
             @self.pt.sub_rank_zero
@@ -551,8 +554,86 @@ try:
 
                 self.model.eval()
 
-                # for evaluating single configs separately
+                if (config_idx is not None):
+                    # Evaluate a single config.
+                    config = self.configs[config_idx]
+                      
+                    #positions = torch.tensor(config.positions).requires_grad_(True)
+                    positions = torch.tensor(config.x).requires_grad_(True)
+                    xneigh = torch.tensor(config.xneigh)
+                    transform_x = torch.tensor(config.transform_x)
+                    atom_types = torch.tensor(config.types).long()
+                    target = torch.tensor(config.energy).reshape(-1)
+                    # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
+                    weights = torch.tensor(config.weights[None,:])
+                    target_forces = torch.tensor(config.forces)
+                    num_atoms = torch.tensor(config.natoms)
+                    neighlist = torch.tensor(config.neighlist).long()
 
+                    # convert quantities to desired dtype
+              
+                    positions = positions.to(dtype)
+                    transform_x = transform_x.to(dtype)
+                    target = target.to(dtype)
+                    weights = weights.to(dtype)
+                    target_forces = target_forces.to(dtype)
+
+                    # make indices upon which to contract per-atom energies for this config
+
+                    config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
+                    indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
+                    unique_i = neighlist[:,0]
+                    unique_j = neighlist[:,1]
+                    
+                    # need to unsqueeze num_atoms to get a tensor of definable size
+
+                    (energies,forces) = self.model(positions, neighlist, transform_x, 
+                                                  indices, num_atoms.unsqueeze(0), 
+                                                  atom_types, unique_i, unique_j, self.device, dtype)
+                    
+                else:
+                    # Evaluate all configs and store energy/force in list.
+                    energies = []
+                    forces = []
+                    for config in self.configs:
+                        #positions = torch.tensor(config.positions).requires_grad_(True)
+                        positions = torch.tensor(config.x).requires_grad_(True)
+                        xneigh = torch.tensor(config.xneigh)
+                        transform_x = torch.tensor(config.transform_x)
+                        atom_types = torch.tensor(config.types).long()
+                        target = torch.tensor(config.energy).reshape(-1)
+                        # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
+                        weights = torch.tensor(config.weights[None,:])
+                        target_forces = torch.tensor(config.forces)
+                        num_atoms = torch.tensor(config.natoms)
+                        neighlist = torch.tensor(config.neighlist).long()
+
+                        # convert quantities to desired dtype
+                  
+                        positions = positions.to(dtype)
+                        transform_x = transform_x.to(dtype)
+                        target = target.to(dtype)
+                        weights = weights.to(dtype)
+                        target_forces = target_forces.to(dtype)
+
+                        # make indices upon which to contract per-atom energies for this config
+
+                        config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
+                        indices = torch.repeat_interleave(config_indices, neighlist.size()[0]) # config indices for each pair
+                        unique_i = neighlist[:,0]
+                        unique_j = neighlist[:,1]
+                        
+                        # need to unsqueeze num_atoms to get a tensor of definable size
+
+                        (e_model,f_model) = self.model(positions, neighlist, transform_x, 
+                                                      indices, num_atoms.unsqueeze(0), 
+                                                      atom_types, unique_i, unique_j, self.device, dtype)
+
+                        energies.append(e_model)
+                        forces.append(f_model)
+                    
+                return (energies, forces)
+                """
                 if (option==1):
 
                     if (evaluate_all):
@@ -641,6 +722,7 @@ try:
                         forces_configs.append(forces)
 
                         return(energies_configs, forces_configs)
+                        """
 
             (energies, forces) = decorated_evaluate_configs()
 

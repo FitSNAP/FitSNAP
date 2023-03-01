@@ -157,7 +157,8 @@ class Solver:
                 # Evaluate errors with float64 dtype since this is what we use in production.
 
                 if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
-                    (energies_model, forces_model) = self.evaluate_configs(option=1, evaluate_all = True, standardize_bool=False, dtype=torch.float64)
+                    #(energies_model, forces_model) = self.evaluate_configs(option=1, evaluate_all = True, standardize_bool=False, dtype=torch.float64)
+                    pass
                 else:
                     #(energies_model, forces_model) = self.evaluate_configs(config_idx=0, option=1, standardize_bool=False, dtype=torch.float64)
                     #print(energies_model)
@@ -176,7 +177,6 @@ class Solver:
                 m = 0
                 for idx, c in enumerate(self.configs):
                     (energies_model, forces_model) = self.evaluate_configs(config_idx=idx, \
-                                                                           option=1, \
                                                                            standardize_bool=False, \
                                                                            dtype=torch.float64)
                     e_pred = energies_model.detach().numpy()/c.natoms # Model per-atom energy.

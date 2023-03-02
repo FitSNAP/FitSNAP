@@ -1,5 +1,4 @@
 [build-system]
-#requires = ['setuptools>=42', 'numpy', 'scipy', 'scikit-learn', 'virtualenv', 'psutil', 'pandas', 'tabulate', 'mpi4py', 'Cython', 'torch', 'sympy', 'pyyaml']
 requires = [
     "setuptools>=42",
 ]
@@ -7,7 +6,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = "fitsnap3"
-version = "3.0.0.1"
+version = "3.0.1"
 description = "Molecular Machine Learning Interface"
 license = {file = "LICENSE"}
 readme = "README.md"

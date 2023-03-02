@@ -58,7 +58,6 @@ def test_fd_single_elem():
     snap.process_configs()
     pt.all_barrier()
     snap.solver.create_datasets()
-    #(energies_model, forces_model) = snap.solver.evaluate_configs(option=1, standardize_bool=True)
     (energies_model, forces_model) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
 
     print(f"Length of data: {len(snap.data)}")
@@ -84,7 +83,6 @@ def test_fd_single_elem():
                   snap.calculator.shared_index_dgrad = 0
                   snap.process_configs()
                   snap.solver.create_datasets()
-                  #(energies1, forces1) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
                   (energies1, forces1) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
                   # calculate model energy with -h (energy2)
@@ -97,7 +95,6 @@ def test_fd_single_elem():
                   snap.calculator.shared_index_dgrad = 0
                   snap.process_configs()
                   snap.solver.create_datasets()
-                  #(energies2, forces2) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
                   (energies2, forces2) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
                   # calculate and compare finite difference force
@@ -168,7 +165,6 @@ def test_fd_multi_elem():
     snap.process_configs()
     pt.all_barrier()
     snap.solver.create_datasets()
-    #(energies_model, forces_model) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
     (energies_model, forces_model) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
 
     print(f"Length of data: {len(snap.data)}")
@@ -193,7 +189,6 @@ def test_fd_multi_elem():
                   snap.calculator.shared_index_dgrad = 0
                   snap.process_configs()
                   snap.solver.create_datasets()
-                  #(energies1, forces1) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
                   (energies1, forces1) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
                   # calculate model energy with -h (energy2)
@@ -206,7 +201,6 @@ def test_fd_multi_elem():
                   snap.calculator.shared_index_dgrad = 0
                   snap.process_configs()
                   snap.solver.create_datasets()
-                  #(energies2, forces2) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
                   (energies2, forces2) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
                   # calculate and compare finite difference force
@@ -306,7 +300,6 @@ def test_fd_ace_single_elem():
                   snap.calculator.shared_index_dgrad = 0
                   snap.process_configs()
                   snap.solver.create_datasets()
-                  #(energies1, forces1) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
                   (energies1, forces1) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
                   # calculate model energy with -h (energy2)
@@ -319,7 +312,6 @@ def test_fd_ace_single_elem():
                   snap.calculator.shared_index_dgrad = 0
                   snap.process_configs()
                   snap.solver.create_datasets()
-                  #(energies2, forces2) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
                   (energies2, forces2) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
                   # calculate and compare finite difference force

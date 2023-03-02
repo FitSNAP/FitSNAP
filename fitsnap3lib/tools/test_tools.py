@@ -84,7 +84,6 @@ class TestTools():
         self.snap.process_configs()
         self.pt.all_barrier()
         self.snap.solver.create_datasets()
-        #(energies_model, forces_model) = self.snap.solver.evaluate_configs(option=1, evaluate_all=True, standardize_bool=True)
         (energies_model, forces_model) = self.snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
 
         start_indx = config_index

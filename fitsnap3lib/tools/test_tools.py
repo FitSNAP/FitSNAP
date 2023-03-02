@@ -84,7 +84,8 @@ class TestTools():
         self.snap.process_configs()
         self.pt.all_barrier()
         self.snap.solver.create_datasets()
-        (energies_model, forces_model) = self.snap.solver.evaluate_configs(option=1, evaluate_all=True, standardize_bool=True)
+        #(energies_model, forces_model) = self.snap.solver.evaluate_configs(option=1, evaluate_all=True, standardize_bool=True)
+        (energies_model, forces_model) = self.snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
 
         start_indx = config_index
 
@@ -107,7 +108,7 @@ class TestTools():
                       self.snap.calculator.shared_index_dgrad = 0
                       self.snap.process_configs()
                       self.snap.solver.create_datasets()
-                      (energies1, forces1) = self.snap.solver.evaluate_configs(config_index=m, option=1, standardize_bool=False)
+                      (energies1, forces1) = self.snap.solver.evaluate_configs(config_idx=m, standardize_bool=False)
 
                       # calculate model energy with -h (energy2)
 
@@ -120,7 +121,7 @@ class TestTools():
                       self.snap.calculator.shared_index_dgrad = 0
                       self.snap.process_configs()
                       self.snap.solver.create_datasets()
-                      (energies2, forces2) = self.snap.solver.evaluate_configs(config_index=m, option=1, standardize_bool=False)
+                      (energies2, forces2) = self.snap.solver.evaluate_configs(config_idx=m, standardize_bool=False)
 
                       # calculate and compare finite difference force
 

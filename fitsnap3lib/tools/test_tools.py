@@ -38,13 +38,13 @@ class TestTools():
 
         # import parallel tools and create pt object
         from fitsnap3lib.parallel_tools import ParallelTools
-        #pt = ParallelTools(comm=comm)
+        # pt = ParallelTools(comm=comm)
         self.pt = ParallelTools()
         # don't check for existing fitsnap objects since we'll be overwriting things
         self.pt.check_fitsnap_exist = False
         from fitsnap3lib.io.input import Config
-        #fitsnap_in = "../examples/Ta_Pytorch_NN/Ta-example.in"
-        #fitsnap_in = "Ta-example.in" #ta_example_file.as_posix()
+        # fitsnap_in = "../examples/Ta_Pytorch_NN/Ta-example.in"
+        # fitsnap_in = "Ta-example.in" #ta_example_file.as_posix()
         self.config = Config(arguments_lst = [input_script, "--overwrite"])
 
     def finite_difference(self, group, config_index=0):
@@ -60,16 +60,16 @@ class TestTools():
 
         h = 1e-4 # size of finite difference
 
-        #config.sections['BISPECTRUM'].switchflag = 1 # required for smooth finite difference
+        # config.sections['BISPECTRUM'].switchflag = 1 # required for smooth finite difference
         self.config.sections['NETWORK'].manual_seed_flag = 1
         self.config.sections['NETWORK'].dtype = torch.float64
         # only perform calculations on displaced BCC structures
-        self.config.sections['GROUPS'].group_table = {group: \
-            {'training_size': 1.0, \
-            'testing_size': 0.0, \
-            'eweight': 100.0, \
-            'fweight': 1.0, \
-            'vweight': 1e-08}}
+        self.config.sections['GROUPS'].group_table = {group:
+                                                     {'training_size': 1.0,
+                                                      'testing_size': 0.0,
+                                                      'eweight': 100.0,
+                                                      'fweight': 1.0,
+                                                      'vweight': 1e-08}}
         # create a fitsnap object
         from fitsnap3lib.fitsnap import FitSnap
         self.snap = FitSnap()
@@ -99,7 +99,6 @@ class TestTools():
                     # calculate model energy with +h (energy1)
 
                     self.snap.data[m]['Positions'][i,a] += h
-                    #print(f"position: {snap.data[m]['Positions'][i,a]}")
                     self.snap.calculator.distributed_index = 0
                     self.snap.calculator.shared_index = 0
                     self.snap.calculator.shared_index_b = 0
@@ -144,7 +143,7 @@ class TestTools():
         print(f"mean max: {mean_err} {max_err}")
 
         errors = np.abs(errors)
-        
+
         hist, bins = np.histogram(errors, bins=10)
         logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
         plt.hist(errors, bins=logbins)
@@ -154,11 +153,5 @@ class TestTools():
         plt.ylabel("Distribution")
         plt.yticks([])
         plt.savefig("fd-force-check.png", dpi=500)
-        
 
-        assert(mean_err < 0.001 and max_err < 0.1)
-
-        #del pt
-        #del config
-        #del snap.data
-        #del snap
+        assert (mean_err < 0.001 and max_err < 0.1)

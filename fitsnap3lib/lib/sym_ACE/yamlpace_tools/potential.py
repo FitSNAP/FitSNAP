@@ -105,7 +105,7 @@ class AcePot():
 
     #radial basis function expansion coefficients
     #saved in n,l,k shape
-    # defaults to orthogonal delta function [g(n,k)] basis of drautz 2019	
+    # defaults to orthogonal delta function [g(n,k)] basis of drautz 2019   
     try:
       nradmax = max(self.global_nmax[:])
     except ValueError:
@@ -182,10 +182,10 @@ class AcePot():
         #permunu[mu0].append(nu)
         
     #for b in range(len(self.elements)):
-    #	for i in permunu[b]:
-    #		print (b,i)
+    #   for i in permunu[b]:
+    #       print (b,i)
     #for b in range(len(self.elements)):
-    #	print (b,len(permu0[b]))
+    #   print (b,len(permu0[b]))
     self.funcs = permu0
     self.permunu = permunu
 

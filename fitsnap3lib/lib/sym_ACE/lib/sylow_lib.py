@@ -328,86 +328,86 @@ fusion8 = [((4, 6, 5, 7),),
 
 
 def filled_perm(tups,rank):
-	allinds = list(range(rank))
-	try:
-		remainders = [ i for i in allinds if i not in flatten(tups)]
-		alltups = tups + tuple([tuple([k]) for k in remainders])
-	except TypeError:
-		remainders = [ i for i in allinds if i not in flatten(flatten(tups))]
-		alltups = tups + tuple([tuple([k]) for k in remainders])
-	return alltups
+    allinds = list(range(rank))
+    try:
+        remainders = [ i for i in allinds if i not in flatten(tups)]
+        alltups = tups + tuple([tuple([k]) for k in remainders])
+    except TypeError:
+        remainders = [ i for i in allinds if i not in flatten(flatten(tups))]
+        alltups = tups + tuple([tuple([k]) for k in remainders])
+    return alltups
 
 def base_automorphisms(l,subtree=False):
-	# base automorphism groups for most practical descriptor labels.
-	if len(l) == 4 or len(l) == 5:
-		if not subtree:
-			all_ops = sylow_2_s4
-		else:
-			all_ops = s4_subtree_syms
-	elif len(l) == 6 or len(l) == 7:
-		if not subtree:
-			all_ops = sylow_2_s6
-		else:
-			all_ops = s6_subtree_syms
-	elif len(l) == 8 or len(l) == 9:
-		if not subtree:
-			all_ops = sylow_2_s8
-		else:
-			all_ops = s8_subtree_syms
-	else:
-		raise ValueError()
+    # base automorphism groups for most practical descriptor labels.
+    if len(l) == 4 or len(l) == 5:
+        if not subtree:
+            all_ops = sylow_2_s4
+        else:
+            all_ops = s4_subtree_syms
+    elif len(l) == 6 or len(l) == 7:
+        if not subtree:
+            all_ops = sylow_2_s6
+        else:
+            all_ops = s6_subtree_syms
+    elif len(l) == 8 or len(l) == 9:
+        if not subtree:
+            all_ops = sylow_2_s8
+        else:
+            all_ops = s8_subtree_syms
+    else:
+        raise ValueError()
 
-	all_ops.sort(key=lambda x: x,reverse=True)
-	all_ops.sort(key=lambda x: tuple([len(k) for k in x]),reverse=True)
+    all_ops.sort(key=lambda x: x,reverse=True)
+    all_ops.sort(key=lambda x: tuple([len(k) for k in x]),reverse=True)
 
-	all_ops = [filled_perm(op,len(l)) for op in all_ops]
+    all_ops = [filled_perm(op,len(l)) for op in all_ops]
 
-	all_parts = []
-	for op in all_ops:
-		orbits = [len(x) for x in op]
-		partition = tuple(orbits)
-		all_parts.append(partition)
-	unique_parts = list(set(all_parts))
-	unique_parts.sort(key=lambda x: len(x),reverse=True)
-	unique_parts.sort(key=lambda x: x,reverse=True)
-	op_per_part = {p:[] for p in unique_parts}
-	for op_part in zip(all_ops,all_parts):
-		this_op,this_part = op_part
-		op_per_part[this_part].append(this_op)
+    all_parts = []
+    for op in all_ops:
+        orbits = [len(x) for x in op]
+        partition = tuple(orbits)
+        all_parts.append(partition)
+    unique_parts = list(set(all_parts))
+    unique_parts.sort(key=lambda x: len(x),reverse=True)
+    unique_parts.sort(key=lambda x: x,reverse=True)
+    op_per_part = {p:[] for p in unique_parts}
+    for op_part in zip(all_ops,all_parts):
+        this_op,this_part = op_part
+        op_per_part[this_part].append(this_op)
 
-	if tuple([len(l)]) not in unique_parts:
-		unique_parts = [tuple([len(l)])] + unique_parts
-		op_per_part[tuple([len(l)])] = [  tuple([ tuple([i]) for i in  range(len(l))]) ]
-	organized_automorphisms = {p: sorted(op_per_part[p]) for p in unique_parts} 
-	return organized_automorphisms
+    if tuple([len(l)]) not in unique_parts:
+        unique_parts = [tuple([len(l)])] + unique_parts
+        op_per_part[tuple([len(l)])] = [  tuple([ tuple([i]) for i in  range(len(l))]) ]
+    organized_automorphisms = {p: sorted(op_per_part[p]) for p in unique_parts} 
+    return organized_automorphisms
 
 def get_auto_part(l,part,add_degen_autos=False,part_only=False,subtree=False):
-	
-	# grows the automorphism group for a given l vector,
-	#   and returns permutation operations belonging to specific set of orbits
-	#   in the partition 'part' 
-	#   add_degen_autos (logical) : flag to grow automorphism group based on degeneracy
-	#   part_only (logical) : flag to return automorphisms within one set of orbits
+    
+    # grows the automorphism group for a given l vector,
+    #   and returns permutation operations belonging to specific set of orbits
+    #   in the partition 'part' 
+    #   add_degen_autos (logical) : flag to grow automorphism group based on degeneracy
+    #   part_only (logical) : flag to return automorphisms within one set of orbits
 
-	N = len(l)
-	G_N_per_part = base_automorphisms(l,subtree)
-	if part_only:
-		applied_perms = [tuple(Permutation(filled_perm(pi,len(l)))(l)) for pi in G_N_per_part[part]]
-	elif not part_only:
-		applied_perms = [tuple(Permutation(filled_perm(pi,len(l)))(l)) for pi in flatten(G_N_per_part.values())]
-	autos = []
-	if add_degen_autos:
-		perms = [p for p in itertools.permutations(range(N))]	
-		for perm in perms:
-			P = Permutation(perm)
-			cyc = P.full_cyclic_form
-			cyc = tuple([tuple(k) for k in cyc])
-			this_applied = P(l)
-			if tuple(this_applied) in applied_perms:
-				autos.append(cyc)
-	if part_only:
-		return_lst = sorted(list(set(G_N_per_part[part] + autos)))
-	elif not part_only:
-		return_lst = sorted(list(set(flatten(G_N_per_part.values()) + autos)))
-	return return_lst
+    N = len(l)
+    G_N_per_part = base_automorphisms(l,subtree)
+    if part_only:
+        applied_perms = [tuple(Permutation(filled_perm(pi,len(l)))(l)) for pi in G_N_per_part[part]]
+    elif not part_only:
+        applied_perms = [tuple(Permutation(filled_perm(pi,len(l)))(l)) for pi in flatten(G_N_per_part.values())]
+    autos = []
+    if add_degen_autos:
+        perms = [p for p in itertools.permutations(range(N))]   
+        for perm in perms:
+            P = Permutation(perm)
+            cyc = P.full_cyclic_form
+            cyc = tuple([tuple(k) for k in cyc])
+            this_applied = P(l)
+            if tuple(this_applied) in applied_perms:
+                autos.append(cyc)
+    if part_only:
+        return_lst = sorted(list(set(G_N_per_part[part] + autos)))
+    elif not part_only:
+        return_lst = sorted(list(set(flatten(G_N_per_part.values()) + autos)))
+    return return_lst
 

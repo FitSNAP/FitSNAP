@@ -93,50 +93,50 @@ class TestTools():
         errors = []
         for m in range(start_indx,start_indx+1):
             for i in range(0,self.snap.data[m]['NumAtoms']):
-                  for a in range(0,3):
-                      natoms = self.snap.data[m]['NumAtoms']
+                for a in range(0,3):
+                    natoms = self.snap.data[m]['NumAtoms']
 
-                      # calculate model energy with +h (energy1)
+                    # calculate model energy with +h (energy1)
 
-                      self.snap.data[m]['Positions'][i,a] += h
-                      #print(f"position: {snap.data[m]['Positions'][i,a]}")
-                      self.snap.calculator.distributed_index = 0
-                      self.snap.calculator.shared_index = 0
-                      self.snap.calculator.shared_index_b = 0
-                      self.snap.calculator.shared_index_c = 0
-                      self.snap.calculator.shared_index_dgrad = 0
-                      self.snap.process_configs()
-                      self.snap.solver.create_datasets()
-                      (energies1, forces1) = self.snap.solver.evaluate_configs(config_index=m, option=1, standardize_bool=False)
+                    self.snap.data[m]['Positions'][i,a] += h
+                    #print(f"position: {snap.data[m]['Positions'][i,a]}")
+                    self.snap.calculator.distributed_index = 0
+                    self.snap.calculator.shared_index = 0
+                    self.snap.calculator.shared_index_b = 0
+                    self.snap.calculator.shared_index_c = 0
+                    self.snap.calculator.shared_index_dgrad = 0
+                    self.snap.process_configs()
+                    self.snap.solver.create_datasets()
+                    (energies1, forces1) = self.snap.solver.evaluate_configs(config_index=m, option=1, standardize_bool=False)
 
-                      # calculate model energy with -h (energy2)
+                    # calculate model energy with -h (energy2)
 
-                      self.snap.data[m]['Positions'][i,a] -= 2.*h
-                      #print(f"position: {snap.data[m]['Positions'][i,a]}")
-                      self.snap.calculator.distributed_index = 0
-                      self.snap.calculator.shared_index = 0
-                      self.snap.calculator.shared_index_b = 0
-                      self.snap.calculator.shared_index_c = 0
-                      self.snap.calculator.shared_index_dgrad = 0
-                      self.snap.process_configs()
-                      self.snap.solver.create_datasets()
-                      (energies2, forces2) = self.snap.solver.evaluate_configs(config_index=m, option=1, standardize_bool=False)
+                    self.snap.data[m]['Positions'][i,a] -= 2.*h
+                    #print(f"position: {snap.data[m]['Positions'][i,a]}")
+                    self.snap.calculator.distributed_index = 0
+                    self.snap.calculator.shared_index = 0
+                    self.snap.calculator.shared_index_b = 0
+                    self.snap.calculator.shared_index_c = 0
+                    self.snap.calculator.shared_index_dgrad = 0
+                    self.snap.process_configs()
+                    self.snap.solver.create_datasets()
+                    (energies2, forces2) = self.snap.solver.evaluate_configs(config_index=m, option=1, standardize_bool=False)
 
-                      # calculate and compare finite difference force
+                    # calculate and compare finite difference force
 
-                      force_fd = -1.0*(energies1[0] - energies2[0])/(2.*h)
-                      force_fd = force_fd.item()
-                      force_model = forces_model[m][i][a].item()
+                    force_fd = -1.0*(energies1[0] - energies2[0])/(2.*h)
+                    force_fd = force_fd.item()
+                    force_model = forces_model[m][i][a].item()
 
-                      error = force_model - force_fd
-                      if (abs(error) > 1e-1):
-                          print(f"m i a f_fd f_model: {m} {i} {a} {force_fd} {force_model}")
-                          assert(False)
-                      errors.append(error)
+                    error = force_model - force_fd
+                    if (abs(error) > 1e-1):
+                        print(f"m i a f_fd f_model: {m} {i} {a} {force_fd} {force_model}")
+                        assert(False)
+                    errors.append(error)
 
-                      # return position back to normal
+                    # return position back to normal
 
-                      self.snap.data[m]['Positions'][i,a] += h
+                    self.snap.data[m]['Positions'][i,a] += h
 
         mean_err = np.mean(np.abs(errors))
         max_err = np.max(np.abs(errors))

@@ -1,13 +1,9 @@
-import os
 import numpy as np
-import pandas as pd
-import random
 import torch
-from itertools import compress
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
+#import matplotlib.patches as mpatches
+#from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.io.input import Config
 
 SMALL_SIZE = 10
 MEDIUM_SIZE = 12
@@ -94,8 +90,7 @@ class TestTools():
         for m in range(start_indx,start_indx+1):
             for i in range(0,self.snap.data[m]['NumAtoms']):
                 for a in range(0,3):
-                    natoms = self.snap.data[m]['NumAtoms']
-
+                    # natoms = self.snap.data[m]['NumAtoms']
                     # calculate model energy with +h (energy1)
 
                     self.snap.data[m]['Positions'][i,a] += h

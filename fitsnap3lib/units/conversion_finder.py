@@ -51,4 +51,3 @@ def create_conversion(a_unit_type, unit_a, unit_b):
         raise AttributeError("{} was not found in unit type {}".format(unit_b, a_unit_type))
 
     return numerator/denominator
-

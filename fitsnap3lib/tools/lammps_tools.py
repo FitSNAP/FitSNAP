@@ -66,8 +66,6 @@ class LammpsTools():
         return mae
 
     def calculate(self):
-        from fitsnap3lib.calculators.lammps_snap import LammpsSnap, _extract_compute_np
-        from fitsnap3lib.calculators.lammps_snap import _extract_compute_np
         calc = LammpsSnap(name='LAMMPSSNAP')
         calc.shared_index = self.snap.calculator.shared_index
 

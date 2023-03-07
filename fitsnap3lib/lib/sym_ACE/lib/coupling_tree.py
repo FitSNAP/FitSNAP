@@ -32,11 +32,11 @@ class Tree_ID:
         # sets the highest symmetry partition for a given rank 
         #  it goes in powers of 2^x with some remainder. 
         sym_blocks=  {  4:((4,),),
-            5:((4,1),),
-            6:((4,2),),
-            7:((4,2,1),),
-            8:((8,),),
-            }
+                        5:((4,1),),
+                        6:((4,2),),
+                        7:((4,2,1),),
+                        8:((8,),),
+                      }
         self.sym_block = sym_blocks[self.rank][0]
 
     def return_subtree_l_ID(self,l,L=None,L_R=0):

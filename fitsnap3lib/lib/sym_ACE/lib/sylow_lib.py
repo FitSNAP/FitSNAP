@@ -410,4 +410,3 @@ def get_auto_part(l,part,add_degen_autos=False,part_only=False,subtree=False):
     elif not part_only:
         return_lst = sorted(list(set(flatten(G_N_per_part.values()) + autos)))
     return return_lst
-

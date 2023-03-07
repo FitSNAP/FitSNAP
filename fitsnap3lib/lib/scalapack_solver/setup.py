@@ -94,7 +94,7 @@ ext_modules = [Extension(# module name:
                          # other files to link to
                          extra_link_args=["-lm", "-ldl"] + mpilinkargs)]
 
-setup(
-      cmdclass = {'build_ext': build_ext},
-      ext_modules = ext_modules
+setup (
+          cmdclass = {'build_ext': build_ext},
+          ext_modules = ext_modules
       )

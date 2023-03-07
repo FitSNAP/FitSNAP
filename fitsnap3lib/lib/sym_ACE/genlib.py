@@ -18,4 +18,3 @@ if flag != None:
     from wigner_couple import *
     print (global_ccs)
     print ('sent')
-

@@ -16,4 +16,3 @@ class Template(Scraper):
     def scrape_configs(self):
         """Generate and send (mutable) data to send to fitsnap"""
         pass
-

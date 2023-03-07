@@ -121,15 +121,15 @@ def get_mu_n_l(nu_in, return_L = False, **kwargs):
         return mu0,mu,n,l
 
 def ind_vec(lrng , size):
-     uniques = []
-     combs = itertools.combinations_with_replacement(lrng,size)
-     for comb in combs:
-         perms = itertools.permutations(comb)
-         for p in perms:
-             pstr = ','.join(str(k) for k in p)
-             if pstr not in uniques:
-                 uniques.append(pstr)
-     return uniques
+    uniques = []
+    combs = itertools.combinations_with_replacement(lrng,size)
+    for comb in combs:
+        perms = itertools.permutations(comb)
+        for p in perms:
+            pstr = ','.join(str(k) for k in p)
+            if pstr not in uniques:
+                uniques.append(pstr)
+    return uniques
 
 def get_nu_rank(nu):
     nu_splt = [int(k) for k in nu.split(',')]

@@ -7,8 +7,7 @@ We use the `create_networks` function in pytorch.py since the structure is the s
 """
 
 import torch
-from torch import from_numpy
-from torch.nn import Parameter
+
 """
 Try to import mliap package after: https://github.com/lammps/lammps/pull/3388
 See related bug: https://github.com/lammps/lammps/issues/3204
@@ -86,7 +85,7 @@ class FitTorchPAS(torch.nn.Module):
             per_atom_scalars = torch.zeros(types.size(dim=0), dtype=dtype).to(device)
             given_elems, elem_indices = torch.unique(types, return_inverse=True)
             for i, elem in enumerate(given_elems): 
-              per_atom_scalars[elem_indices == i] = self.networks[elem](x[elem_indices == i]).flatten()
+                per_atom_scalars[elem_indices == i] = self.networks[elem](x[elem_indices == i]).flatten()
 
         return per_atom_scalars
 

@@ -109,23 +109,23 @@ def generate_ccs():
     import time
     t1 =time.time()
     try:
-      with open('%s/global_ccs_LR_0_MR_0.pickle' % lib_path, 'rb') as handle:
-        global_ccs = pickle.load(handle)
+        with open('%s/global_ccs_LR_0_MR_0.pickle' % lib_path, 'rb') as handle:
+            global_ccs = pickle.load(handle)
     except FileNotFoundError:
-      global_ccs_all,global_weights = get_coupling(lmax_dict_G, Wigner_3j)
-      global_ccs = global_ccs_all[0]
-      with open('%s/global_ccs_LR_0_MR_0.pickle' % lib_path, 'wb') as handle:
-        pickle.dump(global_ccs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        global_ccs_all,global_weights = get_coupling(lmax_dict_G, Wigner_3j)
+        global_ccs = global_ccs_all[0]
+        with open('%s/global_ccs_LR_0_MR_0.pickle' % lib_path, 'wb') as handle:
+            pickle.dump(global_ccs, handle, protocol=pickle.HIGHEST_PROTOCOL)
     if gen_LR1:
-      try:
-        with open('%s/global_ccs_LR_1.pickle' % lib_path, 'rb') as handle:
-          global_ccs_l1 = pickle.load(handle)
-      except FileNotFoundError:
-        global_ccs_l1,global_weights = get_coupling(lmax_dict_G, Wigner_3j, L_R=1)
-        with open('%s/global_ccs_LR_1.pickle' % lib_path, 'wb') as handle:
-          pickle.dump(global_ccs_l1, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    t2 = time.time()
+        try:
+            with open('%s/global_ccs_LR_1.pickle' % lib_path, 'rb') as handle:
+                global_ccs_l1 = pickle.load(handle)
+        except FileNotFoundError:
+            global_ccs_l1,global_weights = get_coupling(lmax_dict_G, Wigner_3j, L_R=1)
+            with open('%s/global_ccs_LR_1.pickle' % lib_path, 'wb') as handle:
+                pickle.dump(global_ccs_l1, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+    # t2 = time.time()
     #print ('Time to generate/load global generalized couplings:', (t2-t1)*1000, 'ms', '\n', 'global lmax per descriptor rank:', lmax_dict_G)
 
     return global_ccs

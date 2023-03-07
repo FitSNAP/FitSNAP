@@ -106,24 +106,24 @@ def init_wigner_3j(lmax):
 
 
 def get_w3j_and_cg():
-  # store a large dictionary of clebsch gordan coefficients
-  if cglib:
+    # store a large dictionary of clebsch gordan coefficients
+    if cglib:
+        try:
+            with open('%s/Clebsch_Gordan.pickle' %lib_path, 'rb') as handle:
+                Clebsch_Gordan = pickle.load(handle)
+        except FileNotFoundError:
+            print ("Generating your first pickled library of CG coefficients. This will take a few moments...")
+            Clebsch_Gordan = init_clebsch_gordan(10)
+            with open('%s/Clebsch_Gordan.pickle' %lib_path, 'wb') as handle:
+                pickle.dump(Clebsch_Gordan, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    # do the same thing for the traditional wigner_3j symbols
     try:
-      with open('%s/Clebsch_Gordan.pickle' %lib_path, 'rb') as handle:
-        Clebsch_Gordan = pickle.load(handle)
+        with open('%s/Wigner_3j.pickle' % lib_path, 'rb') as handle:
+            Wigner_3j = pickle.load(handle)
     except FileNotFoundError:
-      print ("Generating your first pickled library of CG coefficients. This will take a few moments...")
-      Clebsch_Gordan = init_clebsch_gordan(10)
-      with open('%s/Clebsch_Gordan.pickle' %lib_path, 'wb') as handle:
-        pickle.dump(Clebsch_Gordan, handle, protocol=pickle.HIGHEST_PROTOCOL)
-  # do the same thing for the traditional wigner_3j symbols
-  try:
-    with open('%s/Wigner_3j.pickle' % lib_path, 'rb') as handle:
-      Wigner_3j = pickle.load(handle)
-  except FileNotFoundError:
-    print ("Generating your first pickled library of Wigner 3j coefficients. This will take a few moments...")
-    Wigner_3j = init_wigner_3j(lmax_traditional)
-    with open('%s/Wigner_3j.pickle' % lib_path, 'wb') as handle:
-      pickle.dump(Wigner_3j, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        print ("Generating your first pickled library of Wigner 3j coefficients. This will take a few moments...")
+        Wigner_3j = init_wigner_3j(lmax_traditional)
+        with open('%s/Wigner_3j.pickle' % lib_path, 'wb') as handle:
+            pickle.dump(Wigner_3j, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-  return Wigner_3j
+    return Wigner_3j

@@ -1,9 +1,7 @@
 import os
 import numpy as np
-import pandas as pd
 from itertools import compress
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.io.input import Config
 
@@ -155,4 +153,3 @@ class LammpsTools():
             errors[group]["mae_force"]=mae_forces
 
         return errors
-

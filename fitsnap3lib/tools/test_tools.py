@@ -1,9 +1,6 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-#import matplotlib.patches as mpatches
-#from fitsnap3lib.parallel_tools import ParallelTools
-#from fitsnap3lib.io.input import Config
 
 SMALL_SIZE = 10
 MEDIUM_SIZE = 12

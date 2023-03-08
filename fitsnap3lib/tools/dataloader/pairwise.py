@@ -1,6 +1,6 @@
 import torch.utils.data
 import numpy as np
-
+from torch.utils.data import DataLoader
 
 class InRAMDataset(torch.utils.data.Dataset):
     """

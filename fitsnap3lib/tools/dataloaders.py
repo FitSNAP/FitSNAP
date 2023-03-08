@@ -1,7 +1,7 @@
 import torch.utils.data
 from sys import float_info
 import numpy as np
-
+from torch.utils.data import DataLoader
 
 class InRAMDataset(torch.utils.data.Dataset):
     """

@@ -1,3 +1,10 @@
+### Requirements
+
+The purpose of these tests is to verify that fitting results are consistent. We also verify that 
+neural network forces are properly coded via finite difference tests. To test the parallel 
+capabilities of FitSNAP, some of our linear fitting tests use `mpirun`. We therefore require 
+`OpenMPI` for these tests.
+
 ### Automated testing with pytest
 
 `pytest` find files and functions containing the `test` phrase, and executes them. 

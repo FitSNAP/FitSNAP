@@ -55,6 +55,8 @@ the docs for details on how to install the current LAMMPS which has these functi
 #### Contributing:
 
 * See our [Programmer Guide](https://fitsnap.github.io/Executable.html) on how to add new features.
+* Abide by our code standards by installing `flake8` and running `flake8 --statistics` in the top 
+directory.
 * Get Sphinx with `pip install sphinx sphinx_rtd_theme` for adding new documentation, and see `docs/README.md` 
 for how to build docs for your features. 
 * **Feel free to ask for help!**

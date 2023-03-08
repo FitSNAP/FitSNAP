@@ -249,4 +249,3 @@ class BCS(Solver):
     def _dump_b(self):
         b = pt.shared_arrays['a'].array @ self.fit
         np.savez_compressed('b.npz', b=b)
-

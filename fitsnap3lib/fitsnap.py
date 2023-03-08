@@ -63,14 +63,17 @@ class FitSnap:
         self.solver = solver(self.config.sections["SOLVER"].solver)
         self.fit = None
         self.multinode = 0
-        self.delete_data = True # make False if don't want to delete data object
-                                # useful for using library to loop over fits
+        """
+        Make False if don't want to delete data object.
+        Useful for using library to loop over fits.
+        """
+        self.delete_data = True
         if self.config.sections["EXTRAS"].only_test:
             self.fit = output.read_fit()
 
         if (hasattr(self.pt, "lammps_version")):
-          if (self.config.sections['CALCULATOR'].nonlinear and (self.pt.lammps_version < 20220915) ):
-              raise Exception(f"Please upgrade LAMMPS to 2022-09-15 or later to use nonlinear solvers.")
+            if (self.config.sections['CALCULATOR'].nonlinear and (self.pt.lammps_version < 20220915) ):
+                raise Exception(f"Please upgrade LAMMPS to 2022-09-15 or later to use nonlinear solvers.")
        
     #@pt.single_timeit 
     def scrape_configs(self):

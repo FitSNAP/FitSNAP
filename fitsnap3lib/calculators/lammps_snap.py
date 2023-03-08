@@ -1,5 +1,5 @@
 from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np
-from fitsnap3lib.parallel_tools import ParallelTools, DistributedList
+from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.io.input import Config
 import numpy as np
 
@@ -142,13 +142,16 @@ class LammpsSnap(LammpsBase):
         nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-1
         nrows_snap = nrows_energy + nrows_dgrad + 1
         assert nrows_snap == np.shape(lmp_snap)[0]
-        index = self.shared_index # Index telling where to start in the shared arrays on this proc.
-                                  # Currently this is an index for the 'a' array (natoms*nconfigs rows).
-                                  # This is also an index for the 't' array of types (natoms*nconfigs rows).
-                                  # Also made indices for:
-                                  # - the 'b' array (3*natoms+1)*nconfigs rows.
-                                  # - the 'dgrad' array (natoms+1)*nneigh*3*nconfigs rows.
-                                  # - the 'dgrad_indices' array which has same number of rows as 'dgrad'
+        """
+        Shared index tells where to start in the shared arrays on this proc.
+        Currently this is an index for the 'a' array (natoms*nconfigs rows).
+        This is also an index for the 't' array of types (natoms*nconfigs rows).
+        Also made indices for:
+        - the 'b' array (3*natoms+1)*nconfigs rows.
+        - the 'dgrad' array (natoms+1)*nneigh*3*nconfigs rows.
+        - the 'dgrad_indices' array which has same number of rows as 'dgrad'
+        """
+        index = self.shared_index
         dindex = self.distributed_index
         index_b = self.shared_index_b
         index_c = self.shared_index_c

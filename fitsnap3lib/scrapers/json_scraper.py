@@ -72,8 +72,8 @@ class Json(Scraper):
                 # insert electronegativities, which are per-atom scalars
 
                 if (self.config.sections["CALCULATOR"].per_atom_scalar):
-                  if not isinstance(self.data["Chis"], float):
-                      self.data["Chis"] = self.data["Chis"]
+                    if not isinstance(self.data["Chis"], float):
+                        self.data["Chis"] = self.data["Chis"]
 
                 # Currently, ESHIFT should be in units of your training data (note there is no conversion)
                 if hasattr(config.sections["ESHIFT"], 'eshift'):

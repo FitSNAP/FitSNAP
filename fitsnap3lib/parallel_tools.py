@@ -176,9 +176,11 @@ class ParallelTools(metaclass=Singleton):
             self._comm = comm
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
-            self.create_shared_bool = True # set to False if want to avoid shared array
-                                           # this is helpful when using the library to loop over
-                                           # functions that create shared arrays, to avoid mem leaks
+            """
+            Set this to False if want to avoid shared arrays. This is helpful when using the library 
+            to loop over functions that create shared arrays, to avoid mem leaks.
+            """
+            self.create_shared_bool = True
 
         if stubs == 1:
             self._rank = 0

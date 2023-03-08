@@ -117,6 +117,3 @@ for option in ["Unweighted", "Weighted"]:
         for group in groups:
             group_filter = df['Groups'] == group
             errors(group, r_type, group_filter & (df['Row_Type'] == r_type), df, weight_flag, fit_cov, fit_sam)
-    
-
-

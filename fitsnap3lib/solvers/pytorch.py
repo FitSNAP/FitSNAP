@@ -606,34 +606,34 @@ try:
                 self.model.to(eval_device)
 
                 if (standardize_bool):
-                  if self.config.sections['PYTORCH'].save_state_input is None:
+                    if self.config.sections['PYTORCH'].save_state_input is None:
 
-                      # standardization
-                      # need to perform on all network types in the model
+                        # standardization
+                        # need to perform on all network types in the model
 
-                      inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
-                      mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
-                      state_dict = self.model.state_dict()
+                        inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
+                        mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
+                        state_dict = self.model.state_dict()
 
-                      # look for the first layer for all types of networks, these are keys like
-                      # network_architecture0.0.weight and network_architecture0.0.bias
-                      # for the first network, and
-                      # network_architecture1.0.weight and network_architecture0.1.bias for the next,
-                      # and so forth
+                        # look for the first layer for all types of networks, these are keys like
+                        # network_architecture0.0.weight and network_architecture0.0.bias
+                        # for the first network, and
+                        # network_architecture1.0.weight and network_architecture0.1.bias for the next,
+                        # and so forth
 
-                      ntypes = self.num_elements
-                      num_networks = len(self.networks)
-                      keys = [*state_dict.keys()]
-                      #for t in range(0,ntypes):
-                      for t in range(0,num_networks):
-                          first_layer_weight = "network_architecture"+str(t)+".0.weight"
-                          first_layer_bias = "network_architecture"+str(t)+".0.bias"
-                          state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
-                          state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
+                        ntypes = self.num_elements
+                        num_networks = len(self.networks)
+                        keys = [*state_dict.keys()]
+                        #for t in range(0,ntypes):
+                        for t in range(0,num_networks):
+                            first_layer_weight = "network_architecture"+str(t)+".0.weight"
+                            first_layer_bias = "network_architecture"+str(t)+".0.bias"
+                            state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
+                            state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
 
-                      # load the new state_dict with the standardized weights
-                      
-                      self.model.load_state_dict(state_dict)
+                        # load the new state_dict with the standardized weights
+                        
+                        self.model.load_state_dict(state_dict)
 
                 # only evaluate, no weight gradients
 

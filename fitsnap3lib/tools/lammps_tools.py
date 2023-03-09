@@ -56,8 +56,6 @@ class LammpsTools():
 
         self.snap.scrape_configs()
 
-        # 
-
     def calc_mae(self, arr1, arr2):
         arr1 = np.array(arr1)
         arr2 = np.array(arr2)
@@ -66,6 +64,7 @@ class LammpsTools():
         return mae
 
     def calculate(self):
+        from fitsnap3lib.calculators.lammps_snap import LammpsSnap
         calc = LammpsSnap(name='LAMMPSSNAP')
         calc.shared_index = self.snap.calculator.shared_index
 

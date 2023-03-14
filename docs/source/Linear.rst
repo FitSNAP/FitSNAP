@@ -90,8 +90,8 @@ is declared like:
     nsam = 133            #this is the number of sample fits requested to be drawn from the distribution
     cov_nugget = 1.e-10   #this is the small number to be added to the matrix inverse for better conditioning 
 
-Experimental UQ Solvers
------------------------
+In development UQ solvers
+-------------------------
 
 In general we recommend the use of the :code:`ANL` solver. The following UQ solvers, however, are 
 experimental and in development.

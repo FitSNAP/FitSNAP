@@ -36,7 +36,6 @@ Indices and tables
    Run/index.rst
    Linear
    Pytorch
-   Uncertainty Quantification
 
 .. _programmer_documentation:
 .. toctree::

@@ -48,6 +48,7 @@ Indices and tables
    Contributing
    Executable
    Library
+   Tests
 
 
 

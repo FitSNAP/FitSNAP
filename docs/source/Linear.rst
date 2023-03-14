@@ -79,7 +79,7 @@ Uncertainty Quantification (UQ)
 -------------------------------
 
 Linear models have uncertainty quantification (UQ) capabilitiies in the form of extra solvers, which 
-are explain here. UQ solvers output a :code:`covariance.npy`` file in addition to performing a fit. 
+are explain here. UQ solvers output a :code:`covariance.npy` file in addition to performing a fit. 
 
 We incorporate an analytical Bayesian UQ solver denoted by :code:`solver = ANL` in the input script. This 
 is declared like:

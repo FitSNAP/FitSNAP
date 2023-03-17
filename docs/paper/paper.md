@@ -246,7 +246,7 @@ sequential flow of control for their specific applications. Some users for examp
 extract descriptors for a set of configurations and perform statistical analysis on that data, 
 access hyperparameters in an external optimization tool, or even code an entirely new component not 
 mentioned here. This Python library also allows interface to custom workflow frameworks 
-like `pyiron` [janssen2019pyiron], allowing users to save, share, and modify their workflows for 
+like `pyiron` [@janssen2019pyiron], allowing users to save, share, and modify their workflows for 
 training and using machine learned potentials.
 In all cases, the ability to program and use any descriptor or model based on position data extracted 
 from LAMMPS ensures utmost extensibility to future atomic environment descriptors and models, while 

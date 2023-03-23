@@ -2,6 +2,7 @@ from fitsnap3lib.io.input import Config
 from fitsnap3lib.parallel_tools import ParallelTools
 import numpy as np
 from pandas import DataFrame, Series, concat
+import pickle
 
 #pt = ParallelTools()
 #config = Config()
@@ -110,7 +111,11 @@ class Solver:
         """
         @self.pt.rank_zero
         def decorated_error_analysis():
-            if not self.linear:
+            
+            # Proceed with nonlinear error analysis, if doing a fit.
+            # If doing a fit, then self.configs is not None.
+
+            if not self.linear and self.configs is not None:
                 import torch # Needed to declare dtype. TODO: Move this into NN evaluate function.
                 mae_f = {} # Force MAE of each group, train and test.
                 mae_e = {} # Test energy MAE of each group, train and test.
@@ -281,8 +286,20 @@ class Solver:
                 self.errors = (mae_f, mae_e, rmse_f, rmse_e, count_train, count_test)
 
                 return
+            
+            # Return if nonlinear and not doing a fit.
 
-            # collect remaining arrays to write dataframe
+            elif not self.linear and self.configs is None:
+                
+                # Save a pickled list of Configuration objects.
+
+                with open('configs.pkl', 'wb') as f:
+                    pickle.dump(self.configs, f)
+
+                return
+
+            # Proceed with linear error analysis.
+            # Collect remaining arrays to write dataframe.
 
             self.df = DataFrame(self.pt.shared_arrays['a'].array)
             self.df['truths'] = self.pt.shared_arrays['b'].array.tolist()

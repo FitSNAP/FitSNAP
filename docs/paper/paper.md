@@ -28,7 +28,7 @@ authors:
   - name: K. Sargsyan
     affiliation: 6
   - name: D. Sema
-    affiliation: 4
+    affiliation: 7
   - name: E. Sikorski
     affiliation: 1
   - name: L. Williams
@@ -52,6 +52,8 @@ affiliations:
    index: 5
  - name: Chemistry, Combustion and Materials Science Center, Sandia National Laboratories, Livermore, CA, United States of America
    index: 6
+ - name: Department of Mechanical Engineering, Massachusetts Institute of Technology, Cambridge, MA, United States of America
+   index: 7
 date: 29 November 2022
 bibliography: paper.bib
 ---

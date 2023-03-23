@@ -2,9 +2,9 @@ Tests
 =====
 
 Our continuous integration (CI) tests are implemented using GitHub Actions. This 
-involve two main tests for consistency and validation:
+involves two main tests for consistency and validation:
 
-1. Consistency of linear fits. Here we check that our simple
+1. Consistency of linear fits. Here we check that our simple examples
    :code:`examples/Ta_Linear_JCP2014` produces the same fitting coefficients 
    from a previous standard in :code:`20May21_Standard`.
 

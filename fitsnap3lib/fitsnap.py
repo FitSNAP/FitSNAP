@@ -142,6 +142,10 @@ class FitSnap:
             else:
                 self.solver.fit = self.fit
                 
+        # If not performing a fit, keep in mind that the `configs` list is None 
+        # for nonlinear models. Keep this in mind when performing error 
+        # analysis.
+        
         @self.pt.single_timeit
         def fit_gather():
             self.solver.fit_gather()

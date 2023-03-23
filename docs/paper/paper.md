@@ -109,7 +109,7 @@ local atomic environments to energies, forces, stress or other quantities associ
 This mapping is achieved by first calculating atomic environment feature vectors (descriptors), and 
 then using these to learn a regression model. There are other high-quality atomistic ML software 
 packages in this application space, such as DeepMD [@wang2018deepmd], n2p2 [@singraber2019library], 
-pacemaker [@bochkarev2022efficient], NequIP [@batzner20223], Allegro [@musaelian2022learning], and GAP 
+pacemaker [@bochkarev2022efficient], NequIP [@batzner20223], Allegro [@musaelian2023learning], and GAP 
 [@bartok2010gaussian]. All of these provide excellent capabilities for their 
 particular class of ML potentials, but lack the flexibility to accommodate a wide range of 
 descriptors and regression models. Other software packages like amp [@khorshidi2016amp], TorchANI [@gao2020torchani], and ACEsuit [@ortner-acesuit] generalize the ML problem to models with multiple kinds of descriptors and model forms. After constructing a ML potential, a critical test of its viability is using it in 

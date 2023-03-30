@@ -2,7 +2,7 @@ from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np
 from fitsnap3lib.parallel_tools import ParallelTools, DistributedList
 from fitsnap3lib.io.input import Config
 from fitsnap3lib.lib.neural_networks.descriptors.bessel import Bessel
-from fitsnap3lib.lib.neural_networks.descriptors.g3b import Gaussian3Body
+#from fitsnap3lib.lib.neural_networks.descriptors.g3b import Gaussian3Body
 import numpy as np
 
 

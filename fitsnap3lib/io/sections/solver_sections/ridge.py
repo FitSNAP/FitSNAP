@@ -1,15 +1,15 @@
 from fitsnap3lib.io.sections.sections import Section
 
 
-class Lasso(Section):
+class Ridge(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.allowedkeys = ['alpha', 'max_iter']
+        self.allowedkeys = ['alpha','local_solver']
         self._check_section()
 
         self._check_if_used("SOLVER", "solver", "SVD")
 
-        self.alpha = self.get_value("LASSO", "alpha", "1.0E-8", "float")
-        self.max_iter = self.get_value("LASSO", "max_iter", "2000", "int")
+        self.alpha = self.get_value("RIDGE", "alpha", "1.0E-8", "float")
+        self.local_solver = self.get_value("RIDGE", "local_solver", "1", "bool")
         self.delete()

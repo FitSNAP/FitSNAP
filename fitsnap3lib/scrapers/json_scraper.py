@@ -24,6 +24,7 @@ class Json(Scraper):
     def scrape_configs(self):
         self.files = self.configs
         self.conversions = copy(self.default_conversions)
+        data_path = self.config.sections["PATH"].datapath
         for i, file_name in enumerate(self.files):
             with open(file_name) as file:
                 if file.readline()[0]=="{":
@@ -39,10 +40,13 @@ class Json(Scraper):
                 self.data = self.data['Dataset']
 
                 assert len(self.data['Data']) == 1, "More than one configuration in this dataset"
-
-                self.data['Group'] = file_name.split("/")[-2]
-                self.data['File'] = file_name.split("/")[-1]
-
+                
+                
+                json_file = file_name.split("/")[-1]
+                group_name = file_name.replace(data_path,'').replace(json_file,'')[1:-1] ## slice trims leading/trailing backslashes
+                self.data['Group'] = group_name 
+                self.data['File'] = json_file
+                
                 assert all(k not in self.data for k in self.data["Data"][0].keys()), \
                     "Duplicate keys in dataset and data"
 

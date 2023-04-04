@@ -16,8 +16,8 @@ We are currently working on an overview of the code in its current state, stay t
 
 #### Dependencies:
 
-* This package expects Python 3.6+ 
-* Python dependencies: `numpy pandas scipy psutil tabulate`
+* This package expects Python 3.8+ 
+* Python dependencies: See `pyproject.toml`
 * [Compile LAMMPS as a shared library with python support](https://docs.lammps.org/Python_head.html). 
 If you can run `import lammps; lmp = lammps.lammps()` without errors in your Python interpreter, 
 you're good to go!
@@ -31,19 +31,14 @@ along with the `compute_pace` files from [https://github.com/jmgoff/lammps-user-
 
 #### Quick install (minimal working environment) using Conda:
 
-WARNING: Conda LAMMPS installation does NOT include ACE, SPIN, or neural network functionality. See 
-the docs for details on how to install the current LAMMPS which has these functionalities.
+WARNING: Conda LAMMPS installation does NOT include ACE. See the docs for details on how to install the current LAMMPS which has these functionalities.
 
-* Clone this repository to get a FitSNAP directory:\
-    `git clone https://github.com/FitSNAP/FitSNAP`
-* Add `path/to/FitSNAP` path to your `PYTHONPATH` environment variable.
-* Add conda-forge to your Conda install, if not already added:\
+* Add conda-forge to your conda install, if not already added:\
     `conda config --add channels conda-forge` 
-* Create a new Conda environment:\
+* Create a new conda environment:\
     `conda create -n fitsnap python=3.9; conda activate fitsnap;`
 * Install the following packages:\
-    `conda install lammps psutil pandas tabulate sphinx sphinx_rtd_theme mpi4py`
-* Periodically `git pull` for code updates
+    `conda install -c conda-forge lammps fitsnap3`
 
 #### Running:
 

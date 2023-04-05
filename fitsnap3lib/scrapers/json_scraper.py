@@ -41,11 +41,10 @@ class Json(Scraper):
 
                 assert len(self.data['Data']) == 1, "More than one configuration in this dataset"
                 
-                
                 json_file = file_name.split("/")[-1]
-                group_name = file_name.replace(data_path,'').replace(json_file,'')[1:-1] ## slice trims leading/trailing backslashes
-                self.data['Group'] = group_name 
                 self.data['File'] = json_file
+                group_name = file_name.replace(data_path,'').replace(json_file,'')[1:-1] 
+                self.data['Group'] = group_name
                 
                 assert all(k not in self.data for k in self.data["Data"][0].keys()), \
                     "Duplicate keys in dataset and data"

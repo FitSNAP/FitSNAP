@@ -41,15 +41,16 @@ class Json(Scraper):
 
                 assert len(self.data['Data']) == 1, "More than one configuration in this dataset"
                 
-                json_file = file_name.split("/")[-1]
-                self.data['File'] = json_file
-                group_name = file_name.replace(data_path,'').replace(json_file,'')[1:-1] 
+                training_file = file_name.split("/")[-1]
+                self.data['File'] = training_file
+                group_name = file_name.replace(data_path,'').replace(training_file,'')[1:-1] 
                 self.data['Group'] = group_name
                 
                 assert all(k not in self.data for k in self.data["Data"][0].keys()), \
                     "Duplicate keys in dataset and data"
 
-                self.data.update(self.data.pop('Data')[0])  # Move data up one level
+                # Move data up one level
+                self.data.update(self.data.pop('Data')[0])  
 
                 for key in self.data:
                     if "Style" in key:
@@ -65,15 +66,18 @@ class Json(Scraper):
                 natoms = np.shape(self.data["Positions"])[0]
                 pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
                 self.data["QMLattice"] = (self.data["Lattice"] * self.conversions["Lattice"]).T
-                del self.data["Lattice"]  # We will populate this with the lammps-normalized lattice.
+
+                # Populate with LAMMPS-normalized lattice
+                del self.data["Lattice"]  
+
+                # TODO Check whether "Label" container useful to keep around
                 if "Label" in self.data:
-                    del self.data["Label"]  # This comment line is not that useful to keep around.
+                    del self.data["Label"] 
 
                 if not isinstance(self.data["Energy"], float):
                     self.data["Energy"] = float(self.data["Energy"])
 
-                # insert electronegativities, which are per-atom scalars
-
+                # Insert electronegativities, which are per-atom scalars
                 if (self.config.sections["CALCULATOR"].per_atom_scalar):
                     if not isinstance(self.data["Chis"], float):
                         self.data["Chis"] = self.data["Chis"]

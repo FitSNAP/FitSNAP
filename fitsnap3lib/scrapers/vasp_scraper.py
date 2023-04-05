@@ -40,18 +40,18 @@ class Vasp(Scraper):
 
 
     def scrape_groups(self):
-        ### Locate all OUTCARs in datapath
+        # Locate all OUTCARs in datapath
         glob_asterisks = '/**/*'
         outcars_base = os.path.join(self.vasp_path, *glob_asterisks.split('/'))
 
-        ## TODO make this search user-specify-able (e.g., OUTCARs have labels/prefixes etc.)
+        # TODO make this search user-specify-able (e.g., OUTCARs have labels/prefixes etc.)
         all_outcars = [f for f in glob(outcars_base,recursive=True) if f.endswith('OUTCAR')]
 
-        ## Grab test|train split
+        # Grab test|train split
         self.group_dict = {k: config.sections['GROUPS'].group_types[i] for i, k in enumerate(config.sections['GROUPS'].group_sections)}
 
         for group in self.group_table:
-            ## First, check that all group folders exist
+            # First, check that all group folders exist
             group_vasp_path = f'{self.vasp_path}/{group}'
             if not os.path.exists(group_vasp_path):
                 raise Exception('!!ERROR: group folder not detected!!' 
@@ -77,8 +77,8 @@ class Vasp(Scraper):
             if training_size is None:
                 raise ValueError('Please set training size for {}'.format(group))
             
-            ## Grab OUTCARS for this training group
-            ## Test filepath to be sure that unique group name is being matched
+            # Grab OUTCARS for this training group
+            # Test filepath to be sure that unique group name is being matched
             group_outcars = [f for f in all_outcars if group_vasp_path + '/' in f]
             if len(group_outcars) == 0:
                 raise Exception('!!ERROR: no OUTCARs found in group!!' 
@@ -92,56 +92,56 @@ class Vasp(Scraper):
             self.configs[group] = []  
 
             for outcar in self.files[file_base]:
-                ## Open file
+                # Open file
                 with open(outcar, 'r') as fp:
                     lines = fp.readlines()
                 nlines = len(lines)
 
-                ## Use ion loop text to partition ionic steps
+                # Use ion loop text to partition ionic steps
                 ion_loop_text = 'aborting loop'
                 start_idx_loops = [i for i, line in enumerate(lines) if ion_loop_text in line]
                 converged_list = [False if 'unconverged' in lines[i] else True for i in start_idx_loops]
                 end_idx_loops = [i for i in start_idx_loops[1:]] + [nlines]
 
-                ## Grab potcar and element info
+                # Grab potcar and element info
                 header_lines = lines[:start_idx_loops[0]]
                 potcar_list, potcar_elements, ions_per_type, is_duplicated = self.parse_outcar_header(header_lines)
 
-                ## Each config in a single OUTCAR is assigned the same
-                ## parent data (i.e. filename, potcar and ion data)
-                ## but separated for each iteration (idx loops on 'lines')
-                ## Tuple data: outcar file name str, config number int, starting line number (for debug)  int, 
-                ## potcar list, potcar elements list, number ions per element list, configuration lines list 
+                # Each config in a single OUTCAR is assigned the same
+                # parent data (i.e. filename, potcar and ion data)
+                # but separated for each iteration (idx loops on 'lines')
+                # Tuple data: outcar file name str, config number int, starting line number (for debug)  int, 
+                # potcar list, potcar elements list, number ions per element list, configuration lines list 
                 unique_configs = [(outcar, i, start_idx_loops[i], potcar_list, potcar_elements, ions_per_type, converged_list[i],
                                     lines[start_idx_loops[i]:end_idx_loops[i]])
                                     for i in range(0, len(start_idx_loops))]
                 
-                ## Avoid adding degenerate structures (for different energies) to training set
-                ## Take only final one for JSON
-                ## See 'parse_outcar_header' method, the IBRION and NSW check, for more details
+                # Avoid adding degenerate structures (for different energies) to training set
+                # Take only final one for JSON
+                # See 'parse_outcar_header' method, the IBRION and NSW check, for more details
                 if is_duplicated:
                     unique_configs = unique_configs[-1:]
 
-                ## Parse and process OUTCAR data per configuration
+                # Parse and process OUTCAR data per configuration
                 for uc in unique_configs:
                     config_dict = self.generate_config_dict(group, uc)
                     if config_dict != -1: 
                         self.configs[group].append(config_dict)
                 del lines
 
-            ## If random_sampling toggled on, shuffle training and testing data
+            # If random_sampling toggled on, shuffle training and testing data
             if config.sections["GROUPS"].random_sampling:
                 shuffle(self.configs[group], pt.get_seed)
             nconfigs = len(self.configs[group])
 
-            ## Assign configurations to train/test groups
+            # Assign configurations to train/test groups
             if training_size == 1:
                 training_configs = nconfigs
                 testing_configs = 0
             else:
                 training_configs = max(1, int(round(training_size * nconfigs)))
                 if training_configs == nconfigs:
-                    ## If training_size is not exactly 1.0, add at least 1 testing config
+                    # If training_size is not exactly 1.0, add at least 1 testing config
                     training_configs -= 1
                     testing_configs = 1
                 else:
@@ -153,7 +153,7 @@ class Vasp(Scraper):
 
             output.screen(f"{group}: Detected {nconfigs}, fitting on {training_configs}, testing on {testing_configs}")
 
-            ## Populate tests dictionary
+            # Populate tests dictionary
             if self.tests is None:
                 self.tests = {}
             self.tests[group] = []
@@ -179,8 +179,9 @@ class Vasp(Scraper):
 
             assert all(k not in self.data for k in self.data["Data"][0].keys()), \
                 "Duplicate keys in dataset and data"
-
-            self.data.update(self.data.pop('Data')[0])  # Move self.data up one level
+            
+            # Move self.data up one level
+            self.data.update(self.data.pop('Data')[0])  
 
             for key in self.data:
                 if "Style" in key:
@@ -196,9 +197,19 @@ class Vasp(Scraper):
             natoms = np.shape(self.data["Positions"])[0]
             pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
             self.data["QMLattice"] = (self.data["Lattice"] * self.conversions["Lattice"]).T
-            del self.data["Lattice"]  # We will populate this with the lammps-normalized lattice.
+
+            # Populate with LAMMPS-normalized lattice
+            del self.data["Lattice"]  
+
+            # TODO Check whether "Label" container useful to keep around
             if "Label" in self.data:
-                del self.data["Label"]  # This comment line is not that useful to keep around.
+                del self.data["Label"] 
+
+            # TODO test this with VASP files (taken from JSON scraper)
+            # Insert electronegativities, which are per-atom scalars
+            # if (self.config.sections["CALCULATOR"].per_atom_scalar):
+            #    if not isinstance(self.data["Chis"], float):
+            #        self.data["Chis"] = self.data["Chis"]
 
             if not isinstance(self.data["Energy"], float):
                 self.data["Energy"] = float(self.data["Energy"])
@@ -224,14 +235,14 @@ class Vasp(Scraper):
     def generate_config_dict(self, group, outcar_config):
         """If no JSON has been created, create dictionary for each configuration contained in a single OUTCAR"""
         """Otherwise, read existing JSON (unless input file variable 'vasp_overwrite_jsons' is toggled to True)"""
-        ## TODO future: create CSV of converted files and check that (instead of loading full OUTCAR again)
+        # TODO future: create CSV of converted files and check that (instead of loading full OUTCAR again)
         config_dict = {}
         is_bad_config = False
         has_json = None
         outcar_filename, config_num, start_idx, potcar_list, potcar_elements, ions_per_type, converged, lines = outcar_config
         file_num = config_num + 1
 
-        ## JSON read/write setup
+        # JSON read/write setup
         json_path = f'{self.jsonpath}/{group}'
         json_filestem = outcar_filename.replace('/','_').replace('_OUTCAR','') #.replace(f'_{group}','')
         if converged:
@@ -242,7 +253,7 @@ class Vasp(Scraper):
             else:
                 json_filename = f"{json_path}/{json_filestem}_{file_num}.json"
 
-        ## Check if JSON was already created from this OUTCAR
+        # Check if JSON was already created from this OUTCAR
         if not os.path.exists(json_path):
             os.makedirs(json_path)
             has_json = False
@@ -301,10 +312,10 @@ class Vasp(Scraper):
                 return -1
 
     def parse_outcar_config(self,lines,potcar_list,potcar_elements,ions_per_type):
-        ## Many thanks to Mary Alice Cusentino and Logan Williams for parts of the following code
-        ## Based on the VASP2JSON.py script in the 'tools' directory
-        ## LIST SECTION_MARKERS AND RELATED FUNCTIONS ARE HARD-CODED!!
-        ## DO NOT CHANGE UNLESS YOU KNOW WHAT YOU'RE DOING!!
+        # Many thanks to Mary Alice Cusentino and Logan Williams for parts of the following code
+        # Based on the VASP2JSON.py script in the 'tools' directory
+        # LIST SECTION_MARKERS AND RELATED FUNCTIONS ARE HARD-CODED!!
+        # DO NOT CHANGE UNLESS YOU KNOW WHAT YOU'RE DOING!!
         section_markers = [
             'FORCE on cell',
             'direct lattice vectors',
@@ -319,12 +330,12 @@ class Vasp(Scraper):
             'energie',
         ]
 
-        idx_stress_vects = 0 # 4
-        idx_lattice_vects = 1 # 5
-        idx_force_vects = 2 # 6
-        idx_energie = 3 # 7
+        idx_stress_vects = 0
+        idx_lattice_vects = 1 
+        idx_force_vects = 2 
+        idx_energie = 3
 
-        ## Index lines of file containing JSON data
+        # Index lines of file containing JSON data
         section_idxs = [None,None,None,None]
         atom_coords, atom_forces, stress_component, all_lattice, total_energie  = None, None, None, None, None
 
@@ -335,14 +346,14 @@ class Vasp(Scraper):
             list_atom_types.extend(elem_list)
         natoms = sum(ions_per_type)
 
-        ## Search entire config/ionic step to create indices for each section
+        # Search entire config/ionic step to create indices for each section
         for i, line in enumerate(lines):
             line_test = [True if sm in line else False for sm in section_markers]
             if any(line_test):
                 test_idx = [n for n, b in enumerate(line_test) if b][0]
                 section_idxs[test_idx] = i
         
-        ## If this config has any sections missing, it is incomplete, return crash
+        # If this config has any sections missing, it is incomplete, return crash
         missing_sections = [True if i == None else False for i in section_idxs]
         if any(missing_sections):
             crash_type = '4 sections'
@@ -351,25 +362,25 @@ class Vasp(Scraper):
             del lines
             return (crash_type, missing_sections_str)
 
-        ## Create data dict for this config, with global information already included
+        # Create data dict for this config, with global information already included
         data = {}
-        data['AtomTypes'] = list_atom_types  ## orig in poscar, done
-        data['NumAtoms'] = natoms  ## orig in poscar, done
+        data['AtomTypes'] = list_atom_types  # orig in poscar, done
+        data['NumAtoms'] = natoms  # orig in poscar, done
 
-        ## Lattice vectors in real space
-        ## Note: index to initial lattice vector output (POSCAR) in OUTCAR has already been removed.
-        ## Actual vector starts one line after that, and has 3 lines
+        # Lattice vectors in real space
+        # Note: index to initial lattice vector output (POSCAR) in OUTCAR has already been removed.
+        # Actual vector starts one line after that, and has 3 lines
         lidx_last_lattice0 = section_idxs[idx_lattice_vects] + 1
         lidx_last_lattice1 = lidx_last_lattice0 + 3
         lines_last_lattice = lines[lidx_last_lattice0:lidx_last_lattice1]
         all_lattice = self.get_direct_lattice(lines_last_lattice)
 
-        ## Stresses
+        # Stresses
         lidx_stresses = section_idxs[idx_stress_vects] + 14
         line_stresses = lines[lidx_stresses]
         stress_component = self.get_stresses(line_stresses)
 
-        ## Atom coordinates and forces
+        # Atom coordinates and forces
         lidx_forces0 = section_idxs[idx_force_vects] + 2
         lidx_forces1 = lidx_forces0 + natoms
         lines_forces = lines[lidx_forces0:lidx_forces1]
@@ -380,26 +391,26 @@ class Vasp(Scraper):
             del lines
             return (crash_type, crash_atom_coord_line)
 
-        ## Energie WITH entropy (TOTEN)
+        # Energie WITH entropy (TOTEN)
         lidx_TOTEN = section_idxs[idx_energie] + 2
         line_TOTEN = lines[lidx_TOTEN]
         total_energie_with_entropy = self.get_energie_with_entropy(line_TOTEN)
 
-        ## Energie without entropy
+        # Energie without entropy
         lidx_energie = section_idxs[idx_energie] + 4
         line_energie = lines[lidx_energie]
         total_energie_without_entropy = self.get_energie_without_entropy(line_energie)
 
-        ## Check if we should use the default without entropy, or use TOTEN 
-        ## (when vasp_use_TOTEN = True in [GROUPS])
+        # Check if we should use the default without entropy, or use TOTEN 
+        # (when vasp_use_TOTEN = True in [GROUPS])
         if self.use_TOTEN:
             total_energie = total_energie_with_entropy
         else:
             total_energie = total_energie_without_entropy
 
-        ## Special toggled shift in energie if converting training data
+        # Special toggled shift in energie if converting training data
         if self.trainshift:
-            ## Shift energies
+            # Shift energies
             shifted_energies = [self.trainshift[element] for element in potcar_elements]
             energy_shifts = [ions_per_type[i]*shifted_energies[i] for i in range(len(potcar_elements))]
             total_energie += sum(energy_shifts)
@@ -415,19 +426,19 @@ class Vasp(Scraper):
         data["computation_code"] = "VASP"
         data["pseudopotential_information"] = potcar_list
 
-        ## Clean up (othewrise we get memory errors)
+        # Clean up (othewrise we get memory errors)
         del lines
 
         return data
 
     def parse_outcar_header(self, header):
-        ## These searches replace the POSCAR and POTCAR, and can also check IBRION for AIMD runs (commented out now)
+        # These searches replace the POSCAR and POTCAR, and can also check IBRION for AIMD runs (commented out now)
         lines_potcar, lines_vrhfin, lines_ions_per_type = [], [],[]
         potcar_list, potcar_elements, ions_per_type = [], [], []
         ibrion, nsw = None, None 
         is_duplicated = False
-        ## scf: self-consistent framework - ions don't move, electrons 'moved' until convergence criterion reached
-        ## if IBRION = -1 and NSW > 0, VASP sometimes prints duplicate structures, check for this
+        # scf: self-consistent framework - ions don't move, electrons 'moved' until convergence criterion reached
+        # if IBRION = -1 and NSW > 0, VASP sometimes prints duplicate structures, check for this
 
         for line in header:
             if "VRHFIN" in line:
@@ -437,9 +448,11 @@ class Vasp(Scraper):
             elif "POTCAR" in line:
                 lines_potcar.append(line)
                 # Look for the ordering of the atom types - grabbing POTCAR filenames first, then atom labels separately because VASP has terribly inconsistent formatting
-                if line.split()[1:] not in potcar_list:  # VASP will have these lines in the OUTCAR twice, and we don't need to append them the second time
-                    potcar_list.append(line.split()[1:])  # each line will look something like ['PAW_PBE', 'Zr_sv_GW', '05Dec2013']
-            ## TODO add check that warns user if POSCAR elements and POTCAR order are not the same (if possible)
+                # OUTCARs have the following lines printed twice, and we don't need to append them the second time
+                if line.split()[1:] not in potcar_list:  
+                    potcar_list.append(line.split()[1:])  
+
+            # TODO add check that warns user if POSCAR elements and POTCAR order are not the same (if possible)
             elif 'IBRION' in line:
                 ibrion = self.get_ibrion(line)
             elif 'NSW' in line:
@@ -464,9 +477,9 @@ class Vasp(Scraper):
         return potcar_list, potcar_elements, ions_per_type, is_duplicated
 
     def get_vrhfin(self, lines):
-        ## Scrapes vrhfin lines to get elements
-        ## These lines appear only once per element in OUTCARs
-        ## Format: VRHFIN =W: 5p6s5d
+        # Scrapes vrhfin lines to get elements
+        # These lines appear only once per element in OUTCARs
+        # Format: VRHFIN =W: 5p6s5d
         elem_list = []
         for line in lines:
             str0 = line.strip().replace("VRHFIN =", "")
@@ -482,16 +495,16 @@ class Vasp(Scraper):
         return ions_per_type
 
     def get_ibrion(self, line):
-        ## There should be only one of these lines (from INCAR print)
-        ## IBRION value should always be first number < 10 to appear after "="
+        # There should be only one of these lines (from INCAR print)
+        # IBRION value should always be first number < 10 to appear after "="
         line1 = line.split()
         idx_equals = line1.index("=")
         probably_ibrion = line1[idx_equals+1]
         return int(probably_ibrion)
     
     def get_nsw(self, line):
-        ## There should be only one of these lines (from INCAR print)
-        ## Format:   >NSW    =    100    number of steps for IOM
+        # There should be only one of these lines (from INCAR print)
+        # Format:   >NSW    =    100    number of steps for IOM
         line1 = line.split()
         idx_equals = line1.index("=")
         probably_nsw = line1[idx_equals+1]
@@ -504,8 +517,8 @@ class Vasp(Scraper):
         return lattice_coords
 
     def get_stresses(self, line):
-        ## TODO check that we can assume symmetric stress tensors
-        ## TODO where do we set the cell type (Bravais)
+        # TODO check that we can assume symmetric stress tensors
+        # TODO where do we set the cell type (Bravais)
         columns = line.split()
         stress_xx, stress_yy, stress_zz = [float(c) for c in columns[2:5]]
         stress_xy, stress_yz, stress_zx = [float(c) for c in columns[5:8]]
@@ -520,7 +533,8 @@ class Vasp(Scraper):
             [float(v) for v in lines[-1].split()[:6]]
         except:
             print('OUTCAR config did not run to completion! Discarding configuration')
-            return lines[-1],-1 ## returning faulty string for error message
+            # Return faulty string for error message
+            return lines[-1],-1 
 
         for line in lines:
             x, y, z, fx, fy, fz = [float(v) for v in line.split()[:6]]
@@ -542,34 +556,35 @@ class Vasp(Scraper):
     def write_json(self, json_filename, outcar_filename, config_dict):
         dt = datetime.now().strftime('%B %d %Y %I:%M%p')
 
-        ## TODO future versions, include generation metadata in JSON file
+        # TODO future versions, include generation metadata in JSON file
         comment_line = f'# Generated on {dt} from: {os.getcwd()}/{outcar_filename}'
 
-        ## Write JSON object
-        # with open(json_filename, "a+") as f: ## with comment line
-        with open(json_filename, "w") as f:
+        # Write JSON object
+        # Note: older versions of FitSNAP wrote JSONs with a leading comment line
+        # If you need that, use append mode ('a+') instead of write mode below
+        with open(json_filename, 'w') as f:
             json.dump(config_dict, f, indent=2, sort_keys=True)
         return
 
 
-## ------------------------ Ideas/plans for future versions ------------------------ ##
+# ------------------------ Ideas/plans for future versions ------------------------ #
     def scrape_incar(self):
-        ## Might be able to add this info to FitSNAP JSONs easily, will need to check compatibility
+        # Might be able to add this info to FitSNAP JSONs easily, will need to check compatibility
         pass
 
 
     def only_read_JSONs_if_OUTCAR_already_converted(self):
-        ## Many OUTCARs (esp. for AIMD) are HUGE and take a long time to parse. Design a user-friendly and elegant way to confirm that OUTCAR has already been parsed and only read available JSON data (see above)
+        # Many OUTCARs (esp. for AIMD) are HUGE and take a long time to parse. Design a user-friendly and elegant way to confirm that OUTCAR has already been parsed and only read available JSON data (see above)
         pass
 
     def check_OUTCAR_filesizes(self):
-        ## Many OUTCARs (esp. for AIMD) are HUGE and take a long time to parse. In these cases, strongly recommend to user to toggle vasp2json on, and then use JSONs only, or have an elegant way to only read available JSON data (see above)
+        # Many OUTCARs (esp. for AIMD) are HUGE and take a long time to parse. In these cases, strongly recommend to user to toggle vasp2json on, and then use JSONs only, or have an elegant way to only read available JSON data (see above)
         pass
 
     def generate_lammps_test(self):
-        ## Maybe create option where we can take scraped OUTCARs and make LAMMPS-compatible *dat files right away
+        # Maybe create option where we can take scraped OUTCARs and make LAMMPS-compatible *dat files right away
         pass
 
     def vasp_namer(self):
-        ## Tryiing to think of a clever naming scheme so that users can trace back where they got the file
+        # Trying to think of a clever naming scheme so that users can trace back where they got the file
         return

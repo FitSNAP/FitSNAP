@@ -69,7 +69,8 @@ class Scraper:
         self.group_table = self.config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
-        user_set_random_seed = self.config.sections["GROUPS"].random_seed ## default is 0
+        # Default seed is 0
+        user_set_random_seed = self.config.sections["GROUPS"].random_seed 
 
         if self.config.sections["GROUPS"].random_sampling:
             output.screen(f"Random sampling of groups toggled on.")
@@ -77,9 +78,9 @@ class Scraper:
                 sampling_seed = self.pt.get_seed()
                 seed_txt = f"FitSNAP-generated seed for random sampling: {self.pt.get_seed()}"
             else:
-                ## groups.py casts random_seed to float, just in case user
-                ## uses continuous variable. if user input was originally
-                ## an integer, this casts it to int (less confusing for user)
+                # The file groups.py casts random_seed to float, just in case user
+                # uses continuous variable. if user input was originally
+                # an integer, this casts it to int (less confusing for user)
                 if user_set_random_seed.is_integer():
                     sampling_seed = int(user_set_random_seed)
                 seed_txt = f"User-set seed for random sampling: {sampling_seed}"

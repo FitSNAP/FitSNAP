@@ -4,6 +4,18 @@ class Configuration():
     """
     Class to store training data for each config, allows us to easily collate and process configs in 
     the dataloader.
+
+    Attributes:
+        natoms (int): Number of atoms for this config.
+        filename (string): Name of file that config was loaded from.
+        group (string): Name of group that this config belongs to.
+        energy (double): Energy of config.
+        testing_bool (bool): True if config is used for testing, not training.
+        weights (numpy.array): Array of energy and force weight for this config.
+        descriptors (numpy.array): Descriptors for this config, shape (natoms, ndescriptors).
+        types (numpy.array): Array of atom type indices.
+        forces (numpy.array): Forces for this config with shape (3*natoms). Ordered like f1x, f1y, 
+                              f1z, f2x, f2y, f2z, ...
     """
     def __init__(self, natoms):
         self.natoms = natoms

@@ -26,3 +26,12 @@ which will calculate errors and plot comparisons with the detailed fitting data.
 ### Running MD with NN potential.
 
 Refer to folder "MD" for instructions to run MD simulations with the potential.
+
+### Evaluating energies/forces in Python.
+
+Sometimes you want to calculate energies/forces on another set using an already fitted model. In this 
+case it is wasteful to re-calculate the descriptors. We can therefore load a pickled list of 
+Configuration objects which are used by FitSNAP for NN fitting. First generate the pickled list 
+of Configuration objects `configs.pickle` by performing a fit, then use the script 
+`evaluate_configs.py` which will load this pickled list and calculate energies/forces for all 
+configs.

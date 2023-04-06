@@ -12,30 +12,43 @@ authors:
   - name: C. Sievers
     affiliation: "1, 2" # (Multiple affiliations must be quoted)
   - name: N. Lubbers
+    orcid: 0000-0002-9001-9973
     affiliation: 3
   - name: M.A. Cusentino
+    orcid: 0000-0001-9505-6442
     affiliation: 4
   - name: J. Goff
+    orcid: 0000-0001-7026-7200
     affiliation: 1
   - name: J. Janssen
+    orcid: 0000-0001-9948-7119
     affiliation: 3
   - name: M. McCarthy
+    orcid: 0000-0003-4388-4953
     affiliation: 1
   - name: D. Montes de Oca Zapiain
+    orcid: 0000-0001-7890-0859
     affiliation: 5
   - name: S. Nikolov
+    orcid: 0000-0002-2907-6629
     affiliation: 1
   - name: K. Sargsyan
+    orcid: 0000-0002-1037-786X
     affiliation: 6
   - name: D. Sema
+    orcid: 0000-0002-0160-1743
     affiliation: 7
   - name: E. Sikorski
+    orcid: 0000-0003-3292-6564
     affiliation: 1
   - name: L. Williams
+    orcid: 0000-0002-9062-8293
     affiliation: 6
   - name: A.P. Thompson
+    orcid: 0000-0002-0324-9114
     affiliation: 1
   - name: M.A. Wood
+    orcid: 0000-0001-5878-4096
     corresponding: true # (This is how to denote the corresponding author)
     affiliation: 1
 

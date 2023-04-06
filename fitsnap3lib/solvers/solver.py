@@ -196,51 +196,52 @@ class Solver:
                         rmse_e['*ALL']["train"] += se
                         count_train['*ALL']["nconfigs"] += 1
 
-                    f_pred = forces_model.detach().numpy()
-                    # Custom calculator returns Nx3 force array but we need 3*N here.
-                    if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
-                        f_pred = f_pred.flatten()
-
                     if (self.config.sections["EXTRAS"].dump_perconfig):
                         line = f"{c.filename} {c.group} {c.natoms} {c.energy} {e_pred} {c.testing_bool}\n"
                         fhc.write(line)
-                    for i in range(c.natoms):
-                        fx_truth = c.forces[3*i+0]
-                        fy_truth = c.forces[3*i+1]
-                        fz_truth = c.forces[3*i+2]
-                        fx_pred = f_pred[3*i+0]
-                        fy_pred = f_pred[3*i+1]
-                        fz_pred = f_pred[3*i+2]
 
-                        ae = abs(fx_truth - fx_pred) + \
-                             abs(fy_truth - fy_pred) + \
-                             abs(fz_truth - fz_pred)
-                        se = ((fx_truth - fx_pred)**2 + \
-                              (fy_truth - fy_pred)**2 + \
-                              (fz_truth - fz_pred)**2)
+                    if (forces_model is not None):
+                        f_pred = forces_model.detach().numpy()
+                        # Custom calculator returns Nx3 force array but we need 3*N here.
+                        if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
+                            f_pred = f_pred.flatten()
+                        for i in range(c.natoms):
+                            fx_truth = c.forces[3*i+0]
+                            fy_truth = c.forces[3*i+1]
+                            fz_truth = c.forces[3*i+2]
+                            fx_pred = f_pred[3*i+0]
+                            fy_pred = f_pred[3*i+1]
+                            fz_pred = f_pred[3*i+2]
 
-                        if (c.testing_bool):
-                            mae_f[c.group]["test"] += ae
-                            rmse_f[c.group]["test"] += se
-                            count_test[c.group]["natoms"] += 1
-                            mae_f['*ALL']["test"] += ae
-                            rmse_f['*ALL']["test"] += se
-                            count_test['*ALL']["natoms"] += 1
-                        else:
-                            mae_f[c.group]["train"] += ae
-                            rmse_f[c.group]["train"] += se
-                            count_train[c.group]["natoms"] += 1
-                            mae_f['*ALL']["train"] += ae
-                            rmse_f['*ALL']["train"] += se
-                            count_train['*ALL']["natoms"] += 1
-                        
-                        if (self.config.sections["EXTRAS"].dump_peratom):
-                            line = f"{c.filename} {c.group} {i+1} {int(c.types[i]+1)} "
-                            line += f"{fx_truth} {fy_truth} {fz_truth} "
-                            line += f"{fx_pred} {fy_pred} {fz_pred} "
-                            line += f"{c.testing_bool}"
-                            fha.write(line + "\n")
-                        atom_indx += 1
+                            ae = abs(fx_truth - fx_pred) + \
+                                abs(fy_truth - fy_pred) + \
+                                abs(fz_truth - fz_pred)
+                            se = ((fx_truth - fx_pred)**2 + \
+                                  (fy_truth - fy_pred)**2 + \
+                                  (fz_truth - fz_pred)**2)
+
+                            if (c.testing_bool):
+                                mae_f[c.group]["test"] += ae
+                                rmse_f[c.group]["test"] += se
+                                count_test[c.group]["natoms"] += 1
+                                mae_f['*ALL']["test"] += ae
+                                rmse_f['*ALL']["test"] += se
+                                count_test['*ALL']["natoms"] += 1
+                            else:
+                                mae_f[c.group]["train"] += ae
+                                rmse_f[c.group]["train"] += se
+                                count_train[c.group]["natoms"] += 1
+                                mae_f['*ALL']["train"] += ae
+                                rmse_f['*ALL']["train"] += se
+                                count_train['*ALL']["natoms"] += 1
+                            
+                            if (self.config.sections["EXTRAS"].dump_peratom):
+                                line = f"{c.filename} {c.group} {i+1} {int(c.types[i]+1)} "
+                                line += f"{fx_truth} {fy_truth} {fz_truth} "
+                                line += f"{fx_pred} {fy_pred} {fz_pred} "
+                                line += f"{c.testing_bool}"
+                                fha.write(line + "\n")
+                            atom_indx += 1
                     m += 1
                 if (self.config.sections["EXTRAS"].dump_perconfig):
                     fhc.close()
@@ -285,16 +286,29 @@ class Solver:
 
                 self.errors = (mae_f, mae_e, rmse_f, rmse_e, count_train, count_test)
 
+                # Write pickled list of configs.
+
+                if self.config.sections["EXTRAS"].dump_configs:
+                    configs_file = self.config.sections['EXTRAS'].configs_file
+                    with open(configs_file, 'wb') as f:
+                        pickle.dump(self.configs, f)
+
                 return
             
-            # Return if nonlinear and not doing a fit.
+            # If nonlinear and not doing a fit, just create configs.
 
             elif not self.linear and self.configs is None:
                 
+                # Create list of Configuration objects.
+                
+                self.create_datasets()
+                
                 # Save a pickled list of Configuration objects.
 
-                with open('configs.pkl', 'wb') as f:
-                    pickle.dump(self.configs, f)
+                if self.config.sections["EXTRAS"].dump_configs:
+                    configs_file = self.config.sections['EXTRAS'].configs_file
+                    with open(configs_file, 'wb') as f:
+                        pickle.dump(self.configs, f)
 
                 return
 

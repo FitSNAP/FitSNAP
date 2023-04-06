@@ -178,9 +178,10 @@ Fitting progress may be tracked in the :code:`loss_vs_epochs.dat` file, which tr
 More detailed fitting metrics are obtained if the following flags are declared true in the
 :code:`[EXTRAS]` section::
 
-      [EXTRAS]
-      dump_peratom = 1
-      dump_perconfig = 1 
+    [EXTRAS]
+    dump_peratom = 1   # write per-atom fitting metrics
+    dump_perconfig = 1 # write per-config fitting metrics
+    dump_configs = 1   # write a pickled list of Configuration objects
 
 The following comparison files are written after a fit:
 
@@ -195,6 +196,11 @@ The first line of this file describes what the columns are::
 The first line of this file describes what the columns are::
 
     Filename Group Natoms Energy_Truth Energy_Pred Testing_Bool
+
+- :code:`configs.pickle` : Structural, descriptor, and fitting info for each configuration.
+
+This is a pickled list of `Configuration <https://github.com/FitSNAP/FitSNAP/tree/master/fitsnap3lib/tools/configuration.py>`_ objects.
+Each item in the list contains all associated information of a configuration.
 
 PyTorch model files
 ^^^^^^^^^^^^^^^^^^^

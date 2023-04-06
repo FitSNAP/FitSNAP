@@ -12,7 +12,7 @@ A Python package for machine learning potentials with [LAMMPS](https://github.co
 **Colab Python notebook tutorial:** [https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb](https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb)
 
 #### How to cite 
-We are currently working on an overview of the code in its current state, stay tuned!
+Rohskopf et al., (2023). FitSNAP: Atomistic machine learning with LAMMPS. Journal of Open Source Software, 8(84), 5118, https://doi.org/10.21105/joss.05118
 
 #### Dependencies:
 

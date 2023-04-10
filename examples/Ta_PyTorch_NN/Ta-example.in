@@ -11,14 +11,14 @@ wselfallflag = 0
 chemflag = 0
 bzeroflag = 1
 quadraticflag = 0
-bikflag = 1
+bikflag = True
 dgradflag = 1
 
 [CALCULATOR]
 calculator = LAMMPSSNAP
 energy = 1
 per_atom_energy = 1
-force = 1 #1
+force = 1
 stress = 0
 nonlinear = 1
 
@@ -28,7 +28,7 @@ Ta = 0.0
 [PYTORCH]
 layer_sizes = num_desc 64 64 1
 learning_rate = 5e-5 
-num_epochs = 150
+num_epochs = 100
 batch_size = 4 # 363 configs in entire set
 save_state_output = Ta_Pytorch.pt
 energy_weight = 1e-2
@@ -77,8 +77,9 @@ Volume_BCC    =  0.7    0.3      1.00E+00        1.00E-09        1.00E-09
 Volume_FCC    =  0.7    0.3      1.00E+00        1.00E-09        1.00E-09
 
 [EXTRAS]
-dump_peratom = 1
-dump_perconfig = 1
+dump_peratom = 1   # write per-atom fitting metrics
+dump_perconfig = 1 # write per-config fitting metrics
+dump_configs = 1   # write a pickled list of Configuration objects
 
 [MEMORY]
 override = 0

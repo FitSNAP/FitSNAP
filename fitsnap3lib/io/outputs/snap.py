@@ -141,6 +141,7 @@ def _to_param_string():
     out += f"chemflag {chemflag_int}\n"
     out += f"bnormflag {config.sections['BISPECTRUM'].bnormflag}\n"
     out += f"switchinnerflag {config.sections['BISPECTRUM'].switchinnerflag}\n"
+    out += f"quadraticflag {config.sections['BISPECTRUM'].quadraticflag}\n"
     if config.sections["BISPECTRUM"].switchinnerflag:
         out += f"sinner {config.sections['BISPECTRUM'].sinner}\n"
         out += f"dinner {config.sections['BISPECTRUM'].dinner}\n"

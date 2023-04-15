@@ -26,7 +26,10 @@ class Groups(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 'random_seed', 'vasp_use_TOTEN','vasp_json_pathname','vasp_ignore_incomplete','vasp_ignore_jsons','vasp_unconverged_label','BOLTZ']
+        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 
+                            'random_seed', 'vasp_use_TOTEN', 'vasp_json_pathname',
+                            'vasp_ignore_incomplete','vasp_ignore_jsons','vasp_unconverged_label',
+                            'BOLTZ']
 
         # for value_name in config['GROUPS']:
         #     if value_name in allowedkeys: continue

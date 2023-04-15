@@ -2,6 +2,7 @@ import torch.utils.data
 from sys import float_info
 import numpy as np
 from torch.utils.data import DataLoader
+#from torch.utils.data import WeightedRandomSampler
 
 class InRAMDataset(torch.utils.data.Dataset):
     """
@@ -42,11 +43,13 @@ class InRAMDatasetPyTorch(InRAMDataset):
     def __getitem__(self, idx):
         """
         Convert configuration quantities to tensors and return them, for a single configuration in a 
-        batch. 
+        batch. We have a "map-style dataset" since we implement this method.
 
         TODO: We could eliminate this costly conversion by storing all of these as tensors instead 
         of numpy arrays from the beginning, when processing configs in the Calculator class.
         """
+
+        print(idx)
 
         config_descriptors = torch.tensor(self.configs[idx].descriptors).float()
         atom_types = torch.tensor(self.configs[idx].types).long()

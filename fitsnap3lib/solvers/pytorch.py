@@ -1,4 +1,3 @@
-
 import sys
 from fitsnap3lib.solvers.solver import Solver
 from fitsnap3lib.parallel_tools import ParallelTools
@@ -139,6 +138,7 @@ try:
             indx_natoms_low = 0
             indx_forces_low = 0
             indx_dgrad_low = 0
+            sample_weights = []
             for i, config in enumerate(self.configs):
                 
                 indx_natoms_high = indx_natoms_low + config.natoms
@@ -155,6 +155,7 @@ try:
                 if (self.pt.fitsnap_dict['energy']):
                     config.energy = self.pt.shared_arrays['b'].array[i]
                     config.weights = self.pt.shared_arrays['w'].array[i]
+                    sample_weights.append(self.pt.shared_arrays['w'].array[i,2])
 
                 if (self.pt.fitsnap_dict['per_atom_scalar']):
                     config.pas = self.pt.shared_arrays['pas'].array[indx_natoms_low:indx_natoms_high]
@@ -175,7 +176,7 @@ try:
             self.total_data = InRAMDatasetPyTorch(self.configs)
 
             # randomly shuffle and split into training/validation data if using global fractions
-
+            
             if (self.global_fraction_bool):
 
                 if (self.training_fraction == 0.0):
@@ -199,13 +200,42 @@ try:
                 self.training_data = torch.utils.data.Subset(self.total_data, training_indices)
                 self.validation_data = torch.utils.data.Subset(self.total_data, testing_indices)
 
-            # make training and validation data loaders for batch training
 
+            # Choose a sampler if desired.
+
+            num_samples = len(self.training_data)
+            replacement = True
+            sample_weights = num_samples*[0.1] # TODO: this is user-supplied with weights per group
+            weight_important = 0.25 # 1/batch_size
+            weight_other = (1.0 - weight_important)/num_samples
+            sample_weights = 100*[weight_other]
+            sample_weights[0] = weight_important
+
+            print(self.training_data[0])
+
+            sampler = torch.utils.data.WeightedRandomSampler(weights=sample_weights,
+                                                             num_samples=num_samples,
+                                                             replacement=True)
+
+            # Make training and validation data loaders for batch training, depending on settings.
+            # Note that sampler option is mutually exclusive with shuffle.
+
+            # if we're doing importance sampling (no shuffle here):
+            self.training_loader = DataLoader(self.training_data,
+                                              batch_size=self.config.sections["PYTORCH"].batch_size,
+                                              #shuffle=self.config.sections['PYTORCH'].shuffle_flag,
+                                              sampler=sampler,
+                                              collate_fn=torch_collate,
+                                              num_workers=0)
+            # if we're doing a random shuffle:
+            """
             self.training_loader = DataLoader(self.training_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
                                               shuffle=self.config.sections['PYTORCH'].shuffle_flag,
+                                              #sampler=sampler,
                                               collate_fn=torch_collate,
                                               num_workers=0)
+            """
 
             self.validation_loader = DataLoader(self.validation_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,

@@ -49,7 +49,8 @@ class InRAMDatasetPyTorch(InRAMDataset):
         of numpy arrays from the beginning, when processing configs in the Calculator class.
         """
 
-        print(idx)
+        # Check that the oversampled index is what we think (e.g. doing this for a single liquid in Ta)
+        #print(f"{idx} {self.configs[idx].filename}")
 
         config_descriptors = torch.tensor(self.configs[idx].descriptors).float()
         atom_types = torch.tensor(self.configs[idx].types).long()

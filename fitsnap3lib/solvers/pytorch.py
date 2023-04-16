@@ -155,7 +155,6 @@ try:
                 if (self.pt.fitsnap_dict['energy']):
                     config.energy = self.pt.shared_arrays['b'].array[i]
                     config.weights = self.pt.shared_arrays['w'].array[i]
-                    sample_weights.append(self.pt.shared_arrays['w'].array[i,2])
 
                 if (self.pt.fitsnap_dict['per_atom_scalar']):
                     config.pas = self.pt.shared_arrays['pas'].array[indx_natoms_low:indx_natoms_high]
@@ -165,6 +164,11 @@ try:
                 config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
                 config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
                 config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
+
+                # Make list of sampling weights for training data only.
+
+                if not config.testing_bool:
+                    sample_weights.append(self.pt.shared_arrays['w'].array[i,2])
 
                 indx_natoms_low += config.natoms
                 indx_forces_low += 3*config.natoms
@@ -201,8 +205,11 @@ try:
                 self.validation_data = torch.utils.data.Subset(self.total_data, testing_indices)
 
 
-            # Choose a sampler if desired.
+            #print(len(sample_weights))
+            #assert(False)
 
+            # Choose a sampler if desired.
+            """
             num_samples = len(self.training_data)
             replacement = True
             sample_weights = num_samples*[0.1] # TODO: this is user-supplied with weights per group
@@ -212,6 +219,8 @@ try:
             sample_weights[0] = weight_important
 
             print(self.training_data[0])
+            """
+            num_samples = len(sample_weights)
 
             sampler = torch.utils.data.WeightedRandomSampler(weights=sample_weights,
                                                              num_samples=num_samples,

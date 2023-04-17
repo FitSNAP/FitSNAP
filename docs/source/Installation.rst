@@ -217,7 +217,7 @@ After installing Anaconda:
 
 #. Create a new Conda environment::
 
-        conda create -n fitsnap python=3.9
+        conda create -n fitsnap python=3.10
         conda activate fitsnap
 
 #. Install dependencies::

@@ -1,0 +1,24 @@
+# required
+rcutfac 4.67637
+twojmax 6
+
+#elements
+nelems 1
+elems Ta
+radelems 0.5
+welems 1.0
+
+
+# optional
+rfac0 0.99363
+rmin0 0.0
+switchinnerflag 0
+bzeroflag 1
+
+# FitSNAP generated Hash: 4ac5657ce6fcffbf5a73567917f17486
+# FitSNAP REFERENCE section settings:
+# units metal
+# atom_style atomic
+# pair_style hybrid/overlay zero 10.0 zbl 4.0 4.8
+# pair_coeff * * zero
+# pair_coeff * * zbl 73 73

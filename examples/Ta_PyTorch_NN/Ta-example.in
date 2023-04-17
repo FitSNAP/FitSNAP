@@ -28,7 +28,7 @@ Ta = 0.0
 [PYTORCH]
 layer_sizes = num_desc 64 64 1
 learning_rate = 5e-5 
-num_epochs = 100
+num_epochs = 2
 batch_size = 4 # 363 configs in entire set
 save_state_output = Ta_Pytorch.pt
 energy_weight = 1e-2
@@ -59,22 +59,22 @@ pair_coeff2 = * * zbl 73 73
 
 [GROUPS]
 # name size eweight fweight vweight
-group_sections = name training_size testing_size eweight fweight vweight
-group_types = str float float float float float
+group_sections = name training_size testing_size eweight fweight vweight sweight
+group_types = str float float float float float float
 smartweights = 0
 random_sampling = 1
-Displaced_A15 =  0.7    0.3       100             1               1.00E-08
-Displaced_BCC =  0.7    0.3       100             1               1.00E-08
-Displaced_FCC =  0.7    0.3       100             1               1.00E-08
-Elastic_BCC   =  0.7    0.3     1.00E-08        1.00E-08        0.0001
-Elastic_FCC   =  0.7    0.3     1.00E-09        1.00E-09        1.00E-09
-GSF_110       =  0.7    0.3      100             1               1.00E-08
-GSF_112       =  0.7    0.3      100             1               1.00E-08
-Liquid        =  0.7    0.3       4.67E+02        1               1.00E-08
-Surface       =  0.7    0.3       100             1               1.00E-08
-Volume_A15    =  0.7    0.3      1.00E+00        1.00E-09        1.00E-09
-Volume_BCC    =  0.7    0.3      1.00E+00        1.00E-09        1.00E-09
-Volume_FCC    =  0.7    0.3      1.00E+00        1.00E-09        1.00E-09
+Displaced_A15 =  0.7    0.3       100             1             1.00E-08 0.003
+Displaced_BCC =  0.7    0.3       100             1             1.00E-08 0.003
+Displaced_FCC =  0.7    0.3       100             1             1.00E-08 0.003
+Elastic_BCC   =  0.7    0.3     1.00E-08        1.00E-08        1.00E-04 0.003
+Elastic_FCC   =  0.7    0.3     1.00E-09        1.00E-09        1.00E-09 0.003
+GSF_110       =  0.7    0.3      100             1              1.00E-08 0.003
+GSF_112       =  0.7    0.3      100             1              1.00E-08 0.003
+Liquid        =  0.7    0.3       4.67E+02        1             1.00E-08 0.25
+Surface       =  0.7    0.3       100             1             1.00E-08 0.003
+Volume_A15    =  0.7    0.3      1.00E+00        1.00E-09       1.00E-09 0.003
+Volume_BCC    =  0.7    0.3      1.00E+00        1.00E-09       1.00E-09 0.003
+Volume_FCC    =  0.7    0.3      1.00E+00        1.00E-09       1.00E-09 0.003
 
 [EXTRAS]
 dump_peratom = 1   # write per-atom fitting metrics

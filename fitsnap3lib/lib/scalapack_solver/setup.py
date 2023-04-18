@@ -65,13 +65,16 @@ if mpiversion == 'openmpi':
     mpicompileargs = runcommand('mpicc -showme:compile').split()
 
 if scalapackversion == 'intelmkl':
-    # Set library includes (taking into account which MPI library we are using)."
-    scl_lib = ['mkl_scalapack_ilp64', 'mkl_intel_ilp64', 'mkl_intel_thread', 'mkl_core',
-               'mkl_blacs_'+mpiversion+'_ilp64', 'iomp5', 'pthread', 'mkl_avx512', 'mkl_def']
+    # Set library includes taking into account which MPI library we are using.
+    # Includes for specific machines are suggested by the Intel MKL link advisor online tool.
+    # For example if using Intel compilers instead of GNU, one might switch
+    # `mkl_gnu_thread` to `mkl_intel_thread` and `gomp` to `iomp5`.
+    scl_lib = ['mkl_scalapack_ilp64', 'mkl_intel_ilp64', 'mkl_gnu_thread', 'mkl_core',
+               'mkl_blacs_'+mpiversion+'_ilp64', 'gomp', 'pthread', 'mkl_avx512', 'mkl_def',
+               'm', 'dl']
     scl_incl = os.environ['MKLROOT']+'/include'
-    # scl_lib = ['mkl_blacs_'+mpiversion+'_lp64', 'iomp5', 'pthread']
-    scl_libdir = [os.environ['MKLROOT']+'/lib' if 'MKLROOT' in os.environ else '']
-    # scl_libdir = ['/Users/casieve/anaconda3/lib']
+    # The library directory also comes from the Intel MKL link advisor online tool.
+    scl_libdir = [os.environ['MKLROOT']+'/lib/intel64' if 'MKLROOT' in os.environ else '']
 elif scalapackversion == 'netlib':
     scl_lib = ['scalapack', 'gfortran']
     scl_libdir = [ os.path.dirname(runcommand('gfortran -print-file-name=libgfortran.a')) ]
@@ -87,8 +90,6 @@ ext_modules = [Extension(# module name:
                          include_dirs=[get_include(), mpi4py.get_include(), scl_incl],
                          #include libraries 
                          library_dirs=scl_libdir, libraries=scl_lib,
-                         #libraries=["scalapack"],
-                         #library_dirs=[library_dirs],
                          # other compile args for gcc
                          extra_compile_args=["-DMKL_ILP64", "-m64"],
                          # other files to link to

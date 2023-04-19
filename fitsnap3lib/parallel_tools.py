@@ -399,7 +399,6 @@ class ParallelTools(metaclass=Singleton):
             lengths = np.zeros(self._number_of_nodes)
             difference = np.zeros(self._number_of_nodes)
             if self._sub_rank == 0:
-                print(f"^^^^^ {scraped_length} {length}")
                 lengths[self._node_index] = scraped_length - length
                 self._head_group_comm.Allreduce([lengths, MPI.DOUBLE], [difference, MPI.DOUBLE])
                 if self._rank == 0:

@@ -59,7 +59,6 @@ class Snap(Output):
                 fp.add("in.lammps")
                 fp.close()
 
-            #if not self.config.sections["SOLVER"].true_multinode: 
             self.write_errors(errors)
         decorated_write()
 

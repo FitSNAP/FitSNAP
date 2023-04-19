@@ -106,8 +106,6 @@ class FitSnap:
             self.calculator.create_a()
             if (self.solver.linear):
                 for i, configuration in enumerate(self.data):
-                    if (self.pt._rank == 0):
-                        print(f"i: {i}")
                     self.calculator.process_configs(configuration, i)
             else:
                 for i, configuration in enumerate(self.data):

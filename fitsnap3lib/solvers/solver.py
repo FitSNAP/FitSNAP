@@ -329,10 +329,11 @@ class Solver:
 
             # proceed with error analysis if doing a fit
 
-            if self.fit is not None:
+            if self.fit is not None and not self.config.sections["SOLVER"].true_multinode:
 
                 # return data for each group
-
+                #print(f"^^^ {self.pt._rank}")
+                #print(self.df)
                 grouped = self.df.groupby(['Groups', \
                     'Testing', \
                     'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)

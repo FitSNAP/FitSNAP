@@ -26,7 +26,7 @@ class Groups(Section):
 
     def __init__(self, name, config, args):
         super().__init__(name, config, args)
-        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 
+        self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'smartsample', 'random_sampling', 
                             'random_seed', 'vasp_use_TOTEN', 'vasp_json_pathname',
                             'vasp_ignore_incomplete','vasp_ignore_jsons','vasp_unconverged_label',
                             'BOLTZ']
@@ -38,6 +38,7 @@ class Groups(Section):
         self.group_sections = self.get_value("GROUPS", "group_sections", "name size eweight fweight vweight").split()
         self.group_types = self.get_value("GROUPS", "group_types", "str float float float float").split()
         self.smartweights = self.get_value("GROUPS", "smartweights", "0", "bool")
+        self.smartsample = self.get_value("GROUPS", "smartsample", "0", "bool")
         self.random_sampling = self.get_value("GROUPS", "random_sampling", "0", "bool")
         self.random_seed = self.get_value("GROUPS", "random_seed", "0", "float")
         self.vasp_use_TOTEN = self.get_value("GROUPS", "vasp_use_TOTEN", "False", "bool")

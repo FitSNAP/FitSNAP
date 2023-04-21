@@ -99,6 +99,6 @@ class Json(Scraper):
 
                     self.all_data.append(self.data)
             else:
-                print("Non-json file found: ", file_name)    
+                pt.single_print("Non-json file found: ", file_name)    
 
         return self.all_data

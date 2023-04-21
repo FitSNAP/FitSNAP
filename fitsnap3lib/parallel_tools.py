@@ -534,7 +534,11 @@ class ParallelTools(metaclass=Singleton):
             if self.fitsnap_dict["per_atom_scalar"]:
                 sub_a_sizes[proc_number] += self.shared_arrays["number_of_atoms"].array[i]
 
-        assert sum(sub_a_sizes) == len(self.shared_arrays['a'].array)
+        # This assert only works on a single node.
+        # TODO: Should be way to generalize for all nodes, take closer look at variables.
+        if self._number_of_nodes == 1:
+            assert sum(sub_a_sizes) == len(self.shared_arrays['a'].array)
+
         self.add_2_fitsnap("sub_a_size", sub_a_sizes)
         self._bcast_fitsnap("sub_a_size")
         self.fitsnap_dict["sub_a_size"] = sub_a_sizes[self._sub_rank]

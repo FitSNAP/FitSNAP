@@ -65,7 +65,13 @@ try:
             if self.RPI_heuristic == 'lexicographic':
                 ranked_chem_nus = [generate_nl(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax)) for ind,rnk in enumerate(self.ranks)]
             else:
-                ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin[ind]) ) for ind,rnk in enumerate(self.ranks)]
+                if type(self.lmin) == list:
+                    if len(self.lmin) == 1:
+                        self.lmin = self.lmin * len(self.ranks)
+                    ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin[ind]) ) for ind,rnk in enumerate(self.ranks)]
+                else:
+                    ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin) ) for ind,rnk in enumerate(self.ranks)]
+
             highranks = [int(r) for r in self.ranks if int(r) >= 4]
             warnflag = any([ self.lmax_dct[rank] >= 3 for ind,rank in enumerate(highranks)])
             if warnflag:

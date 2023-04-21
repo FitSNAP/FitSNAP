@@ -648,18 +648,41 @@ try:
                     target = torch.tensor(config.energy).reshape(-1)
                     # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
                     weights = torch.tensor(config.weights[None,:])
+                    num_atoms = torch.tensor(config.natoms)
+                    """
                     target_forces = torch.tensor(config.forces)
                     num_atoms = torch.tensor(config.natoms)
                     dgrad = torch.tensor(config.dgrad)
                     dbdrindx = torch.tensor(config.dgrad_indices).long()
+                    """
+                    if (self.pt.fitsnap_dict['force']):
+                        target_forces = torch.tensor(config.forces)
+                        dgrad = torch.tensor(config.dgrad)
+                        dbdrindx = torch.tensor(config.dgrad_indices).long()
+
+                        # illustrate what unique_i and unique_j are
+
+                        unique_i = dbdrindx[:,0]
+                        unique_j = dbdrindx[:,1]
+
+                        # convert quantities to desired type
+
+                        target_forces = target_forces.to(dtype)
+                        dgrad = dgrad.to(dtype)
+                    else:
+                        target_forces = None
+                        dgrad = None
+                        dbdrindx = None
+                        unique_j = None
+                        unique_i = None
 
                     # convert quantities to desired dtype
               
                     descriptors = descriptors.to(dtype)
                     target = target.to(dtype)
                     weights = weights.to(dtype)
-                    target_forces = target_forces.to(dtype)
-                    dgrad = dgrad.to(dtype)
+                    #target_forces = target_forces.to(dtype)
+                    #dgrad = dgrad.to(dtype)
 
                     # make indices upon which to contract per-atom energies for this config
 
@@ -668,16 +691,16 @@ try:
                     
                     # illustrate what unique_i and unique_j are
 
-                    unique_i = dbdrindx[:,0]
-                    unique_j = dbdrindx[:,1]
+                    #unique_i = dbdrindx[:,0]
+                    #unique_j = dbdrindx[:,1]
 
                     (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
                                                   atom_types, dbdrindx, unique_j, unique_i, 
                                                   eval_device, dtype)
 
-                # Evaluate all configs:
-
                 else:
+                    
+                    # Evaluate all configs.
 
                     energies = []
                     forces = []
@@ -688,18 +711,41 @@ try:
                         target = torch.tensor(config.energy).reshape(-1)
                         # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
                         weights = torch.tensor(config.weights[None,:])
+                        num_atoms = torch.tensor(config.natoms)
+                        """
                         target_forces = torch.tensor(config.forces)
                         num_atoms = torch.tensor(config.natoms)
                         dgrad = torch.tensor(config.dgrad)
                         dbdrindx = torch.tensor(config.dgrad_indices).long()
+                        """
+                        if (self.pt.fitsnap_dict['force']):
+                            target_forces = torch.tensor(config.forces)
+                            dgrad = torch.tensor(config.dgrad)
+                            dbdrindx = torch.tensor(config.dgrad_indices).long()
+
+                            # illustrate what unique_i and unique_j are
+
+                            unique_i = dbdrindx[:,0]
+                            unique_j = dbdrindx[:,1]
+
+                            # convert quantities to desired type
+
+                            target_forces = target_forces.to(dtype)
+                            dgrad = dgrad.to(dtype)
+                        else:
+                            target_forces = None
+                            dgrad = None
+                            dbdrindx = None
+                            unique_j = None
+                            unique_i = None
 
                         # convert quantities to desired dtype
                   
                         descriptors = descriptors.to(dtype)
                         target = target.to(dtype)
                         weights = weights.to(dtype)
-                        target_forces = target_forces.to(dtype)
-                        dgrad = dgrad.to(dtype)
+                        #target_forces = target_forces.to(dtype)
+                        #dgrad = dgrad.to(dtype)
 
                         # make indices upon which to contract per-atom energies for this config
 
@@ -708,8 +754,8 @@ try:
 
                         # illustrate what unique_j and unique_i are
 
-                        unique_i = dbdrindx[:,0]
-                        unique_j = dbdrindx[:,1]
+                        #unique_i = dbdrindx[:,0]
+                        #unique_j = dbdrindx[:,1]
 
                         (e_model,f_model) = self.model(descriptors, dgrad, indices, num_atoms, 
                                                       atom_types, dbdrindx, unique_j, unique_i, 

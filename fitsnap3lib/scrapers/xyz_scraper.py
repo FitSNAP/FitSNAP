@@ -50,32 +50,43 @@ def key_val_str_to_dict(string, sep=None):
     }
 
     # Make pairs and process afterwards
+    # List of characters for each entry, add a new list for new value
     kv_pairs = [
-        [[]]]  # List of characters for each entry, add a new list for new value
-    delimiter_stack = []  # push and pop closing delimiters
-    escaped = False  # add escaped sequences verbatim
+        [[]]]  
+    # push and pop closing delimiters
+    delimiter_stack = []  
+    # add escaped sequences verbatim
+    escaped = False  
 
     # parse character-by-character unless someone can do nested brackets
     # and escape sequences in a regex
     for char in string.strip():
-        if escaped:  # bypass everything if escaped
+        # bypass everything if escaped
+        if escaped:  
             kv_pairs[-1][-1].extend(['\\', char])
             escaped = False
-        elif delimiter_stack:  # inside brackets
-            if char == delimiter_stack[-1]:  # find matching delimiter
+        # inside brackets
+        elif delimiter_stack:  
+            # find matching delimiter
+            if char == delimiter_stack[-1]:  
                 delimiter_stack.pop()
             elif char in delimiters:
-                delimiter_stack.append(delimiters[char])  # nested brackets
+                # nested brackets
+                delimiter_stack.append(delimiters[char])  
             elif char == '\\':
-                escaped = True  # so escaped quotes can be ignored
+                # so escaped quotes can be ignored
+                escaped = True  
             else:
-                kv_pairs[-1][-1].append(char)  # inside quotes, add verbatim
+                # inside quotes, add verbatim
+                kv_pairs[-1][-1].append(char)  
         elif char == '\\':
             escaped = True
         elif char in delimiters:
-            delimiter_stack.append(delimiters[char])  # brackets or quotes
+            # brackets or quotes
+            delimiter_stack.append(delimiters[char])  
         elif (sep is None and char.isspace()) or char == sep:
-            if kv_pairs == [[[]]]:  # empty, beginning of string
+            # empty, beginning of string
+            if kv_pairs == [[[]]]:  
                 continue
             elif kv_pairs[-1][-1] == []:
                 continue
@@ -84,18 +95,22 @@ def key_val_str_to_dict(string, sep=None):
         elif char == '=':
             if kv_pairs[-1] == [[]]:
                 del kv_pairs[-1]
-            kv_pairs[-1].append([])  # value
+            # value
+            kv_pairs[-1].append([])  
         else:
             kv_pairs[-1][-1].append(char)
 
     kv_dict = {}
 
     for kv_pair in kv_pairs:
-        if len(kv_pair) == 0:  # empty line
+        # empty line
+        if len(kv_pair) == 0:  
             continue
-        elif len(kv_pair) == 1:  # default to True
+        # default to True
+        elif len(kv_pair) == 1:  
             key, value = ''.join(kv_pair[0]), 'T'
-        else:  # Smush anything else with kv-splitter '=' between them
+        # Smush anything else with kv-splitter '=' between them
+        else:  
             key, value = ''.join(kv_pair[0]), '='.join(
                 ''.join(x) for x in kv_pair[1:])
 
@@ -130,7 +145,8 @@ def key_val_str_to_dict(string, sep=None):
                     else:
                         value = boolvalue
                 except KeyError:
-                    pass  # value is unchanged
+                    # value is unchanged
+                    pass  
 
         kv_dict[key] = value
 
@@ -435,9 +451,13 @@ class XYZ(Scraper):
                     pt.shared_arrays["number_of_atoms"].sliced_array[i] = self.data['NumAtoms']
 
                     self.data["QMLattice"] = self.data["Lattice"] * self.conversions["Lattice"]
-                    del self.data["Lattice"]  # We will populate this with the lammps-normalized lattice.
+
+                    # Populate with LAMMPS-normalized lattice
+                    del self.data["Lattice"]  
+
+                    # TODO Check whether "Label" container useful to keep around
                     if "Label" in self.data:
-                        del self.data["Label"]  # This comment line is not that useful to keep around.
+                        del self.data["Label"]  
 
                     # possibly due to JSON, some configurations have integer energy values.
                     if not isinstance(self.data["Energy"], float):

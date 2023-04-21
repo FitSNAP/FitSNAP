@@ -98,6 +98,8 @@ This creates a :code:`lammps` directory, where we will build LAMMPS using `cmake
     # Install Python-LAMMPS interface
     make install-python
 
+Do not be alarmed by runtime library warnings after `cmake`, or `-Weffc++` and `-Wunused-result` 
+warnings during `make`.
 This will create a LAMMPS executable :code:`lmp`, which should be used to run MD using FitSNAP fits.
 This will also create a Python-LAMMPS interface located in your Python :code:`site-packages/lammps` 
 directory. Set the following environment variables so that your Python can find the LAMMPS library::
@@ -215,7 +217,7 @@ After installing Anaconda:
 
 #. Create a new Conda environment::
 
-        conda create -n fitsnap python=3.9
+        conda create -n fitsnap python=3.10
         conda activate fitsnap
 
 #. Install dependencies::

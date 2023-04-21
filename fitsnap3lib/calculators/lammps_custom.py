@@ -127,12 +127,15 @@ class LammpsCustom(LammpsBase):
 
         # set indices for populating shared arrays
 
-        index = self.shared_index # Index telling where to start in the shared arrays on this proc.
-                                  # Currently this is an index for the 'a' array (natoms*nconfigs rows).
-                                  # This is also an index for the 't' array of types (natoms*nconfigs rows).
-                                  # Also made indices for:
-                                  # - the 'b' array (nconfigs rows)
-                                  # - the 'neighlist' array (natoms)*nneigh*nconfigs rows.
+        """
+        Index telling where to start in the shared arrays on this proc.
+        Currently this is an index for the 'a' array (natoms*nconfigs rows).
+        This is also an index for the 't' array of types (natoms*nconfigs rows).
+        Also made indices for:
+        - the 'b' array (nconfigs rows)
+        - the 'neighlist' array (natoms)*nneigh*nconfigs rows.
+        """
+        index = self.shared_index
         dindex = self.distributed_index
         index_b = self.shared_index_b
         index_c = self.shared_index_c

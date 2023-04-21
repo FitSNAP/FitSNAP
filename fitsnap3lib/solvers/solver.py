@@ -2,6 +2,7 @@ from fitsnap3lib.io.input import Config
 from fitsnap3lib.parallel_tools import ParallelTools
 import numpy as np
 from pandas import DataFrame, Series, concat
+import pickle
 
 #pt = ParallelTools()
 #config = Config()
@@ -110,8 +111,12 @@ class Solver:
         """
         @self.pt.rank_zero
         def decorated_error_analysis():
-            if not self.linear:
-                import torch
+            
+            # Proceed with nonlinear error analysis, if doing a fit.
+            # If doing a fit, then self.configs is not None.
+
+            if not self.linear and self.configs is not None:
+                import torch # Needed to declare dtype. TODO: Move this into NN evaluate function.
                 mae_f = {} # Force MAE of each group, train and test.
                 mae_e = {} # Test energy MAE of each group, train and test.
                 rmse_f = {} # Test force RMSE of each group, train and test.
@@ -154,12 +159,6 @@ class Solver:
                 count_train['*ALL']["nconfigs"] = 0 # Total number test configs in group.
                 count_train['*ALL']["natoms"] = 0 # Total number test atoms in group.
 
-                # Evaluate errors with float64 dtype since this is what we use in production.
-
-                if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
-                    (energies_model, forces_model) = self.evaluate_configs(option=1, evaluate_all = True, standardize_bool=False, dtype=torch.float64)
-                else:
-                    (energies_model, forces_model) = self.evaluate_configs(option=1, standardize_bool=False, dtype=torch.float64)
                 if (self.config.sections["EXTRAS"].dump_peratom):
                     fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
                     line = f"Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
@@ -170,8 +169,11 @@ class Solver:
                     fhc.write(line + "\n")
                 atom_indx = 0
                 m = 0
-                for c in self.configs:
-                    e_pred = energies_model[m].detach().numpy()/c.natoms # Model per-atom energy.
+                for idx, c in enumerate(self.configs):
+                    (energies_model, forces_model) = self.evaluate_configs(config_idx=idx, \
+                                                                           standardize_bool=False, \
+                                                                           dtype=torch.float64)
+                    e_pred = energies_model.detach().numpy()/c.natoms # Model per-atom energy.
                     # Custom networks need a further index.
                     if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
                         e_pred = e_pred[0]
@@ -194,52 +196,52 @@ class Solver:
                         rmse_e['*ALL']["train"] += se
                         count_train['*ALL']["nconfigs"] += 1
 
-                    f_pred = forces_model[m].detach().numpy()
-                    # Custom calculator returns Nx3 force array but we need 3*N here.
-                    if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
-                        f_pred = f_pred.flatten()
-
-
                     if (self.config.sections["EXTRAS"].dump_perconfig):
                         line = f"{c.filename} {c.group} {c.natoms} {c.energy} {e_pred} {c.testing_bool}\n"
                         fhc.write(line)
-                    for i in range(c.natoms):
-                        fx_truth = c.forces[3*i+0]
-                        fy_truth = c.forces[3*i+1]
-                        fz_truth = c.forces[3*i+2]
-                        fx_pred = f_pred[3*i+0]
-                        fy_pred = f_pred[3*i+1]
-                        fz_pred = f_pred[3*i+2]
 
-                        ae = abs(fx_truth - fx_pred) + \
-                             abs(fy_truth - fy_pred) + \
-                             abs(fz_truth - fz_pred)
-                        se = ((fx_truth - fx_pred)**2 + \
-                              (fy_truth - fy_pred)**2 + \
-                              (fz_truth - fz_pred)**2)
+                    if (forces_model is not None):
+                        f_pred = forces_model.detach().numpy()
+                        # Custom calculator returns Nx3 force array but we need 3*N here.
+                        if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
+                            f_pred = f_pred.flatten()
+                        for i in range(c.natoms):
+                            fx_truth = c.forces[3*i+0]
+                            fy_truth = c.forces[3*i+1]
+                            fz_truth = c.forces[3*i+2]
+                            fx_pred = f_pred[3*i+0]
+                            fy_pred = f_pred[3*i+1]
+                            fz_pred = f_pred[3*i+2]
 
-                        if (c.testing_bool):
-                            mae_f[c.group]["test"] += ae
-                            rmse_f[c.group]["test"] += se
-                            count_test[c.group]["natoms"] += 1
-                            mae_f['*ALL']["test"] += ae
-                            rmse_f['*ALL']["test"] += se
-                            count_test['*ALL']["natoms"] += 1
-                        else:
-                            mae_f[c.group]["train"] += ae
-                            rmse_f[c.group]["train"] += se
-                            count_train[c.group]["natoms"] += 1
-                            mae_f['*ALL']["train"] += ae
-                            rmse_f['*ALL']["train"] += se
-                            count_train['*ALL']["natoms"] += 1
-                        
-                        if (self.config.sections["EXTRAS"].dump_peratom):
-                            line = f"{c.filename} {c.group} {i+1} {int(c.types[i]+1)} "
-                            line += f"{fx_truth} {fy_truth} {fz_truth} "
-                            line += f"{fx_pred} {fy_pred} {fz_pred} "
-                            line += f"{c.testing_bool}"
-                            fha.write(line + "\n")
-                        atom_indx += 1
+                            ae = abs(fx_truth - fx_pred) + \
+                                abs(fy_truth - fy_pred) + \
+                                abs(fz_truth - fz_pred)
+                            se = ((fx_truth - fx_pred)**2 + \
+                                  (fy_truth - fy_pred)**2 + \
+                                  (fz_truth - fz_pred)**2)
+
+                            if (c.testing_bool):
+                                mae_f[c.group]["test"] += ae
+                                rmse_f[c.group]["test"] += se
+                                count_test[c.group]["natoms"] += 1
+                                mae_f['*ALL']["test"] += ae
+                                rmse_f['*ALL']["test"] += se
+                                count_test['*ALL']["natoms"] += 1
+                            else:
+                                mae_f[c.group]["train"] += ae
+                                rmse_f[c.group]["train"] += se
+                                count_train[c.group]["natoms"] += 1
+                                mae_f['*ALL']["train"] += ae
+                                rmse_f['*ALL']["train"] += se
+                                count_train['*ALL']["natoms"] += 1
+                            
+                            if (self.config.sections["EXTRAS"].dump_peratom):
+                                line = f"{c.filename} {c.group} {i+1} {int(c.types[i]+1)} "
+                                line += f"{fx_truth} {fy_truth} {fz_truth} "
+                                line += f"{fx_pred} {fy_pred} {fz_pred} "
+                                line += f"{c.testing_bool}"
+                                fha.write(line + "\n")
+                            atom_indx += 1
                     m += 1
                 if (self.config.sections["EXTRAS"].dump_perconfig):
                     fhc.close()
@@ -284,9 +286,34 @@ class Solver:
 
                 self.errors = (mae_f, mae_e, rmse_f, rmse_e, count_train, count_test)
 
+                # Write pickled list of configs.
+
+                if self.config.sections["EXTRAS"].dump_configs:
+                    configs_file = self.config.sections['EXTRAS'].configs_file
+                    with open(configs_file, 'wb') as f:
+                        pickle.dump(self.configs, f)
+
+                return
+            
+            # If nonlinear and not doing a fit, just create configs.
+
+            elif not self.linear and self.configs is None:
+                
+                # Create list of Configuration objects.
+                
+                self.create_datasets()
+                
+                # Save a pickled list of Configuration objects.
+
+                if self.config.sections["EXTRAS"].dump_configs:
+                    configs_file = self.config.sections['EXTRAS'].configs_file
+                    with open(configs_file, 'wb') as f:
+                        pickle.dump(self.configs, f)
+
                 return
 
-            # collect remaining arrays to write dataframe
+            # Proceed with linear error analysis.
+            # Collect remaining arrays to write dataframe.
 
             self.df = DataFrame(self.pt.shared_arrays['a'].array)
             self.df['truths'] = self.pt.shared_arrays['b'].array.tolist()
@@ -302,10 +329,11 @@ class Solver:
 
             # proceed with error analysis if doing a fit
 
-            if self.fit is not None:
+            if self.fit is not None and not self.config.sections["SOLVER"].true_multinode:
 
                 # return data for each group
-
+                #print(f"^^^ {self.pt._rank}")
+                #print(self.df)
                 grouped = self.df.groupby(['Groups', \
                     'Testing', \
                     'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)

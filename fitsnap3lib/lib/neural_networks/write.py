@@ -374,10 +374,10 @@ class PairNN(torch.nn.Module):
         #print(unique_j)
         #print(tag_j)
 
-        diff_norm = torch.nn.functional.normalize(rij, dim=1) # need for g3b
-                                                              # size (npairs, 3)
-        distance_ij = torch.linalg.norm(rij, dim=1).unsqueeze(1)  # need for cutoff and various other functions
-                                                                  # size (npairs, 1)
+        # need for g3b, size (npairs, 3)
+        diff_norm = torch.nn.functional.normalize(rij, dim=1)
+        # need for cutoff and various other functions, size (npairs, 1)
+        distance_ij = torch.linalg.norm(rij, dim=1).unsqueeze(1)
 
         #print(distance_ij)
 

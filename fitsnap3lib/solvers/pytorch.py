@@ -580,18 +580,21 @@ try:
             decorated_perform_fit()
 
         #@pt.sub_rank_zero
-        def evaluate_configs(self, option = 1, standardize_bool = True, dtype=torch.float64, eval_device='cpu'):
+        def evaluate_configs(self, config_idx = 0, standardize_bool = True, dtype=torch.float64, eval_device='cpu'):
             """
             Evaluates energies and forces on configs for testing purposes. 
 
             Args:
-                option (int): 1 to evaluate energies/forces for all configs separately, 2 for using 
-                    dataloader/batch procedure. Currently only 1 is implemented.
+                config_idx (int): Index of config to evaluate. None if evaluating all configs.
                 standardize_bool (bool): True to standardize weights, False otherwise. Useful if 
                     comparing inputs with a previously standardized model.
                 dtype (torch.dtype): Optional override of the global dtype.
                 eval_device (torch.device): Optional device to evaluate on, defaults to CPU to
                     prevent device mismatch when training on GPU.
+
+            Returns:
+                A tuple (energy, force) for the config given by `config_idx`. The tuple will contain 
+                lists of energy/force for each config if `config_idx` is None.
             """
 
             @self.pt.sub_rank_zero
@@ -603,45 +606,104 @@ try:
                 self.model.to(eval_device)
 
                 if (standardize_bool):
-                  if self.config.sections['PYTORCH'].save_state_input is None:
+                    if self.config.sections['PYTORCH'].save_state_input is None:
 
-                      # standardization
-                      # need to perform on all network types in the model
+                        # standardization
+                        # need to perform on all network types in the model
 
-                      inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
-                      mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
-                      state_dict = self.model.state_dict()
+                        inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
+                        mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
+                        state_dict = self.model.state_dict()
 
-                      # look for the first layer for all types of networks, these are keys like
-                      # network_architecture0.0.weight and network_architecture0.0.bias
-                      # for the first network, and
-                      # network_architecture1.0.weight and network_architecture0.1.bias for the next,
-                      # and so forth
+                        # look for the first layer for all types of networks, these are keys like
+                        # network_architecture0.0.weight and network_architecture0.0.bias
+                        # for the first network, and
+                        # network_architecture1.0.weight and network_architecture0.1.bias for the next,
+                        # and so forth
 
-                      ntypes = self.num_elements
-                      num_networks = len(self.networks)
-                      keys = [*state_dict.keys()]
-                      #for t in range(0,ntypes):
-                      for t in range(0,num_networks):
-                          first_layer_weight = "network_architecture"+str(t)+".0.weight"
-                          first_layer_bias = "network_architecture"+str(t)+".0.bias"
-                          state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
-                          state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
+                        ntypes = self.num_elements
+                        num_networks = len(self.networks)
+                        keys = [*state_dict.keys()]
+                        #for t in range(0,ntypes):
+                        for t in range(0,num_networks):
+                            first_layer_weight = "network_architecture"+str(t)+".0.weight"
+                            first_layer_bias = "network_architecture"+str(t)+".0.bias"
+                            state_dict[first_layer_weight] = torch.tensor(inv_std)*torch.eye(len(inv_std))
+                            state_dict[first_layer_bias] = torch.tensor(mean_inv_std)
 
-                      # load the new state_dict with the standardized weights
-                      
-                      self.model.load_state_dict(state_dict)
+                        # load the new state_dict with the standardized weights
+                        
+                        self.model.load_state_dict(state_dict)
 
                 # only evaluate, no weight gradients
 
                 self.model.eval()
 
-                # for evaluating on single config:
+                # Evaluate a single config:
 
-                if (option==1):
+                if (config_idx is not None):
+                    config = self.configs[config_idx]
+                    descriptors = torch.tensor(config.descriptors).requires_grad_(True)
+                    atom_types = torch.tensor(config.types).long()
+                    target = torch.tensor(config.energy).reshape(-1)
+                    # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
+                    weights = torch.tensor(config.weights[None,:])
+                    num_atoms = torch.tensor(config.natoms)
+                    """
+                    target_forces = torch.tensor(config.forces)
+                    num_atoms = torch.tensor(config.natoms)
+                    dgrad = torch.tensor(config.dgrad)
+                    dbdrindx = torch.tensor(config.dgrad_indices).long()
+                    """
+                    if (self.pt.fitsnap_dict['force']):
+                        target_forces = torch.tensor(config.forces)
+                        dgrad = torch.tensor(config.dgrad)
+                        dbdrindx = torch.tensor(config.dgrad_indices).long()
 
-                    energies_configs = []
-                    forces_configs = []
+                        # illustrate what unique_i and unique_j are
+
+                        unique_i = dbdrindx[:,0]
+                        unique_j = dbdrindx[:,1]
+
+                        # convert quantities to desired type
+
+                        target_forces = target_forces.to(dtype)
+                        dgrad = dgrad.to(dtype)
+                    else:
+                        target_forces = None
+                        dgrad = None
+                        dbdrindx = None
+                        unique_j = None
+                        unique_i = None
+
+                    # convert quantities to desired dtype
+              
+                    descriptors = descriptors.to(dtype)
+                    target = target.to(dtype)
+                    weights = weights.to(dtype)
+                    #target_forces = target_forces.to(dtype)
+                    #dgrad = dgrad.to(dtype)
+
+                    # make indices upon which to contract per-atom energies for this config
+
+                    config_indices = torch.arange(1).long() # this usually has len(batch) as arg in dataloader
+                    indices = torch.repeat_interleave(config_indices, num_atoms)
+                    
+                    # illustrate what unique_i and unique_j are
+
+                    #unique_i = dbdrindx[:,0]
+                    #unique_j = dbdrindx[:,1]
+
+                    (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
+                                                  atom_types, dbdrindx, unique_j, unique_i, 
+                                                  eval_device, dtype)
+
+                else:
+                    
+                    # Evaluate all configs.
+
+                    energies = []
+                    forces = []
                     for config in self.configs:
                       
                         descriptors = torch.tensor(config.descriptors).requires_grad_(True)
@@ -649,18 +711,41 @@ try:
                         target = torch.tensor(config.energy).reshape(-1)
                         # indexing 0th axis with None reshapes the tensor to be 2D for stacking later
                         weights = torch.tensor(config.weights[None,:])
+                        num_atoms = torch.tensor(config.natoms)
+                        """
                         target_forces = torch.tensor(config.forces)
                         num_atoms = torch.tensor(config.natoms)
                         dgrad = torch.tensor(config.dgrad)
                         dbdrindx = torch.tensor(config.dgrad_indices).long()
+                        """
+                        if (self.pt.fitsnap_dict['force']):
+                            target_forces = torch.tensor(config.forces)
+                            dgrad = torch.tensor(config.dgrad)
+                            dbdrindx = torch.tensor(config.dgrad_indices).long()
+
+                            # illustrate what unique_i and unique_j are
+
+                            unique_i = dbdrindx[:,0]
+                            unique_j = dbdrindx[:,1]
+
+                            # convert quantities to desired type
+
+                            target_forces = target_forces.to(dtype)
+                            dgrad = dgrad.to(dtype)
+                        else:
+                            target_forces = None
+                            dgrad = None
+                            dbdrindx = None
+                            unique_j = None
+                            unique_i = None
 
                         # convert quantities to desired dtype
                   
                         descriptors = descriptors.to(dtype)
                         target = target.to(dtype)
                         weights = weights.to(dtype)
-                        target_forces = target_forces.to(dtype)
-                        dgrad = dgrad.to(dtype)
+                        #target_forces = target_forces.to(dtype)
+                        #dgrad = dgrad.to(dtype)
 
                         # make indices upon which to contract per-atom energies for this config
 
@@ -669,47 +754,16 @@ try:
 
                         # illustrate what unique_j and unique_i are
 
-                        unique_i = dbdrindx[:,0]
-                        unique_j = dbdrindx[:,1]
+                        #unique_i = dbdrindx[:,0]
+                        #unique_j = dbdrindx[:,1]
 
-                        (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
+                        (e_model,f_model) = self.model(descriptors, dgrad, indices, num_atoms, 
                                                       atom_types, dbdrindx, unique_j, unique_i, 
                                                       eval_device, dtype)
-                        energies_configs.append(energies)
-                        forces_configs.append(forces)
+                        energies.append(e_model)
+                        forces.append(f_model)
 
-                    return(energies_configs, forces_configs)
-
-                else:
-                    print("Other options not implemented yet, see example below")
-
-                    """
-                    for epoch in range(self.config.sections["PYTORCH"].num_epochs):
-                        print(f"----- epoch: {epoch}")
-                        start = time()
-
-                        # loop over training data
-
-                        train_losses_step = []
-                        loss = None
-                        self.model.eval() # don't calculate gradients for simple evaluating
-                        for i, batch in enumerate(self.training_loader):
-                            descriptors = batch['x'].to(self.device).requires_grad_(True)
-                            atom_types = batch['t'].to(self.device)
-                            targets = batch['y'].to(self.device) #.requires_grad_(True)
-                            target_forces = batch['y_forces'].to(self.device) #.requires_grad_(True)
-                            indices = batch['i'].to(self.device)
-                            num_atoms = batch['noa'].to(self.device)
-                            weights = batch['w'].to(self.device)
-                            dgrad = batch['dgrad'].to(self.device) #.requires_grad_(True)
-                            dbdrindx = batch['dbdrindx'].to(self.device)
-                            unique_j = batch['unique_j'].to(self.device)
-                            unique_i = batch['unique_i'].to(self.device)
-                            testing_bools = batch['testing_bools']
-                            (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, atom_types, dbdrindx, unique_j, unique_i, self.device)
-                            energies = torch.div(energies,num_atoms)
-                            print(forces)
-                    """
+                return(energies, forces)
 
             (energies,forces) = decorated_evaluate_configs()
 

@@ -103,7 +103,7 @@ try:
             
 except ModuleNotFoundError:
 
-    class Bessel():
+    class Gaussian3Body():
         """
         Dummy class for factory to read if torch is not available for import.
         """

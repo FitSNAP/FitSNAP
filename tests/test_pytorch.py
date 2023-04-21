@@ -58,7 +58,7 @@ def test_fd_single_elem():
     snap.process_configs()
     pt.all_barrier()
     snap.solver.create_datasets()
-    (energies_model, forces_model) = snap.solver.evaluate_configs(option=1, standardize_bool=True)
+    (energies_model, forces_model) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
 
     print(f"Length of data: {len(snap.data)}")
 
@@ -69,46 +69,45 @@ def test_fd_single_elem():
     percent_errors = []
     for m in range(random_indx,random_indx+1):
         for i in range(0,snap.data[m]['NumAtoms']):
-        #for i in range(0,1):
-              for a in range(0,3):
-                  natoms = snap.data[m]['NumAtoms']
+            for a in range(0,3):
+                natoms = snap.data[m]['NumAtoms']
 
-                  # calculate model energy with +h (energy1)
+                # calculate model energy with +h (energy1)
 
-                  snap.data[m]['Positions'][i,a] += h
-                  snap.calculator.distributed_index = 0
-                  snap.calculator.shared_index = 0
-                  snap.calculator.shared_index_b = 0
-                  snap.calculator.shared_index_c = 0
-                  snap.calculator.shared_index_dgrad = 0
-                  snap.process_configs()
-                  snap.solver.create_datasets()
-                  (energies1, forces1) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
+                snap.data[m]['Positions'][i,a] += h
+                snap.calculator.distributed_index = 0
+                snap.calculator.shared_index = 0
+                snap.calculator.shared_index_b = 0
+                snap.calculator.shared_index_c = 0
+                snap.calculator.shared_index_dgrad = 0
+                snap.process_configs()
+                snap.solver.create_datasets()
+                (energies1, forces1) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
-                  # calculate model energy with -h (energy2)
+                # calculate model energy with -h (energy2)
 
-                  snap.data[m]['Positions'][i,a] -= 2.*h
-                  snap.calculator.distributed_index = 0
-                  snap.calculator.shared_index = 0
-                  snap.calculator.shared_index_b = 0
-                  snap.calculator.shared_index_c = 0
-                  snap.calculator.shared_index_dgrad = 0
-                  snap.process_configs()
-                  snap.solver.create_datasets()
-                  (energies2, forces2) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
+                snap.data[m]['Positions'][i,a] -= 2.*h
+                snap.calculator.distributed_index = 0
+                snap.calculator.shared_index = 0
+                snap.calculator.shared_index_b = 0
+                snap.calculator.shared_index_c = 0
+                snap.calculator.shared_index_dgrad = 0
+                snap.process_configs()
+                snap.solver.create_datasets()
+                (energies2, forces2) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
-                  # calculate and compare finite difference force
+                # calculate and compare finite difference force
 
-                  force_fd = -1.0*(energies1[m] - energies2[m])/(2.*h)
-                  force_fd = force_fd.item()
-                  force_indx = 3*i + a 
-                  force_model = forces_model[m][force_indx].item()
-                  percent_error = abs(force_model - force_fd) #((force_model - force_fd)/force_model)*100.
-                  percent_errors.append(percent_error)
+                force_fd = -1.0*(energies1[m] - energies2[m])/(2.*h)
+                force_fd = force_fd.item()
+                force_indx = 3*i + a 
+                force_model = forces_model[m][force_indx].item()
+                percent_error = abs(force_model - force_fd) #((force_model - force_fd)/force_model)*100.
+                percent_errors.append(percent_error)
 
-                  # return position back to normal
+                # return position back to normal
 
-                  snap.data[m]['Positions'][i,a] += h
+                snap.data[m]['Positions'][i,a] += h
 
     percent_errors = np.array(percent_errors)
     mean_err = np.mean(np.abs(percent_errors))
@@ -165,7 +164,7 @@ def test_fd_multi_elem():
     snap.process_configs()
     pt.all_barrier()
     snap.solver.create_datasets()
-    (energies_model, forces_model) = snap.solver.evaluate_configs(option=1, standardize_bool=True)
+    (energies_model, forces_model) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
 
     print(f"Length of data: {len(snap.data)}")
 
@@ -176,47 +175,47 @@ def test_fd_multi_elem():
     percent_errors = []
     for m in range(random_indx,random_indx+1):
         for i in range(0,snap.data[m]['NumAtoms']):
-              for a in range(0,3):
-                  natoms = snap.data[m]['NumAtoms']
+            for a in range(0,3):
+                natoms = snap.data[m]['NumAtoms']
 
-                  # calculate model energy with +h (energy1)
+                # calculate model energy with +h (energy1)
 
-                  snap.data[m]['Positions'][i,a] += h
-                  snap.calculator.distributed_index = 0
-                  snap.calculator.shared_index = 0
-                  snap.calculator.shared_index_b = 0
-                  snap.calculator.shared_index_c = 0
-                  snap.calculator.shared_index_dgrad = 0
-                  snap.process_configs()
-                  snap.solver.create_datasets()
-                  (energies1, forces1) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
+                snap.data[m]['Positions'][i,a] += h
+                snap.calculator.distributed_index = 0
+                snap.calculator.shared_index = 0
+                snap.calculator.shared_index_b = 0
+                snap.calculator.shared_index_c = 0
+                snap.calculator.shared_index_dgrad = 0
+                snap.process_configs()
+                snap.solver.create_datasets()
+                (energies1, forces1) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
-                  # calculate model energy with -h (energy2)
+                # calculate model energy with -h (energy2)
 
-                  snap.data[m]['Positions'][i,a] -= 2.*h
-                  snap.calculator.distributed_index = 0
-                  snap.calculator.shared_index = 0
-                  snap.calculator.shared_index_b = 0
-                  snap.calculator.shared_index_c = 0
-                  snap.calculator.shared_index_dgrad = 0
-                  snap.process_configs()
-                  snap.solver.create_datasets()
-                  (energies2, forces2) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
+                snap.data[m]['Positions'][i,a] -= 2.*h
+                snap.calculator.distributed_index = 0
+                snap.calculator.shared_index = 0
+                snap.calculator.shared_index_b = 0
+                snap.calculator.shared_index_c = 0
+                snap.calculator.shared_index_dgrad = 0
+                snap.process_configs()
+                snap.solver.create_datasets()
+                (energies2, forces2) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
-                  # calculate and compare finite difference force
+                # calculate and compare finite difference force
 
-                  force_fd = -1.0*(energies1[m] - energies2[m])/(2.*h)
-                  force_fd = force_fd.item()
-                  force_indx = 3*i + a 
-                  force_model = forces_model[m][force_indx].item()
-                  percent_error = abs(force_model - force_fd) #((force_model - force_fd)/force_model)*100.
-                  print(f"absolute error: {percent_error}")
-                  assert(percent_error < 0.1) # nice assertion to have for all forces
-                  percent_errors.append(percent_error)
+                force_fd = -1.0*(energies1[m] - energies2[m])/(2.*h)
+                force_fd = force_fd.item()
+                force_indx = 3*i + a 
+                force_model = forces_model[m][force_indx].item()
+                percent_error = abs(force_model - force_fd) #((force_model - force_fd)/force_model)*100.
+                print(f"absolute error: {percent_error}")
+                assert(percent_error < 0.1) # nice assertion to have for all forces
+                percent_errors.append(percent_error)
 
-                  # return position back to normal
+                # return position back to normal
 
-                  snap.data[m]['Positions'][i,a] += h
+                snap.data[m]['Positions'][i,a] += h
 
     percent_errors = np.array(percent_errors)
     mean_err = np.mean(np.abs(percent_errors))
@@ -275,7 +274,7 @@ def test_fd_ace_single_elem():
     snap.process_configs()
     pt.all_barrier()
     snap.solver.create_datasets()
-    (energies_model, forces_model) = snap.solver.evaluate_configs(option=1, standardize_bool=True)
+    (energies_model, forces_model) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
 
     print(f"Length of data: {len(snap.data)}")
 
@@ -286,47 +285,46 @@ def test_fd_ace_single_elem():
     percent_errors = []
     for m in range(random_indx,random_indx+1):
         for i in range(0,snap.data[m]['NumAtoms']):
-        #for i in range(0,1):
-              for a in range(0,3):
-                  natoms = snap.data[m]['NumAtoms']
+            for a in range(0,3):
+                natoms = snap.data[m]['NumAtoms']
 
-                  # calculate model energy with +h (energy1)
+                # calculate model energy with +h (energy1)
 
-                  snap.data[m]['Positions'][i,a] += h
-                  snap.calculator.distributed_index = 0
-                  snap.calculator.shared_index = 0
-                  snap.calculator.shared_index_b = 0
-                  snap.calculator.shared_index_c = 0
-                  snap.calculator.shared_index_dgrad = 0
-                  snap.process_configs()
-                  snap.solver.create_datasets()
-                  (energies1, forces1) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
+                snap.data[m]['Positions'][i,a] += h
+                snap.calculator.distributed_index = 0
+                snap.calculator.shared_index = 0
+                snap.calculator.shared_index_b = 0
+                snap.calculator.shared_index_c = 0
+                snap.calculator.shared_index_dgrad = 0
+                snap.process_configs()
+                snap.solver.create_datasets()
+                (energies1, forces1) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
-                  # calculate model energy with -h (energy2)
+                # calculate model energy with -h (energy2)
 
-                  snap.data[m]['Positions'][i,a] -= 2.*h
-                  snap.calculator.distributed_index = 0
-                  snap.calculator.shared_index = 0
-                  snap.calculator.shared_index_b = 0
-                  snap.calculator.shared_index_c = 0
-                  snap.calculator.shared_index_dgrad = 0
-                  snap.process_configs()
-                  snap.solver.create_datasets()
-                  (energies2, forces2) = snap.solver.evaluate_configs(option=1, standardize_bool=False)
+                snap.data[m]['Positions'][i,a] -= 2.*h
+                snap.calculator.distributed_index = 0
+                snap.calculator.shared_index = 0
+                snap.calculator.shared_index_b = 0
+                snap.calculator.shared_index_c = 0
+                snap.calculator.shared_index_dgrad = 0
+                snap.process_configs()
+                snap.solver.create_datasets()
+                (energies2, forces2) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=False)
 
-                  # calculate and compare finite difference force
+                # calculate and compare finite difference force
 
-                  force_fd = -1.0*(energies1[m] - energies2[m])/(2.*h)
-                  force_fd = force_fd.item()
-                  force_indx = 3*i + a 
-                  force_model = forces_model[m][force_indx].item()
-                  percent_error = abs(force_model - force_fd) #((force_model - force_fd)/force_model)*100.
-                  #print(percent_error)
-                  percent_errors.append(percent_error)
+                force_fd = -1.0*(energies1[m] - energies2[m])/(2.*h)
+                force_fd = force_fd.item()
+                force_indx = 3*i + a 
+                force_model = forces_model[m][force_indx].item()
+                percent_error = abs(force_model - force_fd) #((force_model - force_fd)/force_model)*100.
+                #print(percent_error)
+                percent_errors.append(percent_error)
 
-                  # return position back to normal
+                # return position back to normal
 
-                  snap.data[m]['Positions'][i,a] += h
+                snap.data[m]['Positions'][i,a] += h
 
     percent_errors = np.array(percent_errors)
     mean_err = np.mean(np.abs(percent_errors))

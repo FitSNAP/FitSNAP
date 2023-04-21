@@ -1,9 +1,6 @@
 import torch.utils.data
-from torch.utils.data import DataLoader
-from sys import float_info
 import numpy as np
-import itertools, operator
-
+from torch.utils.data import DataLoader
 
 class InRAMDataset(torch.utils.data.Dataset):
     """

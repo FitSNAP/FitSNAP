@@ -100,7 +100,9 @@ class Output:
                     self.config.sections["OUTFILE"].metrics_style))
             with optional_open(fname, write_type) as file:
                 function(file, **arguments)
-        decorated_write_errors()
+
+        if not self.config.sections["SOLVER"].true_multinode: 
+            decorated_write_errors()
 
     def write_errors_nn(self, errors):
         """ 

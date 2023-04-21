@@ -24,13 +24,13 @@ try:
                     raise RuntimeError(">>> Found unmatched variable in ACE section of input: ",value_name)
             self.numtypes = self.get_value("ACE", "numTypes", "1", "int")
             self.ranks = self.get_value("ACE","ranks","3").split()
-            self.lmin = self.get_value("ACE", "lmin", "1", "int")
+            self.lmin = self.get_value("ACE", "lmin", "0").split() 
             self.lmax = self.get_value("ACE", "lmax", "2").split()
             self.nmax = self.get_value("ACE", "nmax", "2").split() 
             self.mumax = self.get_value("ACE","mumax", "1")
             self.nmaxbase = self.get_value("ACE", "nmaxbase", "16","int")
-            self.rcutfac = self.get_value("ACE", "rcutfac", "7.5").split()
-            self.lmbda = self.get_value("ACE","lambda",'5.0').split()
+            self.rcutfac = self.get_value("ACE", "rcutfac", "4.5").split()
+            self.lmbda = self.get_value("ACE","lambda",'1.35').split()
             self.rcinner = self.get_value("ACE","rcinner",'0.0').split()
             self.drcinner = self.get_value("ACE","drcinner",'0.01').split()
             self.types = self.get_value("ACE", "type", "H").split()
@@ -47,8 +47,10 @@ try:
 
             if self.bikflag:
                 self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
-
+            self.lmax_dct = {int(rnk):int(lmx) for rnk,lmx in zip(self.ranks,self.lmax)}
             self.pt = ParallelTools()
+            if self.RPI_heuristic != 'root_SO3_span':
+                self.pt.single_print('WARNING: do not change RPI flags unless you know what you are doing!')
             self._generate_b_list()
             self._write_couple()
             Section.num_desc = len(self.blist)
@@ -63,7 +65,17 @@ try:
             if self.RPI_heuristic == 'lexicographic':
                 ranked_chem_nus = [generate_nl(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax)) for ind,rnk in enumerate(self.ranks)]
             else:
-                ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = self.lmin ) for ind,rnk in enumerate(self.ranks)]
+                if type(self.lmin) == list:
+                    if len(self.lmin) == 1:
+                        self.lmin = self.lmin * len(self.ranks)
+                    ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin[ind]) ) for ind,rnk in enumerate(self.ranks)]
+                else:
+                    ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin) ) for ind,rnk in enumerate(self.ranks)]
+
+            highranks = [int(r) for r in self.ranks if int(r) >= 4]
+            warnflag = any([ self.lmax_dct[rank] >= 3 for ind,rank in enumerate(highranks)])
+            if warnflag:
+                self.pt.single_print('WARNING: lmax of %d will generate descriptors that cannot be entered into LAMMPS_PACE - try a lower lmax for ranks >= 4' % warnflag[0])
             nus_unsort = [item for sublist in ranked_chem_nus for item in sublist]
             nus = nus_unsort.copy()
             mu0s = []
@@ -127,7 +139,7 @@ try:
                 drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
                     
 
-            apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, self.lmin, self.RPI_heuristic)
+            apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.RPI_heuristic)
             apot.write_pot('coupling_coefficients')
 
 except ModuleNotFoundError:

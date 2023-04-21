@@ -18,15 +18,15 @@ def change_descriptor_hyperparams(config):
 
 	# twojmax, wj, and radelem are lists of chars
 
-	config.sections['ACE'].rcutfac = ['4.67637']
-	config.sections['ACE'].lmbda = ['3.059235105']
-	config.sections['ACE'].rcinner = ['0.0']
+	config.sections['ACE'].rcutfac = ['4.25']
+	config.sections['ACE'].lmbda = ['1.275']
+	config.sections['ACE'].rcinner = ['1.2']
 	config.sections['ACE'].drcinner = ['0.01']
 
-	config.sections['ACE'].lmin = [1]
-	config.sections['ACE'].ranks = [1, 2, 3, 4, 5, 6]
-	config.sections['ACE'].lmax = [1, 2, 2, 2, 1, 1]
-	config.sections['ACE'].nmax =[22, 2, 2, 2, 1, 1]
+	config.sections['ACE'].lmin = [0, 0, 1, 1]
+	config.sections['ACE'].ranks = [1, 2, 3, 4]
+	config.sections['ACE'].lmax = [0, 5, 2, 1]
+	config.sections['ACE'].nmax =[22, 5, 3, 1]
 	
 
 

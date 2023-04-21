@@ -345,7 +345,39 @@ class Scraper:
 
             if self.config.sections["CALCULATOR"].stress:
                 self.data['fweight'] /= 6
+        
+        if self.config.sections["CALCULATOR"].nonlinear:
 
+            # Check if user has already specified sweights manually
+            has_manual_sweights = True if "sweight" in self.group_table[self.data['Group']] else False
+            smartsample = self.config.sections["GROUPS"].smartsample
+                                                                        
+            if smartsample and has_manual_sweights:
+                # If has_manual_weights true, then user has input manual sampling weights
+                # and smartsampling will be ignored.
+                # TODO add user warning about this state?
+                pass
+            elif smartsample and not has_manual_sweights:
+                # If there are no sweights set and smartsample = 1, then activate
+                # automated importance sampling, where groups with fewer configs are
+                # batch-sampled more frequently
+                # TODO make smartsample behavior consistent with current PYTORCH/JAX behavior for overwriting or ignoring force_weights/energy_weights variables
+                # TODO possibly add warning to user if batch_size != num_groups
+            
+                # Get batch size
+                if "PYTORCH" in self.config.sections:
+                    batch_size = self.config.sections["PYTORCH"].batch_size
+                if "JAX" in self.config.sections:
+                    batch_size = self.config.sections["JAX"].batch_size
+
+                # Get number of groups(to compare to batch_size) and trainin group size
+                num_groups = len(self.group_table.keys())
+                num_train = self.group_table[self.data['Group']]["training_size"]
+
+                # Gather smartsample weights "sweights" per group
+                sweight = (1 / batch_size ) / num_train
+                self.data['sweight'] = sweight
+                    
     #@pt.rank_zero
     def _write_seed_file(self, txt):
         @self.pt.rank_zero

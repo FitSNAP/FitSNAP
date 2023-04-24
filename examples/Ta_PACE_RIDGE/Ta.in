@@ -35,7 +35,7 @@ alpha = 1.e-4
 scraper = JSON
 
 [PATH]
-dataPath = /home/jmgoff/work/new_Ta_ex/single_elm_grid/JSON
+dataPath = ../Ta_Linear_JCP2014/JSON
 
 [OUTFILE]
 output_style = PACE

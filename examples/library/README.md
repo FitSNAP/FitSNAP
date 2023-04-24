@@ -40,3 +40,15 @@ and descriptor settings during each loop. This is a good foundation for hyperpar
 
 Here we show a function that takes in an ASE atoms object for a single configuration of atoms, and
 return the fitting data associated with that atoms object. 
+
+### `genetic_algorithm_ACE/libmod_optimize.py` 
+
+This is an example of using optimization algorithms designed specifically for efficiency in FitSNAP
+to optimize hyperparameters for an atomic cluster expansion model of Ta. Further details may be 
+found in the `genetic_algorithm_ACE/README.md` file.
+
+### `genetic_algorithm_SNAP/libmod_optimize.py` 
+
+This is an example of using optimization algorithms designed specifically for efficiency in FitSNAP
+to optimize hyperparameters for a spectral neighbor analysis model of Ta. Further details may be 
+found in the `genetic_algorithm_ACE/README.md` file.

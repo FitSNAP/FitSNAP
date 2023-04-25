@@ -2,7 +2,10 @@ from ase.data import *
 import numpy as np
 import itertools
 
-#SEE BOTTOM OF SCRIPT FOR EXAMPLE
+# Note: to use this script, you'll need to have the ASE package installed
+# for conda:  https://anaconda.org/conda-forge/ase
+# for pip:  https://pypi.org/project/ase/
+# SEE BOTTOM OF SCRIPT FOR EXAMPLE
 
 
 # ionic radii from mendeleev (ionic radii in crystals from slater 1964) in angstroms

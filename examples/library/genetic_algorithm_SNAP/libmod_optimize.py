@@ -36,7 +36,7 @@ from fitsnap3lib.parallel_tools import ParallelTools
 pt = ParallelTools(comm=comm)
 # Config class reads the input
 from fitsnap3lib.io.input import Config
-config = Config(arguments_lst = [args.fitsnap_in, "--overwrite"])
+config = Config(arguments_lst = [args.fitsnap_in, "--overwrite", "--screen2file", "detailed-output.txt"])
 # create a fitsnap object
 from fitsnap3lib.fitsnap import FitSnap
 snap = FitSnap()
@@ -504,7 +504,11 @@ def genetic_algorithm():
             # to run the lammps/pylammps simulation. To do so, the fitsnap output file name prefix should
             # be updated per step, then snap.write_output() should be called per step. This will likely increase
             # the optimization time.
+        # Anything printed with pt.single_print will be included in output file.
         pt.single_print('generation,scores,popsize:',generation,len(scores),population_size)
+        # Print generation and best fit.
+        bestfit = min(scores)
+        print(f"{generation} {bestfit}")
         for i in range(population_size):
             if scores[i] < best_eval:
                 best, best_eval = tuple(population[i]), scores[i]

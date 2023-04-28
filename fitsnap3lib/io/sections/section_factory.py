@@ -18,6 +18,7 @@ from fitsnap3lib.io.sections.scraper import Scraper
 from fitsnap3lib.io.sections.solver_sections.solver import Solver
 from fitsnap3lib.io.sections.solver_sections.ard import Ard
 from fitsnap3lib.io.sections.solver_sections.lasso import Lasso
+from fitsnap3lib.io.sections.solver_sections.ridge import Ridge
 from fitsnap3lib.io.sections.solver_sections.jax import JAX
 from fitsnap3lib.io.sections.solver_sections.pytorch import PYTORCH
 from fitsnap3lib.io.sections.solver_sections.network import NETWORK

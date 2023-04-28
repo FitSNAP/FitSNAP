@@ -53,7 +53,9 @@ try:
 
             fcrik = self.cutoff_function(rij) #.flatten()
 
+            # This is needed for training due to batches of configs, but not for deploying.
             ui = unique_i.unique()
+            #print(unique_i)
 
             # Cram a bunch of calculations into a single list comprehension to reduce overhead.
             # torch.mm() calculates a matrix of dot products for all pairs, then we fill the diagonals
@@ -73,6 +75,8 @@ try:
                            for i in ui] #range(len_ui)]
             """
 
+            # Test replacing ui with unique_i
+            
             descriptors_3body = torch.cat([torch.sum(
                                         torch.exp(-1.0*self.eta
                                             * (torch.mm(diff_norm[unique_i==i], 
@@ -82,6 +86,18 @@ try:
                                       dim=1)
                                     for i in ui],
                                     dim=0)
+            
+            """ 
+            descriptors_3body = torch.cat([torch.sum(
+                                        torch.exp(-1.0*self.eta
+                                            * (torch.mm(diff_norm[unique_i==i], 
+                                                torch.transpose(diff_norm[unique_i==i],0,1)).fill_diagonal_(0)[:,:,None]
+                                            -self.mu)**2) 
+                                        * fcrik[unique_i==i][:,None], 
+                                      dim=1)
+                                    for i in range(0,2000)],
+                                    dim=0)
+            """
 
             return descriptors_3body
 

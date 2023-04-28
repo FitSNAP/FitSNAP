@@ -51,7 +51,8 @@ class MLIAPInterface(MLIAPUnified):
 
     def compute_forces(self, data):
         #print(">>>>> hey!")
-        elems = self.as_tensor(data.elems).type(torch.int64).reshape(1, data.ntotal)
+        #elems = self.as_tensor(data.elems).type(torch.int64).reshape(1, data.ntotal)
+        elems = self.as_tensor(data.elems).type(torch.int64)
         #z_vals = self.species_set[elems+1]
         pair_i = self.as_tensor(data.pair_i).type(torch.int64)
         pair_j = self.as_tensor(data.pair_j).type(torch.int64)

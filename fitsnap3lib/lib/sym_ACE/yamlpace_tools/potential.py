@@ -45,23 +45,29 @@ class AcePot():
             self.global_lmbda = lmbda
             self.global_rcutinner = rcutinner
             self.global_drcutinner = drcutinner
+            self.global_lmin = lmin
         else:
             self.rcut = rcut
             self.lmbda = lmbda
             self.rcutinner = rcutinner
             self.drcutinner = drcutinner
+            self.lmin = lmin
         self.RPI_heuristic = RPI_heuristic
         self.set_embeddings()
         self.set_bonds()
         self.set_bond_base()
 
         lmax_dict = {rank:lv for rank,lv in zip(self.ranks,self.global_lmax)}
+        try:
+            lmin_dict = {rank:lv for rank,lv in zip(self.ranks,self.lmin)}
+        except AttributeError:
+            lmin_dict = {rank:lv for rank,lv in zip(self.ranks,self.global_lmin*len(self.ranks))}
         nradmax_dict = {rank:nv for rank,nv in zip(self.ranks,self.global_nmax)}
         mumax_dict={rank:len(self.elements) for rank in self.ranks}
         if self.RPI_heuristic == 'lexicographic':
             nulst_1 = [generate_nl(rank,nradmax_dict[rank],lmax_dict[rank],mumax_dict[rank]) for rank in self.ranks]
         else:
-            nulst_1 = [descriptor_labels_YSG(rank,nradmax_dict[rank],lmax_dict[rank],mumax_dict[rank],lmin) for rank in self.ranks]
+            nulst_1 = [descriptor_labels_YSG(rank,nradmax_dict[rank],lmax_dict[rank],mumax_dict[rank],lmin_dict[rank]) for rank in self.ranks]
         nus_unsort = [item for sublist in nulst_1 for item in sublist]
         nus = nus_unsort.copy()
         mu0s = []

@@ -1,14 +1,15 @@
 [ACE]
 numTypes = 2
-rcutfac = 5.0 5.5 5.5 6.0
-lambda = 3.3 3.3 3.3 3.3
-rcinner = 0.1 0.1 0.1 0.1
+rcutfac = 5.790  5.007  5.007  4.224
+lambda = 1.737  1.502  1.502  1.267
+rcinner = 1.705  1.403  1.403  1.100
 drcinner = 0.01 0.01 0.01 0.01
 ranks = 1 2 3 4
 lmax =  1 2 2 1
-nmax = 16 2 2 1
+nmax =  22 3 2 1
 mumax = 2
-nmaxbase = 16
+lmin = 0 0 1 1
+nmaxbase = 22
 type = In P
 bzeroflag = 0
 
@@ -16,22 +17,27 @@ bzeroflag = 0
 calculator = LAMMPSPACE
 energy = 1
 force = 1
-stress = 1
+stress = 0
 
 [ESHIFT]
 In = -1.65967588701534
 P = 4.38159549501534
 
 [SOLVER]
-solver = SVD
+solver = ARD
 compute_testerrs = 1
 detailed_errors = 1
+
+[ARD]
+scap = 1.E-3
+scai = 1.E-3
+logcut = 0.3
 
 [SCRAPER]
 scraper = JSON
 
 [PATH]
-dataPath = ../InP_JPCA2020/JSON
+dataPath = /home/jmgoff/Software/FitSNAP/examples/InP_JPCA2020/JSON
 
 [OUTFILE]
 output_style = PACE
@@ -41,36 +47,33 @@ potential = InP_pot
 [REFERENCE]
 units = metal
 atom_style = atomic
-pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.2
+pair_style = hybrid/overlay zero 5.8 
 pair_coeff1 = * * zero
-pair_coeff2 = 1 1 zbl 49 49
-pair_coeff3 = 1 2 zbl 49 15
-pair_coeff4 = 2 2 zbl 15 15
 
 [GROUPS]
 group_sections = name training_size testing_size eweight fweight vweight
 group_types = str float float float float float
-smartweights = 0
+smartweights = 1
 random_sampling = 0
-aa = 		1.0  0.0	5319411.52359161	12160.2964901219 	1.0e-12
-aIn = 		1.0  0.0 	592960.979019644    	410.375340021632  	1.0e-12
-aP = 		1.0  0.0 	280933.371566026    	3618.73557864646  	1.0e-12
-Bulk = 		1.0  0.0 	747239.126417448   	1609572.6749909  	1.0e-12
-EOS = 		1.0  0.0 	100000    		11164.9854012147    	1.0e-12
-iIn = 		1.0  0.0 	2103779.971446    	6796.55772361871  	1.0e-12
-iP  = 		1.0  0.0 	669131.752996794  	5805.68960393981  	1.0e-12
-s_aa = 		1.0  0.0	5319411.52359161  	12160.2964901219 	1.0e-12
-s_aIn = 	1.0  0.0	592960.979019644   	410.375340021632 	1.0e-12
-s_aP = 		1.0  0.0	280933.371566026    	3618.73557864646	1.0e-12
-Shear = 	1.0  0.0 	100000  		205.973221998272	1.0e-12
-s_iIn = 	1.0  0.0	2103779.971446   	6796.55772361871 	1.0e-12
-s_iP = 		1.0  0.0	669131.752996794    	5805.68960393981 	1.0e-12
-Strain = 	1.0  0.0 	4564655.81612184 	1525.7275564439	 	1.0e-12
-s_vIn = 	1.0  0.0	6314405.9173199   	712362.940478615 	1.0e-12
-s_vP = 		1.0  0.0	3891634.88035388    	64705.3594884766 	1.0e-12
-s_vv = 		1.0  0.0	5622278.70967226    	24308.6192988325 	1.0e-12
-vP = 		1.0  0.0 	3891634.88035388     	64705.3594884766  	1.0e-12
-vv = 		1.0  0.0 	5622278.70967226     	24308.6192988325  	1.0e-12
+aa       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+aIn       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+aP       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+Bulk       =     0.95      0.05      1.00000000      0.00100000      1.E-12
+EOS       =     0.95      0.05      40.00000000      100.00000000      1.E-12
+iIn       =     0.95      0.05      2.00000000      100.00000000      1.E-12
+iP       =     0.95      0.05      2.00000000      100.00000000      1.E-12
+s_aa       =     0.95      0.05      10.00000000      100.00000000      1.E-12
+s_aIn       =     0.95      0.05      10.00000000      100.00000000      1.E-12
+s_aP       =     0.95      0.05      10.00000000      200.00000000      1.E-12
+Shear       =     0.95      0.05      22.00000000      100.00000000      1.E-12
+s_iIn       =     0.95      0.05      10.00000000      300.00000000      1.E-12
+s_iP       =     0.95      0.05      10.00000000      300.00000000      1.E-12
+Strain       =     0.95      0.05      13.00000000      0.00100000      1.E-12
+s_vIn       =     0.95      0.05      10.00000000      100.00000000      1.E-12
+s_vP       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+s_vv       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+vP       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+
 
 [EXTRAS]
 dump_descriptors = 0

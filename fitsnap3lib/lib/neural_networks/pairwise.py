@@ -5,6 +5,8 @@ from torch.nn import Parameter
 import math
 from fitsnap3lib.lib.neural_networks.descriptors.bessel import Bessel
 from fitsnap3lib.lib.neural_networks.descriptors.g3b import Gaussian3Body
+
+
 """
 Try to import mliap package after: https://github.com/lammps/lammps/pull/3388
 See related bug: https://github.com/lammps/lammps/issues/3204
@@ -85,7 +87,7 @@ class FitTorch(torch.nn.Module):
         self.bessel = Bessel(num_radial, cutoff) # Bessel object provides functions to calculate descriptors
         self.g3b = Gaussian3Body(num_3body, cutoff)
 
-    def forward(self, x, neighlist, transform_x, indices, atoms_per_structure, types, unique_i, unique_j, device, dtype=torch.float32):
+    def forward(self, x, neighlist, transform_x, indices, atoms_per_structure, types, unique_i, unique_j, device, dtype=torch.float32, mode="train"):
         """
         Forward pass through the PyTorch network model, calculating both energies and forces.
 
@@ -117,19 +119,30 @@ class FitTorch(torch.nn.Module):
 
         """
 
-        # create neighbor positions by transforming atom j positions
+        if (mode == "train"):
 
-        xneigh = transform_x + x[unique_j,:]
+            # create neighbor positions by transforming atom j positions
 
-        # Calculate displacements and distances - needed for various descriptor functions.
-        # NOTE: Only do this once so we don't bloat the computational graph.
-        # diff size is (numneigh, 3)
-        # diff_norm is size (numneigh, 3)
-        # rij is size (numneigh,1)
+            xneigh = transform_x + x[unique_j,:]
 
-        diff = x[unique_i] - xneigh
+            # Calculate displacements and distances - needed for various descriptor functions.
+            # NOTE: Only do this once so we don't bloat the computational graph.
+            # diff size is (numneigh, 3)
+            # diff_norm is size (numneigh, 3)
+            # rij is size (numneigh,1)
+
+            diff = x[unique_i] - xneigh
+
+        else:
+            # "x" will be diff
+            diff = x
+
         diff_norm = torch.nn.functional.normalize(diff, dim=1) # need for g3b
         rij = torch.linalg.norm(diff, dim=1).unsqueeze(1)  # need for cutoff and various other functions
+
+        #print(torch.max(rij))
+        #print(rij.size())
+
 
         #print(rij.size())
         #print(diff[:8,:])
@@ -143,14 +156,19 @@ class FitTorch(torch.nn.Module):
         # calculate Bessel radial basis
 
         rbf = self.bessel.radial_bessel_basis(rij, cutoff_functions)
-        assert(rbf.size()[0] == neighlist.size()[0])
+        if (mode =="train"):
+            assert(rbf.size()[0] == neighlist.size()[0])
+        else:
+            assert(rbf.size()[0] == unique_i.size()[0])
 
         #print("Max RBF:")
         #print(torch.max(rbf))
 
         # calculate 3 body descriptors 
 
+        # 2x speedup by commenting this out and using torch.ones!
         descriptors_3body = self.g3b.calculate(rij, diff_norm, unique_i)
+        #descriptors_3body = torch.ones((rij.size()[0],23))
 
         #print(f"Max d3body: {torch.max(descriptors_3body)}")
 
@@ -158,7 +176,10 @@ class FitTorch(torch.nn.Module):
 
         descriptors = torch.cat([rbf, descriptors_3body], dim=1) # num_pairs x num_descriptors
 
-        assert(descriptors.size()[0] == xneigh.size()[0])
+        if (mode =="train"):
+            assert(descriptors.size()[0] == xneigh.size()[0])
+        else:
+            assert(descriptors.size()[0] == x.size()[0])
 
         # input descriptors to a network for each pair; calculate pairwise energies
 
@@ -175,29 +196,54 @@ class FitTorch(torch.nn.Module):
         eij = torch.mul(eij,cutoff_functions)
 
         # calculate energy per config
-        
-        predicted_energy_total = torch.zeros(atoms_per_structure.size(), dtype=dtype).to(device)
-        predicted_energy_total.index_add_(0, indices, eij.squeeze())
+       
+        if (mode == "train"): 
+            predicted_energy_total = torch.zeros(atoms_per_structure.size(), dtype=dtype).to(device)
 
+            #print(indices)
+
+            predicted_energy_total.index_add_(0, indices, eij.squeeze())
+        else:
+            predicted_energy_total = torch.sum(eij)
+
+        #print(predicted_energy_total)
+        #print(torch.ones_like(predicted_energy_total))
+        #assert(False)
         # calculate spatial gradients
-
+        if (mode == "train"):
+            bool_create_graph = True
+            grad_outputs = torch.ones_like(predicted_energy_total) 
+        else:
+            bool_create_graph = False
+            grad_outputs = None
         gradients_wrt_x = torch.autograd.grad(predicted_energy_total, 
                                     x, 
-                                    grad_outputs=torch.ones_like(predicted_energy_total), 
-                                    create_graph=True)[0]
+                                    grad_outputs=grad_outputs, 
+                                    create_graph=bool_create_graph)[0]
+
+        #print(gradients_wrt_x.size())
 
         assert(gradients_wrt_x.size() == x.size())
 
-        # force is negative gradient
+        # At this point we need to construct fi from fij?
+        # No, copying MLIAPInterface from hipNN, just call data.update_pair_forces(fij) after returning fij.
 
-        predicted_forces = -1.0*gradients_wrt_x
+        if (mode == "train"):
 
-        # TODO: For now we divide energy by 2, to fix this we need to incorporate the LAMMPS 
-        # neighlist-transformed positions in the forward pass.
+            # force is negative gradient
 
-        predicted_energy_total = 1.0*predicted_energy_total
+            predicted_forces = -1.0*gradients_wrt_x
 
-        return (predicted_energy_total, predicted_forces)
+            # TODO: For now we divide energy by 2, to fix this we need to incorporate the LAMMPS 
+            # neighlist-transformed positions in the forward pass.
+
+            predicted_energy_total = 1.0*predicted_energy_total
+
+            return (predicted_energy_total, predicted_forces)
+
+        # Seems to conserve energy in MD if I don't multiply by -1.
+        fij = 1.0*gradients_wrt_x
+        return(predicted_energy_total, fij) 
 
     def import_wb(self, weights, bias):
         """
@@ -233,7 +279,8 @@ class FitTorch(torch.nn.Module):
         """
         
         #from lammps.mliap.pytorch import IgnoreElems, TorchWrapper, ElemwiseModels
-        from fitsnap3lib.lib.neural_networks.write import PairNN, IgnoreElems
+        from lammps.mliap.mliap_unified_abc import MLIAPUnified
+        #from fitsnap3lib.lib.neural_networks.write import PairNN, IgnoreElems
 
         # self.network_architecture0 is network model for the first element type
 
@@ -245,9 +292,13 @@ class FitTorch(torch.nn.Module):
             print("Multi element, saving model with ElemwiseModels ML-IAP wrapper")
             model = ElemwiseModels(self.networks, self.n_elem)
         """
+
+
+        """
         model = IgnoreElems(self.network_architecture0)
         linked_model = PairNN(model, n_descriptors=self.num_descriptors, n_elements=self.n_elem)
         torch.save(linked_model, filename)
+        """
         
 
     def load_lammps_torch(self, filename="FitTorch.pt"):

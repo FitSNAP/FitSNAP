@@ -58,7 +58,7 @@ class LammpsCustom(LammpsBase):
     def _set_computes(self):
         pass
 
-    def calculate_descriptors(self,x,neighlist,xneigh):
+    def calculate_descriptors(self,x,neighlist,xneigh,types):
         """
         Calculate descriptors for network standardization (need mean and std)
         This is used in _collect_lammps_nonlinear to calculate pairwise descriptors for a single 
@@ -71,11 +71,26 @@ class LammpsCustom(LammpsBase):
                 atom i and second column is atom j. 
             xneigh (ndarray): Array of positions for each atom, indicies correspond with `neighlist`, 
                 with size (num_neigh, 3).
+            types (ndarray): Array of element types for each atom, indicies correspond with `neighlist`,
+                with size (num_neigh, 3).
 
         Returns:
             Array of descriptors for each pair with size (num_neigh, num_descriptors). The 2-body 
             and 3-body descriptors are concatenated along the columns.
         """
+
+        # Calculate onehot type descriptors.
+   
+        numtypes = self.config.sections['CUSTOM'].numtypes
+        type_i = types[neighlist[:,0]]
+        type_j = types[neighlist[:,1]]
+        onehot_i = np.zeros((type_i.size, numtypes)) # + 1))
+        onehot_i[:,type_i-1] = 1
+        onehot_j = np.zeros((type_j.size, numtypes)) # + 1))
+        onehot_j[:,type_j-1] = 1
+        onehot = np.concatenate((onehot_i, onehot_j),axis=1)
+
+        # calculate geometry
 
         diff = x[neighlist[:,0]] - xneigh
         rij = np.linalg.norm(diff, axis=1)[:,None] # need for cutoff and various other functions
@@ -91,10 +106,10 @@ class LammpsCustom(LammpsBase):
 
         # calculate 3 body descriptors for each pair and convert to numpy
 
-        descriptors_3body = self.g3b.calculate(rij, diff_norm, neighlist[:,0], numpy_bool=True).numpy()
+        descriptors_3body = self.g3b.calculate(rij, diff_norm, neighlist[:,0], type_i, type_j, numpy_bool=True).numpy()
 
         assert(np.shape(basis)[0] == np.shape(descriptors_3body)[0])
-        descriptors = np.concatenate([basis,descriptors_3body], axis=1)
+        descriptors = np.concatenate([basis,descriptors_3body,onehot], axis=1)
         assert(np.shape(descriptors)[1] == self.config.sections['CUSTOM'].num_descriptors)
 
         return descriptors
@@ -117,6 +132,7 @@ class LammpsCustom(LammpsBase):
         # extract types
 
         lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
+
         lmp_volume = self._lmp.get_thermo("vol")
         assert (np.all(np.round(self._data["Positions"],decimals=6)==np.round(lmp_pos,decimals=6)))
 
@@ -205,7 +221,7 @@ class LammpsCustom(LammpsBase):
 
         # calculate descriptors for standardization
 
-        descriptors = self.calculate_descriptors(self._data["Positions"], neighlist, xneighs)
+        descriptors = self.calculate_descriptors(self._data["Positions"], neighlist, xneighs, lmp_types)
         self.pt.shared_arrays['descriptors'].array[index_neighlist:(index_neighlist+nrows_neighlist)] = descriptors
         index_neighlist += nrows_neighlist
 

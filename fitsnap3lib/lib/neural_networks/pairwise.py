@@ -124,6 +124,7 @@ class FitTorch(torch.nn.Module):
         type_i = types[unique_i]
         type_j = types[unique_j]
 
+        #print(type_i)
         #numneigh = type_i.size()[0]
         #ti = type_i.reshape((numneigh, 1))
         #tj = type_j.reshape((numneigh, 1))
@@ -136,12 +137,16 @@ class FitTorch(torch.nn.Module):
 
         # One-hot encode the types.
         # TODO: Make num_classes = ntypes.
-        onehot_i = torch.nn.functional.one_hot(type_i, num_classes = self.n_elem) # size (numneigh, numtypes)
-        onehot_j = torch.nn.functional.one_hot(type_j, num_classes = self.n_elem) # size (numneigh, numtypes)
+        onehot_i = torch.nn.functional.one_hot(type_i-1, num_classes = self.n_elem) # size (numneigh, numtypes)
+        onehot_j = torch.nn.functional.one_hot(type_j-1, num_classes = self.n_elem) # size (numneigh, numtypes)
         
         # Concatenate the onehot encodings for each pair.
 
         onehot_pair = torch.cat([onehot_i, onehot_j], dim=1) # size (numneigh, 2*numtypes)
+        #print(onehot_pair)
+
+        #print(onehot_pair)
+        #assert(False)
         
         if (mode == "train"):
 
@@ -183,13 +188,13 @@ class FitTorch(torch.nn.Module):
         # calculate 3 body descriptors 
         
         # 2x speedup by commenting this out and using torch.ones!
-        descriptors_3body = self.g3b.calculate(rij, diff_norm, unique_i)
+        descriptors_3body = self.g3b.calculate(rij, diff_norm, unique_i, type_i, type_j)
         #descriptors_3body = torch.ones((rij.size()[0],23))
 
         #print(f"Max d3body: {torch.max(descriptors_3body)}")
 
         # concatenate radial descriptors and 3body descriptors
-
+        #"""
         #descriptors = torch.cat([rbf, descriptors_3body], dim=1) # num_pairs x num_descriptors
         descriptors = torch.cat([rbf, descriptors_3body, onehot_pair], dim=1) # num_pairs x num_descriptors
         
@@ -261,7 +266,7 @@ class FitTorch(torch.nn.Module):
         # Seems to conserve energy in MD if I don't multiply by -1.
         fij = 1.0*gradients_wrt_x
 
-        
+        #"""
         #predicted_energy_total = torch.tensor(0)
         #fij = torch.ones(x.size()) 
         return(predicted_energy_total, fij) 

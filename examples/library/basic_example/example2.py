@@ -16,6 +16,34 @@ import time
 from mpi4py import MPI
 from fitsnap3lib.fitsnap import FitSnap
 
+# Set up your communicator.
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+print(f"main script comm: {comm}")
+
+# Check out how to split this communicator among all processes:
+# https://www.codingame.com/playgrounds/349/introduction-to-mpi/splitting
+# E.g. to split the communicator in half see below.
+# E.g. with np 4, this will create 2 groups with ranks (0,1) and (2,3).
+# In the comm_split communicator, this will make rank 1 be rank 0, and rank 2 be rank 0, due to key.
+# Can also set different settings in each communicator.
+if rank < size//2:
+    color = 10
+    key = -rank
+    twojmax = 2
+
+else:
+    color = 20
+    key = +rank
+    twojmax = 6
+
+print(f"proc {rank} color {color} key {key}")
+# comm2 is a split communicator involving colors of this group
+comm_split = comm.Split(color=color, key=key)
+print(f"comm size {comm.Get_size()} comm_split size: {comm_split.Get_size()}")
+
 # Create an input dictionary containing settings.
 
 data = \
@@ -23,7 +51,7 @@ data = \
 "BISPECTRUM":
     {
     "numTypes": 1,
-    "twojmax": 6,
+    "twojmax": twojmax, #6,
     "rcutfac": 4.67637,
     "rfac0": 0.99363,
     "rmin0": 0.0,
@@ -105,28 +133,6 @@ data = \
     }
 }
 
-
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-print(f"main script comm: {comm}")
-
-# Check out how to split this communicator among all processes:
-# https://www.codingame.com/playgrounds/349/introduction-to-mpi/splitting
-# E.g. to split the communicator in half see below.
-# E.g. with np 4, this will create 2 groups with ranks (0,1) and (2,3).
-# In the comm_split communicator, this will make rank 1 be rank 0, and rank 2 be rank 0, due to key.
-if rank < size//2:
-    color = 10
-    key = -rank
-else:
-    color = 20
-    key = +rank
-print(f"proc {rank} color {color} key {key}")
-# comm2 is a split communicator involving colors of this group
-comm_split = comm.Split(color=color, key=key)
-print(f"comm size {comm.Get_size()} comm_split size: {comm_split.Get_size()}")
-
 # Declare some settings for this fitsnap object.
 # These settings determine:
 # 1. style of input (file or dict)
@@ -145,11 +151,11 @@ snap2 = FitSnap(filename, comm=comm_split, arglist=["--overwrite"])
 #snap = FitSnap(filename, comm=comm_split, arglist=["--overwrite"])
 
 # E.g. create instance with a dictionary input (no file)
-snap = FitSnap(data, comm=comm, arglist=["--overwrite"])
+#snap = FitSnap(data, comm=comm, arglist=["--overwrite"])
 
 # E.g. create an instance with indict and split communicator:
 # This should increase memory usage by number of comm groups, since new shared arrays will be made for each comm.
-#snap = FitSnap(data, comm=comm_split, arglist=["--overwrite"])
+snap = FitSnap(data, comm=comm_split, arglist=["--overwrite"])
 
 # tell ParallelTool not to create SharedArrays
 #pt.create_shared_bool = False
@@ -165,8 +171,8 @@ snap.scrape_configs()
 snap.process_configs()
 
 # Stop here to check the memory
-process = psutil.Process()
-print(f"--- ptrank {snap.pt._rank} pid {psutil.Process(os.getpid())} procmem: {process.memory_info().rss}")
+#process = psutil.Process()
+#print(f"--- ptrank {snap.pt._rank} pid {psutil.Process(os.getpid())} procmem: {process.memory_info().rss}")
 
 # Sleep to check top:
 #for i in range(0,100000000000000000):

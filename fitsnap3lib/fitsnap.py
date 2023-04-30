@@ -200,7 +200,8 @@ class FitSnap:
             self.calculator.create_a()
             if (self.solver.linear):
                 for i, configuration in enumerate(self.data):
-                    #self.pt.single_print(i)
+                    if (i % 10 == 0):
+                        self.pt.single_print(i)
                     self.calculator.process_configs(configuration, i)
             else:
                 for i, configuration in enumerate(self.data):

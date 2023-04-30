@@ -2,7 +2,6 @@
 numAtoms = 1
 numTypes = 2
 type = W Be
-#num_descriptors = 8 # number of descriptors for each pair
 num_radial = 8 # number of radial descriptors
 num_3body = 23 # number of 3body descriptors
 cutoff = 4.5 # if changing this cutoff, be sure to change pair zero cutoff in [REFERENCE]
@@ -25,10 +24,6 @@ learning_rate = 1e-3
 num_epochs = 20 # Run for ~150 epochs to get < 100 meV/A error
 batch_size = 4 # 363 configs in entire set
 save_state_output = Pytorch.pt
-#energy_weight = 1e-2
-#force_weight = 1.0
-#training_fraction = 0.7
-#manual_seed_flag = 1
 
 [SOLVER]
 solver = NETWORK 

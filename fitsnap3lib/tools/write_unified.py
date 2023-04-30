@@ -15,7 +15,7 @@ class MLIAPInterface(MLIAPUnified):
     """
     Class for creating ML-IAP Unified model based on hippynn graphs.
     """
-    def __init__(self, network, element_types, ndescriptors=1,
+    def __init__(self, network, element_types, cutoff=4.5, ndescriptors=1,
                  model_device=torch.device("cpu")):
         """
         :param network: pytorch model state dict
@@ -32,8 +32,10 @@ class MLIAPInterface(MLIAPUnified):
         
 
         # Build the calculator
-        rc = 4.5
-        self.rcutfac = 0.5*rc # Actual cutoff will be 2*rc
+        # TODO: Make this cutoff depend on model cutoff, ideally from deployed model itself but could 
+        # be part of deploy step.
+        #rc = 4.5
+        self.rcutfac = 0.5*cutoff # Actual cutoff will be 2*rc
         #print(self.model.nparams)
         self.nparams = 10
         #self.rcutfac, self.species_set, self.graph = setup_LAMMPS()

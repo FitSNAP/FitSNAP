@@ -54,15 +54,49 @@ class FitSnap:
         delete_data (:obj:`bool`): deletes the data list (if True) after a fit, useful to make False 
                                    if looping over fits.
     """
-    def __init__(self, input=None, arglist=None):
+    def __init__(self, input=None, comm=None, arglist=None):
         """
         Args:
-            input (str): path to input file when using in library mode.
-            arglist (list): list of cmd line args when using in library mode.
+            input (str): Optional path to input file when using library mode.
+            comm: Optional MPI communicator when using library mode.
+            arglist (list): Optional list of cmd line args when using library mode.
         """
         snapid = id(self)
         print(f"fitsnap id: {snapid}")
-        self.pt = ParallelTools(snapid)
+        # TODO: Is it okay to create an instance on each proc like this?
+        #       Or do we need to create on one proc and broadcast to all others?
+        # TODO: Create pt instance on proc 0, then scatter to all other procs in communicator.
+
+        """
+        self.test = [1,2,3]
+        if (comm.Get_rank() == 0):
+            comm.send(self.test, dest=1, tag=11)
+            print(f"Sent test")
+        print(f"rank {comm.Get_rank()} before barrier")
+        comm.Barrier()
+        if (comm.Get_rank() == 1):
+            print("Receiving test")
+            self.test = comm.recv(source=0, tag=11)
+            print("Recieved")
+            self.test[0] = 2
+        print(self.test)
+        """
+
+        """
+        if (comm.Get_rank() == 0):
+            self.pt = ParallelTools(snapid, comm=comm)
+            comm.send(self.pt, dest=1, tag=11)
+            print(f"Sent pt")
+        print(f"rank {comm.Get_rank()} before barrier")
+        comm.Barrier()
+        if (comm.Get_rank() == 1):
+            print("Receiving pt")
+            self.pt = comm.recv(source=0, tag=11)
+            print("Recieved")
+        """
+        #assert(False)
+
+        self.pt = ParallelTools(snapid, comm=comm)
         print(id(self.pt))
         self.config = Config(self.pt, input, arguments_lst=arglist)
 
@@ -118,7 +152,7 @@ class FitSnap:
             self.calculator.create_a()
             if (self.solver.linear):
                 for i, configuration in enumerate(self.data):
-                    self.pt.single_print(i)
+                    #self.pt.single_print(i)
                     self.calculator.process_configs(configuration, i)
             else:
                 for i, configuration in enumerate(self.data):
@@ -129,6 +163,12 @@ class FitSnap:
             self.calculator.collect_distributed_lists()
 
             # calculator.extras() has dataframe processing specific to linear solvers only
+
+            # test shared array capability.
+            if (self.pt._rank==0):
+                self.pt.shared_arrays["a"].array[0,0] = 1e9
+            print(self.pt.shared_arrays["a"].array)
+            assert(False)
             
             if (self.solver.linear):
                 self.calculator.extras()

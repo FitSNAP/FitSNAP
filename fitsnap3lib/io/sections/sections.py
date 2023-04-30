@@ -146,9 +146,14 @@ class Section:
 
     @classmethod
     def _set_infile_directory(cls, self):
-        """ Set path to input file directory """
+        """ 
+        Set path to input file directory.
+        This is the directory that we read input from.
+        If no infile is supplied (i.e. we have indict), then no need for this.
+        """
         cwd = getcwd().split('/')
-        path_to_file = self.infile.split('/')[:-1]
+        print(f">>> sections cwd: {cwd}")
+        path_to_file = self.infile.split('/')[:-1] if self.infile else None
         if not path_to_file:
             cls._infile_directory = ''
         elif not path.isabs(self.infile):

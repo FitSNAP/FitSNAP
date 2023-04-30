@@ -42,6 +42,9 @@ class Config():
     def __init__(self, pt, input=None, arguments_lst=None):
         self.pt = pt #ParallelTools()
         self.input = input
+        # infile and indict set to None by default, get set in parse_config
+        self.infile = None
+        self.indict = None
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
         self.parse_cmdline(arguments_lst=arguments_lst)
@@ -112,30 +115,59 @@ class Config():
     def parse_config(self):
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
+
+        #print(self.input)
+        #assert(False)
         if self.input is not None:
-            self.infile = self.input
+            if (isinstance(self.input, str)):
+                self.infile = self.input
+            elif (isinstance(self.input, dict)):
+                self.indict = self.input
         else:
             if not Path(self.args.infile).is_file():
                 raise FileNotFoundError("Input file not found")
             self.infile = self.args.infile
-        tmp_config.read(self.infile)
-        infile_folder = str(Path(self.infile).parent.absolute())
-        file_name = self.infile.split('/')[-1]
-        if not Path(infile_folder+'/'+file_name).is_file():
-            raise RuntimeError("Input file {} not found in {}", file_name, infile_folder)
 
-        #vprint = output.screen if self.args.verbose else lambda *arguments, **kwargs: None
-        if self.args.keyword_replacements:
-            for kwg, kwn, kwv in self.args.keyword_replacements:
-                if kwg not in tmp_config:
-                    raise ValueError(f"{kwg} is not a valid keyword group")
-                #vprint(f"Substituting {kwg}:{kwn}={kwv}")
-                tmp_config[kwg][kwn] = kwv
+        if (self.infile is not None):
+            # We have an input file.
+            tmp_config.read(self.infile)
+            #print(tmp_config.sections())
+            #assert(False)
+            infile_folder = str(Path(self.infile).parent.absolute())
+            file_name = self.infile.split('/')[-1]
+            if not Path(infile_folder+'/'+file_name).is_file():
+                raise RuntimeError("Input file {} not found in {}", file_name, infile_folder)
 
+            #vprint = output.screen if self.args.verbose else lambda *arguments, **kwargs: None
+            # This adds keyword replacements to the config.
+            if self.args.keyword_replacements:
+                for kwg, kwn, kwv in self.args.keyword_replacements:
+                    if kwg not in tmp_config:
+                        raise ValueError(f"{kwg} is not a valid keyword group")
+                    #vprint(f"Substituting {kwg}:{kwn}={kwv}")
+                    tmp_config[kwg][kwn] = kwv
+
+        elif (self.indict is not None):
+            # We have an input dict.
+            """
+            for key1, data1 in self.indict.items():
+                tmp_config[key1] = {}
+                for key2, data2 in data1.items():
+                    for key3, data3 in data2.items():
+                        tmp_config[key1]["{}_{}".format(key2, key3)] = str(data3)
+            """
+            for key1, data1 in self.indict.items():
+                tmp_config[key1] = {}
+                for key2, data2 in data1.items():
+                    tmp_config[key1]["{}".format(key2)] = str(data2)
+
+        # Make sections based on input settings.
         self.set_sections(tmp_config)
 
     def set_sections(self, tmp_config):
         sections = tmp_config.sections()
+        print(sections)
+        #assert(False)
         for section in sections:
             if section == "TEMPLATE":
                 section = "DEFAULT"

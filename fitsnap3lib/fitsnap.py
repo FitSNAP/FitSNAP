@@ -54,11 +54,11 @@ class FitSnap:
         delete_data (:obj:`bool`): deletes the data list (if True) after a fit, useful to make False 
                                    if looping over fits.
     """
-    def __init__(self, input, arglist=None):
+    def __init__(self, input=None, arglist=None):
         """
         Args:
-            input (str): path to input file.
-            arglist (list): list of cmd line args.
+            input (str): path to input file when using in library mode.
+            arglist (list): list of cmd line args when using in library mode.
         """
         snapid = id(self)
         print(f"fitsnap id: {snapid}")

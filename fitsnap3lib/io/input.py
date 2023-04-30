@@ -41,6 +41,9 @@ class Config():
 
     def __init__(self, pt, input=None, arguments_lst=None):
         self.pt = pt #ParallelTools()
+        # Check that we made a pointer
+        #print(f"{id(self.pt)} {id(pt)}")
+        #assert(False)
         self.input = input
         # infile and indict set to None by default, get set in parse_config
         self.infile = None

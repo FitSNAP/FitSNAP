@@ -38,6 +38,11 @@ from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
 from random import random
+from mpi4py import MPI
+import numpy as np
+# Use this to check memory:
+from psutil import virtual_memory
+import psutil
 #config = Config()
 #pt = ParallelTools()
 
@@ -67,6 +72,7 @@ class FitSnap:
         #       Or do we need to create on one proc and broadcast to all others?
         # TODO: Create pt instance on proc 0, then scatter to all other procs in communicator.
 
+        # Basic send:
         """
         self.test = [1,2,3]
         if (comm.Get_rank() == 0):
@@ -82,6 +88,7 @@ class FitSnap:
         print(self.test)
         """
 
+        # Trying to send a pt object:
         """
         if (comm.Get_rank() == 0):
             self.pt = ParallelTools(snapid, comm=comm)
@@ -94,9 +101,50 @@ class FitSnap:
             self.pt = comm.recv(source=0, tag=11)
             print("Recieved")
         """
+
+        self.comm = comm
+
+        # Basic shared memory:
+        # NOTE: This shows that we can make shared arrays inside the fitsnap object, perhaps 
+        #       not needing them in parallel tools?
+        # create a shared array of size 1000 elements of type double
+        """
+        size = 1000 
+        itemsize = MPI.DOUBLE.Get_size() 
+        if comm.Get_rank() == 0: 
+            nbytes = size * itemsize 
+        else: 
+            nbytes = 0
+
+        # on rank 0, create the shared block
+        # on rank 1 get a handle to it (known as a window in MPI speak)
+        win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=comm) 
+
+        # create a numpy array whose data points to the shared mem
+        buf, itemsize = win.Shared_query(0) 
+        assert itemsize == MPI.DOUBLE.Get_size() 
+        self.ary = np.ndarray(buffer=buf, dtype='d', shape=(size,)) 
+
+        # in process rank 1:
+        # write the numbers 0.0,1.0,..,4.0 to the first 5 elements of the array
+        if comm.rank == 1: 
+            self.ary[:5] = np.arange(5)
+
+        # wait in process rank 0 until process 1 has written to the array
+        comm.Barrier() 
+
+        # check that the array is actually shared and process 0 can see
+        # the changes made in the array by process 1
+        if comm.rank == 0: 
+            print(self.ary[:10])
+
+        #print(f"rank {comm.Get_rank()} comm: {comm}")
         #assert(False)
+        """
 
         self.pt = ParallelTools(snapid, comm=comm)
+        # Note that each proc in comm will create a different pt object, but the shared arrays should still share 
+        # memory within the communicator.
         print(id(self.pt))
         self.config = Config(self.pt, input, arguments_lst=arglist)
 
@@ -164,11 +212,26 @@ class FitSnap:
 
             # calculator.extras() has dataframe processing specific to linear solvers only
 
-            # test shared array capability.
+            # Test shared array capability.
+            # First check that ranks can modify data shared with other ranks:
+            """
             if (self.pt._rank==0):
                 self.pt.shared_arrays["a"].array[0,0] = 1e9
-            print(self.pt.shared_arrays["a"].array)
+                self.ary[0] = 100
+            #self.comm.Barrier()
+            # wait in other ranks until process 1 has written to the array
+            self.pt._comm.Barrier()
+            #if (self.pt._rank==1):
+            #    self.pt.shared_arrays["a"].array[0,0] = 1e12
+            print(f"rank {self.pt._rank} array: {self.pt.shared_arrays['a'].array}")
+            print(self.ary[0:5])
+            """
+            # Check the memory
+            """
+            process = psutil.Process()
+            print(f"rank {self.pt._rank} procmem: {process.memory_info().rss}")
             assert(False)
+            """
             
             if (self.solver.linear):
                 self.calculator.extras()

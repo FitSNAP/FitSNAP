@@ -178,7 +178,7 @@ class ParallelTools():
             self._comm = comm
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
-            print(f"Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
+            print(f">>> Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
             """
             Set this to False if want to avoid shared arrays. This is helpful when using the library 
             to loop over functions that create shared arrays, to avoid mem leaks.

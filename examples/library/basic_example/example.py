@@ -12,7 +12,6 @@ Usage:
 import numpy as np
 from mpi4py import MPI
 import argparse
-import gc
 
 # parse command line args
 

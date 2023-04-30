@@ -34,9 +34,10 @@ from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.scrapers.scraper_factory import scraper
 from fitsnap3lib.calculators.calculator_factory import calculator
 from fitsnap3lib.solvers.solver_factory import solver
-from fitsnap3lib.io.output import output
+#from fitsnap3lib.io.output import output
+from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
-
+from random import random
 #config = Config()
 #pt = ParallelTools()
 
@@ -53,14 +54,25 @@ class FitSnap:
         delete_data (:obj:`bool`): deletes the data list (if True) after a fit, useful to make False 
                                    if looping over fits.
     """
-    def __init__(self): 
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, input, arglist=None):
+        """
+        Args:
+            input (str): path to input file.
+            arglist (list): list of cmd line args.
+        """
+        snapid = id(self)
+        print(f"fitsnap id: {snapid}")
+        self.pt = ParallelTools(snapid)
+        print(id(self.pt))
+        self.config = Config(self.pt, input, arguments_lst=arglist)
 
-        self.scraper = scraper(self.config.sections["SCRAPER"].scraper)
+        self.scraper = scraper(self.config.sections["SCRAPER"].scraper, self.pt, self.config)
         self.data = []
-        self.calculator = calculator(self.config.sections["CALCULATOR"].calculator)
-        self.solver = solver(self.config.sections["SOLVER"].solver)
+        self.calculator = calculator(self.config.sections["CALCULATOR"].calculator, self.pt, self.config)
+        self.solver = solver(self.config.sections["SOLVER"].solver, self.pt, self.config)
+        self.output = output(self.config.sections["OUTFILE"].output_style, self.pt, self.config)
+
+        #assert(False)
         self.fit = None
         self.multinode = 0
         """
@@ -69,7 +81,7 @@ class FitSnap:
         """
         self.delete_data = True
         if self.config.sections["EXTRAS"].only_test:
-            self.fit = output.read_fit()
+            self.fit = self.output.read_fit()
 
         if (hasattr(self.pt, "lammps_version")):
             if (self.config.sections['CALCULATOR'].nonlinear and (self.pt.lammps_version < 20220915) ):
@@ -106,6 +118,7 @@ class FitSnap:
             self.calculator.create_a()
             if (self.solver.linear):
                 for i, configuration in enumerate(self.data):
+                    self.pt.single_print(i)
                     self.calculator.process_configs(configuration, i)
             else:
                 for i, configuration in enumerate(self.data):
@@ -163,5 +176,5 @@ class FitSnap:
         def decorated_write_output():
             if not self.config.args.perform_fit:
                 return
-            output.output(self.solver.fit, self.solver.errors)
+            self.output.output(self.solver.fit, self.solver.errors)
         decorated_write_output()

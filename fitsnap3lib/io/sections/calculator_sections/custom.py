@@ -4,9 +4,9 @@ from fitsnap3lib.io.sections.sections import Section
 
 class Custom(Section):
 
-    def __init__(self, name, config, args):
+    def __init__(self, name, config, pt, infile, args):
         # let parent hold config and args
-        super().__init__(name, config, args)
+        super().__init__(name, config, pt, infile, args)
         self.num_atoms = self.get_value("CUSTOM", "numAtoms", "1", "int")
         self.numtypes = self.get_value("CUSTOM", "numTypes", "1", "int")
         self.types = self.get_value("CUSTOM", "type", "H").split()

@@ -3,16 +3,16 @@ import argparse
 import sys
 from pickle import HIGHEST_PROTOCOL
 from fitsnap3lib.io.sections.section_factory import new_section
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.parallel_output import Output
+#from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.parallel_output import Output
 from pathlib import Path
 import random
 
 
-output = Output()
+#output = Output()
 #pt = ParallelTools()
 
-
+"""
 class Singleton(type):
     _instances = {}
 
@@ -26,9 +26,10 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+"""
 
-
-class Config(metaclass=Singleton):
+#class Config(metaclass=Singleton):
+class Config():
     """ 
     Class for storing input settings in a `config` instance. The `config` instance is first created 
     in `io/output.py`.
@@ -38,8 +39,9 @@ class Config(metaclass=Singleton):
             string to the location of the FitSNAP input script .
     """
 
-    def __init__(self, arguments_lst=None):
-        self.pt = ParallelTools()
+    def __init__(self, pt, input=None, arguments_lst=None):
+        self.pt = pt #ParallelTools()
+        self.input = input
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
         self.parse_cmdline(arguments_lst=arguments_lst)
@@ -53,9 +55,10 @@ class Config(metaclass=Singleton):
 
     def parse_cmdline(self, arguments_lst=None):
         parser = argparse.ArgumentParser(prog="fitsnap3")
-
-        parser.add_argument("infile", action="store",
-                            help="Input file with bispectrum etc. options")
+        print(">>> 1")
+        if (self.input is None):
+            parser.add_argument("infile", action="store",
+                                help="Input file with bispectrum etc. options")
 
         # Optional args.
         parser.add_argument("--lammpslog", "-l", action="store_true", dest="lammpslog",
@@ -88,7 +91,7 @@ class Config(metaclass=Singleton):
                             default=None, help="Write fitsnap log to this file.")
         parser.add_argument("--screen2file", "-s2f", action="store", dest="screen2file",
                             default=None, help="Print screen to a file")
-
+        print(">>> 2")
         # Not Implemented.
         """
         parser.add_argument("--lammps_noexceptions", action="store_true",
@@ -104,24 +107,29 @@ class Config(metaclass=Singleton):
                 # We're building docs in this case.
                 arguments_lst = arguments_lst=["../examples/Ta_Linear_JCP2014/Ta-example-nodump.in", "--overwrite"]
         self.args = parser.parse_args(arguments_lst)
+        print(">>> 3")
 
     def parse_config(self):
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
-        if not Path(self.args.infile).is_file():
-            raise FileNotFoundError("Input file not found")
-        tmp_config.read(self.args.infile)
-        infile_folder = str(Path(self.args.infile).parent.absolute())
-        file_name = self.args.infile.split('/')[-1]
+        if self.input is not None:
+            self.infile = self.input
+        else:
+            if not Path(self.args.infile).is_file():
+                raise FileNotFoundError("Input file not found")
+            self.infile = self.args.infile
+        tmp_config.read(self.infile)
+        infile_folder = str(Path(self.infile).parent.absolute())
+        file_name = self.infile.split('/')[-1]
         if not Path(infile_folder+'/'+file_name).is_file():
             raise RuntimeError("Input file {} not found in {}", file_name, infile_folder)
 
-        vprint = output.screen if self.args.verbose else lambda *arguments, **kwargs: None
+        #vprint = output.screen if self.args.verbose else lambda *arguments, **kwargs: None
         if self.args.keyword_replacements:
             for kwg, kwn, kwv in self.args.keyword_replacements:
                 if kwg not in tmp_config:
                     raise ValueError(f"{kwg} is not a valid keyword group")
-                vprint(f"Substituting {kwg}:{kwn}={kwv}")
+                #vprint(f"Substituting {kwg}:{kwn}={kwv}")
                 tmp_config[kwg][kwn] = kwv
 
         self.set_sections(tmp_config)
@@ -133,4 +141,4 @@ class Config(metaclass=Singleton):
                 section = "DEFAULT"
             if section == "BASIC_CALCULATOR":
                 section = "BASIC"
-            self.sections[section] = new_section(section, tmp_config, self.args)
+            self.sections[section] = new_section(section, tmp_config, self.pt, self.infile, self.args)

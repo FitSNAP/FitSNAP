@@ -1,7 +1,7 @@
 from fitsnap3lib.io.outputs.outputs import Output, optional_open
-from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.parallel_tools import ParallelTools
 from datetime import datetime
-from fitsnap3lib.io.input import Config
+#from fitsnap3lib.io.input import Config
 import numpy as np
 import random
 import tarfile
@@ -13,10 +13,10 @@ import tarfile
 
 class Snap(Output):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self.config = Config()
-        self.pt = ParallelTools()
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
+        #self.config = Config()
+        #self.pt = ParallelTools()
 
     def output(self, coeffs, errors):
         if (self.config.sections["CALCULATOR"].nonlinear):
@@ -39,13 +39,13 @@ class Snap(Output):
                     raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
             with optional_open(self.config.sections["OUTFILE"].potential_name and
                                self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
-                file.write(_to_coeff_string(coeffs))
+                file.write(_to_coeff_string(self.config, coeffs))
             with optional_open(self.config.sections["OUTFILE"].potential_name and
                                self.config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
-                file.write(_to_param_string())
+                file.write(_to_param_string(self.config))
             with optional_open(self.config.sections["OUTFILE"].potential_name and
                                self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
-                file.write(_to_potential_file())
+                file.write(_to_potential_file(self.config))
             if (self._tarball):
                 with optional_open("in.lammps", 'wt') as file:
                     file.write(_to_lammps_input())
@@ -118,8 +118,8 @@ class Snap(Output):
         return fit.flatten()
 
 
-def _to_param_string():
-    config = Config()
+def _to_param_string(config):
+    #config = Config()
     if config.sections["BISPECTRUM"].chemflag != 0:
         chemflag_int = 1
     else:
@@ -153,11 +153,11 @@ def _to_param_string():
 
     return out
 
-def _to_coeff_string(coeffs):
+def _to_coeff_string(config, coeffs):
     """
     Convert a set of coefficients along with bispec options into a .snapparam file
     """
-    config = Config()
+    #config = Config()
 
     numtypes = config.sections["BISPECTRUM"].numtypes
     ncoeff = config.sections["BISPECTRUM"].ncoeff
@@ -184,11 +184,11 @@ def _to_coeff_string(coeffs):
     out += "\n# End of potential"
     return out
 
-def _to_potential_file():
+def _to_potential_file(config):
     """
     Use config settings to write a LAMMPS potential .mod file.
     """
-    config = Config()
+    #config = Config()
 
     ps = config.sections["REFERENCE"].lmp_pairdecl[0]
     snap_filename = config.sections["OUTFILE"].potential_name.split("/")[-1]
@@ -221,12 +221,12 @@ def _to_potential_file():
 
     return out
 
-def _to_lammps_input():
+def _to_lammps_input(config):
     """
     Use config settings to write a LAMMPS input script.
     """
 
-    config = Config()
+    #config = Config()
 
     snap_filename = config.sections["OUTFILE"].potential_name.split("/")[-1]
     pot_filename = snap_filename + ".mod"

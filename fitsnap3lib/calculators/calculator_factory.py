@@ -8,13 +8,13 @@ from fitsnap3lib.calculators.lammps_custom import LammpsCustom
 
 #pt = ParallelTools()
 
-def calculator(calculator_name):
+def calculator(calculator_name, pt, cfg):
     """Calculator Factory"""
     instance = search(calculator_name)
-    pt = ParallelTools()
+    #pt = ParallelTools()
     pt.single_print("Using {} as FitSNAP calculator".format(calculator_name))
     
-    instance.__init__(calculator_name)
+    instance.__init__(calculator_name, pt, cfg)
     return instance
 
 

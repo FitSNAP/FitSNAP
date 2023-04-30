@@ -51,7 +51,7 @@ try:
 except ModuleNotFoundError:
     stubs = 1
 
-
+"""
 class Singleton(type):
     _instances = {}
 
@@ -65,7 +65,7 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
-
+"""
 
 def printf(*args, **kw):
     kw['flush'] = True
@@ -157,7 +157,8 @@ def print_lammps(method):
     return new_method
 
 
-class ParallelTools(metaclass=Singleton):
+#class ParallelTools(metaclass=Singleton):
+class ParallelTools():
     """
     This classes creates and contains arrays used for fitting, across multiple processors.
 
@@ -166,8 +167,9 @@ class ParallelTools(metaclass=Singleton):
             one, set to `False` to allow recreating a dictionary.
     """
 
-    def __init__(self, comm=None):
+    def __init__(self, snapid, comm=None):
 
+        self.snapid = snapid
         self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
 
         if stubs == 0:

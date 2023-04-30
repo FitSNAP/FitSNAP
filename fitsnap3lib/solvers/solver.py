@@ -16,9 +16,9 @@ class Solver:
         fit: Numpy array containing coefficients of fit.
     """
 
-    def __init__(self, name, linear=True):
-        self.config = Config()
-        self.pt = ParallelTools()
+    def __init__(self, name, pt, config, linear=True):
+        self.config = config #Config()
+        self.pt = pt #ParallelTools()
         self.name = name
         self.configs = None
         self.fit = None

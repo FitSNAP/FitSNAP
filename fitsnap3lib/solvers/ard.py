@@ -1,11 +1,11 @@
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
+#from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.io.input import Config
 import numpy as np
 
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 try:

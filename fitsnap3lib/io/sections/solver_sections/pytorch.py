@@ -9,8 +9,8 @@ try:
 
     class PYTORCH(Section):
 
-        def __init__(self, name, config, args):
-            super().__init__(name, config, args)
+        def __init__(self, name, config, pt, infile, args):
+            super().__init__(name, config, pt, infile, args)
             self.allowedkeys = ['layer_sizes', 'learning_rate', 'num_epochs', 'batch_size', 'save_state_output',
                                 'save_freq', 'save_state_input', 'output_file', 'energy_weight', 'force_weight',
                                 'training_fraction', 'multi_element_option', 'num_elements', 'manual_seed_flag',

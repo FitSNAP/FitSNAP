@@ -1,5 +1,5 @@
-from fitsnap3lib.io.input import Config
-from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.io.input import Config
+#from fitsnap3lib.parallel_tools import ParallelTools
 from contextlib import contextmanager
 import gzip
 from datetime import datetime
@@ -12,9 +12,9 @@ import logging
 
 class Output:
 
-    def __init__(self, name):
-        self.config = Config()
-        self.pt = ParallelTools()
+    def __init__(self, name, pt, config):
+        self.config = config #Config()
+        self.pt = pt #ParallelTools()
         self.name = name
         self._screen = self.config.args.screen
         self._pscreen = self.config.args.pscreen

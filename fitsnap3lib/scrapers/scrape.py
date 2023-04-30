@@ -34,7 +34,7 @@ from os import path, listdir, stat
 import numpy as np
 from random import seed, random, shuffle
 from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.output import output
+#from fitsnap3lib.io.output import output
 from fitsnap3lib.units.units import convert
 from copy import copy
 # from natsort import natsorted
@@ -46,9 +46,9 @@ from copy import copy
 
 class Scraper:
 
-    def __init__(self, name):
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, name, pt, config):
+        self.pt = pt #ParallelTools()
+        self.config = config #Config()
         self.name = name
         self.group_types = {}
         self.group_table = []
@@ -72,7 +72,8 @@ class Scraper:
         user_set_random_seed = self.config.sections["GROUPS"].random_seed ## default is 0
 
         if self.config.sections["GROUPS"].random_sampling:
-            output.screen(f"Random sampling of groups toggled on.")
+            #output.screen(f"Random sampling of groups toggled on.")
+            self.pt.single_print(f"Random sampling of groups toggled on.")
             if not user_set_random_seed:
                 sampling_seed = self.pt.get_seed()
                 seed_txt = f"FitSNAP-generated seed for random sampling: {self.pt.get_seed()}"
@@ -83,7 +84,8 @@ class Scraper:
                 if user_set_random_seed.is_integer():
                     sampling_seed = int(user_set_random_seed)
                 seed_txt = f"User-set seed for random sampling: {sampling_seed}"
-            output.screen(seed_txt)
+            #output.screen(seed_txt)
+            self.pt.single_print(seed_txt)
             seed(sampling_seed)
             self._write_seed_file(seed_txt)
 
@@ -137,7 +139,8 @@ class Scraper:
                 warnstr += "         Forcing testing size to add up properly.\n"
                 self.pt.single_print(warnstr)
                 testing_size = nfiles - training_size
-            output.screen(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
+            #output.screen(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
+            self.pt.single_print(f"{key} {nfiles} {training_size} {testing_size}")
             if self.tests is None:
                 self.tests = {}
             self.tests[folder] = []

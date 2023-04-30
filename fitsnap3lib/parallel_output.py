@@ -1,6 +1,5 @@
 from fitsnap3lib.parallel_tools import ParallelTools
-
-
+"""
 pt = ParallelTools()
 
 
@@ -17,3 +16,4 @@ class Output:
     def exception(err):
         # There is almost never a reason to use this
         pt.exception(err)
+"""

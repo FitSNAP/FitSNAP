@@ -2,19 +2,19 @@ from fitsnap3lib.scrapers.scrape import Scraper, convert
 from fitsnap3lib.io.input import Config
 from json import loads
 from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.output import output
+#from fitsnap3lib.io.output import output
 from copy import copy
 import numpy as np
 
 
-config = Config()
-pt = ParallelTools()
+#config = ()
+#pt = ParallelTools()
 
 
 class Json(Scraper):
 
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
         self.all_data = []
 
     def scrape_groups(self):
@@ -32,8 +32,10 @@ class Json(Scraper):
                 try:
                     self.data = loads(file.read(), parse_constant=True)
                 except Exception as e:
-                    output.screen("Trouble Parsing Training Data: ", file_name)
-                    output.exception(e)
+                    #output.screen("Trouble Parsing Training Data: ", file_name)
+                    #output.exception(e)
+                    self.pt.single_print(f"Trouble parsing training data: {file_name}")
+                    self.pt.single_print(f"{e}")
 
                 assert len(self.data) == 1, "More than one object (dataset) is in this file"
 
@@ -55,16 +57,16 @@ class Json(Scraper):
                 for key in self.data:
                     if "Style" in key:
                         if key.replace("Style", "") in self.conversions:
-                            temp = config.sections["SCRAPER"].properties[key.replace("Style", "")]
+                            temp = self.config.sections["SCRAPER"].properties[key.replace("Style", "")]
                             temp[1] = self.data[key]
                             self.conversions[key.replace("Style", "")] = convert(temp)
 
-                for key in config.sections["SCRAPER"].properties:
+                for key in self.config.sections["SCRAPER"].properties:
                     if key in self.data:
                         self.data[key] = np.asarray(self.data[key])
 
                 natoms = np.shape(self.data["Positions"])[0]
-                pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
+                self.pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
                 self.data["QMLattice"] = (self.data["Lattice"] * self.conversions["Lattice"]).T
 
                 # Populate with LAMMPS-normalized lattice
@@ -83,9 +85,9 @@ class Json(Scraper):
                         self.data["Chis"] = self.data["Chis"]
 
                 # Currently, ESHIFT should be in units of your training data (note there is no conversion)
-                if hasattr(config.sections["ESHIFT"], 'eshift'):
+                if hasattr(self.config.sections["ESHIFT"], 'eshift'):
                     for atom in self.data["AtomTypes"]:
-                        self.data["Energy"] += config.sections["ESHIFT"].eshift[atom]
+                        self.data["Energy"] += self.config.sections["ESHIFT"].eshift[atom]
 
                 self.data["test_bool"] = self.test_bool[i]
 

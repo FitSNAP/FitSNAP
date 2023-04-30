@@ -12,10 +12,10 @@ from sys import float_info as fi
 
 class SVD(Solver):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self.config = Config()
-        self.pt = ParallelTools()
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
+        #self.config = Config()
+        #self.pt = ParallelTools()
 
     #@pt.sub_rank_zero
     def perform_fit(self):

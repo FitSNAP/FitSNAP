@@ -11,13 +11,13 @@ from fitsnap3lib.solvers.anl import ANL
 from fitsnap3lib.solvers.merr import MERR
 from fitsnap3lib.solvers.network import NETWORK
 
-pt = ParallelTools()
+#pt = ParallelTools()
 
 
-def solver(solver_name):
+def solver(solver_name, pt, cfg):
     """Solver Factory"""
     instance = search(solver_name)
-    instance.__init__(solver_name)
+    instance.__init__(solver_name, pt, cfg)
     return instance
 
 

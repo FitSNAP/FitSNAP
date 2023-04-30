@@ -1,6 +1,6 @@
-from fitsnap3lib.parallel_tools import ParallelTools, double_size, DistributedList, stubs
-from fitsnap3lib.io.input import Config
-from fitsnap3lib.io.output import output
+from fitsnap3lib.parallel_tools import double_size, DistributedList, stubs #, ParallelTools
+#from fitsnap3lib.io.input import Config
+#from fitsnap3lib.io.output import output
 import numpy as np
 import pandas as pd
 
@@ -11,9 +11,9 @@ import pandas as pd
 
 class Calculator:
 
-    def __init__(self, name):
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, name, pt, config):
+        self.pt = pt #ParallelTools()
+        self.config = config #Config()
         self.name = name
         self.number_of_atoms = None
         self.number_of_files_per_node = None
@@ -226,12 +226,12 @@ class Calculator:
 
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
             a_size = a_len * a_width * double_size
-            output.screen(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+            self.pt.single_print(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
                           "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
             if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
                 raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
             elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
-                output.screen("Warning: I hope you know what you are doing!")
+                self.pt.single_print("Warning: I hope you know what you are doing!")
 
             self.pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('b', a_len, tm=self.config.sections["SOLVER"].true_multinode)
@@ -257,42 +257,42 @@ class Calculator:
     def preprocess_allocate(self, nconfigs):
         pass
 
-    @staticmethod
-    def collect_distributed_lists():
+    #@staticmethod # NOTE: Does this need to be a static method?
+    def collect_distributed_lists(self):
         """
         Gathers all the distributed lists on each proc to the root proc.
         For each distributed list (fitsnap dicts) this will create a concatenated list on the root proc.
         We use this function in fitsnap.py after processing configs.
         """
-        pt = ParallelTools()    
-        for key in pt.fitsnap_dict.keys():
-            if isinstance(pt.fitsnap_dict[key], DistributedList):
-                pt.gather_fitsnap(key)
-                if pt.fitsnap_dict[key] is not None and stubs != 1:
-                    pt.fitsnap_dict[key] = [item for sublist in pt.fitsnap_dict[key] for item in sublist]
-                elif pt.fitsnap_dict[key] is not None:
-                    pt.fitsnap_dict[key] = pt.fitsnap_dict[key].get_list()
+        #pt = ParallelTools()    
+        for key in self.pt.fitsnap_dict.keys():
+            if isinstance(self.pt.fitsnap_dict[key], DistributedList):
+                self.pt.gather_fitsnap(key)
+                if self.pt.fitsnap_dict[key] is not None and stubs != 1:
+                    self.pt.fitsnap_dict[key] = [item for sublist in self.pt.fitsnap_dict[key] for item in sublist]
+                elif self.pt.fitsnap_dict[key] is not None:
+                    self.pt.fitsnap_dict[key] = self.pt.fitsnap_dict[key].get_list()
 
     #@pt.rank_zero
     def extras(self):
         @self.pt.rank_zero
         def decorated_extras():
-            pt = ParallelTools()
-            config = Config()
-            if config.sections["EXTRAS"].dump_a:
-                np.save(config.sections['EXTRAS'].descriptor_file, pt.shared_arrays['a'].array)
-            if config.sections["EXTRAS"].dump_b:
-                np.save(config.sections['EXTRAS'].truth_file, pt.shared_arrays['b'].array)
-            if config.sections["EXTRAS"].dump_w:
-                np.save(config.sections['EXTRAS'].weights_file, pt.shared_arrays['w'].array)
-            if config.sections["EXTRAS"].dump_dataframe:
-                df = pd.DataFrame(pt.shared_arrays['a'].array)
-                df['truths'] = pt.shared_arrays['b'].array.tolist()
-                df['weights'] = pt.shared_arrays['w'].array.tolist()
-                for key in pt.fitsnap_dict.keys():
-                    if isinstance(pt.fitsnap_dict[key], list) and len(pt.fitsnap_dict[key]) == len(df.index):
-                        df[key] = pt.fitsnap_dict[key]
-                df.to_pickle(config.sections['EXTRAS'].dataframe_file)
+            #pt = ParallelTools()
+            #config = Config()
+            if self.config.sections["EXTRAS"].dump_a:
+                np.save(self.config.sections['EXTRAS'].descriptor_file, self.pt.shared_arrays['a'].array)
+            if self.config.sections["EXTRAS"].dump_b:
+                np.save(self.config.sections['EXTRAS'].truth_file, self.pt.shared_arrays['b'].array)
+            if self.config.sections["EXTRAS"].dump_w:
+                np.save(self.config.sections['EXTRAS'].weights_file, self.pt.shared_arrays['w'].array)
+            if self.config.sections["EXTRAS"].dump_dataframe:
+                df = pd.DataFrame(self.pt.shared_arrays['a'].array)
+                df['truths'] = self.pt.shared_arrays['b'].array.tolist()
+                df['weights'] = self.pt.shared_arrays['w'].array.tolist()
+                for key in self.pt.fitsnap_dict.keys():
+                    if isinstance(self.pt.fitsnap_dict[key], list) and len(self.pt.fitsnap_dict[key]) == len(df.index):
+                        df[key] = self.pt.fitsnap_dict[key]
+                df.to_pickle(self.config.sections['EXTRAS'].dataframe_file)
                 del df
         decorated_extras()
 

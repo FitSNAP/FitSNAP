@@ -24,14 +24,14 @@ from fitsnap3lib.io.sections.solver_sections.network import NETWORK
 from fitsnap3lib.io.sections.template import Default
 
 
-pt = ParallelTools()
+#pt = ParallelTools()
 
 
-def new_section(section, config, args):
+def new_section(section, config, pt, infile, args):
     """Section Factory"""
     instance = search(section)
     try:
-        instance.__init__(section, config, args)
+        instance.__init__(section, config, pt, infile, args)
     except ExitFunc:
         pass
     return instance

@@ -3,49 +3,32 @@ import argparse
 import sys
 from pickle import HIGHEST_PROTOCOL
 from fitsnap3lib.io.sections.section_factory import new_section
-#from fitsnap3lib.parallel_tools import ParallelTools
-#from fitsnap3lib.parallel_output import Output
 from pathlib import Path
 import random
 
 
-#output = Output()
-#pt = ParallelTools()
-
-"""
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if (
-                kwargs is not None
-                and "arguments_lst" in kwargs.keys()
-                and kwargs["arguments_lst"] is not None
-        ):
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-"""
-
-#class Config(metaclass=Singleton):
 class Config():
     """ 
     Class for storing input settings in a `config` instance. The `config` instance is first created 
     in `io/output.py`.
 
+    Args:
+        pt: A ParallelTools instance.
+        input: Optional input can either be a filename or a dictionary.
+        arguments_lst: List of args that can be supplied at the command line.
+
     Attributes:
-        parse_cmdline (list): List of args that can be supplied at the command line, must include a 
-            string to the location of the FitSNAP input script .
+        infile: String for optional input filename. Defaults to None.
+        indict: Dictionary for optional input dictionary of settings, to replace input file. Defaults 
+            to None.
+        
     """
 
     def __init__(self, pt, input=None, arguments_lst=None):
-        self.pt = pt #ParallelTools()
-        # Check that we made a pointer
-        #print(f"{id(self.pt)} {id(pt)}")
-        #assert(False)
+        self.pt = pt
         self.input = input
-        # infile and indict set to None by default, get set in parse_config
+        # Input file (infile) and dictionary (indict) set to None by default and get set in 
+        # parse_config.
         self.infile = None
         self.indict = None
         self.default_protocol = HIGHEST_PROTOCOL
@@ -60,8 +43,8 @@ class Config():
             self.hash = f"{random.getrandbits(128):032x}"
 
     def parse_cmdline(self, arguments_lst=None):
+        """ Parse command line args. """
         parser = argparse.ArgumentParser(prog="fitsnap3")
-        print(">>> 1")
         if (self.input is None):
             parser.add_argument("infile", action="store",
                                 help="Input file with bispectrum etc. options")
@@ -97,7 +80,6 @@ class Config():
                             default=None, help="Write fitsnap log to this file.")
         parser.add_argument("--screen2file", "-s2f", action="store", dest="screen2file",
                             default=None, help="Print screen to a file")
-        print(">>> 2")
         # Not Implemented.
         """
         parser.add_argument("--lammps_noexceptions", action="store_true",
@@ -113,14 +95,10 @@ class Config():
                 # We're building docs in this case.
                 arguments_lst = arguments_lst=["../examples/Ta_Linear_JCP2014/Ta-example-nodump.in", "--overwrite"]
         self.args = parser.parse_args(arguments_lst)
-        print(">>> 3")
 
     def parse_config(self):
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
-
-        #print(self.input)
-        #assert(False)
         if self.input is not None:
             if (isinstance(self.input, str)):
                 self.infile = self.input
@@ -134,8 +112,6 @@ class Config():
         if (self.infile is not None):
             # We have an input file.
             tmp_config.read(self.infile)
-            #print(tmp_config.sections())
-            #assert(False)
             infile_folder = str(Path(self.infile).parent.absolute())
             file_name = self.infile.split('/')[-1]
             if not Path(infile_folder+'/'+file_name).is_file():
@@ -147,18 +123,10 @@ class Config():
                 for kwg, kwn, kwv in self.args.keyword_replacements:
                     if kwg not in tmp_config:
                         raise ValueError(f"{kwg} is not a valid keyword group")
-                    #vprint(f"Substituting {kwg}:{kwn}={kwv}")
                     tmp_config[kwg][kwn] = kwv
 
         elif (self.indict is not None):
-            # We have an input dict.
-            """
-            for key1, data1 in self.indict.items():
-                tmp_config[key1] = {}
-                for key2, data2 in data1.items():
-                    for key3, data3 in data2.items():
-                        tmp_config[key1]["{}_{}".format(key2, key3)] = str(data3)
-            """
+            # We have an input dictionary  instead of a file.
             for key1, data1 in self.indict.items():
                 tmp_config[key1] = {}
                 for key2, data2 in data1.items():
@@ -169,8 +137,6 @@ class Config():
 
     def set_sections(self, tmp_config):
         sections = tmp_config.sections()
-        print(sections)
-        #assert(False)
         for section in sections:
             if section == "TEMPLATE":
                 section = "DEFAULT"

@@ -51,6 +51,8 @@ try:
 except ModuleNotFoundError:
     stubs = 1
 
+#stubs = 1
+
 """
 class Singleton(type):
     _instances = {}
@@ -167,22 +169,17 @@ class ParallelTools():
             one, set to `False` to allow recreating a dictionary.
     """
 
-    def __init__(self, snapid, comm=None):
-
-        self.snapid = snapid
+    def __init__(self, comm=None):
         self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
-
         if stubs == 0:
             if comm is None:
                 comm = MPI.COMM_WORLD
             self._comm = comm
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
-            print(f">>> Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
-            """
-            Set this to False if want to avoid shared arrays. This is helpful when using the library 
-            to loop over functions that create shared arrays, to avoid mem leaks.
-            """
+            #print(f">>> Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
+            # Set this to False if want to avoid shared arrays. This is helpful when using the library 
+            # to loop over functions that create shared arrays, to avoid mem leaks.
             self.create_shared_bool = True
 
         if stubs == 1:
@@ -347,7 +344,8 @@ class ParallelTools():
         if isinstance(name, str):
             if (self.check_fitsnap_exist):
                 if name in self.fitsnap_dict:
-                    raise NameError("name is already in dictionary")
+                    #raise NameError("name is already in dictionary")
+                    self.fitsnap_dict.pop(name)
             self.fitsnap_dict[name] = an_object
         else:
             raise TypeError("name must be a string")

@@ -1,12 +1,6 @@
-#from fitsnap3lib.parallel_tools import ParallelTools
-#from fitsnap3lib.parallel_output import Output
 from fitsnap3lib.io.error import ExitFunc
 from distutils.util import strtobool
 from os import getcwd, path
-
-
-#pt = ParallelTools()
-#output = Output()
 
 
 class Section:
@@ -49,8 +43,7 @@ class Section:
                                                                                                     value_name))
 
     def print_name(self):
-        print(self.name)
-        #output.screen(self.name)
+        self.pt.single_print(self.name)
 
     def get_value(self, section, key, fallback, interpreter="str"):
         if self._args == "verbose" and section.lower() == self.name.lower():
@@ -152,7 +145,6 @@ class Section:
         If no infile is supplied (i.e. we have indict), then no need for this.
         """
         cwd = getcwd().split('/')
-        print(f">>> sections cwd: {cwd}")
         path_to_file = self.infile.split('/')[:-1] if self.infile else None
         if not path_to_file:
             cls._infile_directory = ''

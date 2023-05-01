@@ -29,7 +29,7 @@ try:
                 self.fit = reg.coef_
             decorated_perform_fit()
 
-        @staticmethod
+        #@staticmethod
         def _dump_a():
             np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)
 

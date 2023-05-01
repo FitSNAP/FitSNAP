@@ -10,6 +10,6 @@ class Lasso(Section):
 
         self._check_if_used("SOLVER", "solver", "SVD")
 
-        self.alpha = self.get_value("SOLVER", "alpha", "1.0E-8", "float")
-        self.max_iter = self.get_value("SOLVER", "max_iter", "2000", "int")
+        self.alpha = self.get_value("LASSO", "alpha", "1.0E-8", "float")
+        self.max_iter = self.get_value("LASSO", "max_iter", "2000", "int")
         self.delete()

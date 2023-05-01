@@ -67,7 +67,8 @@ class FitSnap:
         self.pt = ParallelTools(comm=comm)
         self.pt.all_barrier()
         self.config = Config(self.pt, input, arguments_lst=arglist)
-        self.pt.single_print(f"FitSNAP 3.1.0 instance hash: {self.config.hash}")
+        if (self.pt._rank == 0):
+            self.pt.single_print(f"FitSNAP 3.1.0 instance hash: {self.config.hash}")
         # Instantiate all other backbone attributes.
         self.scraper = scraper(self.config.sections["SCRAPER"].scraper, self.pt, self.config)
         self.calculator = calculator(self.config.sections["CALCULATOR"].calculator, self.pt, self.config)

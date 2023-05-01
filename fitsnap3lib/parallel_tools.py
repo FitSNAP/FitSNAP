@@ -718,6 +718,19 @@ class ParallelTools():
         self._bcast_fitsnap("sub_neighlist_indices")
         self.fitsnap_dict["sub_neighlist_indices"] = indices[self._sub_rank]
 
+    def free(self):
+        """
+        Free memory of shared arrays.
+        """
+
+        self.shared_arrays['a'].win.Free()
+        self.shared_arrays['b'].win.Free()
+        self.shared_arrays['w'].win.Free()
+
+        # Free all arrays:
+        #for key in self.shared_arrays:
+        #    self.shared_arrays[key].win.Free()
+
     @stub_check
     def combine_coeffs(self, coeff):
         new_coeff = None
@@ -871,9 +884,9 @@ class SharedArray:
             self._nbytes = 0
 
         #win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
-        win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
+        self.win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
 
-        buff, item_size = win.Shared_query(0)
+        buff, item_size = self.win.Shared_query(0)
 
         if dtype == 'd':
             assert item_size == MPI.DOUBLE.Get_size()

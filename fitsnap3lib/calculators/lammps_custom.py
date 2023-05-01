@@ -1,5 +1,5 @@
 from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np
-from fitsnap3lib.parallel_tools import ParallelTools, DistributedList
+#from fitsnap3lib.parallel_tools import ParallelTools, DistributedList
 from fitsnap3lib.io.input import Config
 from fitsnap3lib.lib.neural_networks.descriptors.bessel import Bessel
 from fitsnap3lib.lib.neural_networks.descriptors.g3b import Gaussian3Body
@@ -11,10 +11,10 @@ import numpy as np
 
 class LammpsCustom(LammpsBase):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
+        #self.pt = ParallelTools()
+        #self.config = Config()
         self._data = {}
         self._i = 0
         self._lmp = None

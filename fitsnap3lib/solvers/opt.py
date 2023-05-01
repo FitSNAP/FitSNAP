@@ -1,11 +1,7 @@
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 from scipy.optimize import minimize
 import numpy as np
 
-#pt = ParallelTools()
-#config = Config()
 
 def distance(x, aw, bw):
     return np.linalg.norm(np.dot(aw, x) - bw)
@@ -18,10 +14,8 @@ def distance_grad(x, aw, bw):
 
 class OPT(Solver):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
 
     @self.pt.sub_rank_zero
     def perform_fit(self):
@@ -52,11 +46,11 @@ class OPT(Solver):
         decorated_perform_fit()
 
     def _dump_a(self):
-        np.savez_compressed('a.npz', a=pt.shared_arrays['a'].array)
+        np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)
 
     def _dump_x(self):
         np.savez_compressed('x.npz', x=self.fit)
 
     def _dump_b(self):
-        b = pt.shared_arrays['a'].array @ self.fit
+        b = self.pt.shared_arrays['a'].array @ self.fit
         np.savez_compressed('b.npz', b=b)

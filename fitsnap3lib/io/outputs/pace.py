@@ -1,7 +1,5 @@
 from fitsnap3lib.io.outputs.outputs import Output, optional_open
-from fitsnap3lib.parallel_tools import ParallelTools
 from datetime import datetime
-from fitsnap3lib.io.input import Config
 import numpy as np
 import itertools
 
@@ -14,10 +12,10 @@ try:
 
     class Pace(Output):
 
-        def __init__(self, name):
-            super().__init__(name)
-            self.config = Config()
-            self.pt = ParallelTools()
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config)
+            #self.config = Config()
+            #self.pt = ParallelTools()
 
         def output(self, coeffs, errors):
             if (self.config.sections["CALCULATOR"].nonlinear):
@@ -38,7 +36,7 @@ try:
                         raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
                     with optional_open(self.config.sections["OUTFILE"].potential_name and
                                       self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
-                        file.write(_to_coeff_string(coeffs))
+                        file.write(_to_coeff_string(coeffs, self.config))
                     self.write_potential(coeffs)
                 self.write_errors(errors)
             decorated_write()
@@ -129,11 +127,11 @@ except ModuleNotFoundError:
             super().__init__(name)
             raise ModuleNotFoundError("Missing sympy or pyyaml modules.")
 
-def _to_coeff_string(coeffs):
+def _to_coeff_string(coeffs, config):
     """
-    Convert a set of coefficients along with bispec options into a .snapparam file
+    Convert a set of coefficients along with descriptor options to a coeffs file.
     """
-    config = Config()
+
     desc_str = "ACE"
 
     coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))

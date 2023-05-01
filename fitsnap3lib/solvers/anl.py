@@ -1,20 +1,13 @@
 from fitsnap3lib.io.outputs.outputs import optional_open
 from fitsnap3lib.io.outputs.snap import _to_coeff_string
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 import numpy as np
 from sys import float_info as fi
 
-#pt = ParallelTools()
-#config = Config()
-
 class ANL(Solver):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, name, pt, config):
+        super().__init__(name ,pt, config)
 
     #@pt.sub_rank_zero
     def perform_fit(self):

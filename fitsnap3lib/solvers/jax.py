@@ -1,15 +1,8 @@
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
-
 import numpy as np
 from functools import partial
 from time import time
 import pickle
-
-
-#config = Config()
-#pt = ParallelTools()
 
 
 try:
@@ -19,10 +12,8 @@ try:
 
     class JAX(Solver):
 
-        def __init__(self, name):
-            super().__init__(name, linear=False)
-            self.config = Config()
-            self.pt = ParallelTools()
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config, linear=False)
             self.params = self.config.sections["JAX"].params
             self.learning_rate = self.config.sections["JAX"].learning_rate
             self.optimizer = adam(self.learning_rate)

@@ -8,7 +8,7 @@ import numpy as np
 
 class Trainshift(Section):
 
-    def __init__(self, name, config, pt,infile, args):
+    def __init__(self, name, config, pt, infile, args):
         super().__init__(name, config, pt, infile, args)
 
         if config.has_section("BISPECTRUM"):

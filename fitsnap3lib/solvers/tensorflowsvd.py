@@ -1,6 +1,4 @@
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 import numpy as np
 
 
@@ -14,14 +12,14 @@ try:
 
     class TensorflowSVD(Solver):
 
-        def __init__(self, name):
-            super().__init__(name)
-            self.pt = ParallelTools()
-            self.config = Config()
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config)
 
         #@pt.single_timeit
         #@pt.sub_rank_zero
         def perform_fit(self):
+            pt = self.pt
+            config = self.config
             @self.pt.single_timeit
             @self.pt.sub_rank_zero
             def decorated_perform_fit():
@@ -46,6 +44,6 @@ except ModuleNotFoundError:
 
     class TensorflowSVD(Solver):
 
-        def __init__(self, name):
-            super().__init__(name)
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config)
             raise ModuleNotFoundError("No module named 'tensorflow'")

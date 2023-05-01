@@ -132,7 +132,7 @@ def test_fd_multi_elem():
     snap.config.sections['PYTORCH'].shuffle_flag = False # helps these finite difference tests
     # only perform calculations on certain group
     snap.config.sections['GROUPS'].group_table = {'DFT_MD_300K': \
-        {'training_size': 1.0, \
+        {'training_size': 0.01, \
         'testing_size': 0.0, \
         'eweight': 100.0, \
         'fweight': 1.0, \

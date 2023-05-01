@@ -3,7 +3,6 @@ import itertools
 #from fitsnap3lib.lib.sym_ACE.rpi_lib import *
 #from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import  *
 from fitsnap3lib.io.sections.sections import Section
-from fitsnap3lib.parallel_tools import ParallelTools
 
 try:
 
@@ -48,7 +47,6 @@ try:
             if self.bikflag:
                 self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
 
-            self.pt = ParallelTools()
             self._generate_b_list()
             self._write_couple()
             Section.num_desc = len(self.blist)
@@ -136,6 +134,6 @@ except ModuleNotFoundError:
         """
         Dummy class for factory to read if torch is not available for import.
         """
-        def __init__(self, name, config, args):
-            super().__init__(name, config, args)
+        def __init__(self, name, config, pt, args):
+            super().__init__(name, config, pt, args)
             raise ModuleNotFoundError("Missing sympy or pyyaml modules.")

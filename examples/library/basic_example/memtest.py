@@ -174,13 +174,15 @@ for i in range(0,10000000):
     snap.calculator.shared_index_b = 0
     snap.calculator.shared_index_c = 0
     snap.calculator.shared_index_dgrad = 0
-    # This results in increasing mem:
+    # This results in increasing mem?
     snap.process_configs()
+
+    snap.pt.all_barrier()
 
     snap.pt.free()
 
     if comm.Get_rank() == 0:
-        if i % 1 == 0:
+        if i % 10 == 0:
             print(f"{i} {rss()-initial_memory}")
 
     #snap.pt.shared_arrays['a'].win.Free()

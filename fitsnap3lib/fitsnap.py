@@ -101,6 +101,10 @@ class FitSnap:
     #@pt.single_timeit 
     def process_configs(self):
         """Calculate descriptors for all configurations in the :code:`data` list"""
+
+        # Zero distributed index before parallel loop over configs.
+        self.calculator.distributed_index = 0
+
         @self.pt.single_timeit
         def decorated_process_configs():
             # Preprocess the configs if nonlinear fitting.
@@ -116,7 +120,7 @@ class FitSnap:
             if (self.solver.linear):
                 for i, configuration in enumerate(self.data):
                     # TODO: Add option to print descriptor calculation progress on single proc.
-                    # if (i % 10 == 0):
+                    # if (i % 1 == 0):
                     #    self.pt.single_print(i)
                     self.calculator.process_configs(configuration, i)
             else:

@@ -62,25 +62,27 @@ class LammpsBase(Calculator):
             raise e
 
     def process_configs(self, data, i):
-        try:
+        #try:
+        self._data = data
+        self._i = i
+        self._initialize_lammps()
+        self._prepare_lammps()
+        self._run_lammps()
+        self._collect_lammps()
+        self._lmp = self.pt.close_lammps()
+        """
+        except Exception as e:
+            #if self.config.args.printlammps:
             self._data = data
             self._i = i
-            self._initialize_lammps()
+            self._initialize_lammps(1)
             self._prepare_lammps()
             self._run_lammps()
             self._collect_lammps()
             self._lmp = self.pt.close_lammps()
-        except Exception as e:
-            if self.config.args.printlammps:
-                self._data = data
-                self._i = i
-                self._initialize_lammps(1)
-                self._prepare_lammps()
-                self._run_lammps()
-                self._collect_lammps()
-                self._lmp = self.pt.close_lammps()
             raise e
-
+        """
+        
     def process_configs_nonlinear(self, data, i):
         try:
             self._data = data

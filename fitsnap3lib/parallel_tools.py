@@ -324,6 +324,13 @@ class ParallelTools():
 
         if isinstance(name, str):
             if (stubs == 0 and self.create_shared_bool):
+                # If key exists, free the window memory to prevent memory leaks.
+                # TODO: Is there a way to check state of the window instead of the key?
+                if (name in self.shared_arrays):
+                    try:
+                        self.shared_arrays[name].win.Free()
+                    except:
+                        raise Exception(f"Trouble deallocating shared array with name {name}.")
                 comms = [[self._comm, self._rank, self._size],
                          [self._sub_comm, self._sub_rank, self._sub_size],
                          [self._head_group_comm, self._node_index, self._number_of_nodes]]
@@ -717,19 +724,6 @@ class ParallelTools():
         self.add_2_fitsnap("sub_neighlist_indices", indices)
         self._bcast_fitsnap("sub_neighlist_indices")
         self.fitsnap_dict["sub_neighlist_indices"] = indices[self._sub_rank]
-
-    def free(self):
-        """
-        Free memory of shared arrays.
-        """
-
-        self.shared_arrays['a'].win.Free()
-        self.shared_arrays['b'].win.Free()
-        self.shared_arrays['w'].win.Free()
-
-        # Free all arrays:
-        #for key in self.shared_arrays:
-        #    self.shared_arrays[key].win.Free()
 
     @stub_check
     def combine_coeffs(self, coeff):

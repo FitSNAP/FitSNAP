@@ -71,7 +71,7 @@ data = \
     },
 "PATH":
     {
-    "dataPath": "../../Ta_Linear_JCP2014/JSON"
+    "dataPath": "../../../Ta_Linear_JCP2014/JSON"
     },
 "OUTFILE":
     {
@@ -118,9 +118,12 @@ data = \
     }
 }
 
-#infile = "../../WBe_PRB2019/WBe-example.in"
+#infile = "../../../WBe_PRB2019/WBe-example.in"
+#infile = "../../../Ta_Linear_JCP2014/Ta-example.in"
 
 snap = FitSnap(data, comm=comm, arglist=["--overwrite", "--screen2file", "screen.txt"])
+#snap = FitSnap(data, comm=comm, arglist=["--overwrite"])
+#snap = FitSnap(infile, comm=comm, arglist=["--overwrite", "--screen2file", "screen.txt"])
 
 # tell ParallelTool not to create SharedArrays
 #pt.create_shared_bool = False
@@ -133,56 +136,22 @@ snap.scrape_configs()
 
 initial_memory = rss()
 for i in range(0,10000000):
-    """
-    # Creating shared array doesn't seem to leak memory beyond seemingly normal caching.
-    snap.pt.create_shared_array('test', int(1e9), tm=snap.config.sections["SOLVER"].true_multinode)
-    #snap.pt.shared_arrays.pop("test")
-    snap.calculator.distributed_index = 0
-    snap.calculator.shared_index = 0
-    snap.calculator.shared_index_b = 0
-    snap.calculator.shared_index_c = 0
-    snap.calculator.shared_index_dgrad = 0
-    # This results in increasing mem:
-    #snap.process_configs()
-    #snap.calculator.create_a()
-    #for j in range(0,10):
-    #    b = j+1
-    """
 
-
-    """
-    snap2 = FitSnap(data, comm=comm, arglist=["--overwrite"])
-    #snap2.scraper.divvy_up_configs()
-    #snap2.pt.all_barrier()
-    #snap2.calculator.create_a()
-    #snap2.pt.all_barrier()
-    del snap2
-    """
-
-
-    #snap.pt.create_shared_array('a', int(1e9), int(3), tm=snap.config.sections["SOLVER"].true_multinode)
-    #snap.pt.new_slice_a()
-
-    #snap.pt.create_shared_array('b', a_len, tm=snap.config.sections["SOLVER"].true_multinode)
-    #snap.pt.create_shared_array('w', a_len, tm=snap.config.sections["SOLVER"].true_multinode)
-    #self.pt.create_shared_array('ref', a_len, tm=self.config.sections["SOLVER"].true_multinode)
-    #snap.pt.new_slice_a()
-    #"""
-
-    snap.calculator.distributed_index = 0
-    snap.calculator.shared_index = 0
-    snap.calculator.shared_index_b = 0
-    snap.calculator.shared_index_c = 0
-    snap.calculator.shared_index_dgrad = 0
-    # This results in increasing mem?
+    # Checking process configs.
     snap.process_configs()
+
+    #print(f"Done processing configs rank {comm.Get_rank()}")
+
+    # Checking create_a().
+    #snap.calculator.create_a()
+
+    # Good practice after any large parallel operation is to impose a barrier.
+    # NOTE: Put this and all other barriers inside respective functions like pt.free() when possible.
 
     snap.pt.all_barrier()
 
-    snap.pt.free()
+    #snap.pt.free()
 
     if comm.Get_rank() == 0:
-        if i % 10 == 0:
+        if i % 1 == 0:
             print(f"{i} {rss()-initial_memory}")
-
-    #snap.pt.shared_arrays['a'].win.Free()

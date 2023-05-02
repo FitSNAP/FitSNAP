@@ -332,8 +332,7 @@ class Solver:
             if self.fit is not None and not self.config.sections["SOLVER"].true_multinode:
 
                 # return data for each group
-                #print(f"^^^ {self.pt._rank}")
-                #print(self.df)
+
                 grouped = self.df.groupby(['Groups', \
                     'Testing', \
                     'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
@@ -369,7 +368,9 @@ class Solver:
                 self.errors.index = self.errors.index.set_levels(['Testing' if e else 'Training' \
                     for e in self.errors.index.levels[2]], \
                         level=2)
-                
+            
+            # Adjust coefficients for bzeroflag.
+            if self.fit is not None: 
                 if (self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and \
                     self.config.sections["BISPECTRUM"].bzeroflag):
                     self._offset()

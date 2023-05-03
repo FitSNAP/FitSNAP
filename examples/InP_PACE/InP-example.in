@@ -37,7 +37,7 @@ logcut = 0.3
 scraper = JSON
 
 [PATH]
-dataPath = /home/jmgoff/Software/FitSNAP/examples/InP_JPCA2020/JSON
+dataPath = ../InP_JPCA2020/JSON
 
 [OUTFILE]
 output_style = PACE

@@ -165,6 +165,29 @@ so the installation instructions are a little different if you want to use ACE.
         # Set python path so you can run FitSNAP as executable:
         export PYTHONPATH=$PYTHONPATH:/path/to/where/you/want/FitSNAP
 
+Note for infrequent installtion issues: For some versions of OMP, the 
+LAMMPS/PYTHON interface may produce errors when running, leading to a
+LAMMPS exception that kills FitSNAP jobs. If your install completes
+successfully and you have problems with the execution of examples in
+the example folder, try recompiling lammps with these alternative
+D flags.
+
+#. Alternative D flags for python/omp errors::
+            cmake -D LAMMPS_EXCEPTIONS=on \
+                  -D PKG_PYTHON=on \
+                  -D BUILD_SHARED_LIBS=on \
+                  -D CMAKE_BUILD_TYPE=Debug \
+                  -D PKG_ML-IAP=on \
+                  -D PKG_ML-PACE=on \
+                  -D PKG_ML-SNAP=on \
+                  -D BUILD_MPI=on \
+                  -D BUILD_OMP=off \
+                  -D CMAKE_INSTALL_PREFIX=<$HOME>/.local \
+                  -D PKG_MOLECULE=on \
+                  ../cmake/
+
+With key changes coming from turning off omp.
+
 For a summary/review of all these steps, see see `Quick Installation <Quick.html>`__. 
 
 FitSNAP Installation

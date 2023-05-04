@@ -5,7 +5,7 @@ type = Ta
 #num_descriptors = 8 # number of descriptors for each pair
 num_radial = 8 # number of radial descriptors
 num_3body = 23 # number of 3body descriptors
-cutoff = 5.0 # if changing this cutoff, be sure to change pair zero cutoff in [REFERENCE]
+cutoff = 4.5 # if changing this cutoff, be sure to change pair zero cutoff in [REFERENCE]
 
 [CALCULATOR]
 calculator = LAMMPSCUSTOM 
@@ -20,8 +20,8 @@ Ta = 0.0
 
 [NETWORK]
 layer_sizes = num_desc 32 32 1 
-learning_rate = 5e-4
-num_epochs = 20 # Run for ~150 epochs to get < 100 meV/A error
+learning_rate = 1e-4
+num_epochs = 100 # Run for ~150 epochs to get < 100 meV/A error
 batch_size = 4 # 363 configs in entire set
 save_state_output = Ta_Pytorch.pt
 energy_weight = 1e-2
@@ -48,7 +48,7 @@ potential = Ta_pot
 [REFERENCE]
 units = metal
 atom_style = atomic
-pair_style = zero 5.0 full 
+pair_style = zero 4.5 full 
 pair_coeff = * * 
 
 [GROUPS]

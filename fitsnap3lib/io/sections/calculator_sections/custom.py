@@ -18,7 +18,9 @@ class Custom(Section):
         self.num_descriptors = self.get_value("CUSTOM", "num_descriptors", "3", "int")
         self.num_radial = self.get_value("CUSTOM", "num_radial", "4", "int")
         self.num_3body = self.get_value("CUSTOM", "num_3body", "11", "int")
-        self.num_descriptors = self.num_radial + self.num_3body
+        # Number of descriptors due to one hot encoding is numtypes*2 since we concatenate for each ij pair.
+        self.num_onehot = self.numtypes*2
+        self.num_descriptors = self.num_radial + self.num_3body + self.num_onehot
         self.cutoff = self.get_value("CUSTOM", "cutoff", "3.0", "float")
 
         self.delete()

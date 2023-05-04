@@ -21,7 +21,7 @@ try:
             self.eta = 4.
             self.mu = torch.linspace(-1,1,self.num_descriptors)
 
-        def calculate(self, rij, diff_norm, unique_i, numpy_bool = False):
+        def calculate(self, rij, diff_norm, unique_i, type_i=None, type_j=None,numpy_bool = False):
             """
             Calculate 3body descriptors for all pairs. In the following discussion, :code:`num_neighs` 
             is the total number of neighbors in the entire batch, also equivalent to the total 
@@ -48,12 +48,16 @@ try:
                 rij = torch.from_numpy(rij)
                 diff_norm = torch.from_numpy(diff_norm)
                 unique_i = torch.from_numpy(unique_i)
+                type_i = torch.from_numpy(type_i)
+                type_j = torch.from_numpy(type_j)
 
             # cutoff function for all pairs, size (num_neigh)
 
             fcrik = self.cutoff_function(rij) #.flatten()
 
+            # This is needed for training due to batches of configs, but not for deploying.
             ui = unique_i.unique()
+            #print(unique_i)
 
             # Cram a bunch of calculations into a single list comprehension to reduce overhead.
             # torch.mm() calculates a matrix of dot products for all pairs, then we fill the diagonals
@@ -72,17 +76,26 @@ try:
                            dim=1)
                            for i in ui] #range(len_ui)]
             """
+           
+            #if (type_i is not None):
+            #print(type_i)
+            #print(type_j) 
+            gtype = type_i*type_j
+            #print(gtype)
+            #assert(False)
+            #print(fcrik[unique_i==0][:,None])
 
             descriptors_3body = torch.cat([torch.sum(
                                         torch.exp(-1.0*self.eta
                                             * (torch.mm(diff_norm[unique_i==i], 
                                                 torch.transpose(diff_norm[unique_i==i],0,1)).fill_diagonal_(0)[:,:,None]
                                             -self.mu)**2) 
-                                        * fcrik[unique_i==i][:,None], 
+                                        * fcrik[unique_i==i][:,None] * gtype[unique_i==i][:,None], 
                                       dim=1)
                                     for i in ui],
                                     dim=0)
 
+            #print(descriptors_3body)
             return descriptors_3body
 
         #def cutoff_function(self, x, unique_i, xneigh):

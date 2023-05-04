@@ -12,6 +12,8 @@ try:
         def __init__(self, num_descriptors, cutoff):
             self.num_descriptors = num_descriptors
             self.cutoff = cutoff
+            self.pi = torch.tensor(math.pi)
+            self.two_over_c = torch.tensor(2./self.cutoff)
 
         def calculate_bessel(self, rij, cutoff_functions, n):
             """
@@ -25,10 +27,10 @@ try:
                 rbf (torch.Tensor.float): Radial Bessel function for base n with size (num_neigh, 1).
             """
 
-            c = self.cutoff
-            pi = torch.tensor(math.pi)
-            two_over_c = torch.tensor(2./c)
-            rbf = torch.div(torch.sqrt(two_over_c)*torch.sin(((n*pi)/c)*rij), rij)*cutoff_functions     
+            #c = self.cutoff
+            #pi = torch.tensor(math.pi)
+            #two_over_c = torch.tensor(2./c)
+            rbf = torch.div(torch.sqrt(self.two_over_c)*torch.sin(((n*self.pi)/self.cutoff)*rij), rij)*cutoff_functions     
 
             return rbf
 

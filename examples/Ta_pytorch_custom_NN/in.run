@@ -1,23 +1,23 @@
 # Initialize simulation
 
-variable nsteps index 0
+variable nsteps index 10000
 units           metal
 
 # generate the box and atom positions using a BCC lattice
 
-boundary        p p p
-read_data DATA
+#boundary        p p p
+#read_data DATA
 
-#variable nrep equal 3
-#variable a equal 3.316
-#variable nx equal ${nrep}
-#variable ny equal ${nrep}
-#variable nz equal ${nrep}
-#lattice         bcc $a
-#region          box block 0 ${nx} 0 ${ny} 0 ${nz}
-#create_box      1 box
-#create_atoms    1 box
-#mass 1 180.88
+variable nrep equal 2 #10
+variable a equal 3.316
+variable nx equal ${nrep}
+variable ny equal ${nrep}
+variable nz equal ${nrep}
+lattice         bcc $a
+region          box block 0 ${nx} 0 ${ny} 0 ${nz}
+create_box      1 box
+create_atoms    1 box
+mass 1 180.88
 
 # choose potential
 
@@ -29,8 +29,7 @@ variable zblz equal 73
 # The "1" is a flag saying to use PairNN
 
 pair_style &
-mliap model mliappy  ../FitTorch_Pytorch.pt 1 &
-descriptor fitsnap Ta.mliap.descriptor
+mliap unified  fitsnap_unified.pt 0
 pair_coeff * * Ta
 
 compute  eatom all pe/atom
@@ -48,11 +47,12 @@ thermo_modify norm yes
 
 timestep 0.5e-3
 neighbor 1.0 bin
+# is this neigh modify every 1 slow?
 neigh_modify once no every 1 delay 0 check yes
 
 # Run MD
 
-velocity all create 1200.0 4928459 loop geom
+velocity all create 3200.0 4928459 loop geom
 dump 1 all xyz 10 dump.xyz 
 fix 1 all nve
 run             ${nsteps}

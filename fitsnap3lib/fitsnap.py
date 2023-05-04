@@ -158,7 +158,8 @@ class FitSnap:
 
         decorated_perform_fit()
         fit_gather()
-        error_analysis()
+        # TODO: Fix broken dtype for pairnn
+        #error_analysis()
 
     #@pt.single_timeit  
     def write_output(self):
@@ -167,4 +168,5 @@ class FitSnap:
             if not self.config.args.perform_fit:
                 return
             output.output(self.solver.fit, self.solver.errors)
-        decorated_write_output()
+        # TODO: Fix broken dtype for pairnn
+        #decorated_write_output()

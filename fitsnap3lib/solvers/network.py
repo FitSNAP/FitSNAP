@@ -137,7 +137,7 @@ try:
 
                 # 'a' contains per-atom quantities
 
-                config.types = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high,0] - 1 # start types at zero
+                config.types = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high,0] #- 1 # start types at zero
                 config.numneighs = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high,1]
                 config.x = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high, 2:]
 
@@ -229,7 +229,10 @@ try:
                 # standardization
                 # need to perform on all network types in the model
 
+                # This will create nan or inf for onehot descriptors if all types are 1.
                 inv_std = 1/np.std(self.pt.shared_arrays['descriptors'].array, axis=0)
+                # Set nans to 0.
+                inv_std[-2*self.num_elements:] = 0.0
                 mean_inv_std = np.mean(self.pt.shared_arrays['descriptors'].array, axis=0) * inv_std
                 state_dict = self.model.state_dict()
 

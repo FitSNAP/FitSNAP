@@ -8,64 +8,7 @@ from fitsnap3lib.fitsnap import FitSnap
 from ase import Atoms,Atom
 from ase.io import read,write
 from ase.io import extxyz
-
-def divvy_up_frames()
-
-def calc_fitting_data(atoms):
-    """
-    Function to calculate fitting data from FitSNAP.
-    Input: ASE atoms object for a single configuration of atoms.
-    """
-
-    # make a data dictionary for this config
-
-    data = {}
-    data['PositionsStyle'] = 'angstrom'
-    data['AtomTypeStyle'] = 'chemicalsymbol'
-    data['StressStyle'] = 'bar'
-    data['LatticeStyle'] = 'angstrom'
-    data['EnergyStyle'] = 'electronvolt'
-    data['ForcesStyle'] = 'electronvoltperangstrom'
-    data['Group'] = 'Displaced_BCC'
-    data['File'] = None
-    data['Stress'] = atoms.get_stress(voigt=False)
-    data['Positions'] = atoms.get_positions()
-    data['Energy'] = atoms.get_total_energy()
-    data['AtomTypes'] = atoms.get_chemical_symbols()
-    data['NumAtoms'] = len(atoms)
-    data['Forces'] = atoms.get_forces()
-    data['QMLattice'] = atoms.cell[:]
-    data['test_bool'] = 0
-    data['Lattice'] = atoms.cell[:]
-    data['Rotation'] = np.array([[1,0,0],[0,1,0],[0,0,1]])
-    data['Translation'] = np.zeros((len(atoms), 3))
-    data['eweight'] = 1.0
-    data['fweight'] = 1.0
-    data['vweight'] = 1.0
-
-    # data must be a list of dictionaries
-
-    #data = [data]
-
-    """
-    pt.create_shared_array('number_of_atoms', 1, tm=config.sections["SOLVER"].true_multinode)
-    pt.shared_arrays["number_of_atoms"].array = np.array([len(atoms)])
-    """
-
-    # calculate A matrix for the list of configs in data: 
-    """
-    snap.data = data
-    snap.calculator.shared_index=0
-    snap.calculator.distributed_index=0 
-    snap.process_configs()
-    """
-
-    # return the A matrix for this config
-    # we can also return other quantities (reference potential, etc.) associated with fitting
-
-    #return pt.shared_arrays['a'].array 
-
-    return data
+from fitsnap3lib.scrapers.ase_scraper import ase_scraper
 
 # Set up your communicator.
 
@@ -169,6 +112,7 @@ snap = FitSnap(data, comm=comm, arglist=["--overwrite"])
 print("Reading frames")
 frames = read("../../Ta_XYZ/XYZ/Displaced_BCC.xyz", ":")[:3]
 
+"""
 print("Looping over frames")
 data = []
 for atoms in frames:
@@ -177,13 +121,27 @@ for atoms in frames:
     data.append(fitting_data)
 
 print(len(data))
+"""
 
 # Now we should be able to:
 # (1) inject this data into a fit instance
 # (2) which then allocates necessary scraper shared arrays
 # (3) then immediately process configs.
 
-snap.delete_data = False
-snap.scrape_configs()
+# Collect groups and allocate shared arrays used by Calculator.
+ase_scraper(snap, frames)
+# Declare important data in shared array from frames.
+#ase_scraper(snap, frames)
+
+# Inject list of data dictionaries into instance data.
+#snap.data = data
+
+# Process configs
+snap.process_configs()
+
+print(snap.pt.shared_arrays['a'].array)
+
+#snap.delete_data = False
+#snap.scrape_configs()
 
 

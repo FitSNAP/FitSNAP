@@ -29,19 +29,11 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from fitsnap3lib.io.input import Config
 from os import path, listdir, stat
 import numpy as np
 from random import seed, random, shuffle
-from fitsnap3lib.parallel_tools import ParallelTools
-#from fitsnap3lib.io.output import output
 from fitsnap3lib.units.units import convert
 from copy import copy
-# from natsort import natsorted
-
-
-#config = Config()
-#pt = ParallelTools()
 
 
 class Scraper:
@@ -151,6 +143,11 @@ class Scraper:
 
     # TODO : Fix divvy up to distribute groups evenly and based on memory
     def divvy_up_configs(self):
+        """
+        Function to organize groups and allocate shared arrays used in Calculator.
+        """
+
+        # Loop over `configs` which is a list of filenames, and organize into groups.
         self.test_bool = []
         groups = []
         group_list = []
@@ -196,12 +193,13 @@ class Scraper:
         for i in range(len(group_test)):
             group_test[i] += '_testing'
 
+        # TODO: `configs_per_group` shared array doesn't seemed to be used anywhere except bcs, 
+        #       mcmc, and opt solvers.
         self.pt.create_shared_array('configs_per_group', len(group_counts), dtype='i')
         if self.pt.get_rank() == 0:
             for i in range(len(group_counts)):
                 self.pt.shared_arrays['configs_per_group'].array[i] = group_counts[i]
         self.pt.shared_arrays['configs_per_group'].list = group_set + group_test
-
         self.pt.shared_arrays['configs_per_group'].testing = 0
         if self.tests is not None:
             self.pt.shared_arrays['configs_per_group'].testing = len(test_list)

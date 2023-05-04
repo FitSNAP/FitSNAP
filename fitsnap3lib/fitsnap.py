@@ -37,6 +37,7 @@ from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
 from random import random
+import numpy as np
 
 
 class FitSnap:
@@ -67,10 +68,10 @@ class FitSnap:
         self.pt = ParallelTools(comm=comm)
         self.pt.all_barrier()
         self.config = Config(self.pt, input, arguments_lst=arglist)
-        if (self.pt._rank == 0):
-            self.pt.single_print(f"FitSNAP 3.1.0 instance hash: {self.config.hash}")
+        self.pt.single_print(f"FitSNAP 3.1.0 instance hash: {self.config.hash}")
         # Instantiate all other backbone attributes.
-        self.scraper = scraper(self.config.sections["SCRAPER"].scraper, self.pt, self.config)
+        if "SCRAPER" in self.config.sections:
+            self.scraper = scraper(self.config.sections["SCRAPER"].scraper, self.pt, self.config)
         self.calculator = calculator(self.config.sections["CALCULATOR"].calculator, self.pt, self.config)
         self.solver = solver(self.config.sections["SOLVER"].solver, self.pt, self.config)
         self.output = output(self.config.sections["OUTFILE"].output_style, self.pt, self.config)

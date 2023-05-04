@@ -232,6 +232,16 @@ class LammpsPace(LammpsBase):
         index = self.shared_index
         dindex = self.distributed_index
         lmp_pace = _extract_compute_np(self._lmp, "pace", 0, 2, (nrows_pace, ncols_pace))
+
+        # Get C = A^T * A for this configuration.
+        nd = np.shape(lmp_pace)[1]
+        na = np.shape(lmp_pace)[0]
+        self.a = np.zeros((na, nd))
+        #self.b = np.zeros((na, 1))
+        #self.w = np.zeros((na, 1))
+        self.b = np.zeros(na)
+        self.w = np.zeros(na)
+
         if (np.isinf(lmp_pace)).any() or (np.isnan(lmp_pace)).any():
             self.pt.single_print('WARNING! applying np.nan_to_num()')
             lmp_pace = np.nan_to_num(lmp_pace)
@@ -270,9 +280,12 @@ class LammpsPace(LammpsBase):
                 #b_sum_temp.shape = (num_types * (n_coeff + num_types))
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
             self.pt.shared_arrays['a'].array[index] = b_sum_temp * self.config.sections["ACE"].blank2J
+            self.a[irow] = b_sum_temp * self.config.sections["ACE"].blank2J
             ref_energy = lmp_pace[irow, icolref]
             self.pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
+            self.b[irow] = (energy - ref_energy) / num_atoms
             self.pt.shared_arrays['w'].array[index] = self._data["eweight"]
+            self.w[irow] = self._data["eweight"]
             self.pt.fitsnap_dict['Row_Type'][dindex:dindex + bik_rows] = ['Energy'] * nrows_energy
             self.pt.fitsnap_dict['Atom_I'][dindex:dindex + bik_rows] = [int(i) for i in range(nrows_energy)]
             index += nrows_energy
@@ -289,11 +302,14 @@ class LammpsPace(LammpsBase):
                 db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types * n_coeff + num_types)
             self.pt.shared_arrays['a'].array[index:index+num_atoms * ndim_force] = \
                 np.matmul(db_atom_temp, np.diag(self.config.sections["ACE"].blank2J))
+            self.a[irow:irow+num_atoms * ndim_force] = np.matmul(db_atom_temp, np.diag(self.config.sections["ACE"].blank2J))
             ref_forces = lmp_pace[irow:irow + nrows_force, icolref]
             self.pt.shared_arrays['b'].array[index:index+num_atoms * ndim_force] = \
                 self._data["Forces"].ravel() - ref_forces
+            self.b[irow:irow+num_atoms * ndim_force] = self._data["Forces"].ravel() - ref_forces
             self.pt.shared_arrays['w'].array[index:index+num_atoms * ndim_force] = \
                 self._data["fweight"]
+            self.w[irow:irow+num_atoms * ndim_force] = self._data["fweight"]
             self.pt.fitsnap_dict['Row_Type'][dindex:dindex + nrows_force] = ['Force'] * nrows_force
             self.pt.fitsnap_dict['Atom_I'][dindex:dindex + nrows_force] = [int(np.floor(i/3)) for i in range(nrows_force)]
             index += nrows_force
@@ -310,11 +326,14 @@ class LammpsPace(LammpsBase):
                 vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types * n_coeff + num_types)
             self.pt.shared_arrays['a'].array[index:index+ndim_virial] = \
                 np.matmul(vb_sum_temp, np.diag(self.config.sections["ACE"].blank2J))
+            self.a[irow:irow+ndim_virial] = np.matmul(vb_sum_temp, np.diag(self.config.sections["ACE"].blank2J))
             ref_stress = lmp_pace[irow:irow + nrows_virial, icolref]
             self.pt.shared_arrays['b'].array[index:index+ndim_virial] = \
                 self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
+            self.b[irow:irow+ndim_virial] = self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
             self.pt.shared_arrays['w'].array[index:index+ndim_virial] = \
                 self._data["vweight"]
+            self.w[irow:irow+ndim_virial] = self._data["vweight"]
             self.pt.fitsnap_dict['Row_Type'][dindex:dindex + ndim_virial] = ['Stress'] * ndim_virial
             self.pt.fitsnap_dict['Atom_I'][dindex:dindex + ndim_virial] = [int(0)] * ndim_virial
             index += ndim_virial

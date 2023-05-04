@@ -37,10 +37,11 @@ class Config():
         self.sections = {}
         self.parse_config()
 
-        # Generate random 128 bit hash to identify this fit
-
+        # Generate random 128 bit hash to identify this fit on rank 0.
         if self.pt._rank == 0:
             self.hash = f"{random.getrandbits(128):032x}"
+        else:
+            self.hash = None
 
     def parse_cmdline(self, arguments_lst=None):
         """ Parse command line args. """

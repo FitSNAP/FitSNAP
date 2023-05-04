@@ -146,6 +146,6 @@ except ModuleNotFoundError:
         """
         Dummy class for factory to read if torch is not available for import.
         """
-        def __init__(self, name, config, pt, args):
-            super().__init__(name, config, pt, args)
+        def __init__(self, name, config, pt, infile, args):
+            super().__init__(name, config, pt, infile, args)
             raise ModuleNotFoundError("Missing sympy or pyyaml modules.")

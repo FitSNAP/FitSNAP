@@ -1,6 +1,4 @@
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 from fitsnap3lib.lib.ridge_solver.regressor import Local_Ridge
 import numpy as np
 
@@ -10,10 +8,8 @@ import numpy as np
 
 class RIDGE(Solver):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
 
     def perform_fit(self):
         @self.pt.sub_rank_zero

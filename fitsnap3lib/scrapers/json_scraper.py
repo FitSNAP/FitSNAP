@@ -15,6 +15,10 @@ class Json(Scraper):
         self.configs = self.files
 
     def scrape_configs(self):
+        """
+        Loop file files in parallel and populate the data dictionary on this proc.
+        Note that `self.configs` at this point includes all filenames on this proc.
+        """
         self.files = self.configs
         self.conversions = copy(self.default_conversions)
         data_path = self.config.sections["PATH"].datapath

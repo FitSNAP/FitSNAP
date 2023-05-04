@@ -233,6 +233,8 @@ class Calculator:
             elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
                 self.pt.single_print("Warning: I hope you know what you are doing!")
 
+            #print(a_len)
+            #print(a_width)
             self.pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('b', a_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('w', a_len, tm=self.config.sections["SOLVER"].true_multinode)

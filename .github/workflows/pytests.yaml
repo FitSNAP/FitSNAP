@@ -115,13 +115,11 @@ jobs:
     - name: Install LAMMPS round 2
       shell: bash
       run: |
-      # Install lammps after previous fail due to new compute pace.
-      cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2023.01.3.fix/ML-PACE/ace-evaluator/ && make -j 20
-      #make -j 20
-      make install-python
-      cd ../../../FitSNAP
-
-
+        # Install lammps after previous fail due to new compute pace.
+        cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2023.01.3.fix/ML-PACE/ace-evaluator/ && make -j 20
+        #make -j 20
+        make install-python
+        cd ../../../FitSNAP
     - name: Test stubs with pytest
       run: |
         python -m pip install --upgrade pytest

@@ -1,0 +1,76 @@
+[BISPECTRUM]
+numTypes = 1
+twojmax = 6
+rcutfac = 4.67637
+rfac0 = 0.99363
+rmin0 = 0.0
+wj = 1.0
+radelem = 0.5
+type = Ta
+wselfallflag = 0
+chemflag = 0
+bzeroflag = 0
+quadraticflag = 0
+
+[CALCULATOR]
+calculator = LAMMPSSNAP
+energy = 1
+force = 1
+stress = 0
+
+[ESHIFT]
+Ta = 0.0
+
+[SOLVER]
+solver = RIDGE
+compute_testerrs = 1
+detailed_errors = 1
+
+[RIDGE]
+alpha=1.e-5
+
+[SCRAPER]
+scraper = JSON
+
+[PATH]
+#dataPath = ../Ta_Linear_JCP2014/JSON
+dataPath = /home/jmgoff/work/new_Ta_ex/single_elm_grid/JSON
+
+[OUTFILE]
+metrics = Ta_metrics.md
+potential = Ta_pot
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = hybrid/overlay zero 10.0 zbl 4.0 4.8
+pair_coeff1 = * * zero
+pair_coeff2 = * * zbl 73 73
+
+[GROUPS]
+# name size eweight fweight vweight
+group_sections = name training_size testing_size eweight fweight vweight
+group_types = str float float float float float
+smartweights = 0
+random_sampling = 0
+Displaced_A15     =    1.0   0.0   37.912100   8.040892    1.E-8
+Displaced_BCC     =    1.0   0.0   97.121915   6.859884    1.E-8
+Displaced_FCC     =    1.0   0.0   80.597946   4.986826    1.E-8
+Elastic_BCC     =    1.0   0.0   77.126500   58.771619    1.E-8
+Elastic_FCC     =    1.0   0.0   76.801221   54.421385    1.E-8
+GSF_110     =    1.0   0.0   49.983228   7.842181    1.E-8
+GSF_112     =    1.0   0.0   42.249381   8.578090    1.E-8
+Liquid     =    1.0   0.0   35.912991   7.147558    1.E-8
+Surface     =    1.0   0.0   0.087594   0.046303    1.E-8
+Volume_A15     =    1.0   0.0   65.767512   476.199243    1.E-8
+Volume_BCC     =    1.0   0.0   63.919740   5.451515    1.E-8
+Volume_FCC     =    1.0   0.0   59.903324   28.038123    1.E-8
+
+[EXTRAS]
+dump_descriptors = 0
+dump_truth = 0
+dump_weights = 0
+dump_dataframe = 0
+
+[MEMORY]
+override = 0

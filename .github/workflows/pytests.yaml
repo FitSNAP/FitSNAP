@@ -85,7 +85,7 @@ jobs:
               -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
               -DPYTHON_EXECUTABLE:FILEPATH=`which python` ../
         git clone https://github.com/jmgoff/lammps-user-pace-1
-        cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2022.10.15/ML-PACE/ace-evaluator/
+        cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2023.01.3.fix/ML-PACE/ace-evaluator/
         make -j 20
         make install-python
         cd ../../../FitSNAP

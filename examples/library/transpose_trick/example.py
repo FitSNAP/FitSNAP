@@ -4,9 +4,11 @@ matrices for all configurations, then performing the fit.
 
 Usage:
 
-    python example.py
+    mpirun -np P python example.py
 
-Afterwards, use the `in.run` LAMMPS script to run MD.
+Afterwards, use the `in.run` LAMMPS script to run MD with:
+
+    mpirun -np P lmp -in in.run
 
 NOTE: See below for info on which variables to change for different options.
 """
@@ -21,27 +23,85 @@ from fitsnap3lib.lib.ridge_solver.regressor import Local_Ridge
 from sklearn.linear_model import Ridge
 
 def fit(c, d):
+    """
+    Normal lstsq fit.
+    """
     coeffs, residues, rank, s = lstsq(c, d, 1.0e-13)
-    print(coeffs)
-    print(np.shape(coeffs))
-    #assert(False)
+    return coeffs
 
 def ridge(c, d):
-
+    """
+    Least squares fit with ridge regularization.
+    """
     alval = 1.e-6
-    #reg = Local_Ridge(alpha = alval, fit_intercept = False)
     reg = Ridge(alpha = alval, fit_intercept = False)
     reg.fit(c, d)
-    print(reg.coef_)
-    np.savetxt("coeffs.txt", reg.coef_.T)
-    #assert(False)
-    return reg.coef_.T # use this if use sklearn ridge
-    #return reg.coef_[:,np.newaxis]
+    return reg.coef_.T # return transpose if using sklearn ridge
 
+def error_analysis(instance):
+    """
+    Calculate errors associated with a fitsnap instance that does not have shared arrays for the 
+    entire A matrix or b vector, e.g. like we have when doing transpose trick. Here we loop over 
+    all configurations and accumulate errors one at a time.
+
+    Args:
+        instance: fitsnap instance that contains a valid `fit`.
+
+    TODO: Organize this to calculate group errors or other kinds of errors.
+    """
+
+    energy_mae = 0.0
+    force_mae = 0.0
+    stress_mae = 0.0
+    for i, configuration in enumerate(instance.data):
+        # TODO: Add option to print descriptor calculation progress on single proc.
+        # if (i % 1 == 0):
+        #    self.pt.single_print(i)
+        a,b,w = instance.calculator.process_single(configuration, i)
+        aw, bw = w[:, np.newaxis] * a, w * b
+        
+        pred = a @ coeffs
+
+        # Energy error.
+        energy = pred[0,0]
+        ediff = np.abs(energy-b[0])
+        energy_mae += ediff/nconfigs_all
+
+        # Force error.
+        ndim_force = 3
+        nrows_force = ndim_force * configuration['NumAtoms']
+        force = pred[1:nrows_force+1,0]
+        force_mae += np.sum(abs(force-b[1:nrows_force+1]))/(3*natoms_all)
+
+        # Stress error.
+        stress = pred[-6:,0]
+        sdiff_mae = np.mean(np.abs(stress-b[-6:]))
+        stress_mae += sdiff_mae/nconfigs_all
+    # Good practice after a large parallel operation is to impose a barrier to wait for all procs to complete.
+    instance.pt.all_barrier()
+
+    # Reduce errors across procs.
+    energy_mae = np.array([energy_mae])
+    force_mae = np.array([force_mae])
+    stress_mae = np.array([stress_mae])
+    energy_mae_all = np.array([0.0])
+    force_mae_all = np.array([0.0])
+    stress_mae_all = np.array([0.0])
+    comm.Allreduce([energy_mae, MPI.DOUBLE], [energy_mae_all, MPI.DOUBLE])
+    comm.Allreduce([force_mae, MPI.DOUBLE], [force_mae_all, MPI.DOUBLE])
+    comm.Allreduce([stress_mae, MPI.DOUBLE], [stress_mae_all, MPI.DOUBLE])
+
+    # Print errors.
+    if (rank==0):
+        print(energy_mae_all[0])
+        print(force_mae_all[0])
+        print(stress_mae_all[0])
 
 
 # Declare a communicator (this can be a custom communicator as well).
 comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+nprocs = comm.Get_size()
 
 # Create an input dictionary containing settings.
 settings = \
@@ -133,80 +193,65 @@ settings = \
 
 # Alternatively, settings could be provided in a traditional input file:
 #settings = "../../Ta_Linear_JCP2014/Ta-example.in"
-#settings = "../../Ta_PACE/Ta.in"
-settings = "../../Ta_PACE_RIDGE/Ta.in"
+settings = "../../Ta_PACE/Ta.in"
+#settings = "../../Ta_PACE_RIDGE/Ta.in"
 
 # Create a FitSnap instance using the communicator and settings:
 fitsnap = FitSnap(settings, comm=comm, arglist=["--overwrite"])
 
 # Scrape configurations to create and populate the `snap.data` list of dictionaries with structural info.
 fitsnap.scrape_configs()
-# Calculate descriptors for all structures in the `snap.data` list.
-# This is performed in parallel over all processors in `comm`.
-# Descriptor data is stored in the shared arrays.
-print(len(fitsnap.data))
-data = copy.deepcopy(fitsnap.data)
-print(len(data))
+
+# Get total number of atoms and configs across all procs.
+nconfigs_all = len(fitsnap.pt.shared_arrays["number_of_atoms"].array)
+natoms_all = fitsnap.pt.shared_arrays["number_of_atoms"].array.sum()
 
 # Loop over each configuration in data 
 a_width = fitsnap.calculator.get_width()
 c = np.zeros((a_width,a_width)) # This will also include weights.
 d = np.zeros((a_width,1))
-for m, config in enumerate(data):
-    print(m)
-    fitsnap.data = [config]
-    fitsnap.process_configs()
-    # See what original A matrix looks like:
-    #print(fitsnap.pt.shared_arrays['a'].array)
-    #print(np.shape(fitsnap.pt.shared_arrays['a'].array))
-    #print(fitsnap.calculator.a)
-    #fit(fitsnap.calculator.a, fitsnap.calculator.w, fitsnap.calculator.b)
-    # Make aw and bw
-    #w[:, np.newaxis] * self.pt.shared_arrays['a'].array[training], w * self.pt.shared_arrays['b'].array[training]
-    a = fitsnap.calculator.a
-    b = fitsnap.calculator.b
-    w = fitsnap.calculator.w
+
+# Create fitsnap dictionaries.
+fitsnap.calculator.create_dicts(len(fitsnap.data))
+# Create `C` and `d` arrays for solving lstsq with transpose trick.
+a_width = fitsnap.calculator.get_width()
+c = np.zeros((a_width,a_width))
+d = np.zeros((a_width,1))
+c_all = np.zeros((a_width,a_width))
+d_all = np.zeros((a_width,1))
+for i, configuration in enumerate(fitsnap.data):
+    # TODO: Add option to print descriptor calculation progress on single proc.
+    # if (i % 1 == 0):
+    #    self.pt.single_print(i)
+    a,b,w = fitsnap.calculator.process_single(configuration, i)
     aw, bw = w[:, np.newaxis] * a, w * b
     if np.linalg.cond(aw)**2 < 1 / fi.epsilon:
         pass
     else:
-        print("ill conditioned for transpose trick")
-        #print(a)
-        #print(fitsnap.calculator.a)
-        #assert(np.all(a == fitsnap.calculator.a))
-        #assert(False)
+        #print("ill conditioned for transpose trick")
+        pass
     cm = np.matmul(np.transpose(aw), aw)
     dm = np.matmul(np.transpose(aw), bw[:,np.newaxis])
     c += cm
     d += dm
-    #assert(False)
+# Good practice after a large parallel operation is to impose a barrier to wait for all procs to complete.
+fitsnap.pt.all_barrier()
 
-fit(c,d)
-coeffs = ridge(c,d)
+# Reduce C and D arrays across procs.
+comm.Allreduce([c, MPI.DOUBLE], [c_all, MPI.DOUBLE])
+comm.Allreduce([d, MPI.DOUBLE], [d_all, MPI.DOUBLE])
 
-fitsnap.data = data
+# Now `coeffs` is owned by all procs, good for error analysis.
+#coeffs = fit(c_all,d_all)
+coeffs = ridge(c_all, d_all)
 
-# Process configs to get entire A matrix.
-fitsnap.process_configs()
-
-# Use coeffs
+# Make instance own coeffs.
 fitsnap.fit = coeffs
 fitsnap.solver.fit = coeffs
 
-fitsnap.solver.fit_gather()
-fitsnap.solver.error_analysis()
+# Calculate errors for this instance.
+error_analysis(fitsnap)
 
+# Write LAMMPS files.
+# NOTE: Without error analysis, `errors` is an empty list and will not be written.
 fitsnap.output.output(coeffs, fitsnap.solver.errors)
-
-# Output coeffs here (will error due to solver.errors being None)
-#fitsnap.output.output(coeffs, fitsnap.solver.errors)
-
-
-"""
-fitsnap.process_configs()
-# Good practice after a large parallel operation is to impose a barrier to wait for all procs to complete.
-fitsnap.pt.all_barrier()
-# Perform a fit using data in the shared arrays.
-fitsnap.perform_fit()
-fitsnap.write_output()
-"""

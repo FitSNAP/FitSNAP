@@ -22,8 +22,30 @@ class Calculator:
 
     def get_width(self):
         pass
+    
+    def create_dicts(self, nconfigs):
+        """
+        Create dictionaries for distributed lists.
+        Each list should be of size `nconfigs` of a single proc.
+        NOTE: There are other dictionaries of size `natoms`.
+
+        Args:
+            nconfigs: int number of configs on this proc.
+        """
+
+        self.pt.add_2_fitsnap("Groups", DistributedList(nconfigs))
+        self.pt.add_2_fitsnap("Configs", DistributedList(nconfigs))
+        #self.pt.add_2_fitsnap("Row_Type", DistributedList(nconfigs))
+        #self.pt.add_2_fitsnap("Atom_I", DistributedList(nconfigs))
+        self.pt.add_2_fitsnap("Testing", DistributedList(nconfigs))
+        #self.pt.add_2_fitsnap("Atom_Type", DistributedList(nconfigs))
+
+
 
     def create_a(self):
+        """
+        Allocate shared arrays for calculator.
+        """
 
         # TODO : Any extra config pulls should be done before this
 

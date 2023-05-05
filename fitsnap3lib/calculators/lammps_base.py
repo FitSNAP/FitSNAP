@@ -62,6 +62,14 @@ class LammpsBase(Calculator):
             raise e
 
     def process_configs(self, data, i):
+        """
+        Calculate descriptors for a given configuration.
+        Action of this function is altered by certain attributes.
+
+        Args:
+            transpose_trick : Don't touch shared arrays in `_collect_lammps()` if true. Instead 
+                              store smaller matrices `self.aw`, `self.bw`.
+        """
         #try:
         self._data = data
         self._i = i
@@ -84,14 +92,15 @@ class LammpsBase(Calculator):
         """
         
     def process_configs_nonlinear(self, data, i):
-        try:
-            self._data = data
-            self._i = i
-            self._initialize_lammps()
-            self._prepare_lammps()
-            self._run_lammps()
-            self._collect_lammps_nonlinear()
-            self._lmp = self.pt.close_lammps()
+        #try:
+        self._data = data
+        self._i = i
+        self._initialize_lammps()
+        self._prepare_lammps()
+        self._run_lammps()
+        self._collect_lammps_nonlinear()
+        self._lmp = self.pt.close_lammps()
+        """
         except Exception as e:
             #if self.config.args.printlammps:
             self._data = data
@@ -102,6 +111,21 @@ class LammpsBase(Calculator):
             self._collect_lammps_nonlinear()
             self._lmp = self.pt.close_lammps()
             raise e
+        """
+        
+    def process_single(self, data, i):
+        """
+        Calculate descriptors on a single configuration without touching the shraed arrays.
+        Returns a,b,w for a single configuration.
+        """
+        self._data = data
+        self._i = i
+        self._initialize_lammps()
+        self._prepare_lammps()
+        self._run_lammps()
+        a,b,w = self._collect_lammps_single()
+        self._lmp = self.pt.close_lammps()
+        return a,b,w
 
     def _prepare_lammps(self):
         raise NotImplementedError

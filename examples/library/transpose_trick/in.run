@@ -20,10 +20,11 @@ create_atoms    1 box
 
 mass 1 180.88
 
-# choose potential
-
-pair_style pace #product
-pair_coeff * * Ta_pot.yace Ta
+# Use SNAP potential:
+include Ta_pot.mod
+# Use ACE potential:
+#pair_style pace #product
+#pair_coeff * * Ta_pot.yace Ta
 
 compute  eatom all pe/atom
 compute  energy all reduce sum c_eatom
@@ -44,7 +45,7 @@ neigh_modify once no every 1 delay 0 check yes
 
 # Run MD
 
-velocity all create 10000.0 4928459 loop geom
+velocity all create 4000.0 4928459 loop geom
 dump 1 all xyz 100 dump.xyz 
 fix 1 all nve
 run             ${nsteps}

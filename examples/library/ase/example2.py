@@ -1,6 +1,5 @@
 """
 Demonstrate how to scrape using ASE and then calculate descriptors in FitSNAP *in parallel*.
-In this example we split 
 
 This example starts with a list of ASE atoms objects in `loaded_frames`. 
 Then we manually split the objects over procs; in real application perhaps each proc has its own 

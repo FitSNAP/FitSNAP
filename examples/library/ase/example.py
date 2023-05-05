@@ -8,7 +8,7 @@ from fitsnap3lib.fitsnap import FitSnap
 from ase import Atoms,Atom
 from ase.io import read,write
 from ase.io import extxyz
-from fitsnap3lib.scrapers.ase_scraper import ase_scraper
+from fitsnap3lib.scrapers.ase_funcs import ase_scraper
 
 # Set up your communicator.
 
@@ -112,36 +112,12 @@ snap = FitSnap(data, comm=comm, arglist=["--overwrite"])
 print("Reading frames")
 frames = read("../../Ta_XYZ/XYZ/Displaced_BCC.xyz", ":")[:3]
 
-"""
-print("Looping over frames")
-data = []
-for atoms in frames:
-    
-    fitting_data = calc_fitting_data(atoms)
-    data.append(fitting_data)
-
-print(len(data))
-"""
-
-# Now we should be able to:
-# (1) inject this data into a fit instance
-# (2) which then allocates necessary scraper shared arrays
-# (3) then immediately process configs.
-
-# Collect groups and allocate shared arrays used by Calculator.
+# Scrape ASE frames into fitsnap data structures. 
 ase_scraper(snap, frames)
-# Declare important data in shared array from frames.
-#ase_scraper(snap, frames)
-
-# Inject list of data dictionaries into instance data.
-#snap.data = data
 
 # Process configs
 snap.process_configs()
 
 print(snap.pt.shared_arrays['a'].array)
-
-#snap.delete_data = False
-#snap.scrape_configs()
 
 

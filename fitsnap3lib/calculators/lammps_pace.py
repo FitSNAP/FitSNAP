@@ -201,6 +201,133 @@ class LammpsPace(LammpsBase):
         self.shared_index_c = index_c
         self.shared_index_dgrad = index_dgrad
 
+    def _collect_lammps_single(self):
+        num_atoms = self._data["NumAtoms"]
+        num_types = self.config.sections['ACE'].numtypes
+        n_coeff = self.config.sections['ACE'].ncoeff
+        energy = self._data["Energy"]
+
+        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+
+        # Extract positions
+        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
+        # Extract types
+        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
+        lmp_volume = self._lmp.get_thermo("vol")
+
+        # Extract pace data, including reference potential data
+
+        nrows_energy = 1
+        bik_rows = 1
+        ndim_force = 3
+        nrows_force = ndim_force * num_atoms
+        ndim_virial = 6
+        nrows_virial = ndim_virial
+        nrows_pace = nrows_energy + nrows_force + nrows_virial
+        ncols_bispectrum = n_coeff * num_types
+        ncols_reference = 1
+        ncols_pace = ncols_bispectrum + ncols_reference
+        index = 0 #self.shared_index
+        dindex = self.distributed_index
+        lmp_pace = _extract_compute_np(self._lmp, "pace", 0, 2, (nrows_pace, ncols_pace))
+
+        # Get C = A^T * A for this configuration.
+        nd = np.shape(lmp_pace)[1]
+        na = np.shape(lmp_pace)[0]
+        a = np.zeros((na, nd))
+        b = np.zeros(na)
+        w = np.zeros(na)
+
+        if (np.isinf(lmp_pace)).any() or (np.isnan(lmp_pace)).any():
+            self.pt.single_print('WARNING! applying np.nan_to_num()')
+            lmp_pace = np.nan_to_num(lmp_pace)
+        if (np.isinf(lmp_pace)).any() or (np.isnan(lmp_pace)).any():
+            raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
+                                                                                  self._data["Group"]))
+
+        irow = 0
+        bik_rows = 1
+        if self.config.sections['ACE'].bikflag:
+            bik_rows = num_atoms
+        icolref = ncols_bispectrum
+        if self.config.sections["CALCULATOR"].energy:
+            b_sum_temp = lmp_pace[irow, :ncols_bispectrum] / num_atoms
+
+            # Check for no neighbors using B[0,0,0] components
+            # these strictly increase with total neighbor count
+            # minimum value depends on PACE variant
+
+            EPS = 1.0e-10
+            b000sum0 = 0.0
+            nstride = n_coeff
+            b000sum = sum(b_sum_temp[::nstride])
+            if not self.config.sections['ACE'].bikflag:
+                if not self.config.sections["ACE"].bzeroflag:
+                    b000sum0 = 1.0
+                    if (abs(b000sum - b000sum0) < EPS): 
+                        self.pt.single_print("WARNING: Configuration has no PACE neighbors")
+
+                b_sum_temp.shape = (num_types, n_coeff)
+                onehot_atoms = np.zeros((num_types, 1))
+                for atom in self._data["AtomTypes"]:
+                    onehot_atoms[self.config.sections["ACE"].type_mapping[atom]-1] += 1
+                onehot_atoms /= len(self._data["AtomTypes"])
+                b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
+                #b_sum_temp.shape = (num_types * (n_coeff + num_types))
+                b_sum_temp.shape = (num_types * n_coeff + num_types)
+            a[irow] = b_sum_temp * self.config.sections["ACE"].blank2J
+            ref_energy = lmp_pace[irow, icolref]
+            b[irow] = (energy - ref_energy) / num_atoms
+            w[irow] = self._data["eweight"]
+            index += nrows_energy
+            dindex += nrows_energy
+        irow += nrows_energy
+
+        if self.config.sections["CALCULATOR"].force:
+            db_atom_temp = lmp_pace[irow:irow + nrows_force, :ncols_bispectrum]
+            db_atom_temp.shape = (num_atoms * ndim_force, n_coeff * num_types)
+            if not self.config.sections["ACE"].bzeroflag:
+                db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types, n_coeff)
+                onehot_atoms = np.zeros((np.shape(db_atom_temp)[0], num_types, 1))
+                db_atom_temp = np.concatenate([onehot_atoms, db_atom_temp], axis=2)
+                db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types * n_coeff + num_types)
+            a[irow:irow+num_atoms * ndim_force] = np.matmul(db_atom_temp, np.diag(self.config.sections["ACE"].blank2J))
+            ref_forces = lmp_pace[irow:irow + nrows_force, icolref]
+            b[irow:irow+num_atoms * ndim_force] = self._data["Forces"].ravel() - ref_forces
+            w[irow:irow+num_atoms * ndim_force] = self._data["fweight"]
+            index += nrows_force
+            dindex += nrows_force
+        irow += nrows_force
+
+        if self.config.sections["CALCULATOR"].stress:
+            vb_sum_temp = 1.6021765e6*lmp_pace[irow:irow + nrows_virial, :ncols_bispectrum] / lmp_volume
+            vb_sum_temp.shape = (ndim_virial, n_coeff * num_types)
+            if not self.config.sections["ACE"].bzeroflag:
+                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types, n_coeff)
+                onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0], num_types, 1))
+                vb_sum_temp = np.concatenate([onehot_atoms, vb_sum_temp], axis=2)
+                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types * n_coeff + num_types)
+            a[irow:irow+ndim_virial] = np.matmul(vb_sum_temp, np.diag(self.config.sections["ACE"].blank2J))
+            ref_stress = lmp_pace[irow:irow + nrows_virial, icolref]
+            b[irow:irow+ndim_virial] = self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
+            w[irow:irow+ndim_virial] = self._data["vweight"]
+            index += ndim_virial
+            dindex += ndim_virial
+
+        length = dindex - self.distributed_index
+
+        """
+        self.pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = ['{}'.format(self._data['Group'])] * length
+        self.pt.fitsnap_dict['Configs'][self.distributed_index:dindex] = ['{}'.format(self._data['File'])] * length
+        self.pt.fitsnap_dict['Testing'][self.distributed_index:dindex] = [bool(self._data['test_bool'])] * length
+        """
+        self.shared_index = index
+        self.distributed_index = dindex
+
+        return a,b,w
+        
+
     def _collect_lammps(self):
 
         num_atoms = self._data["NumAtoms"]

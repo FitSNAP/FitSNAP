@@ -101,8 +101,11 @@ class Output:
             with optional_open(fname, write_type) as file:
                 function(file, **arguments)
 
+        # Don't write errors if using scalapack.
         if not self.config.sections["SOLVER"].true_multinode: 
-            decorated_write_errors()
+            # Don't write errors if `errors` is a list (default is empty list).
+            if type(errors) != type([]):
+                decorated_write_errors()
 
     def write_errors_nn(self, errors):
         """ 

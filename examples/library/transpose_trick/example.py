@@ -1,6 +1,8 @@
 """
-Python script for performing the transpose trick C = A^T * A and d = A^T * b, summing these 
-matrices for all configurations, then performing the fit.
+Python script using library API to:
+- Loop over all configurations in parallel and perform the transpose trick C = A^T * A and d = A^T * b.
+- Sum these `C` and `d` arrays for all configurations.
+- Perform least squares (or ridge regression) fit.
 
 Usage:
 
@@ -10,21 +12,24 @@ Afterwards, use the `in.run` LAMMPS script to run MD with:
 
     mpirun -np P lmp -in in.run
 
-NOTE: See below for info on which variables to change for different options.
+NOTE: This workflow is under development and therefore script requires changes.
+
+- `settings` variable can be a dictionary like the example provided, or path to a fitsnap input script.
+- `alval`: Ridge regression regularization parameter.
+- Comment or uncomment `least_squares` or `ridge` at end of script to choose fitting method.
+
 """
 
 from mpi4py import MPI
 from fitsnap3lib.fitsnap import FitSnap
-import copy
 import numpy as np
 from scipy.linalg import lstsq
 from sys import float_info as fi
-from fitsnap3lib.lib.ridge_solver.regressor import Local_Ridge
 from sklearn.linear_model import Ridge
 
-def fit(c, d):
+def least_squares(c, d):
     """
-    Normal lstsq fit.
+    Normal least squares fit.
     """
     coeffs, residues, rank, s = lstsq(c, d, 1.0e-13)
     return coeffs
@@ -47,8 +52,13 @@ def error_analysis(instance):
     Args:
         instance: fitsnap instance that contains a valid `fit`.
 
+    Prints total MAE for all configurations in the data set.
     TODO: Organize this to calculate group errors or other kinds of errors.
     """
+
+    # Get total number of atoms and configs across all procs for calculating average errors.
+    nconfigs_all = len(fitsnap.pt.shared_arrays["number_of_atoms"].array)
+    natoms_all = fitsnap.pt.shared_arrays["number_of_atoms"].array.sum()
 
     energy_mae = 0.0
     force_mae = 0.0
@@ -202,11 +212,7 @@ fitsnap = FitSnap(settings, comm=comm, arglist=["--overwrite"])
 # Scrape configurations to create and populate the `snap.data` list of dictionaries with structural info.
 fitsnap.scrape_configs()
 
-# Get total number of atoms and configs across all procs.
-nconfigs_all = len(fitsnap.pt.shared_arrays["number_of_atoms"].array)
-natoms_all = fitsnap.pt.shared_arrays["number_of_atoms"].array.sum()
-
-# Loop over each configuration in data 
+# Allocate `C` and `d` fitting arrays.
 a_width = fitsnap.calculator.get_width()
 c = np.zeros((a_width,a_width)) # This will also include weights.
 d = np.zeros((a_width,1))
@@ -241,8 +247,8 @@ fitsnap.pt.all_barrier()
 comm.Allreduce([c, MPI.DOUBLE], [c_all, MPI.DOUBLE])
 comm.Allreduce([d, MPI.DOUBLE], [d_all, MPI.DOUBLE])
 
-# Now `coeffs` is owned by all procs, good for error analysis.
-#coeffs = fit(c_all,d_all)
+# Now `coeffs` is owned by all procs, good for parallel error analysis.
+#coeffs = least_squares(c_all,d_all)
 coeffs = ridge(c_all, d_all)
 
 # Make instance own coeffs.
@@ -253,5 +259,5 @@ fitsnap.solver.fit = coeffs
 error_analysis(fitsnap)
 
 # Write LAMMPS files.
-# NOTE: Without error analysis, `errors` is an empty list and will not be written.
+# NOTE: Without core error analysis, `fitsnap.solver.errors` is an empty list and will not be written to file.
 fitsnap.output.output(coeffs, fitsnap.solver.errors)

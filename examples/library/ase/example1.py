@@ -1,21 +1,15 @@
 """
 Show how to scrape using ASE and then calculate descriptors in FitSNAP.
+
+Usage:
+
+    python example1.py
 """
 
 import numpy as np
-from mpi4py import MPI
+from ase.io import read
 from fitsnap3lib.fitsnap import FitSnap
-from ase import Atoms,Atom
-from ase.io import read,write
-from ase.io import extxyz
 from fitsnap3lib.scrapers.ase_funcs import ase_scraper
-
-# Set up your communicator.
-
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-print(f"main script comm: {comm}")
 
 # Create an input dictionary containing settings.
 
@@ -53,7 +47,7 @@ data = \
 }
 
 print("Making instance")
-snap = FitSnap(data, comm=comm, arglist=["--overwrite"])
+snap = FitSnap(data, arglist=["--overwrite"])
 
 print("Reading frames")
 frames = read("../../Ta_XYZ/XYZ/Displaced_BCC.xyz", ":")[:3]
@@ -70,8 +64,3 @@ for i, configuration in enumerate(snap.data):
     a,b,w = snap.calculator.process_single(configuration, i)
 
     print(np.shape(a))
-
-# Good practice after a large parallel operation is to impose a barrier to wait for all procs to complete.
-snap.pt.all_barrier()
-
-

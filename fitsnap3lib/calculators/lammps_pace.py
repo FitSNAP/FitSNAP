@@ -233,7 +233,7 @@ class LammpsPace(LammpsBase):
         lmp_pace = _extract_compute_np(self._lmp, "pace", 0, 2, (nrows_pace, ncols_pace))
 
         # Get C = A^T * A for this configuration.
-        nd = np.shape(lmp_pace)[1]
+        nd = self.get_width() #np.shape(lmp_pace)[1]
         na = np.shape(lmp_pace)[0]
         a = np.zeros((na, nd))
         b = np.zeros(na)

@@ -1,5 +1,5 @@
 """
-ASE scraper is meant to be disconnected from others, therefore a collection of functions for now.
+ASE scraper is meant to be disconnected from others, and therefore a collection of functions for now.
 This is by design since most use cases of ASE desire more flexibility; simply import the functions.
 """
 
@@ -7,6 +7,7 @@ import numpy as np
 from ase import Atoms,Atom
 from ase.io import read,write
 from ase.io import extxyz
+from mpi4py import MPI
 
 def ase_scraper(s, frames):
     """
@@ -45,7 +46,12 @@ def ase_scraper(s, frames):
         self.pt.shared_arrays['configs_per_group'].testing = len(test_list)
     """
 
-    number_of_configs_per_node = 3+3 #len(frames)
+    # Reduce length of frames across procs.
+    len_frames = np.array([len(frames)])
+    len_frames_all = np.array([0])
+    s.pt._comm.Allreduce([len_frames, MPI.INT], [len_frames_all, MPI.INT])
+
+    number_of_configs_per_node = int(len_frames_all)
     s.pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
     s.pt.slice_array('number_of_atoms')
     #s.pt.shared_arrays['number_of_atoms'].configs = frames #temp_configs

@@ -203,8 +203,9 @@ settings = \
 
 # Alternatively, settings could be provided in a traditional input file:
 #settings = "../../Ta_Linear_JCP2014/Ta-example.in"
-settings = "../../Ta_PACE/Ta.in"
+#settings = "../../Ta_PACE/Ta.in"
 #settings = "../../Ta_PACE_RIDGE/Ta.in"
+settings = "../../InP_PACE/InP-example.in"
 
 # Create a FitSnap instance using the communicator and settings:
 fitsnap = FitSnap(settings, comm=comm, arglist=["--overwrite"])
@@ -227,8 +228,8 @@ c_all = np.zeros((a_width,a_width))
 d_all = np.zeros((a_width,1))
 for i, configuration in enumerate(fitsnap.data):
     # TODO: Add option to print descriptor calculation progress on single proc.
-    # if (i % 1 == 0):
-    #    self.pt.single_print(i)
+    if (i % 10 == 0):
+        fitsnap.pt.single_print(i)
     a,b,w = fitsnap.calculator.process_single(configuration, i)
     aw, bw = w[:, np.newaxis] * a, w * b
     if np.linalg.cond(aw)**2 < 1 / fi.epsilon:

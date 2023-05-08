@@ -21,7 +21,7 @@ class LammpsPace(LammpsBase):
         self.pt.check_lammps()
 
     def get_width(self):
-        if (self.config.sections["SOLVER"].solver == "PYTORCH"):
+        if (self.config.sections["CALCULATOR"].nonlinear):
             a_width = self.config.sections["ACE"].ncoeff
         else:
             num_types = self.config.sections["ACE"].numtypes

@@ -39,70 +39,16 @@ data = \
 "CALCULATOR":
     {
     "calculator": "LAMMPSSNAP",
-    "energy": 1,
-    "force": 1,
-    "stress": 1
-    },
-"ESHIFT":
-    {
-    "Ta": 0.0
-    },
-"SOLVER":
-    {
-    "solver": "SVD",
-    "compute_testerrs": 1,
-    "detailed_errors": 1
-    },
-"SCRAPER":
-    {
-    "scraper": "JSON" 
-    },
-"PATH":
-    {
-    "dataPath": "../../../Ta_Linear_JCP2014/JSON"
-    },
-"OUTFILE":
-    {
-    "metrics": "Ta_metrics.md",
-    "potential": "Ta_pot"
+    "energy": 1, # Calculate energy descriptors
+    "force": 1,  # Calculate force descriptors
+    "stress": 1  # Calculate virial descriptors
     },
 "REFERENCE":
     {
     "units": "metal",
     "atom_style": "atomic",
-    "pair_style": "hybrid/overlay zero 10.0 zbl 4.0 4.8",
-    "pair_coeff1": "* * zero",
-    "pair_coeff2": "* * zbl 73 73"
-    },
-"EXTRAS":
-    {
-    "dump_descriptors": 1,
-    "dump_truth": 1,
-    "dump_weights": 1,
-    "dump_dataframe": 1
-    },
-"GROUPS":
-    {
-    "group_sections": "name training_size testing_size eweight fweight vweight",
-    "group_types": "str float float float float float",
-    "smartweights": 0,
-    "random_sampling": 0,
-    "Displaced_A15" :  "1.0    0.0       100             1               1.00E-08",
-    "Displaced_BCC" :  "1.0    0.0       100             1               1.00E-08",
-    "Displaced_FCC" :  "1.0    0.0       100             1               1.00E-08",
-    "Elastic_BCC"   :  "1.0    0.0     1.00E-08        1.00E-08        0.0001",
-    "Elastic_FCC"   :  "1.0    0.0     1.00E-09        1.00E-09        1.00E-09",
-    "GSF_110"       :  "1.0    0.0      100             1               1.00E-08",
-    "GSF_112"       :  "1.0    0.0      100             1               1.00E-08",
-    "Liquid"        :  "1.0    0.0       4.67E+02        1               1.00E-08",
-    "Surface"       :  "1.0    0.0       100             1               1.00E-08",
-    "Volume_A15"    :  "1.0    0.0      1.00E+00        1.00E-09        1.00E-09",
-    "Volume_BCC"    :  "1.0    0.0      1.00E+00        1.00E-09        1.00E-09",
-    "Volume_FCC"    :  "1.0    0.0      1.00E+00        1.00E-09        1.00E-09"
-    },
-"MEMORY":
-    {
-    "override": 0
+    "pair_style": "zero 6.0",
+    "pair_coeff": "* *"
     }
 }
 
@@ -115,9 +61,17 @@ frames = read("../../Ta_XYZ/XYZ/Displaced_BCC.xyz", ":")[:3]
 # Scrape ASE frames into fitsnap data structures. 
 ase_scraper(snap, frames)
 
-# Process configs
-snap.process_configs()
+# Create fitsnap dictionaries.
+snap.calculator.create_dicts(len(snap.data))
+# Create `C` and `d` arrays for solving lstsq with transpose trick.
+a_width = snap.calculator.get_width()
+for i, configuration in enumerate(snap.data):
+    snap.pt.single_print(i)
+    a,b,w = snap.calculator.process_single(configuration, i)
 
-print(snap.pt.shared_arrays['a'].array)
+    print(np.shape(a))
+
+# Good practice after a large parallel operation is to impose a barrier to wait for all procs to complete.
+snap.pt.all_barrier()
 
 

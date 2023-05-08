@@ -70,18 +70,21 @@ class FitSnap:
         self.config = Config(self.pt, input, arguments_lst=arglist)
         self.pt.single_print(f"FitSNAP 3.1.0 instance hash: {self.config.hash}")
         # Instantiate all other backbone attributes.
-        if "SCRAPER" in self.config.sections:
-            self.scraper = scraper(self.config.sections["SCRAPER"].scraper, self.pt, self.config)
+        #if "SCRAPER" in self.config.sections:
+        self.scraper = scraper(self.config.sections["SCRAPER"].scraper, self.pt, self.config) \
+            if "SCRAPER" in self.config.sections else None
         self.calculator = calculator(self.config.sections["CALCULATOR"].calculator, self.pt, self.config)
-        self.solver = solver(self.config.sections["SOLVER"].solver, self.pt, self.config)
-        self.output = output(self.config.sections["OUTFILE"].output_style, self.pt, self.config)
+        self.solver = solver(self.config.sections["SOLVER"].solver, self.pt, self.config) \
+            if "SOLVER" in self.config.sections else None
+        self.output = output(self.config.sections["OUTFILE"].output_style, self.pt, self.config) \
+            if "OUTFILE" in self.config.sections else None
 
         self.fit = None
         self.multinode = 0
         # Delete the `snap.data` dictionary from scraping configs, after calculating descriptors.
         self.delete_data = True
         # Optionally read a fit.
-        if self.config.sections["EXTRAS"].only_test:
+        if "EXTRAS" in self.config.sections and self.config.sections["EXTRAS"].only_test:
             self.fit = self.output.read_fit()
         # Check LAMMPS version if using nonlinear solvers.
         if (hasattr(self.pt, "lammps_version")):

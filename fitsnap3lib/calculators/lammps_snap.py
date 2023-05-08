@@ -21,7 +21,7 @@ class LammpsSnap(LammpsBase):
         self.pt.check_lammps()
 
     def get_width(self):
-        if (self.config.sections["SOLVER"].solver == "PYTORCH"):
+        if (self.config.sections["CALCULATOR"].nonlinear):
             a_width = self.config.sections["BISPECTRUM"].ncoeff #+ 3
         else:
             num_types = self.config.sections["BISPECTRUM"].numtypes

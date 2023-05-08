@@ -203,9 +203,6 @@ settings = \
 
 # Alternatively, settings could be provided in a traditional input file:
 #settings = "../../Ta_Linear_JCP2014/Ta-example.in"
-#settings = "../../Ta_PACE/Ta.in"
-#settings = "../../Ta_PACE_RIDGE/Ta.in"
-settings = "../../InP_PACE/InP-example.in"
 
 # Create a FitSnap instance using the communicator and settings:
 fitsnap = FitSnap(settings, comm=comm, arglist=["--overwrite"])
@@ -218,7 +215,7 @@ a_width = fitsnap.calculator.get_width()
 c = np.zeros((a_width,a_width)) # This will also include weights.
 d = np.zeros((a_width,1))
 
-# Create fitsnap dictionaries.
+# Create fitsnap dictionaries (optional if you want access to distributed lists of groups, etc.)
 fitsnap.calculator.create_dicts(len(fitsnap.data))
 # Create `C` and `d` arrays for solving lstsq with transpose trick.
 a_width = fitsnap.calculator.get_width()
@@ -232,11 +229,7 @@ for i, configuration in enumerate(fitsnap.data):
         fitsnap.pt.single_print(i)
     a,b,w = fitsnap.calculator.process_single(configuration, i)
     aw, bw = w[:, np.newaxis] * a, w * b
-    if np.linalg.cond(aw)**2 < 1 / fi.epsilon:
-        pass
-    else:
-        #print("ill conditioned for transpose trick")
-        pass
+
     cm = np.matmul(np.transpose(aw), aw)
     dm = np.matmul(np.transpose(aw), bw[:,np.newaxis])
     c += cm
@@ -248,17 +241,14 @@ fitsnap.pt.all_barrier()
 comm.Allreduce([c, MPI.DOUBLE], [c_all, MPI.DOUBLE])
 comm.Allreduce([d, MPI.DOUBLE], [d_all, MPI.DOUBLE])
 
-# Now `coeffs` is owned by all procs, good for parallel error analysis.
+# Perform least squares fit.
 #coeffs = least_squares(c_all,d_all)
 coeffs = ridge(c_all, d_all)
+# Now `coeffs` is owned by all procs, good for parallel error analysis.
 
-# Make instance own coeffs.
-fitsnap.fit = coeffs
-fitsnap.solver.fit = coeffs
-
-# Calculate errors for this instance.
-error_analysis(fitsnap)
+# Calculate errors for this instance (not required).
+# error_analysis(fitsnap)
 
 # Write LAMMPS files.
-# NOTE: Without core error analysis, `fitsnap.solver.errors` is an empty list and will not be written to file.
+# NOTE: Without error analysis, `fitsnap.solver.errors` is an empty list and will not be written to file.
 fitsnap.output.output(coeffs, fitsnap.solver.errors)

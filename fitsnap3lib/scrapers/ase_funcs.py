@@ -65,7 +65,7 @@ def ase_scraper(s, frames):
     """
 
     # Create necessary shared arrays using these frames.
-    create_shared_arrays(frames)
+    create_shared_arrays(s, frames)
 
     # TODO: If user doesn't supply a group, just default to some ALL group.
     # NODES SPLIT UP HERE

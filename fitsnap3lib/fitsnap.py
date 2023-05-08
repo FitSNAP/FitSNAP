@@ -43,6 +43,12 @@ import numpy as np
 class FitSnap:
     """ This classes houses the functions needed for machine learning a potential, start to finish.
 
+    Args:
+        input (str): Optional path to input file when using library mode; defaults to None.
+        comm: Optional MPI communicator when using library mode; defaults to None which uses 
+              stubs.
+        arglist (list): Optional list of cmd line args when using library mode.
+
     Attributes:
         scraper (:obj:`class` Scraper): instance of the Scraper class for gathering configs
         data (:obj:`list`): list of dictionaries, where each configuration of atoms has its own 
@@ -55,12 +61,6 @@ class FitSnap:
                                    if looping over fits.
     """
     def __init__(self, input=None, comm=None, arglist=None):
-        """
-        Args:
-            input (str): Optional path to input file when using library mode.
-            comm: Optional MPI communicator when using library mode.
-            arglist (list): Optional list of cmd line args when using library mode.
-        """
         self.comm = comm
         # Instantiate ParallelTools and Config instances belonging to this FitSnap instance.
         # NOTE: Each proc in `comm` creates a different `pt` object, but shared arrays still share 
@@ -68,11 +68,11 @@ class FitSnap:
         self.pt = ParallelTools(comm=comm)
         self.pt.all_barrier()
         self.config = Config(self.pt, input, arguments_lst=arglist)
-        self.pt.single_print(f"FitSNAP 3.1.0 instance hash: {self.config.hash}")
-        # Instantiate all other backbone attributes.
-        #if "SCRAPER" in self.config.sections:
+        self.pt.single_print(f"FitSNAP instance hash: {self.config.hash}")
+        # Instantiate other backbone attributes.
         self.scraper = scraper(self.config.sections["SCRAPER"].scraper, self.pt, self.config) \
             if "SCRAPER" in self.config.sections else None
+        # Presumably we should always have a calculator; maybe require this.
         self.calculator = calculator(self.config.sections["CALCULATOR"].calculator, self.pt, self.config)
         self.solver = solver(self.config.sections["SOLVER"].solver, self.pt, self.config) \
             if "SOLVER" in self.config.sections else None

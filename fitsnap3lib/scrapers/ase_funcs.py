@@ -9,6 +9,45 @@ from ase.io import read,write
 from ase.io import extxyz
 from mpi4py import MPI
 
+def create_shared_arrays(s, frames):
+    """
+    Function to create shared arrays from a list of ASE atoms objects; this is a low-level function 
+    that must be called before calculating descriptors if users are creating a custom data injection 
+    workflow.
+
+    Args:
+        s: fitsnap instance.
+        frames: list or array of ASE atoms objects.
+    """
+
+    # Reduce length of frames across procs.
+    len_frames = np.array([len(frames)])
+    len_frames_all = np.array([0])
+    s.pt._comm.Allreduce([len_frames, MPI.INT], [len_frames_all, MPI.INT])
+
+    number_of_configs_per_node = int(len_frames_all)
+    s.pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
+    s.pt.slice_array('number_of_atoms')
+
+    # number of dgrad rows serves similar purpose as number of atoms
+    
+    s.pt.create_shared_array('number_of_dgrad_rows', number_of_configs_per_node, dtype='i')
+    s.pt.slice_array('number_of_dgrad_rows')
+    s.pt.shared_arrays['number_of_dgrad_rows'].configs = frames #temp_configs
+
+    # number of neighs serves similar purpose as number of atoms for custom calculator
+    
+    s.pt.create_shared_array('number_of_neighs_scrape', number_of_configs_per_node, dtype='i')
+    s.pt.slice_array('number_of_neighs_scrape')
+
+    # Set number of atoms in the sliced arrays used in Calculator.
+
+    for i, frame in enumerate(frames):
+        natoms = len(frame)
+        s.pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
+
+
+
 def ase_scraper(s, frames):
     """
     Function to organize groups and allocate shared arrays used in Calculator. For now when using 
@@ -25,7 +64,8 @@ def ase_scraper(s, frames):
     portion of the list.
     """
 
-    print(frames)
+    # Create necessary shared arrays using these frames.
+    create_shared_arrays(frames)
 
     # TODO: If user doesn't supply a group, just default to some ALL group.
     # NODES SPLIT UP HERE
@@ -36,8 +76,9 @@ def ase_scraper(s, frames):
     group_list = self.pt.split_by_node(group_list)
     temp_configs = copy(self.configs)
     """
+
     # Single group for now:
-    group_counts = np.zeros((len(frames),), dtype='i')
+    # group_counts = np.zeros((len(frames),), dtype='i')
 
     # TODO: `self.tests` is a list of filenames associated with test configs.
     #       Could be implemented later to include ASE frames.
@@ -46,46 +87,32 @@ def ase_scraper(s, frames):
         self.pt.shared_arrays['configs_per_group'].testing = len(test_list)
     """
 
-    # Reduce length of frames across procs.
-    len_frames = np.array([len(frames)])
-    len_frames_all = np.array([0])
-    s.pt._comm.Allreduce([len_frames, MPI.INT], [len_frames_all, MPI.INT])
-
-    number_of_configs_per_node = int(len_frames_all)
-    s.pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
-    s.pt.slice_array('number_of_atoms')
-    #s.pt.shared_arrays['number_of_atoms'].configs = frames #temp_configs
-
-    # number of dgrad rows serves similar purpose as number of atoms
-    
-    s.pt.create_shared_array('number_of_dgrad_rows', number_of_configs_per_node, dtype='i')
-    s.pt.slice_array('number_of_dgrad_rows')
-    s.pt.shared_arrays['number_of_dgrad_rows'].configs = frames #temp_configs
-
-    # number of neighs serves similar purpose as number of atoms for custom calculator
-    
-    s.pt.create_shared_array('number_of_neighs_scrape', number_of_configs_per_node, dtype='i')
-    s.pt.slice_array('number_of_neighs_scrape')
-
-    # PROCS SPLIT UP HERE
-    #s.test_bool = s.pt.split_within_node(self.test_bool)
-    # Don't distribute frames among procs in the ASE scraper, let's assume each proc as its own 
-    # set of frames.
-    # s.solver.configs = s.pt.split_within_node(frames)
-    #s.solver.configs = frames
-
-    # Set number of atoms in the sliced arrays used in Calculator.
-
-    #for i, frame in enumerate(s.solver.configs):
-    for i, frame in enumerate(frames):
-        natoms = len(frame)
-        print(f"rank {s.pt._rank} natoms {natoms}")
-        s.pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
-
-    # Loop through atoms objects and build the data list.
-
-    #s.data = [collate_data(atoms) for atoms in s.solver.configs]
     s.data = [collate_data(atoms) for atoms in frames]
+
+def get_apre(cell):
+    """
+    Calculate transformed ASE cell for LAMMPS calculations.
+
+    Args:
+        cell: ASE atoms cell.
+
+    Returns transformed cell as np.array.
+    """
+    a, b, c = cell
+    an, bn, cn = [np.linalg.norm(v) for v in cell]
+
+    alpha = np.arccos(np.dot(b, c) / (bn * cn))
+    beta = np.arccos(np.dot(a, c) / (an * cn))
+    gamma = np.arccos(np.dot(a, b) / (an * bn))
+
+    xhi = an
+    xyp = np.cos(gamma) * bn
+    yhi = np.sin(gamma) * bn
+    xzp = np.cos(beta) * cn
+    yzp = (bn * cn * np.cos(alpha) - xyp * xzp) / yhi
+    zhi = np.sqrt(cn**2 - xzp**2 - yzp**2)
+
+    return np.array(((xhi, 0, 0), (xyp, yhi, 0), (xzp, yzp, zhi)))
 
 def collate_data(atoms):
     """

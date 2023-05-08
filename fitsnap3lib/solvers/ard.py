@@ -2,10 +2,6 @@ from fitsnap3lib.solvers.solver import Solver
 import numpy as np
 
 
-#config = Config()
-#pt = ParallelTools()
-
-
 try:
     from sklearn.linear_model import ARDRegression
 

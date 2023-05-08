@@ -210,6 +210,9 @@ try:
             Performs PyTorch fitting using previously calculated descriptors. 
             """
 
+            test = self.config.sections["ASDF"].config
+            assert(False)
+
             @self.pt.sub_rank_zero
             def decorated_perform_fit():
                 self.create_datasets()

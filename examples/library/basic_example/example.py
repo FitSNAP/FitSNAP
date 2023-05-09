@@ -121,8 +121,13 @@ fitsnap.scrape_configs()
 # This is performed in parallel over all processors in `comm`.
 # Descriptor data is stored in the shared arrays.
 fitsnap.process_configs()
+# Now we can access the A matrix of descriptors:
+# print(fitsnap.pt.shared_arrays['a'].array)
 # Good practice after a large parallel operation is to impose a barrier to wait for all procs to complete.
 fitsnap.pt.all_barrier()
 # Perform a fit using data in the shared arrays.
 fitsnap.perform_fit()
+# Can also access the fitsnap dataframe here:
+# print(snap.solver.df)
+# WriteLAMMPS potential files and error analysis.
 fitsnap.write_output()

@@ -13,3 +13,7 @@ and calculate descriptors for each separately.
 Starting with a list of ASE Atoms objects on each MPI process, where each
 process has a different list, calculate all descriptors in parallel and store 
 in the shared memory array for all processes.
+
+### example3.py
+
+Using a different ASE format (data not available, just illustration puposes).

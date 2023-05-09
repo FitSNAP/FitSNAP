@@ -359,6 +359,10 @@ class Solver:
                 # combine dataframes
 
                 self.errors = concat([concat({'*ALL':all}, names=['Groups']), grouped])
+                #print(self.errors['mae'].keys())
+                #print(self.errors['mae'][('*ALL', 'Unweighted', False, 'Energy')])
+
+                #assert(False)
                 self.errors.ncount = self.errors.ncount.astype(int)
                 self.errors.index.rename(["Group", "Weighting", "Testing", "Subsystem", ], inplace=True)
 
@@ -374,6 +378,8 @@ class Solver:
                     self.config.sections["BISPECTRUM"].bzeroflag):
                     self._offset()
 
+        # Reset errors to default empty list.
+        self.errors = []
         decorated_error_analysis()
 
     def _all_error(self):

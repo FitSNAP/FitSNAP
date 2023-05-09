@@ -127,8 +127,8 @@ class FitSnap:
             if (self.solver.linear):
                 for i, configuration in enumerate(self.data):
                     # TODO: Add option to print descriptor calculation progress on single proc.
-                    if (i % 1 == 0):
-                       self.pt.single_print(i)
+                    #if (i % 1 == 0):
+                    #   self.pt.single_print(i)
                     self.calculator.process_configs(configuration, i)
             else:
                 for i, configuration in enumerate(self.data):

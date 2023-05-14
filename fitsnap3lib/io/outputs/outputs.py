@@ -68,6 +68,10 @@ class Output:
 
     def output(self, *args):
         pass
+    
+    def write_lammps(self, *args):
+        """Parent class function for writing LAMMPS-ready potential files."""
+        pass
 
     #@pt.rank_zero
     def write_errors(self, errors):

@@ -278,6 +278,10 @@ class XYZ(Scraper):
         self.style_info = {}
 
     def scrape_groups(self):
+        # Reset as empty dict in case running scrape twice.
+        self.files = {}
+        self.configs = {}
+
         pt = self.pt
         config = self.config
         if self.config.sections["SCRAPER"].save_group_scrape != "None":
@@ -403,6 +407,13 @@ class XYZ(Scraper):
             # self.files[folder] = natsorted(self.files[folder])
 
     def scrape_configs(self):
+        """
+        Scrape configs defined in the iterables of files and configs.
+
+        Returns a list of data dictionaries containing structural info.
+        """
+        self.all_data = [] # Reset to empty list in case running scraper twice.
+
         pt = self.pt
         config = self.config
         for folder_num, folder in enumerate(self.files):

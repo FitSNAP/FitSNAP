@@ -29,27 +29,30 @@
 # <!-----------------END-HEADER------------------------------------->
 
 from fitsnap3lib.fitsnap import FitSnap
-from fitsnap3lib.parallel_tools import ParallelTools
-#from fitsnap3lib.io.output import output
-from fitsnap3lib.initialize import initialize_fitsnap_run
-
-#pt = ParallelTools()
+#from mpi4py import MPI
+#from fitsnap3lib.initialize import initialize_fitsnap_run
 
 
-#@pt.single_timeit
 def main():
+    # Declare a communicator.
+    #comm = MPI.COMM_WORLD
     #try:
     #initialize_fitsnap_run()
+    # Instantiate single fitsnap instance for traditional flow of control.
+    # This will create an internal parallel tools instance which will detect
+    # availability of MPI for parallelization.
     snap = FitSnap()
-    snap.scrape_configs()
-    snap.process_configs()
+    snap.scrape_configs(delete_scraper=True)
+    snap.process_configs(delete_data=True)
+    # Good practice after a large parallel operation is to impose a barrier.
     snap.pt.all_barrier()
     snap.perform_fit()
     snap.write_output()
     """
     except Exception as e:
         #output.exception(e)
-        pt.single_print(f"{e}")
+        print(str(e))
+        snap.pt.single_print(f"{e}")
     """
 
 

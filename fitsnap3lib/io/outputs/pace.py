@@ -27,10 +27,26 @@ try:
                     coeffs = new_coeffs
                 self.write(coeffs, errors)
 
+        def write_lammps(self, coeffs):
+            """
+            Write LAMMPS ready ACE files.
+
+            Args:
+                coeffs: list of linear model coefficients.
+            """
+            if self.config.sections["EXTRAS"].only_test != 1:
+                if self.config.sections["CALCULATOR"].calculator != "LAMMPSPACE":
+                    raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
+                with optional_open(self.config.sections["OUTFILE"].potential_name and
+                                  self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
+                    file.write(_to_coeff_string(coeffs, self.config))
+                self.write_potential(coeffs)
+
         #@pt.rank_zero
         def write(self, coeffs, errors):
             @self.pt.rank_zero
             def decorated_write():
+                """
                 if self.config.sections["EXTRAS"].only_test != 1:
                     if self.config.sections["CALCULATOR"].calculator != "LAMMPSPACE":
                         raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
@@ -38,6 +54,8 @@ try:
                                       self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
                         file.write(_to_coeff_string(coeffs, self.config))
                     self.write_potential(coeffs)
+                """
+                self.write_lammps(coeffs)
                 self.write_errors(errors)
             decorated_write()
 

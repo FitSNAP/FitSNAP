@@ -45,7 +45,7 @@ class Scraper:
         self.group_types = {}
         self.group_table = []
         self.files = {}
-        self.configs = {}
+        self.configs = {} # Originally a dict for `scrape_groups` but gets transformed to list of files.
         self.tests = None
         self.data = {}
         self.test_bool = None
@@ -56,6 +56,12 @@ class Scraper:
         self._init_units()
 
     def scrape_groups(self):
+        """
+        Scrape groups of files for a particular fitsnap instance.
+        """
+        # Reset as empty dict in case running scrape twice.
+        self.files = {}
+
         group_dict = {k: self.config.sections["GROUPS"].group_types[i]
                       for i, k in enumerate(self.config.sections["GROUPS"].group_sections)}
         self.group_table = self.config.sections["GROUPS"].group_table

@@ -41,7 +41,8 @@ import numpy as np
 
 
 class FitSnap:
-    """ This classes houses the functions needed for machine learning a potential, start to finish.
+    """ 
+    This classes houses the objects needed for machine learning a potential, start to finish.
 
     Args:
         input (str): Optional path to input file when using library mode; defaults to None.
@@ -82,7 +83,7 @@ class FitSnap:
         self.fit = None
         self.multinode = 0
         # Delete the `snap.data` dictionary from scraping configs, after calculating descriptors.
-        self.delete_data = True
+        #self.delete_data = True
         # Optionally read a fit.
         if "EXTRAS" in self.config.sections and self.config.sections["EXTRAS"].only_test:
             self.fit = self.output.read_fit()
@@ -95,25 +96,38 @@ class FitSnap:
             raise Exception(f"Must use ScaLAPACK solver when using > 1 node or you'll fit to 1/nodes of data.")
        
     #@pt.single_timeit 
-    def scrape_configs(self):
-        """Scrapes configurations of atoms and creates a list of configurations called `data`."""
+    def scrape_configs(self, delete_scraper=False):
+        """
+        Scrapes configurations of atoms and creates an instance attribute list of configurations called `data`.
+        
+        Args:
+            delete_scraper: Boolean determining whether the scraper object is deleted or not after scraping. Defaults 
+                            to False. Since scraper can retain unwanted memory, we delete it in executable mode.
+        """
         @self.pt.single_timeit
         def decorated_scrape_configs():
             self.scraper.scrape_groups()
             self.scraper.divvy_up_configs()
             self.data = self.scraper.scrape_configs()
-            del self.scraper
+            if delete_scraper:
+                del self.scraper
         decorated_scrape_configs()
 
     #@pt.single_timeit 
-    def process_configs(self):
-        """Calculate descriptors for all configurations in the :code:`data` list"""
+    def process_configs(self, delete_data=False):
+        """
+        Calculate descriptors for all configurations in the :code:`data` list and stores info in the shared arrays.
+        
+        Args:
+            delete_data: Boolean determining whether the data list is deleted or not after processing. Defaults 
+                         to False. Since `data` can retain unwanted memory, we delete it in executable mode.
+        """
 
         # Zero distributed index before parallel loop over configs.
         self.calculator.distributed_index = 0
 
         @self.pt.single_timeit
-        def decorated_process_configs():
+        def calculate_descriptors():
             # Preprocess the configs if nonlinear fitting.
             if (not self.solver.linear):
                 if (self.pt._rank==0): 
@@ -134,7 +148,7 @@ class FitSnap:
                 for i, configuration in enumerate(self.data):
                     self.calculator.process_configs_nonlinear(configuration, i)
             # Delete data dictionary to save memory.
-            if (self.delete_data):
+            if delete_data:
                 del self.data
             # Gather distributed lists in `self.pt.fitsnap_dict` to root proc.
             self.calculator.collect_distributed_lists()
@@ -142,14 +156,14 @@ class FitSnap:
             if (self.solver.linear):
                 self.calculator.extras()
 
-        decorated_process_configs()
+        calculate_descriptors()
 
     #@pt.single_timeit 
     def perform_fit(self):
         """Solve the machine learning problem with descriptors as input and energies/forces/etc as 
            targets"""
         @ self.pt.single_timeit
-        def decorated_perform_fit():
+        def fit():
             if not self.config.args.perform_fit:
                 return
             elif self.fit is None:
@@ -173,7 +187,7 @@ class FitSnap:
         def error_analysis():
             self.solver.error_analysis()
 
-        decorated_perform_fit()
+        fit()
         fit_gather()
         error_analysis()
 
@@ -183,4 +197,7 @@ class FitSnap:
             if not self.config.args.perform_fit:
                 return
             self.output.output(self.solver.fit, self.solver.errors)
+
+            #self.output.write_lammps(self.solver.fit)
+            #self.output.write_errors(self.solver.errors)
         decorated_write_output()

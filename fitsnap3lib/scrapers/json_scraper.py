@@ -19,6 +19,7 @@ class Json(Scraper):
         Loop file files in parallel and populate the data dictionary on this proc.
         Note that `self.configs` at this point includes all filenames on this proc.
         """
+        self.all_data = [] # Reset to empty list in case running scraper twice.
         self.files = self.configs
         self.conversions = copy(self.default_conversions)
         data_path = self.config.sections["PATH"].datapath

@@ -319,6 +319,14 @@ class ParallelTools():
             return check_if_rank_zero
         else:
             return dummy_function
+        
+    def free(self):
+        """ Free memory associated with all shared arrays. """
+        if not stubs:
+            for name in self.shared_arrays:
+                self.shared_arrays[name].win.Free()
+        else:
+            self.single_print("Trying to free a stubs array; doing nothing.")
 
     def create_shared_array(self, name, size1, size2=1, dtype='d', tm=0):
 
@@ -326,7 +334,7 @@ class ParallelTools():
             if (stubs == 0 and self.create_shared_bool):
                 # If key exists, free the window memory to prevent memory leaks.
                 # TODO: Is there a way to check state of the window instead of the key?
-                if (name in self.shared_arrays):
+                if (name in self.shared_arrays and not stubs):
                     try:
                         self.shared_arrays[name].win.Free()
                     except:

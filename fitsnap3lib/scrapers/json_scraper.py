@@ -86,16 +86,16 @@ class Json(Scraper):
                         for atom in self.data["AtomTypes"]:
                             self.data["Energy"] += self.config.sections["ESHIFT"].eshift[atom]
 
-                        self.data["test_bool"] = self.test_bool[i]
+                    self.data["test_bool"] = self.test_bool[i]
 
-                        self.data["Energy"] *= self.conversions["Energy"]
+                    self.data["Energy"] *= self.conversions["Energy"]
 
-                        self._rotate_coords()
-                        self._translate_coords()
+                    self._rotate_coords()
+                    self._translate_coords()
 
-                        self._weighting(natoms)
+                    self._weighting(natoms)
 
-                        self.all_data.append(self.data)
+                    self.all_data.append(self.data)
             else:
                 self.pt.single_print("Non-json file found: ", file_name)    
 

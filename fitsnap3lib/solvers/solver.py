@@ -159,14 +159,15 @@ class Solver:
                 count_train['*ALL']["nconfigs"] = 0 # Total number test configs in group.
                 count_train['*ALL']["natoms"] = 0 # Total number test atoms in group.
 
-                if (self.config.sections["EXTRAS"].dump_peratom):
-                    fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
-                    line = f"Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
-                    fha.write(line + "\n")
-                if (self.config.sections["EXTRAS"].dump_perconfig):
-                    fhc = open(self.config.sections["EXTRAS"].perconfig_file, 'w')
-                    line = f"Filename Group Natoms Energy_Truth Energy_Pred Testing_Bool"
-                    fhc.write(line + "\n")
+                if 'EXTRAS' in self.config.sections:
+                    if (self.config.sections["EXTRAS"].dump_peratom):
+                        fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
+                        line = f"Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
+                        fha.write(line + "\n")
+                    if (self.config.sections["EXTRAS"].dump_perconfig):
+                        fhc = open(self.config.sections["EXTRAS"].perconfig_file, 'w')
+                        line = f"Filename Group Natoms Energy_Truth Energy_Pred Testing_Bool"
+                        fhc.write(line + "\n")
                 atom_indx = 0
                 m = 0
                 for idx, c in enumerate(self.configs):

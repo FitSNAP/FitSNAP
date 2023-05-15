@@ -15,7 +15,7 @@ class Extras(Section):
         self._check_section()
 
         # Set EXTRAS section file dump flags.
-
+        
         self.multinode_testing = self.get_value("EXTRAS", "multinode_testing", "0", "bool")
         self.apply_transpose = self.get_value("EXTRAS", "apply_transpose", "0", "bool")
         self.only_test = self.get_value("EXTRAS", "only_test", "0", "bool")

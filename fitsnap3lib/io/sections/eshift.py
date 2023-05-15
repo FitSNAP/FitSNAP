@@ -1,9 +1,5 @@
 from fitsnap3lib.io.sections.sections import Section
 import numpy as np
-#from fitsnap3lib.parallel_tools import ParallelTools
-
-
-#pt = ParallelTools()
 
 
 class Eshift(Section):

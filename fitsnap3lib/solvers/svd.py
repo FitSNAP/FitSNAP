@@ -25,7 +25,7 @@ class SVD(Solver):
             w = self.pt.shared_arrays['w'].array[training]
             aw, bw = w[:, np.newaxis] * self.pt.shared_arrays['a'].array[training], w * self.pt.shared_arrays['b'].array[training]
     #       Look into gradient based linear solvers as well.
-            if self.config.sections['EXTRAS'].apply_transpose:
+            if 'EXTRAS' in self.config.sections and self.config.sections['EXTRAS'].apply_transpose:
                 if np.linalg.cond(aw)**2 < 1 / fi.epsilon:
                     bw = aw[:, :].T @ bw
                     aw = aw[:, :].T @ aw

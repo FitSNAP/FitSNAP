@@ -132,6 +132,12 @@ class Config():
                 tmp_config[key1] = {}
                 for key2, data2 in data1.items():
                     tmp_config[key1]["{}".format(key2)] = str(data2)
+            # Default missing sections to empty dicts which will prompt default values.
+            names = ["ESHIFT", "EXTRAS", "MEMORY"]
+            for name in names:
+                if name not in tmp_config:
+                    tmp_config[name] = {}
+
 
         # Make sections based on input settings.
         self.set_sections(tmp_config)
@@ -144,3 +150,19 @@ class Config():
             if section == "BASIC_CALCULATOR":
                 section = "BASIC"
             self.sections[section] = new_section(section, tmp_config, self.pt, self.infile, self.args)
+        # Set some defaults or raise errors if no section exists.
+        """
+        names = ["ESHIFT", "EXTRAS"]
+        for name in names:
+            print(name)
+            if name not in self.sections:
+                print(name)
+                self.sections[name] = new_section(name, tmp_config, self.pt, self.infile, self.args)
+        """
+
+        """
+        if 'ESHIFT' not in self.sections:
+            self.sections['ESHIFT'] = new_section('ESHIFT', tmp_config, self.pt, self.infile, self.args)
+        if 'EXTRAS' not in self.sections:
+            self.sections['EXTRAS'] = new_section('EXTRAS', tmp_config, self.pt, self.infile, self.args)
+        """

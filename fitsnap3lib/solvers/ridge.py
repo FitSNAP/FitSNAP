@@ -18,7 +18,7 @@ class RIDGE(Solver):
             training = [not elem for elem in self.pt.fitsnap_dict['Testing']]
             w = self.pt.shared_arrays['w'].array[training]
             aw, bw = w[:, np.newaxis] * self.pt.shared_arrays['a'].array[training], w * self.pt.shared_arrays['b'].array[training]
-            if self.config.sections['EXTRAS'].apply_transpose:
+            if 'EXTRAS' in self.config.sections and self.config.sections['EXTRAS'].apply_transpose:
                 bw = aw.T @ bw
                 aw = aw.T @ aw
             alval = self.config.sections['RIDGE'].alpha

@@ -301,8 +301,6 @@ class Calculator:
     def extras(self):
         @self.pt.rank_zero
         def decorated_extras():
-            #pt = ParallelTools()
-            #config = Config()
             if self.config.sections["EXTRAS"].dump_a:
                 np.save(self.config.sections['EXTRAS'].descriptor_file, self.pt.shared_arrays['a'].array)
             if self.config.sections["EXTRAS"].dump_b:
@@ -318,7 +316,8 @@ class Calculator:
                         df[key] = self.pt.fitsnap_dict[key]
                 df.to_pickle(self.config.sections['EXTRAS'].dataframe_file)
                 del df
-        decorated_extras()
+        if "EXTRAS" in self.config.sections:
+            decorated_extras()
 
         # if not config.sections["SOLVER"].detailed_errors:
         #     print(

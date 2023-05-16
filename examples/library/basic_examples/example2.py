@@ -66,8 +66,7 @@ data = \
     {
     "group_sections": "name training_size testing_size eweight fweight vweight",
     "group_types": "str float float float float float",
-    "Displaced_FCC" :  "1.0    0.0       100             1               1.00E-08",
-    "Volume_FCC"    :  "1.0    0.0      1.00E+00        1.00E-09        1.00E-09"
+    "Displaced_FCC" :  "1.0    0.0       100             1               1.00E-08"
     }
 }
 
@@ -81,3 +80,4 @@ for i, configuration in enumerate(fitsnap.data):
     # Calculate fitting arrays (A, b, w) for this configuration.
     a,b,w = fitsnap.calculator.process_single(configuration)
     print(f"Rank {rank} file {configuration['File']} A matrix size: {np.shape(a)}")
+    print(a)

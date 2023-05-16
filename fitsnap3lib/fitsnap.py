@@ -51,16 +51,16 @@ class FitSnap:
         arglist (list): Optional list of cmd line args when using library mode.
 
     Attributes:
-        pt (:obj:`class` ParallelTools): instance of the ParallelTools class for helping MPI 
+        pt (:obj:`class` ParallelTools): Instance of the ParallelTools class for helping MPI 
                                          communication and shared arrays.
-        config (:obj:`class` Config): instance of the Config class for initializing settings, 
+        config (:obj:`class` Config): Instance of the Config class for initializing settings, 
                                       initialized with a ParallelTools instance.
-        scraper (:obj:`class` Scraper): instance of the Scraper class for gathering configs.
-        data (:obj:`list`): list of dictionaries, where each configuration of atoms has its own 
+        scraper (:obj:`class` Scraper): Instance of the Scraper class for gathering configs.
+        data (:obj:`list`): List of dictionaries, where each configuration of atoms has its own 
             dictionary.
-        calculator (:obj:`class` Calculator): instance of the Calculator class for calculating 
+        calculator (:obj:`class` Calculator): Instance of the Calculator class for calculating 
             descriptors and fitting data.
-        solver (:obj:`class` Solver): instance of the Solver class for performing a fit
+        solver (:obj:`class` Solver): Instance of the Solver class for performing a fit.
     """
     def __init__(self, input=None, comm=None, arglist=None):
         self.comm = comm
@@ -75,8 +75,8 @@ class FitSnap:
         # Instantiate other backbone attributes.
         self.scraper = scraper(self.config.sections["SCRAPER"].scraper, self.pt, self.config) \
             if "SCRAPER" in self.config.sections else None
-        # Presumably we should always have a calculator; maybe require that we at least have a calculator?
-        self.calculator = calculator(self.config.sections["CALCULATOR"].calculator, self.pt, self.config)
+        self.calculator = calculator(self.config.sections["CALCULATOR"].calculator, self.pt, self.config) \
+            if "CALCULATOR" in self.config.sections else None
         self.solver = solver(self.config.sections["SOLVER"].solver, self.pt, self.config) \
             if "SOLVER" in self.config.sections else None
         self.output = output(self.config.sections["OUTFILE"].output_style, self.pt, self.config) \

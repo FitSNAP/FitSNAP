@@ -81,14 +81,6 @@ def collate_data(atoms, name: str=None, group_dict: dict=None):
     # Make a data dictionary for this config.
 
     data = {}
-    """
-    data['PositionsStyle'] = 'angstrom'
-    data['AtomTypeStyle'] = 'chemicalsymbol'
-    data['StressStyle'] = 'bar'
-    data['LatticeStyle'] = 'angstrom'
-    data['EnergyStyle'] = 'electronvolt'
-    data['ForcesStyle'] = 'electronvoltperangstrom'
-    """
     data['Group'] = name #'ASE' # TODO: Make this customizable for ASE groups.
     data['File'] = None
     data['Stress'] = atoms.get_stress(voigt=False)

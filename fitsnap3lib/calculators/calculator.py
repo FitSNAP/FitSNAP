@@ -10,6 +10,7 @@ import pandas as pd
 
 
 class Calculator:
+    """ Class for allocating, calculating, and collating descriptors. """
 
     def __init__(self, name, pt, config):
         self.pt = pt #ParallelTools()

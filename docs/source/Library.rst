@@ -128,6 +128,18 @@ Scraper
 .. automodule:: fitsnap3lib.scrapers.scrape
     :members:
 
+Calculator
+----------
+
+.. automodule:: fitsnap3lib.calculators.calculator
+    :members:
+
+LammpsBase
+^^^^^^^^^^
+
+.. automodule:: fitsnap3lib.calculators.lammps_base
+    :members:
+
 Solver
 ------
 

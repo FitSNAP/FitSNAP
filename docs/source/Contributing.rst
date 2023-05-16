@@ -19,8 +19,7 @@ Please follow the current style conventions in main FitSNAP files such as :code:
 - Avoid global variables that are declared outside class methods or attributes, except in necessary 
   circumstances; sometimes it's useful, but you need to make sure that it doesn't affect unrelated 
   FitSNAP uses.
-- Prefer imported functions to new classes. If new classes are necessary, avoid state-dependent
-  object oriented spaghetti. 
+- Prefer imported functions to new classes with state dependence.
 
 For other style advice, consult Google's Python style guide when in doubt:
 https://google.github.io/styleguide/pyguide.html

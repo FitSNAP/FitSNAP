@@ -135,7 +135,7 @@ class Config():
                 for key2, data2 in data1.items():
                     tmp_config[key1]["{}".format(key2)] = str(data2)
             # Default missing sections to empty dicts which will prompt default values.
-            names = ["ESHIFT", "EXTRAS", "MEMORY"]
+            names = ["ESHIFT", "EXTRAS", "GROUPS", "MEMORY"]
             for name in names:
                 if name not in tmp_config:
                     tmp_config[name] = {}

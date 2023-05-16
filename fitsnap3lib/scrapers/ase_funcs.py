@@ -4,24 +4,36 @@ This is by design since most use cases of ASE desire more flexibility; simply im
 """
 
 import numpy as np
+from fitsnap3lib.tools.group_tools import assign_validation
 
-def ase_scraper(s, frames):
+def ase_scraper(s, data):
     """
     Function to organize groups and allocate shared arrays used in Calculator. For now when using 
     ASE frames, we don't have groups.
-    TODO: Let user assign group names for ASE frames with a dictionary of group names, testing 
-          bools, weights, etc.
 
     Args:
         s: fitsnap instance.
-        frames: ASE frames.
+        data: List of ASE frames or dictionary group table containing frames.
 
     Returns a list of data dictionaries suitable for fitsnap descriptor calculator.
     If running in parallel, this list will be distributed over procs, so that each proc will have a 
     portion of the list.
     """
 
-    s.data = [collate_data(atoms) for atoms in frames]
+    # Simply collate data from Atoms objects if we have a list of Atoms objecst.
+    if type(data) == list:
+        s.data = [collate_data(atoms) for atoms in data]
+    # If we have a dictionary, assume we are dealing with groups.
+    elif type(data) == dict:
+        assign_validation(data)
+        s.data = []
+        for name in data:
+            frames = data[name]["frames"]
+            # Extend the fitsnap data list with this group.
+            s.data.extend([collate_data(atoms, name, data[name]) for atoms in frames])
+    else:
+        raise Exception("Argument must be list or dictionary for ASE scraper.")
+        
 
 def get_apre(cell):
     """
@@ -48,39 +60,51 @@ def get_apre(cell):
 
     return np.array(((xhi, 0, 0), (xyp, yhi, 0), (xzp, yzp, zhi)))
 
-def collate_data(atoms):
+def collate_data(atoms, name: str=None, group_dict: dict=None):
     """
     Function to organize fitting data for FitSNAP from ASE atoms objects.
 
-    Args: ASE atoms object for a single configuration of atoms.
+    Args: 
+        atoms: ASE atoms object for a single configuration of atoms.
+        name: Optional name of this configuration.
+        group_dict: Optional dictionary containing group information.
 
     Returns a data dictionary for a single configuration.
     """
 
-    # make a data dictionary for this config
+    # Transform ASE cell to be appropriate for LAMMPS.
+    apre = get_apre(cell=atoms.cell)
+    R = np.dot(np.linalg.inv(atoms.cell), apre)
+    positions = np.matmul(atoms.get_positions(), R)
+    cell = apre.T
+
+    # Make a data dictionary for this config.
 
     data = {}
+    """
     data['PositionsStyle'] = 'angstrom'
     data['AtomTypeStyle'] = 'chemicalsymbol'
     data['StressStyle'] = 'bar'
     data['LatticeStyle'] = 'angstrom'
     data['EnergyStyle'] = 'electronvolt'
     data['ForcesStyle'] = 'electronvoltperangstrom'
-    data['Group'] = 'ASE' # TODO: Make this customizable for ASE groups.
+    """
+    data['Group'] = name #'ASE' # TODO: Make this customizable for ASE groups.
     data['File'] = None
     data['Stress'] = atoms.get_stress(voigt=False)
-    data['Positions'] = atoms.get_positions()
+    data['Positions'] = positions
     data['Energy'] = atoms.get_total_energy()
     data['AtomTypes'] = atoms.get_chemical_symbols()
     data['NumAtoms'] = len(atoms)
     data['Forces'] = atoms.get_forces()
-    data['QMLattice'] = atoms.cell[:]
+    data['QMLattice'] = cell
     data['test_bool'] = 0
-    data['Lattice'] = atoms.cell[:]
+    data['Lattice'] = cell
     data['Rotation'] = np.array([[1,0,0],[0,1,0],[0,0,1]])
     data['Translation'] = np.zeros((len(atoms), 3))
-    data['eweight'] = 1.0
-    data['fweight'] = 1.0
-    data['vweight'] = 1.0
+    # Inject the weights.
+    data['eweight'] = group_dict["eweight"] if "eweight" in group_dict else None
+    data['fweight'] = group_dict["fweight"] if "fweight" in group_dict else None
+    data['vweight'] = group_dict["vweight"] if "vweight" in group_dict else None
 
     return data

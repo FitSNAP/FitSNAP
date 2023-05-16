@@ -180,23 +180,15 @@ for g in range(0,ngenerations):
 
     change_weights(fitsnap)
     
-    # process configs with new hyperparams
-    # set indices to zero for populating new data array
+    # Process configs with new hyperparams.
 
-    #s.snap.calculator.shared_index=0
-    #s.snap.calculator.distributed_index=0 
     fitsnap.process_configs()
-     
-    # perform a fit and gather dataframe with snap.solver.error_analysis()
-    #snap.perform_fit()
-    #print(pt.fitsnap_dict)
+
     fitsnap.solver.perform_fit()
-    # Use internal error analysis to create error dataframe.
+
     fitsnap.solver.error_analysis()
 
-    # Calculate force error on the test set using the internal dataframe.
-    # Now one can calculate custom errors using the dataframe `fitsnap.solver.df`.
-    # Or, simply extract desired errors from the `fitsnap.solver.errors` dataframe.
+    # Extract desired errors from the `fitsnap.solver.errors` dataframe.
     # E.g. force test MAE is found with the following.
 
     ftest_mae = fitsnap.solver.errors['mae'][('*ALL', 'Unweighted', 'Testing', 'Force')]

@@ -17,3 +17,11 @@ in the shared memory array for all processes.
 ### example3.py
 
 Using a different ASE format (data not available, just illustration puposes).
+
+### example4.py
+
+Same as `example1.py` except with ACE descriptors.
+
+### example5.py
+
+Show how to use ASE scraper with groups.

@@ -325,8 +325,8 @@ class ParallelTools():
                 if (name in self.shared_arrays and not stubs):
                     try:
                         self.shared_arrays[name].win.Free()
-                    except:
-                        raise Exception(f"Trouble deallocating shared array with name {name}.")
+                    except Exception as e:
+                        self.single_print(f"Trouble deallocating shared array with name {name}: {e}.")
                 comms = [[self._comm, self._rank, self._size],
                          [self._sub_comm, self._sub_rank, self._sub_size],
                          [self._head_group_comm, self._node_index, self._number_of_nodes]]
@@ -485,6 +485,23 @@ class ParallelTools():
             self._lmp.close()   
             self._lmp = None
         return self._lmp
+    
+    def get_ncpn(self, nconfigs):
+        """
+        Get number of configs per node; return nconfigs if stubs.
+
+        Args:
+            nconfigs: integer number of configurations on this process, typically length of list of 
+                      data dictionaries.
+
+        Returns number of configs per node, reduced across procs, or just nconfigs if stubs.
+        """
+        if not stubs:
+            ncpp = np.array([nconfigs]) # Num. configs per proc.
+            ncpn = np.array([0]) # Num. configs per node.
+            self._comm.Allreduce([ncpp, MPI.INT], [ncpn, MPI.INT])
+            return ncpn[0]
+        return nconfigs
 
     def slice_array(self, name):
         if name in self.shared_arrays:

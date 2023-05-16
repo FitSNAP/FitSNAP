@@ -41,7 +41,34 @@ class Calculator:
         self.pt.add_2_fitsnap("Testing", DistributedList(nconfigs))
         #self.pt.add_2_fitsnap("Atom_Type", DistributedList(nconfigs))
 
+    def allocate_per_config(self, data):
+        """
+        Allocate shared arrays for total number of atoms. This is only needed 
+        when doing big A matrix fits (need number of atoms) or nonlinear 
+        fits.
 
+        Args:
+            data: List of data dictionaries.
+        """
+        ncpn = self.pt.get_ncpn(len(data))
+
+        self.pt.create_shared_array('number_of_atoms', ncpn, dtype='i')
+        self.pt.slice_array('number_of_atoms')
+
+        # number of dgrad rows serves similar purpose as number of atoms
+        
+        self.pt.create_shared_array('number_of_dgrad_rows', ncpn, dtype='i')
+        self.pt.slice_array('number_of_dgrad_rows')
+
+        # number of neighs serves similar purpose as number of atoms for custom calculator
+        
+        self.pt.create_shared_array('number_of_neighs_scrape', ncpn, dtype='i')
+        self.pt.slice_array('number_of_neighs_scrape')
+
+        # Loop through data and set sliced number of atoms.
+        for i, configuration in enumerate(data):
+            natoms = np.shape(configuration["Positions"])[0]
+            self.pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
 
     def create_a(self):
         """

@@ -4,6 +4,9 @@ Show how to scrape using ASE and then calculate descriptors in FitSNAP.
 Usage:
 
     python example1.py
+
+NOTE: Running in parallel will not loop over configurations in parallel; we need to make a separate 
+      list of data dictionaries for each MPI process to do that. See next examples.
 """
 
 import numpy as np
@@ -55,12 +58,8 @@ frames = read("../../Ta_XYZ/XYZ/Displaced_BCC.xyz", ":")[:3]
 # Scrape ASE frames into fitsnap data structures. 
 ase_scraper(snap, frames)
 
-# Create fitsnap dictionaries.
-snap.calculator.create_dicts(len(snap.data))
-# Create `C` and `d` arrays for solving lstsq with transpose trick.
-a_width = snap.calculator.get_width()
+# Loop over configurations and calculate fitting arrays for each separately.
 for i, configuration in enumerate(snap.data):
-    snap.pt.single_print(i)
-    a,b,w = snap.calculator.process_single(configuration, i)
-
+    print(i)
+    a,b,w = snap.calculator.process_single(configuration)
     print(np.shape(a))

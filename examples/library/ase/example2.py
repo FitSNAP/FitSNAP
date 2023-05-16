@@ -24,7 +24,6 @@ from fitsnap3lib.scrapers.ase_funcs import ase_scraper
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
-print(f"main script comm: {comm}")
 
 # Create an input dictionary containing settings.
 
@@ -91,39 +90,32 @@ data = \
 print("Making instance")
 snap = FitSnap(data, comm=comm, arglist=["--overwrite"])
 
-
-loaded_frames = read("../../Ta_XYZ/XYZ/Displaced_BCC.xyz", ":")[:6]
-
+# Illustrate how to use the ASE scraper in parallel.
+# The ASE frames are loaded on all MPI processes.
+# We must split the frames manually, shown with 2 processes below.
+# NOTE: If you don't want to do this in parallel, simply feed `frames_all` into the `ase_scraper`.
+frames_all = read("../../Ta_XYZ/XYZ/Displaced_BCC.xyz", ":")[:6]
 if (rank == 0):
     print(f"Reading frames on rank {rank}")
-    #frames = ase.io.read("../../Ta_XYZ/XYZ/Displaced_BCC.xyz", ":")[:3]
-    frames = loaded_frames[rank:3]
+    frames = frames_all[rank:3]
 elif (rank == 1):
     print(f"Reading frames on rank {rank}")
-    #frames2 = read("../../Ta_XYZ/XYZ/Elastic_BCC.xyz", ":")[:3]
-    #print(read("../../Ta_XYZ/XYZ/Elastic_BCC.xyz", ":")[:3])
-    #print(frames2)
-    frames = loaded_frames[3:]
+    frames = frames_all[3:]
 
 snap.pt.all_barrier()
 
-# Collect groups and allocate shared arrays used by Calculator.
+# Scrape frames into fitsnap data structures.
 ase_scraper(snap, frames)
 
-# Process configs
+# Calculate descriptors for all configurations.
 snap.process_configs()
 
-print(snap.pt.shared_arrays['a'].array)
-
-# Tell fitsnap not to delete data list after processing configs.
-#snap.delete_data = False
-#snap.scrape_configs()
-
+# Perform a fit.
 snap.solver.perform_fit()
 
+# Analyze error metrics.
 snap.solver.error_analysis()
 
-#print(snap.solver.errors)
-
+# Write error metric and LAMMPS files.
 snap.output.output(snap.solver.fit, snap.solver.errors)
 

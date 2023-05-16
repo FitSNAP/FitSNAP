@@ -13,7 +13,7 @@ NOTE: When using > 1 process, user must take care that each process has its own 
 import numpy as np
 from mpi4py import MPI
 from fitsnap3lib.fitsnap import FitSnap
-from fitsnap3lib.scrapers.ase_funcs import get_apre, create_shared_arrays
+from fitsnap3lib.scrapers.ase_funcs import get_apre
 import pandas
 
 def ase_scraper(s, frames, energies, forces, stresses):
@@ -33,7 +33,7 @@ def ase_scraper(s, frames, energies, forces, stresses):
     portion of the list.
     """
 
-    create_shared_arrays(s, frames)
+    #create_shared_arrays(s, frames)
     s.data = [collate_data(a, e, f, s) for (a,e,f,s) in zip (frames, energies, forces, stresses)]
 
 def collate_data(atoms, energy, forces, stresses):

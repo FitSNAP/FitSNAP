@@ -212,6 +212,10 @@ class Scraper:
             self.pt.shared_arrays['configs_per_group'].testing = len(test_list)
 
         number_of_configs_per_node = len(self.configs)
+        #print(temp_configs)
+        #print(f"{number_of_configs_per_node}")
+        #assert(False)
+        """
         self.pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
         self.pt.slice_array('number_of_atoms')
         self.pt.shared_arrays['number_of_atoms'].configs = temp_configs
@@ -226,8 +230,9 @@ class Scraper:
         
         self.pt.create_shared_array('number_of_neighs_scrape', number_of_configs_per_node, dtype='i')
         self.pt.slice_array('number_of_neighs_scrape')
+        """
 
-        # PROCS SPLIT UP HERE
+        # Procs split up here. This is for injecting into the data dictionary in `scrape_configs()`.
         self.test_bool = self.pt.split_within_node(self.test_bool)
         self.configs = self.pt.split_within_node(self.configs)
 

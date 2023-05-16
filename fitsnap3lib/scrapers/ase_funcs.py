@@ -4,49 +4,6 @@ This is by design since most use cases of ASE desire more flexibility; simply im
 """
 
 import numpy as np
-from ase import Atoms,Atom
-from ase.io import read,write
-from ase.io import extxyz
-from mpi4py import MPI
-
-def create_shared_arrays(s, frames):
-    """
-    Function to create shared arrays from a list of ASE atoms objects; this is a low-level function 
-    that must be called before calculating descriptors if users are creating a custom data injection 
-    workflow.
-
-    Args:
-        s: fitsnap instance.
-        frames: list or array of ASE atoms objects.
-    """
-
-    # Reduce length of frames across procs.
-    len_frames = np.array([len(frames)])
-    len_frames_all = np.array([0])
-    s.pt._comm.Allreduce([len_frames, MPI.INT], [len_frames_all, MPI.INT])
-
-    number_of_configs_per_node = int(len_frames_all)
-    s.pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
-    s.pt.slice_array('number_of_atoms')
-
-    # number of dgrad rows serves similar purpose as number of atoms
-    
-    s.pt.create_shared_array('number_of_dgrad_rows', number_of_configs_per_node, dtype='i')
-    s.pt.slice_array('number_of_dgrad_rows')
-    s.pt.shared_arrays['number_of_dgrad_rows'].configs = frames #temp_configs
-
-    # number of neighs serves similar purpose as number of atoms for custom calculator
-    
-    s.pt.create_shared_array('number_of_neighs_scrape', number_of_configs_per_node, dtype='i')
-    s.pt.slice_array('number_of_neighs_scrape')
-
-    # Set number of atoms in the sliced arrays used in Calculator.
-
-    for i, frame in enumerate(frames):
-        natoms = len(frame)
-        s.pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
-
-
 
 def ase_scraper(s, frames):
     """
@@ -64,39 +21,16 @@ def ase_scraper(s, frames):
     portion of the list.
     """
 
-    # Create necessary shared arrays using these frames.
-    create_shared_arrays(s, frames)
-
-    # TODO: If user doesn't supply a group, just default to some ALL group.
-    # NODES SPLIT UP HERE
-    # self.configs = self.pt.split_by_node(self.configs)
-    """
-    self.test_bool = self.pt.split_by_node(self.test_bool)
-    groups = self.pt.split_by_node(groups)
-    group_list = self.pt.split_by_node(group_list)
-    temp_configs = copy(self.configs)
-    """
-
-    # Single group for now:
-    # group_counts = np.zeros((len(frames),), dtype='i')
-
-    # TODO: `self.tests` is a list of filenames associated with test configs.
-    #       Could be implemented later to include ASE frames.
-    """
-    if self.tests is not None:
-        self.pt.shared_arrays['configs_per_group'].testing = len(test_list)
-    """
-
     s.data = [collate_data(atoms) for atoms in frames]
 
 def get_apre(cell):
     """
-    Calculate transformed ASE cell for LAMMPS calculations.
+    Calculate transformed ASE cell for LAMMPS calculations. Thank you Jan Janssen!
 
     Args:
         cell: ASE atoms cell.
 
-    Returns transformed cell as np.array.
+    Returns transformed cell as np.array which is suitable for LAMMPS.
     """
     a, b, c = cell
     an, bn, cn = [np.linalg.norm(v) for v in cell]

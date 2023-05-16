@@ -134,6 +134,7 @@ class FitSnap:
 
         @self.pt.single_timeit
         def process_configs():
+            self.calculator.allocate_per_config(self.data)
             # Preprocess the configs if nonlinear fitting.
             if (not self.solver.linear):
                 if (self.pt._rank==0): 
@@ -188,7 +189,7 @@ class FitSnap:
         
         def fit_gather():
             self.solver.fit_gather()
-            
+
         @self.pt.single_timeit
         def error_analysis():
             self.solver.error_analysis()

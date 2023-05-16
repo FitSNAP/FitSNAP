@@ -61,9 +61,6 @@ class FitSnap:
         calculator (:obj:`class` Calculator): instance of the Calculator class for calculating 
             descriptors and fitting data.
         solver (:obj:`class` Solver): instance of the Solver class for performing a fit
-        fit: numpy array of fitting coefficients from linear models.
-        delete_data (:obj:`bool`): deletes the data list (if True) after a fit, useful to make False 
-                                   if looping over fits.
     """
     def __init__(self, input=None, comm=None, arglist=None):
         self.comm = comm
@@ -189,9 +186,9 @@ class FitSnap:
         # for nonlinear models. Keep this in mind when performing error 
         # analysis.
         
-        @self.pt.single_timeit
         def fit_gather():
             self.solver.fit_gather()
+            
         @self.pt.single_timeit
         def error_analysis():
             self.solver.error_analysis()

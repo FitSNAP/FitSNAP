@@ -92,14 +92,15 @@ class Calculator:
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
 
             a_size = ( (a_len * a_width) + (dgrad_len * a_width) ) * double_size
-            self.pt.single_print(">>> Matrix of descriptors and descriptor derivatives takes up ", 
-                          "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
-                          "% of the total memory:", 
-                          "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
+            if self.config.args.verbose:
+                self.pt.single_print(">>> Matrix of descriptors and descriptor derivatives takes up ", 
+                              "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+                              "% of the total memory:", 
+                              "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
             if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
                 raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
             elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
-                self.pt.single_print("Warning: I hope you know what you are doing!")
+                self.pt.single_print("Warning: > 50% RAM. I hope you know what you are doing!")
 
             self.pt.create_shared_array('a', a_len, a_width, 
                                         tm=self.config.sections["SOLVER"].true_multinode)
@@ -171,12 +172,13 @@ class Calculator:
 
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
             a_size = (neighlist_len * neighlist_width + 2 * c_len * c_width) * double_size
-            self.pt.single_print(">>> Matrix of data takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
-                          "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
+            if self.config.args.verbose:
+                self.pt.single_print(">>> Matrix of data takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+                              "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
             if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
                 raise MemoryError("The data memory larger than 50% of your RAM. \n Aborting...!")
             elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
-                self.pt.single_print("Warning: I hope you know what you are doing!")
+                self.pt.single_print("Warning: > 50 % RAM. I hope you know what you are doing!")
 
             # create shared arrays
             a_width = 5
@@ -248,12 +250,13 @@ class Calculator:
 
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
             a_size = a_len * a_width * double_size
-            self.pt.single_print(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
-                          "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB") #, "on rank", "{:d}".format(self.pt._rank))
+            if self.config.args.verbose:
+                self.pt.single_print(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+                              "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB") #, "on rank", "{:d}".format(self.pt._rank))
             if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
                 raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
             elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
-                self.pt.single_print("Warning: I hope you know what you are doing!")
+                self.pt.single_print("Warning: > 50 % RAM. I hope you know what you are doing!")
 
             #print(a_len)
             #print(a_width)

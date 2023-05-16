@@ -51,24 +51,6 @@ try:
 except ModuleNotFoundError:
     stubs = 1
 
-#stubs = 1
-
-"""
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if (
-                kwargs is not None
-                and "comm" in kwargs.keys()
-                and kwargs["comm"] is not None
-        ):
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-"""
-
 def printf(*args, **kw):
     kw['flush'] = True
 
@@ -204,6 +186,12 @@ class ParallelTools():
         self.logger = None
         self.pytest = False
         self._fp = None
+
+    """
+    def __del__(self):
+        self.free()
+        del self
+    """
 
     @stub_check
     def _comm_split(self):

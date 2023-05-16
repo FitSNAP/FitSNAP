@@ -134,7 +134,8 @@ class Scraper:
                 warnstr += "         Forcing testing size to add up properly.\n"
                 self.pt.single_print(warnstr)
                 testing_size = nfiles - training_size
-            self.pt.single_print(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
+            if (self.config.args.verbose):
+                self.pt.single_print(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
             if self.tests is None:
                 self.tests = {}
             self.tests[folder] = []

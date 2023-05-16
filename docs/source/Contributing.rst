@@ -9,17 +9,18 @@ Style Guide
 -----------
 
 Please follow the current style conventions in main FitSNAP files such as :code:`fitsnap3lib/fitsnap.py`. 
-This includes:
 
 - Indent size is 4 spaces, and use actual spaces (not tabs); set your tab key to equal 4 spaces.
-- Avoid global variables that are declared outside class methods or attributes, except in necessary 
-  circumstances; sometimes it's useful, but you need to make sure that it doesn't affect unrelated 
-  FitSNAP uses.
 - Maximum line length is 100 characters. Set a vertical ruler in your editor and try to terminate
   lines once they reach 100 characters. This makes code easier to read without horiztonal scrolling.
 - Naming styles: :code:`module_name`, :code:`package_name`, :code:`ClassName`, :code:`method_name`, 
   :code:`ExceptionName`, :code:`function_name`, :code:`GLOBAL_CONSTANT_NAME`, :code:`global_var_name`, 
   :code:`instance_var_name`, :code:`function_parameter_name`, :code:`local_var_name`
+- Avoid global variables that are declared outside class methods or attributes, except in necessary 
+  circumstances; sometimes it's useful, but you need to make sure that it doesn't affect unrelated 
+  FitSNAP uses.
+- Prefer imported functions to new classes. If new classes are necessary, avoid state-dependent
+  object oriented spaghetti. 
 
 For other style advice, consult Google's Python style guide when in doubt:
 https://google.github.io/styleguide/pyguide.html

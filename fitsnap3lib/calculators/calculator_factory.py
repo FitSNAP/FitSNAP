@@ -12,7 +12,8 @@ def calculator(calculator_name, pt, cfg):
     """Calculator Factory"""
     instance = search(calculator_name)
     #pt = ParallelTools()
-    pt.single_print("Using {} as FitSNAP calculator".format(calculator_name))
+    if cfg.args.verbose:
+        pt.single_print("Using {} as FitSNAP calculator".format(calculator_name))
     
     instance.__init__(calculator_name, pt, cfg)
     return instance

@@ -116,15 +116,17 @@ class LammpsBase(Calculator):
     def process_single(self, data, i=0):
         """
         Calculate descriptors on a single configuration without touching the shraed arrays.
-        Returns a,b,w for a single configuration.
 
         Args:
             data: dictionary of structural and fitting info for a configuration in fitsnap
                   data dictionary format.
             i: integer index which is optional, mainly for debugging purposes.
         
-        Returns the A matrix of descriptors, b vector of truths, and w vector of weights for this 
-        configuration.
+        Returns: 
+            - A matrix of descriptors with 1 and 0s in the first column since it is ready to 
+              fit.
+            - b vector of truths
+            - w vector of weights
         """
         self._data = data
         self._i = i

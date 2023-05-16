@@ -10,7 +10,9 @@ import random
 class Config():
     """ 
     Class for storing input settings in a `config` instance. The `config` instance is first created 
-    in `io/output.py`.
+    in `io/output.py`. If given a path to an input script, we use Python's native ConfigParser 
+    to parse the settings. If given a nested dictionary, the sections are determined from the 
+    first keys and specific settings from the nested keys.
 
     Args:
         pt: A ParallelTools instance.

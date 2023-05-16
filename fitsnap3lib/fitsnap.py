@@ -45,19 +45,23 @@ class FitSnap:
     This classes houses the objects needed for machine learning a potential, start to finish.
 
     Args:
-        input (str): Optional path to input file when using library mode; defaults to None.
-        comm: Optional MPI communicator when using library mode; defaults to None which uses 
-              stubs.
+        input (str): Optional dictionary or path to input file when using library mode; defaults to 
+                     None for executable use.
+        comm: Optional MPI communicator when using library mode; defaults to None.
         arglist (list): Optional list of cmd line args when using library mode.
 
     Attributes:
-        scraper (:obj:`class` Scraper): instance of the Scraper class for gathering configs
+        pt (:obj:`class` ParallelTools): instance of the ParallelTools class for helping MPI 
+                                         communication and shared arrays.
+        config (:obj:`class` Config): instance of the Config class for initializing settings, 
+                                      initialized with a ParallelTools instance.
+        scraper (:obj:`class` Scraper): instance of the Scraper class for gathering configs.
         data (:obj:`list`): list of dictionaries, where each configuration of atoms has its own 
-            dictionary
+            dictionary.
         calculator (:obj:`class` Calculator): instance of the Calculator class for calculating 
-            descriptors and fitting data
+            descriptors and fitting data.
         solver (:obj:`class` Solver): instance of the Solver class for performing a fit
-        fit: numpy array of fitting coefficients from linear models
+        fit: numpy array of fitting coefficients from linear models.
         delete_data (:obj:`bool`): deletes the data list (if True) after a fit, useful to make False 
                                    if looping over fits.
     """
@@ -69,11 +73,12 @@ class FitSnap:
         self.pt = ParallelTools(comm=comm)
         self.pt.all_barrier()
         self.config = Config(self.pt, input, arguments_lst=arglist)
-        self.pt.single_print(f"FitSNAP instance hash: {self.config.hash}")
+        if self.config.args.verbose:
+            self.pt.single_print(f"FitSNAP instance hash: {self.config.hash}")
         # Instantiate other backbone attributes.
         self.scraper = scraper(self.config.sections["SCRAPER"].scraper, self.pt, self.config) \
             if "SCRAPER" in self.config.sections else None
-        # Presumably we should always have a calculator; maybe require this.
+        # Presumably we should always have a calculator; maybe require that we at least have a calculator?
         self.calculator = calculator(self.config.sections["CALCULATOR"].calculator, self.pt, self.config)
         self.solver = solver(self.config.sections["SOLVER"].solver, self.pt, self.config) \
             if "SOLVER" in self.config.sections else None
@@ -82,8 +87,7 @@ class FitSnap:
 
         self.fit = None
         self.multinode = 0
-        # Delete the `snap.data` dictionary from scraping configs, after calculating descriptors.
-        #self.delete_data = True
+
         # Optionally read a fit.
         if "EXTRAS" in self.config.sections and self.config.sections["EXTRAS"].only_test:
             self.fit = self.output.read_fit()
@@ -94,6 +98,11 @@ class FitSnap:
 
         if (self.pt._number_of_nodes > 1 and not self.config.sections["SOLVER"].true_multinode):
             raise Exception(f"Must use ScaLAPACK solver when using > 1 node or you'll fit to 1/nodes of data.")
+    
+    def __del__(self):
+        """Override deletion operator to free shared arrays owned by this instance."""
+        self.pt.free()
+        del self
        
     #@pt.single_timeit 
     def scrape_configs(self, delete_scraper=False):
@@ -105,13 +114,13 @@ class FitSnap:
                             to False. Since scraper can retain unwanted memory, we delete it in executable mode.
         """
         @self.pt.single_timeit
-        def decorated_scrape_configs():
+        def scrape_configs():
             self.scraper.scrape_groups()
             self.scraper.divvy_up_configs()
             self.data = self.scraper.scrape_configs()
             if delete_scraper:
                 del self.scraper
-        decorated_scrape_configs()
+        scrape_configs()
 
     #@pt.single_timeit 
     def process_configs(self, delete_data=False):
@@ -127,7 +136,7 @@ class FitSnap:
         self.calculator.distributed_index = 0
 
         @self.pt.single_timeit
-        def calculate_descriptors():
+        def process_configs():
             # Preprocess the configs if nonlinear fitting.
             if (not self.solver.linear):
                 if (self.pt._rank==0): 
@@ -156,7 +165,7 @@ class FitSnap:
             if (self.solver.linear):
                 self.calculator.extras()
 
-        calculate_descriptors()
+        process_configs()
 
     #@pt.single_timeit 
     def perform_fit(self):
@@ -193,11 +202,11 @@ class FitSnap:
 
     def write_output(self):
         @self.pt.single_timeit
-        def decorated_write_output():
+        def write_output():
             if not self.config.args.perform_fit:
                 return
             self.output.output(self.solver.fit, self.solver.errors)
 
             #self.output.write_lammps(self.solver.fit)
             #self.output.write_errors(self.solver.errors)
-        decorated_write_output()
+        write_output()

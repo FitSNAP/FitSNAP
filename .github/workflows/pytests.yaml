@@ -54,9 +54,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install LAMMPS
       shell: bash
-      continue-on-error: true
       run: |
-        # NOTE: remove `continue-on-error` above once we get ACE install working properly.
         which python
         # conda activate base
         cd ../

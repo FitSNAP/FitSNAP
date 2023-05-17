@@ -193,6 +193,14 @@ class ParallelTools():
         del self
     """
 
+    def __setattr__(self, name:str, value):
+        """Override set attribute statement to prevent possible breaking of an instance."""
+        protected = ("shared_arrays", "_comm")
+        if name in protected and hasattr(self, name):
+            raise AttributeError(f"Overwriting {name} is not allowed.")
+        else:
+            super().__setattr__(name, value)
+
     @stub_check
     def _comm_split(self):
         self._sub_comm = self._comm.Split_type(MPI.COMM_TYPE_SHARED)

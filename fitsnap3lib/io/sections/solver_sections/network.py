@@ -1,6 +1,4 @@
 from fitsnap3lib.io.sections.sections import Section
-#from fitsnap3lib.parallel_tools import ParallelTools
-
 try:
     import torch
     from fitsnap3lib.lib.neural_networks.pairwise import create_torch_network    
@@ -41,21 +39,20 @@ try:
 
             # catch errors associated with settings, and set necessary flags for later
 
-            self.pt = ParallelTools()
             if (self.energy_weight != self.energy_weight and self.force_weight == self.force_weight):
                 raise Exception("Must use global energy weight with global force weight.")
             elif (self.energy_weight == self.energy_weight and self.force_weight != self.force_weight):
                 raise Exception("Must use global force weight with global energy weight.")
             elif (self.energy_weight == self.energy_weight and self.force_weight == self.force_weight):
-                if (self.pt._rank==0):
+                if (pt._rank==0):
                     print("----- Global weights set: Overriding group weights.")
                 self.global_weight_bool = True
             if (self.training_fraction == self.training_fraction):
-                if (self.pt._rank==0):
+                if (pt._rank==0):
                     print("----- Global training fraction set: Overriding group fractions.")
                 self.global_fraction_bool = True
             if (self.manual_seed_flag):
-                if (self.pt._rank==0):
+                if (pt._rank==0):
                     print("----- manual_seed_flag=1: Setting random seed to 0 for debugging.")
                 torch.manual_seed(0)
             

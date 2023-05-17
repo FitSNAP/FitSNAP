@@ -97,9 +97,17 @@ class FitSnap:
             raise Exception(f"Must use ScaLAPACK solver when using > 1 node or you'll fit to 1/nodes of data.")
     
     def __del__(self):
-        """Override deletion operator to free shared arrays owned by this instance."""
+        """Override deletion statement to free shared arrays owned by this instance."""
         self.pt.free()
         del self
+
+    def __setattr__(self, name:str, value):
+        """Override set attribute statement to prevent possible breaking of an instance."""
+        protected = ("pt", "config")
+        if name in protected and hasattr(self, name):
+            raise AttributeError(f"Overwriting {name} is not allowed.")
+        else:
+            super().__setattr__(name, value)
        
     #@pt.single_timeit 
     def scrape_configs(self, delete_scraper=False):

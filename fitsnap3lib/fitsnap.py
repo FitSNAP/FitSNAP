@@ -37,7 +37,6 @@ from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
 from random import random
-import numpy as np
 
 
 class FitSnap:
@@ -101,7 +100,7 @@ class FitSnap:
         self.pt.free()
         del self
 
-    def __setattr__(self, name:str, value):
+    def __setattr__(self, name: str, value):
         """
         Override set attribute statement to prevent overwriting important attributes of an instance.
         """
@@ -111,8 +110,7 @@ class FitSnap:
         else:
             super().__setattr__(name, value)
        
-    #@pt.single_timeit 
-    def scrape_configs(self, delete_scraper=False):
+    def scrape_configs(self, delete_scraper: bool=False):
         """
         Scrapes configurations of atoms and creates an instance attribute list of configurations called `data`.
         
@@ -129,55 +127,62 @@ class FitSnap:
                 del self.scraper
         scrape_configs()
 
-    #@pt.single_timeit 
-    def process_configs(self, allgather: bool=False, delete_data: bool=False):
+    def process_configs(self, data: list=None, allgather: bool=False, delete_data: bool=False):
         """
         Calculate descriptors for all configurations in the :code:`data` list and stores info in the shared arrays.
         
         Args:
+            data: Optional list of data dictionaries to calculate descriptors for. If not supplied, we use the list 
+                  owned by this instance.
             allgather: Whether to gather distributed lists to all processes to just to head proc. In some cases, such as 
                        processing configs once and then using that data on multiple procs, we must allgather.
             delete_data: Whether the data list is deleted or not after processing.Since `data` can retain unwanted 
                          memory after processing configs, we delete it in executable mode.
         """
 
+        if data is not None:
+            data = data
+        elif hasattr(self, "data"):
+            data = self.data
+        else:
+            raise NameError("No list of data dictionaries to process.")
+
         # Zero distributed index before parallel loop over configs.
         self.calculator.distributed_index = 0
 
         @self.pt.single_timeit
         def process_configs():
-            self.calculator.allocate_per_config(self.data)
+            self.calculator.allocate_per_config(data)
             # Preprocess the configs if nonlinear fitting.
             if (not self.solver.linear):
                 if self.config.args.verbose: 
                     self.pt.single_print("Nonlinear solver, preprocessing configs.")
-                self.calculator.preprocess_allocate(len(self.data))
-                for i, configuration in enumerate(self.data):
+                self.calculator.preprocess_allocate(len(data))
+                for i, configuration in enumerate(data):
                     self.calculator.preprocess_configs(configuration, i)
             # Allocate shared memory arrays.
             self.calculator.create_a()
             # Calculate descriptors.
             if (self.solver.linear):
-                for i, configuration in enumerate(self.data):
+                for i, configuration in enumerate(data):
                     # TODO: Add option to print descriptor calculation progress on single proc.
                     #if (i % 1 == 0):
                     #   self.pt.single_print(i)
                     self.calculator.process_configs(configuration, i)
             else:
-                for i, configuration in enumerate(self.data):
+                for i, configuration in enumerate(data):
                     self.calculator.process_configs_nonlinear(configuration, i)
-            # Delete data dictionary to save memory.
-            if delete_data:
+            # Delete instance-owned data dictionary to save memory.
+            if delete_data and hasattr(self, "data"):
                 del self.data
             # Gather distributed lists in `self.pt.fitsnap_dict` to root proc.
             self.calculator.collect_distributed_lists(allgather=allgather)
             # Optional extra steps.
-            if (self.solver.linear):
+            if self.solver.linear:
                 self.calculator.extras()
 
         process_configs()
 
-    #@pt.single_timeit 
     def perform_fit(self):
         """Solve the machine learning problem with descriptors as input and energies/forces/etc as 
            targets"""

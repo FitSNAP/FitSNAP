@@ -116,7 +116,7 @@ class Output:
         Write errors for nonlinear fits. 
         
         Args:
-            errors : sequence of dictionaries (mae_f, mae_e, rmse_e, rmse_f, count_train, count_test)
+            errors : sequence of dictionaries (mae_f, mae_e, rmse_f, rmse_e, count_train, count_test)
         """
         @self.pt.rank_zero
         def decorated_write_errors_nn():

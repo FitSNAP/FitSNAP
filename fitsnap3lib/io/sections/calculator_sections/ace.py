@@ -44,8 +44,8 @@ try:
             self.bzeroflag = self.get_value("ACE", "bzeroflag", "0", "bool")
             self.wigner_flag = self.get_value("ACE", "wigner_flag", "1", "bool")
 
-            if self.bikflag:
-                self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
+            #if self.bikflag:
+            #    self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
             self.lmax_dct = {int(rnk):int(lmx) for rnk,lmx in zip(self.ranks,self.lmax)}
             if self.RPI_heuristic != 'root_SO3_span':
                 self.pt.single_print('WARNING: do not change RPI flags unless you know what you are doing!')

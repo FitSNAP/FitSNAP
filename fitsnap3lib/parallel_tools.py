@@ -379,7 +379,13 @@ class ParallelTools():
         self.fitsnap_dict[name] = self._sub_comm.bcast(self.fitsnap_dict[name])
 
     @stub_check
-    def gather_fitsnap(self, name):
+    def gather_fitsnap(self, name, allgather:bool=None):
+        """
+        Gather distributed lists.
+        Args:
+            allgather: If true then we allgather. Note that when number of procs is large, this can 
+                       result in large memory usage. 
+        """
         if name not in self.fitsnap_dict:
             raise NameError("Dictionary element not yet in fitsnap_dictionary")
         # TODO: Make some sort of option to either gather or allgather.

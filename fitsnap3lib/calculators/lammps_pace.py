@@ -232,12 +232,28 @@ class LammpsPace(LammpsBase):
         dindex = self.distributed_index
         lmp_pace = _extract_compute_np(self._lmp, "pace", 0, 2, (nrows_pace, ncols_pace))
 
-        # Get C = A^T * A for this configuration.
-        nd = self.get_width() #np.shape(lmp_pace)[1]
-        na = np.shape(lmp_pace)[0]
-        a = np.zeros((na, nd))
-        b = np.zeros(na)
-        w = np.zeros(na)
+        # If doing per-atom descriptors, we want a different shape (one less column).
+        if self.config.sections['ACE'].bikflag:
+            if not self.config.sections['ACE'].bzeroflag:
+                raise ValueError("bikflag = 1 requires bzeroflag = 1")
+            nrows = 0
+            if self.config.sections['CALCULATOR'].energy:
+                nrows += num_atoms
+            if self.config.sections['CALCULATOR'].force:
+                nrows += 3*num_atoms
+            if self.config.sections['CALCULATOR'].stress:
+                nrows += 6
+            nd = np.shape(lmp_pace)[1]-1
+            na = nrows #np.shape(lmp_snap)[0]
+            a = np.zeros((na, nd))
+            b = np.zeros(na)
+            w = np.zeros(na)
+        else:
+            nd = np.shape(lmp_pace)[1]
+            na = np.shape(lmp_pace)[0]
+            a = np.zeros((na, nd))
+            b = np.zeros(na)
+            w = np.zeros(na)
 
         if (np.isinf(lmp_pace)).any() or (np.isnan(lmp_pace)).any():
             self.pt.single_print('WARNING! applying np.nan_to_num()')
@@ -279,9 +295,8 @@ class LammpsPace(LammpsBase):
             a[irow] = b_sum_temp * self.config.sections["ACE"].blank2J
             ref_energy = lmp_pace[irow, icolref]
             b[irow] = (energy - ref_energy) / num_atoms
-            w[irow] = self._data["eweight"]
+            w[irow] = self._data["eweight"] if "eweight" in self._data else 1.0
 
-            #print(f"{np.any(np.isnan(a))} {np.any(np.isnan(b))} {np.any(np.isnan(w))}")
             index += nrows_energy
             dindex += nrows_energy
         irow += nrows_energy
@@ -297,7 +312,7 @@ class LammpsPace(LammpsBase):
             a[irow:irow+num_atoms * ndim_force] = np.matmul(db_atom_temp, np.diag(self.config.sections["ACE"].blank2J))
             ref_forces = lmp_pace[irow:irow + nrows_force, icolref]
             b[irow:irow+num_atoms * ndim_force] = self._data["Forces"].ravel() - ref_forces
-            w[irow:irow+num_atoms * ndim_force] = self._data["fweight"]
+            w[irow:irow+nrows_force] = self._data["fweight"] if "fweight" in self._data else 1.0
             index += nrows_force
             dindex += nrows_force
         irow += nrows_force
@@ -313,7 +328,7 @@ class LammpsPace(LammpsBase):
             a[irow:irow+ndim_virial] = np.matmul(vb_sum_temp, np.diag(self.config.sections["ACE"].blank2J))
             ref_stress = lmp_pace[irow:irow + nrows_virial, icolref]
             b[irow:irow+ndim_virial] = self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
-            w[irow:irow+ndim_virial] = self._data["vweight"]
+            w[irow:irow+ndim_virial] = self._data["vweight"] if "vweight" in self._data else 1.0
             index += ndim_virial
             dindex += ndim_virial
 

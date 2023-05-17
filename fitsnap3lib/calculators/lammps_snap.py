@@ -337,7 +337,7 @@ class LammpsSnap(LammpsBase):
             b[irow] = (energy - ref_energy) / num_atoms
 
             # Get weights (w).
-            w[irow] = self._data["eweight"] if "eweight" in self._data else None
+            w[irow] = self._data["eweight"] if "eweight" in self._data else 1.0
 
             index += nrows_energy
             dindex += nrows_energy
@@ -359,7 +359,7 @@ class LammpsSnap(LammpsBase):
             b[irow:irow+nrows_force] = self._data["Forces"].ravel() - ref_forces
             
             # Get vector of force weights (w).
-            w[irow:irow+nrows_force] = self._data["fweight"] if "fweight" in self._data else None
+            w[irow:irow+nrows_force] = self._data["fweight"] if "fweight" in self._data else 1.0
 
             index += nrows_force
             dindex += nrows_force
@@ -382,7 +382,7 @@ class LammpsSnap(LammpsBase):
             b[irow:irow+ndim_virial] = self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
 
             # Get stress weights (w).
-            w[irow:irow+ndim_virial] = self._data["vweight"] if "vweight" in self._data else None
+            w[irow:irow+ndim_virial] = self._data["vweight"] if "vweight" in self._data else 1.0
 
             index += ndim_virial
             dindex += ndim_virial

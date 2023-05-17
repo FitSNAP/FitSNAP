@@ -222,7 +222,7 @@ try:
                                               collate_fn=torch_collate,
                                               num_workers=0) if len(self.validation_data) > 1 else []
         #@pt.sub_rank_zero
-        def perform_fit(self, configs: list=None, pt=None, outfile: str=None):
+        def perform_fit(self, configs: list=None, pt=None, outfile: str=None, verbose: bool=True):
             """
             Performs PyTorch fitting using previously calculated descriptors. 
 
@@ -231,6 +231,7 @@ try:
                 pt: ParallelTools instance containing shared arrays and data we want 
                     to fit to.
                 outfile: Optional output file to write progress to.
+                verbose: Optional flag to print progress to screen; overrides the verbose CLI.
             """
 
             @self.pt.sub_rank_zero
@@ -285,6 +286,8 @@ try:
                 target_pas_plot_val = []
                 model_pas_plot_val = []
                 natoms_per_config = [] # stores natoms per config for calculating eV/atom errors later.
+                if (self.config.args.verbose or verbose):
+                    self.pt.single_print(f"{'Epoch': <2} {'Train': ^10} {'Val': ^10} {'Time (s)': >2}")
                 for epoch in range(self.config.sections["PYTORCH"].num_epochs):
                     start = time()
 
@@ -494,14 +497,12 @@ try:
 
                     # average training and validation losses across all batches
 
-                    if (self.config.args.verbose):
-                        self.pt.single_print(f"----- epoch: {epoch}")
-                        self.pt.single_print("Batch averaged train/val loss:", np.mean(np.asarray(train_losses_step)), np.mean(np.asarray(val_losses_step)))
-                        self.pt.single_print("Epoch time", time()-start)
+                    progress_str = f"{epoch: <2} {np.mean(np.asarray(train_losses_step)): ^10.3e} {np.mean(np.asarray(val_losses_step)): ^10.3e} {time()-start: >2.3e}"
+                    #self.pt.single_print(progress_str)
+                    if (self.config.args.verbose or verbose):
+                        self.pt.single_print(progress_str)
                     if outfile is not None:
-                        fh.write(f"----- epoch: {epoch}\n")
-                        fh.write(f"Batch averaged train/val loss: {np.mean(np.asarray(train_losses_step))} {np.mean(np.asarray(val_losses_step))}\n")
-                        fh.write(f"Epoch time {time()-start}\n")
+                        fh.write(progress_str + "\n")
                     train_losses_epochs.append(np.mean(np.asarray(train_losses_step)))
                     val_losses_epochs.append(np.mean(np.asarray(val_losses_step)))
                     if epoch % self.config.sections['PYTORCH'].save_freq == 0:

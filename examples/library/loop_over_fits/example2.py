@@ -116,37 +116,19 @@ instance1 = FitSnap(settings, comm=comm, arglist=["--overwrite"])
 # Scrape configs one time at the beginning.
 # This populates the `fitsnap.data` dictionary of fitting info.
 instance1.scrape_configs()
-instance1.process_configs()
+# Process configurations and gather internal lists to all processes, since we will use multiple 
+# processes for training multiple NNs.
+instance1.process_configs(allgather=True)
 
-"""
-# Create the configs list for this instance.
-instance1.solver.create_datasets()
-"""
-"""
-fitsnap.solver.perform_fit()
-fitsnap.solver.error_analysis()
-"""
-
-from copy import deepcopy
-# Create another instance that will be used for fitting.
-"""
-settings2 = deepcopy(settings)
-settings2["PYTORCH"]["num_epochs"] = 1
-instance2 = FitSnap(settings2, comm=comm, arglist=["--overwrite"])
-settings3 = deepcopy(settings)
-settings3["PYTORCH"]["num_epochs"] = 2
-instance3 = FitSnap(settings3, comm=comm, arglist=["--overwrite"])
-"""
-
-# Split the communicator.
-# Subset of procs with same color will be in the same communicator.
-# Procs in the new communicator will be given a rank denoted by the key.
+# Split the communicator by declaring colors and keys on each proc.
+# color: determines which communicator the proc will be in.
+# key: determines the rank of the proc in the new communicator.
 if rank == 0:
     color = rank
-    key = -rank
+    key = rank
 elif rank == 1:
     color = rank
-    key = +rank
+    key = rank
 
 comm_split = MPI.COMM_WORLD.Split(color, key)
 
@@ -154,15 +136,19 @@ rank_split = comm_split.Get_rank()
 size_split = comm_split.Get_size()
 print(f"rank {rank} color {color} key {key} size_split {size_split} rank_split {rank_split}")
 
-# Declare unique settings for each rank.
+# Declare unique settings for each rank by deepcopying settings and modifying certain fields.
+from copy import deepcopy
 if rank == 0:
     settings2 = deepcopy(settings)
-    settings2["PYTORCH"]["num_epochs"] = 150
+    settings2["PYTORCH"]["num_epochs"] = 100
 elif rank == 1:
     settings2 = deepcopy(settings)
     settings2["PYTORCH"]["num_epochs"] = 150
 
 instance2 = FitSnap(settings2, comm=comm_split, arglist=["--overwrite"])
 
-# Use a pt instance as argument to solver to perform a fit on data in another instance.
-instance2.solver.perform_fit(pt = instance1.pt, outfile = f"rank{rank}_progress.txt")
+# Perform the fit with some special arguments:
+# - `pt` instance to fit on data from another instance.
+# - `outfile` to write fitting progress of this particular rank.
+# - `verbose` is False because printing progress of each proc to the screen is messy.
+instance2.solver.perform_fit(pt = instance1.pt, outfile = f"rank{rank}_progress.txt", verbose = False)

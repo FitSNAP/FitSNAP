@@ -383,8 +383,9 @@ class ParallelTools():
         """
         Gather distributed lists.
         Args:
-            allgather: If true then we allgather. Note that when number of procs is large, this can 
-                       result in large memory usage. 
+            allgather: If true then we allgather. When number of procs is large this can 
+                       result in large (but not prohibitive) memory usage, where each proc has 
+                       ~10 lists with size of number of configs.
         """
         if name not in self.fitsnap_dict:
             raise NameError("Dictionary element not yet in fitsnap_dictionary")

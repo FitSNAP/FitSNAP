@@ -102,10 +102,12 @@ class FitSnap:
         del self
 
     def __setattr__(self, name:str, value):
-        """Override set attribute statement to prevent possible breaking of an instance."""
+        """
+        Override set attribute statement to prevent overwriting important attributes of an instance.
+        """
         protected = ("pt", "config")
         if name in protected and hasattr(self, name):
-            raise AttributeError(f"Overwriting {name} is not allowed. Change {name} in place.")
+            raise AttributeError(f"Overwriting {name} is not allowed; instead change {name} in place.")
         else:
             super().__setattr__(name, value)
        
@@ -128,13 +130,15 @@ class FitSnap:
         scrape_configs()
 
     #@pt.single_timeit 
-    def process_configs(self, delete_data=False):
+    def process_configs(self, allgather: bool=False, delete_data: bool=False):
         """
         Calculate descriptors for all configurations in the :code:`data` list and stores info in the shared arrays.
         
         Args:
-            delete_data: Boolean determining whether the data list is deleted or not after processing. Defaults 
-                         to False. Since `data` can retain unwanted memory, we delete it in executable mode.
+            allgather: Whether to gather distributed lists to all processes to just to head proc. In some cases, such as 
+                       processing configs once and then using that data on multiple procs, we must allgather.
+            delete_data: Whether the data list is deleted or not after processing.Since `data` can retain unwanted 
+                         memory after processing configs, we delete it in executable mode.
         """
 
         # Zero distributed index before parallel loop over configs.
@@ -145,8 +149,8 @@ class FitSnap:
             self.calculator.allocate_per_config(self.data)
             # Preprocess the configs if nonlinear fitting.
             if (not self.solver.linear):
-                if (self.pt._rank==0): 
-                    print("Nonlinear solver, preprocessing configs.")
+                if self.config.args.verbose: 
+                    self.pt.single_print("Nonlinear solver, preprocessing configs.")
                 self.calculator.preprocess_allocate(len(self.data))
                 for i, configuration in enumerate(self.data):
                     self.calculator.preprocess_configs(configuration, i)
@@ -166,7 +170,7 @@ class FitSnap:
             if delete_data:
                 del self.data
             # Gather distributed lists in `self.pt.fitsnap_dict` to root proc.
-            self.calculator.collect_distributed_lists()
+            self.calculator.collect_distributed_lists(allgather=allgather)
             # Optional extra steps.
             if (self.solver.linear):
                 self.calculator.extras()

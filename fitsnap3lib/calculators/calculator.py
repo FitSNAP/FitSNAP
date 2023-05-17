@@ -26,22 +26,19 @@ class Calculator:
     
     def create_dicts(self, nconfigs):
         """
-        Create dictionaries for distributed lists.
+        Create dictionaries for certain distributed lists.
         Each list should be of size `nconfigs` of a single proc.
-        NOTE: There are other dictionaries of size `natoms`.
 
         Args:
             nconfigs: int number of configs on this proc.
         """
 
+        # Lists of length number of configs.
         self.pt.add_2_fitsnap("Groups", DistributedList(nconfigs))
         self.pt.add_2_fitsnap("Configs", DistributedList(nconfigs))
-        #self.pt.add_2_fitsnap("Row_Type", DistributedList(nconfigs))
-        #self.pt.add_2_fitsnap("Atom_I", DistributedList(nconfigs))
         self.pt.add_2_fitsnap("Testing", DistributedList(nconfigs))
-        #self.pt.add_2_fitsnap("Atom_Type", DistributedList(nconfigs))
 
-    def allocate_per_config(self, data):
+    def allocate_per_config(self, data: list):
         """
         Allocate shared arrays for total number of atoms. This is only needed 
         when doing big A matrix fits (need number of atoms) or nonlinear 
@@ -286,12 +283,9 @@ class Calculator:
             elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
                 self.pt.single_print("Warning: > 50 % RAM. I hope you know what you are doing!")
 
-            #print(a_len)
-            #print(a_width)
             self.pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('b', a_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('w', a_len, tm=self.config.sections["SOLVER"].true_multinode)
-            #self.pt.create_shared_array('ref', a_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.new_slice_a()
             self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0]
             # pt.slice_array('a')
@@ -313,13 +307,15 @@ class Calculator:
         pass
 
     #@staticmethod # NOTE: Does this need to be a static method?
-    def collect_distributed_lists(self):
+    def collect_distributed_lists(self, allgather: bool=False):
         """
         Gathers all the distributed lists on each proc to the root proc.
         For each distributed list (fitsnap dicts) this will create a concatenated list on the root proc.
         We use this function in fitsnap.py after processing configs.
-        """
-        #pt = ParallelTools()    
+
+        Args:
+            allgather: Whether to gather lists on all nodes or just the head node.
+        """   
         for key in self.pt.fitsnap_dict.keys():
             if isinstance(self.pt.fitsnap_dict[key], DistributedList):
                 self.pt.gather_fitsnap(key)
@@ -331,7 +327,7 @@ class Calculator:
     #@pt.rank_zero
     def extras(self):
         @self.pt.rank_zero
-        def decorated_extras():
+        def extras():
             if self.config.sections["EXTRAS"].dump_a:
                 np.save(self.config.sections['EXTRAS'].descriptor_file, self.pt.shared_arrays['a'].array)
             if self.config.sections["EXTRAS"].dump_b:
@@ -348,7 +344,7 @@ class Calculator:
                 df.to_pickle(self.config.sections['EXTRAS'].dataframe_file)
                 del df
         if "EXTRAS" in self.config.sections:
-            decorated_extras()
+            extras()
 
         # if not config.sections["SOLVER"].detailed_errors:
         #     print(

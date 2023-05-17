@@ -193,13 +193,14 @@ class ParallelTools():
         del self
     """
 
+    """
     def __setattr__(self, name:str, value):
-        """Override set attribute statement to prevent possible breaking of an instance."""
-        protected = ("shared_arrays", "_comm")
+        protected = ("_comm")
         if name in protected and hasattr(self, name):
             raise AttributeError(f"Overwriting {name} is not allowed.")
         else:
             super().__setattr__(name, value)
+    """
 
     @stub_check
     def _comm_split(self):
@@ -320,7 +321,12 @@ class ParallelTools():
         """ Free memory associated with all shared arrays. """
         if not stubs:
             for name in self.shared_arrays:
-                self.shared_arrays[name].win.Free()
+                # There is no mpi4py native clean way to check if an array is
+                # already freed, so let's do try/except for now.
+                try:
+                    self.shared_arrays[name].win.Free()
+                except:
+                    pass
         else:
             self.single_print("Trying to free a stubs array; doing nothing.")
 
@@ -374,10 +380,15 @@ class ParallelTools():
 
     @stub_check
     def gather_fitsnap(self, name):
-
         if name not in self.fitsnap_dict:
             raise NameError("Dictionary element not yet in fitsnap_dictionary")
-        self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
+        # TODO: Make some sort of option to either gather or allgather.
+        #       It saves memory to simply gather, but allgather is useful in 
+        #       scenarios when using multiple instances in parallel, we might need 
+        #       the fitsnap dict on all procs.
+        # NOTE: When number of procs is large, allgather could quickly consume all memory.
+        #self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
+        self.fitsnap_dict[name] = self._sub_comm.allgather(self.fitsnap_dict[name])
 
     @stub_check
     @_sub_rank_zero

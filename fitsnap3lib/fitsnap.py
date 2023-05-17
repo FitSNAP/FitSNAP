@@ -105,7 +105,7 @@ class FitSnap:
         """Override set attribute statement to prevent possible breaking of an instance."""
         protected = ("pt", "config")
         if name in protected and hasattr(self, name):
-            raise AttributeError(f"Overwriting {name} is not allowed.")
+            raise AttributeError(f"Overwriting {name} is not allowed. Change {name} in place.")
         else:
             super().__setattr__(name, value)
        

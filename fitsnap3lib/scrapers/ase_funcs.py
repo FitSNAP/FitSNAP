@@ -95,8 +95,9 @@ def collate_data(atoms, name: str=None, group_dict: dict=None):
     data['Rotation'] = np.array([[1,0,0],[0,1,0],[0,0,1]])
     data['Translation'] = np.zeros((len(atoms), 3))
     # Inject the weights.
-    data['eweight'] = group_dict["eweight"] if "eweight" in group_dict else None
-    data['fweight'] = group_dict["fweight"] if "fweight" in group_dict else None
-    data['vweight'] = group_dict["vweight"] if "vweight" in group_dict else None
+    if group_dict is not None:
+        data['eweight'] = group_dict["eweight"] if "eweight" in group_dict else None
+        data['fweight'] = group_dict["fweight"] if "fweight" in group_dict else None
+        data['vweight'] = group_dict["vweight"] if "vweight" in group_dict else None
 
     return data

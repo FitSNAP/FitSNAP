@@ -262,15 +262,31 @@ class LammpsSnap(LammpsBase):
         # Next columns are bispectrum components.
         # Take last column of `lmp_snap` as the `b` vector.
 
-        # Get C = A^T * A for this configuration.
-        # TODO: Move this to be done externally, no need to set `a`, `b`, `w` as Calculator attributes.
-        # TODO: Could probably just extract the `lmp_snap` compute above for this purpose.
+        # Get individual A matrices for this configuration.
 
-        nd = np.shape(lmp_snap)[1]
-        na = np.shape(lmp_snap)[0]
-        a = np.zeros((na, nd))
-        b = np.zeros(na)
-        w = np.zeros(na)
+        #print(np.shape(lmp_snap))
+        #assert(False)
+
+        # If doing per-atom descriptors, we want a different shape (one less column).
+        if self.config.sections['BISPECTRUM'].bikflag:
+            nrows = 0
+            if self.config.sections['CALCULATOR'].energy:
+                nrows += num_atoms
+            if self.config.sections['CALCULATOR'].force:
+                nrows += 3*num_atoms
+            if self.config.sections['CALCULATOR'].stress:
+                nrows += 6
+            nd = np.shape(lmp_snap)[1]-1
+            na = nrows #np.shape(lmp_snap)[0]
+            a = np.zeros((na, nd))
+            b = np.zeros(na)
+            w = np.zeros(na)
+        else:
+            nd = np.shape(lmp_snap)[1]
+            na = np.shape(lmp_snap)[0]
+            a = np.zeros((na, nd))
+            b = np.zeros(na)
+            w = np.zeros(na)
 
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
             raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
@@ -321,7 +337,7 @@ class LammpsSnap(LammpsBase):
             b[irow] = (energy - ref_energy) / num_atoms
 
             # Get weights (w).
-            w[irow] = self._data["eweight"]
+            w[irow] = self._data["eweight"] if "eweight" in self._data else None
 
             index += nrows_energy
             dindex += nrows_energy
@@ -343,7 +359,7 @@ class LammpsSnap(LammpsBase):
             b[irow:irow+nrows_force] = self._data["Forces"].ravel() - ref_forces
             
             # Get vector of force weights (w).
-            w[irow:irow+nrows_force] = self._data["fweight"]
+            w[irow:irow+nrows_force] = self._data["fweight"] if "fweight" in self._data else None
 
             index += nrows_force
             dindex += nrows_force
@@ -366,7 +382,7 @@ class LammpsSnap(LammpsBase):
             b[irow:irow+ndim_virial] = self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
 
             # Get stress weights (w).
-            w[irow:irow+ndim_virial] = self._data["vweight"]
+            w[irow:irow+ndim_virial] = self._data["vweight"] if "vweight" in self._data else None
 
             index += ndim_virial
             dindex += ndim_virial

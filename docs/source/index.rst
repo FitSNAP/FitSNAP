@@ -47,7 +47,7 @@ Indices and tables
 
    Contributing
    Executable
-   Library
+   Lib/index.rst
    Tests
 
 

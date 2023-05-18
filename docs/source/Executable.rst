@@ -13,23 +13,16 @@ There is a certain sequence of functions that is explained here, and coded in
 :code:`fitsnap3/__main__.py`. Specifically, the :code:`main()` function uses the FitSNAP library to 
 execute the following sequence of functions that perform a fit::
 
-    from fitsnap3lib.parallel_tools import ParallelTools
-    pt = ParallelTools()
-    from fitsnap3lib.io.input import Config
-    config = Config(arguments_lst = ["/path/to/FitSNAP/input/script", "--overwrite"])
     from fitsnap3lib.fitsnap import FitSnap
 
     def main():
-        try:
-            initialize_fitsnap_run()
-            snap = FitSnap()
-            snap.scrape_configs() 
-            snap.process_configs()
-            pt.all_barrier()
-            snap.perform_fit()
-            snap.write_output()
-        except Exception as e:
-            output.exception(e)
+        snap = FitSnap()
+        snap.scrape_configs(delete_scraper=True)
+        snap.process_configs(delete_data=True)
+        # Good practice after a large parallel operation is to impose a barrier.
+        snap.pt.all_barrier()
+        snap.perform_fit()
+        snap.write_output()
 
 From the above code, it is seen that we first run the 
 :code:`fitsnap3lib.initialize.initialize_fitsnap_run()` function. This simply prepares necessary 
@@ -56,16 +49,6 @@ Data & configuration extraction
 
 After creating the FitSNAP object in :code:`__main__.py`, the first step is scraping the configs.
 Then we process the configs (calculate the descriptors) with :code:`snap.process_configs()`.
-This calls the function in :code:`fitsnap.py`::
-
-    def process_configs(self):
-        self.calculator.create_a()
-        for i, configuration in enumerate(self.data):
-            self.calculator.process_configs(configuration, i)
-        del self.data
-        self.calculator.collect_distributed_lists()
-        self.calculator.extras()
-
 The :code:`Calculator` class in :code:`calculators/calculator.py` has a :code:`create_a` method 
 which allocates the size of the :code:`a` and :code:`b` matrices, containing data such as 
 descriptors and target energies/forces. :code:`calculators/calculator.py` also has a 

@@ -16,6 +16,7 @@
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
+#     Drew Rohskopf (Sandia National Labs)
 #     Charles Sievers (Sandia National Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
@@ -36,7 +37,7 @@ from fitsnap3lib.calculators.calculator_factory import calculator
 from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
-from random import random
+import random
 
 
 class FitSnap:
@@ -61,7 +62,7 @@ class FitSnap:
             descriptors and fitting data.
         solver (:obj:`class` Solver): Instance of the Solver class for performing a fit.
     """
-    def __init__(self, input=None, comm=None, arglist=None):
+    def __init__(self, input: (str | dict), comm=None, arglist: list=None):
         self.comm = comm
         # Instantiate ParallelTools and Config instances belonging to this FitSnap instance.
         # NOTE: Each proc in `comm` creates a different `pt` object, but shared arrays still share 
@@ -110,7 +111,7 @@ class FitSnap:
         else:
             super().__setattr__(name, value)
        
-    def scrape_configs(self, delete_scraper: bool=False):
+    def scrape_configs(self, delete_scraper: bool = False):
         """
         Scrapes configurations of atoms and creates an instance attribute list of configurations called `data`.
         

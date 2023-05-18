@@ -7,7 +7,7 @@ import numpy as np
 from fitsnap3lib.tools.group_tools import assign_validation
 
 #def ase_scraper(s, data):
-def ase_scraper(data):
+def ase_scraper(data) -> list:
     """
     Function to organize groups and allocate shared arrays used in Calculator. For now when using 
     ASE frames, we don't have groups.
@@ -65,7 +65,7 @@ def get_apre(cell):
 
     return np.array(((xhi, 0, 0), (xyp, yhi, 0), (xzp, yzp, zhi)))
 
-def collate_data(atoms, name: str=None, group_dict: dict=None):
+def collate_data(atoms, name: str=None, group_dict: dict=None) -> dict:
     """
     Function to organize fitting data for FitSNAP from ASE atoms objects.
 

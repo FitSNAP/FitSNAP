@@ -1,5 +1,3 @@
-.. _Library:
-
 Library
 =======
 
@@ -100,3 +98,14 @@ instance to reduce confusion about where a fit came from.
 Most methods such as calculating descriptors and performing fits are methods of a particular 
 instance, and the actions of these methods depend on the state or settings of that instance.
 These methods and the rest of the API are detailed below.
+
+.. toctree::
+   :maxdepth: 1
+
+   Lib_fitsnap
+   Lib_scraper
+   Lib_calculator
+   Lib_solver
+   Lib_lib
+   Lib_tools
+

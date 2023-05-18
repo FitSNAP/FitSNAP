@@ -123,8 +123,10 @@ class LammpsBase(Calculator):
             i: integer index which is optional, mainly for debugging purposes.
         
         Returns: 
-            - A matrix of descriptors with 1 and 0s in the first column since it is ready to 
-              fit.
+            - A matrix of descriptors depending on settings declared in `CALCULATOR`. If 
+              `bikflag` is 0 (default) then A has 1 and 0s in the first column since it is ready to 
+              fit with linear solvers; the descriptors are also divided by no. atoms in this case. 
+              If `bikflag` is 1, then A is simply an unaltered per-atom descriptor matrix.
             - b vector of truths
             - w vector of weights
         """

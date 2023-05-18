@@ -248,6 +248,8 @@ class LammpsPace(LammpsBase):
             a = np.zeros((na, nd))
             b = np.zeros(na)
             w = np.zeros(na)
+            #print(lmp_pace[0:,:])
+            #assert(False)
         else:
             nd = np.shape(lmp_pace)[1]
             na = np.shape(lmp_pace)[0]
@@ -268,7 +270,10 @@ class LammpsPace(LammpsBase):
             bik_rows = num_atoms
         icolref = ncols_bispectrum
         if self.config.sections["CALCULATOR"].energy:
-            b_sum_temp = lmp_pace[irow, :ncols_bispectrum] / num_atoms
+            b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
+            if not self.config.sections["ACE"].bikflag:
+                # Divide by natoms if not extracting per-atom descriptors.
+                b_sum_temp /= num_atoms
 
             # Check for no neighbors using B[0,0,0] components
             # these strictly increase with total neighbor count
@@ -292,7 +297,9 @@ class LammpsPace(LammpsBase):
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
                 #b_sum_temp.shape = (num_types * (n_coeff + num_types))
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
-            a[irow] = b_sum_temp * self.config.sections["ACE"].blank2J
+
+            #a[irow] = b_sum_temp * self.config.sections["ACE"].blank2J
+            a[irow:irow+bik_rows] = b_sum_temp * self.config.sections["ACE"].blank2J[np.newaxis, :]
             ref_energy = lmp_pace[irow, icolref]
             b[irow] = (energy - ref_energy) / num_atoms
             w[irow] = self._data["eweight"] if "eweight" in self._data else 1.0

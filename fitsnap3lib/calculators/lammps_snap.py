@@ -297,7 +297,10 @@ class LammpsSnap(LammpsBase):
             bik_rows = num_atoms
         icolref = ncols_bispectrum
         if self.config.sections["CALCULATOR"].energy:
-            b_sum_temp = lmp_snap[irow:irow+bik_rows, :ncols_bispectrum] / num_atoms
+            b_sum_temp = lmp_snap[irow:irow+bik_rows, :ncols_bispectrum]
+            if not self.config.sections["BISPECTRUM"].bikflag:
+                # Divide by natoms if not extracting per-atom descriptors.
+                b_sum_temp /= num_atoms
 
             # Check for no neighbors using B[0,0,0] components
             # these strictly increase with total neighbor count

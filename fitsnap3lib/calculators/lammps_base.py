@@ -1,12 +1,6 @@
 import ctypes
 from fitsnap3lib.calculators.calculator import Calculator
-#from fitsnap3lib.parallel_tools import ParallelTools, DistributedList
-#from fitsnap3lib.io.input import Config
 import numpy as np
-
-
-#config = Config()
-#pt = ParallelTools()
 
 
 class LammpsBase(Calculator):

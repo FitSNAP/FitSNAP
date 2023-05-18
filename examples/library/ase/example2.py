@@ -27,7 +27,7 @@ size = comm.Get_size()
 
 # Create an input dictionary containing settings.
 
-data = \
+settings = \
 {
 "BISPECTRUM":
     {
@@ -88,7 +88,7 @@ data = \
 }
 
 print("Making instance")
-snap = FitSnap(data, comm=comm, arglist=["--overwrite"])
+fs = FitSnap(settings, comm=comm, arglist=["--overwrite"])
 
 # Illustrate how to use the ASE scraper in parallel.
 # The ASE frames are loaded on all MPI processes.
@@ -102,20 +102,20 @@ elif (rank == 1):
     print(f"Reading frames on rank {rank}")
     frames = frames_all[3:]
 
-snap.pt.all_barrier()
+fs.pt.all_barrier()
 
 # Scrape frames into fitsnap data structures.
-ase_scraper(snap, frames)
+data = ase_scraper(frames)
 
 # Calculate descriptors for all configurations.
-snap.process_configs()
+fs.process_configs(data)
 
 # Perform a fit.
-snap.solver.perform_fit()
+fs.solver.perform_fit()
 
 # Analyze error metrics.
-snap.solver.error_analysis()
+fs.solver.error_analysis()
 
 # Write error metric and LAMMPS files.
-snap.output.output(snap.solver.fit, snap.solver.errors)
+fs.output.output(fs.solver.fit, fs.solver.errors)
 

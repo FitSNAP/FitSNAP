@@ -6,7 +6,8 @@ This is by design since most use cases of ASE desire more flexibility; simply im
 import numpy as np
 from fitsnap3lib.tools.group_tools import assign_validation
 
-def ase_scraper(s, data):
+#def ase_scraper(s, data):
+def ase_scraper(data):
     """
     Function to organize groups and allocate shared arrays used in Calculator. For now when using 
     ASE frames, we don't have groups.
@@ -20,17 +21,21 @@ def ase_scraper(s, data):
     portion of the list.
     """
 
-    # Simply collate data from Atoms objects if we have a list of Atoms objecst.
+    # Simply collate data from Atoms objects if we have a list of Atoms objects.
     if type(data) == list:
-        s.data = [collate_data(atoms) for atoms in data]
+        #s.data = [collate_data(atoms) for atoms in data]
+        return [collate_data(atoms) for atoms in data]
     # If we have a dictionary, assume we are dealing with groups.
     elif type(data) == dict:
         assign_validation(data)
-        s.data = []
+        #s.data = []
+        ret = []
         for name in data:
             frames = data[name]["frames"]
             # Extend the fitsnap data list with this group.
-            s.data.extend([collate_data(atoms, name, data[name]) for atoms in frames])
+            #s.data.extend([collate_data(atoms, name, data[name]) for atoms in frames])
+            ret.extend([collate_data(atoms, name, data[name]) for atoms in frames])
+        return ret
     else:
         raise Exception("Argument must be list or dictionary for ASE scraper.")
         
@@ -96,8 +101,12 @@ def collate_data(atoms, name: str=None, group_dict: dict=None):
     data['Translation'] = np.zeros((len(atoms), 3))
     # Inject the weights.
     if group_dict is not None:
-        data['eweight'] = group_dict["eweight"] if "eweight" in group_dict else None
-        data['fweight'] = group_dict["fweight"] if "fweight" in group_dict else None
-        data['vweight'] = group_dict["vweight"] if "vweight" in group_dict else None
+        data['eweight'] = group_dict["eweight"] if "eweight" in group_dict else 1.0
+        data['fweight'] = group_dict["fweight"] if "fweight" in group_dict else 1.0
+        data['vweight'] = group_dict["vweight"] if "vweight" in group_dict else 1.0
+    else:
+        data['eweight'] = 1.0
+        data['fweight'] = 1.0
+        data['vweight'] = 1.0
 
     return data

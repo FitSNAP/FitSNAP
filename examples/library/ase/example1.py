@@ -16,7 +16,7 @@ from fitsnap3lib.scrapers.ase_funcs import ase_scraper
 
 # Create an input dictionary containing settings.
 
-data = \
+settings = \
 {
 "BISPECTRUM":
     {
@@ -50,16 +50,16 @@ data = \
 }
 
 print("Making instance")
-snap = FitSnap(data, arglist=["--overwrite"])
+fs = FitSnap(settings, arglist=["--overwrite"])
 
 print("Reading frames")
 frames = read("../../Ta_XYZ/XYZ/Displaced_BCC.xyz", ":")[:3]
 
 # Scrape ASE frames into fitsnap data structures. 
-ase_scraper(snap, frames)
+data = ase_scraper(frames)
 
 # Loop over configurations and calculate fitting arrays for each separately.
-for i, configuration in enumerate(snap.data):
+for i, configuration in enumerate(data):
     print(i)
-    a,b,w = snap.calculator.process_single(configuration)
+    a,b,w = fs.calculator.process_single(configuration)
     print(np.shape(a))

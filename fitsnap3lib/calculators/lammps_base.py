@@ -15,23 +15,17 @@ class LammpsBase(Calculator):
     def create_a(self):
         super().create_a()
 
-    def preprocess_allocate(self, nconfigs):
+    def preprocess_allocate(self, nconfigs: int):
         """
         Allocate arrays to be used by this proc. These arrays have size nconfigs.
 
-        Attributes
-        ----------
-        nconfigs : int 
-            number of configs on this proc
-
-        pt.shared_arrays['number_of_dgradrows'] : np array
-            number of dgrad rows per config, organized like the other shared arrays in calculator.py
-            
-        pt.shared_arrays['number_of_neighs'] : np array
-            number of neighbors per config, organized like the other shared arrays in calculator.py
+        Args:
+            nconfigs : number of configs on this proc
         """
         self.dgradrows = np.zeros(nconfigs).astype(int)
+        # number of dgrad rows per config, organized like the other shared arrays in calculator.py
         self.pt.create_shared_array('number_of_dgradrows', nconfigs, tm=self.config.sections["SOLVER"].true_multinode)
+        # number of neighbors per config, organized like the other shared arrays in calculator.py
         self.pt.create_shared_array('number_of_neighs', nconfigs, tm=self.config.sections["SOLVER"].true_multinode)
         self.nconfigs = nconfigs
 
@@ -64,15 +58,14 @@ class LammpsBase(Calculator):
             transpose_trick : Don't touch shared arrays in `_collect_lammps()` if true. Instead 
                               store smaller matrices `self.aw`, `self.bw`.
         """
-        #try:
-        self._data = data
-        self._i = i
-        self._initialize_lammps()
-        self._prepare_lammps()
-        self._run_lammps()
-        self._collect_lammps()
-        self._lmp = self.pt.close_lammps()
-        """
+        try:
+            self._data = data
+            self._i = i
+            self._initialize_lammps()
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps()
+            self._lmp = self.pt.close_lammps()
         except Exception as e:
             #if self.config.args.printlammps:
             self._data = data
@@ -83,18 +76,16 @@ class LammpsBase(Calculator):
             self._collect_lammps()
             self._lmp = self.pt.close_lammps()
             raise e
-        """
         
     def process_configs_nonlinear(self, data, i):
-        #try:
-        self._data = data
-        self._i = i
-        self._initialize_lammps()
-        self._prepare_lammps()
-        self._run_lammps()
-        self._collect_lammps_nonlinear()
-        self._lmp = self.pt.close_lammps()
-        """
+        try:
+            self._data = data
+            self._i = i
+            self._initialize_lammps()
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps_nonlinear()
+            self._lmp = self.pt.close_lammps()
         except Exception as e:
             #if self.config.args.printlammps:
             self._data = data
@@ -105,7 +96,7 @@ class LammpsBase(Calculator):
             self._collect_lammps_nonlinear()
             self._lmp = self.pt.close_lammps()
             raise e
-        """
+
         
     def process_single(self, data, i=0):
         """

@@ -31,8 +31,7 @@
 
 from os import path, listdir, stat
 import numpy as np
-import random
-from random import seed, shuffle
+from random import random, seed, shuffle
 from fitsnap3lib.units.units import convert
 from copy import copy
 

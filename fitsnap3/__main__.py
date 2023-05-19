@@ -15,6 +15,7 @@
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
+#     Drew Rohskopf (Sandia National Labs)
 #     Charles Sievers (UC Davis, Sandia National Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
@@ -29,15 +30,9 @@
 # <!-----------------END-HEADER------------------------------------->
 
 from fitsnap3lib.fitsnap import FitSnap
-#from mpi4py import MPI
-#from fitsnap3lib.initialize import initialize_fitsnap_run
 
 
 def main():
-    # Declare a communicator.
-    #comm = MPI.COMM_WORLD
-    #try:
-    #initialize_fitsnap_run()
     # Instantiate single fitsnap instance for traditional flow of control.
     # This will create an internal parallel tools instance which will detect
     # availability of MPI for parallelization.
@@ -49,6 +44,7 @@ def main():
     snap.perform_fit()
     snap.write_output()
     """
+    # TODO: Might be cleaner ways to output errors when doing massively parallel runs.
     except Exception as e:
         #output.exception(e)
         print(str(e))

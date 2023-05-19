@@ -48,13 +48,8 @@ settings = \
     "calculator": "LAMMPSSNAP",
     "energy": 1,
     "force": 1,
-    "stress": 1,
     "per_atom_energy": 1,
     "nonlinear": 1
-    },
-"ESHIFT":
-    {
-    "Ta": 0.0
     },
 "PYTORCH":
     {
@@ -76,16 +71,11 @@ settings = \
     {
     "dataPath": "../../Ta_Linear_JCP2014/JSON"
     },
-"OUTFILE":
-    {
-    "metrics": "Ta_metrics.md",
-    "potential": "Ta_pot"
-    },
 "REFERENCE":
     {
     "units": "metal",
     "atom_style": "atomic",
-    "pair_style": "hybrid/overlay zero 10.0 zbl 4.0 4.8",
+    "pair_style": "hybrid/overlay zero 6.0 zbl 4.0 4.8",
     "pair_coeff1": "* * zero",
     "pair_coeff2": "* * zbl 73 73"
     },
@@ -140,10 +130,10 @@ print(f"rank {rank} color {color} key {key} size_split {size_split} rank_split {
 from copy import deepcopy
 if rank == 0:
     settings2 = deepcopy(settings)
-    settings2["PYTORCH"]["num_epochs"] = 100
+    settings2["PYTORCH"]["num_epochs"] = 10
 elif rank == 1:
     settings2 = deepcopy(settings)
-    settings2["PYTORCH"]["num_epochs"] = 150
+    settings2["PYTORCH"]["num_epochs"] = 20
 
 instance2 = FitSnap(settings2, comm=comm_split, arglist=["--overwrite"])
 

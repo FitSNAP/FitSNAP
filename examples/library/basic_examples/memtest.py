@@ -118,19 +118,7 @@ data = \
     }
 }
 
-#infile = "../../../WBe_PRB2019/WBe-example.in"
-#infile = "../../../Ta_Linear_JCP2014/Ta-example.in"
-
 snap = FitSnap(data, comm=comm, arglist=["--overwrite", "--screen2file", "screen.txt"])
-#snap = FitSnap(data, comm=comm, arglist=["--overwrite"])
-#snap = FitSnap(infile, comm=comm, arglist=["--overwrite", "--screen2file", "screen.txt"])
-
-# tell ParallelTool not to create SharedArrays
-#pt.create_shared_bool = False
-# tell ParallelTools not to check for existing fitsnap objects
-#snap.pt.check_fitsnap_exist = False
-# tell FitSNAP not to delete the data object after processing configs
-snap.delete_data = False
 
 snap.scrape_configs()
 
@@ -139,18 +127,7 @@ for i in range(0,10000000):
 
     # Checking process configs.
     snap.process_configs()
-
-    #print(f"Done processing configs rank {comm.Get_rank()}")
-
-    # Checking create_a().
-    #snap.calculator.create_a()
-
-    # Good practice after any large parallel operation is to impose a barrier.
-    # NOTE: Put this and all other barriers inside respective functions like pt.free() when possible.
-
     snap.pt.all_barrier()
-
-    #snap.pt.free()
 
     if comm.Get_rank() == 0:
         if i % 1 == 0:

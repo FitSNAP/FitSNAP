@@ -47,9 +47,7 @@ def change_weights(s):
     nweights = 0
     # loop through all group weights in the group_table and change the value
     for key in s.config.sections['GROUPS'].group_table:
-        #print(key)
         for subkey in s.config.sections['GROUPS'].group_table[key]:
-            #print(subkey)
             if ("weight" in subkey):
                 nweights += 1
                 # change the weight
@@ -164,8 +162,6 @@ fitsnap = FitSnap(settings, comm=comm, arglist=["--overwrite"])
 # Scrape configs one time at the beginning.
 # This populates the `fitsnap.data` dictionary of fitting info.
 fitsnap.scrape_configs()
-# Tell FitSNAP not to delete the data object after processing configs, since we will reuse data.
-fitsnap.delete_data = False
 
 ngenerations = 100
 for g in range(0,ngenerations):

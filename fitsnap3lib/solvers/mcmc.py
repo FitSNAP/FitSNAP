@@ -1,6 +1,4 @@
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 import numpy as np
 from scipy.linalg import lstsq
 
@@ -80,10 +78,8 @@ def logpost(x, aw, bw):
 
 class MCMC(Solver):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
 
     def perform_fit(self):
         @self.pt.sub_rank_zero
@@ -127,11 +123,11 @@ class MCMC(Solver):
 
 
     def _dump_a(self):
-        np.savez_compressed('a.npz', a=pt.shared_arrays['a'].array)
+        np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)
 
     def _dump_x(self):
         np.savez_compressed('x.npz', x=self.fit)
 
     def _dump_b(self):
-        b = pt.shared_arrays['a'].array @ self.fit
+        b = self.pt.shared_arrays['a'].array @ self.fit
         np.savez_compressed('b.npz', b=b)

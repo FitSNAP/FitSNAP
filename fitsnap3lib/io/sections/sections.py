@@ -1,12 +1,6 @@
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.parallel_output import Output
 from fitsnap3lib.io.error import ExitFunc
 from distutils.util import strtobool
 from os import getcwd, path
-
-
-pt = ParallelTools()
-output = Output()
 
 
 class Section:
@@ -17,8 +11,10 @@ class Section:
     dependencies = {}
     num_desc = 0
 
-    def __init__(self, name, config, args=None):
+    def __init__(self, name, config, pt, infile, args=None):
         self.name = name
+        self.pt = pt
+        self.infile = infile
         Section.sections[name] = self
         self._config = config
         self._args = args
@@ -47,7 +43,7 @@ class Section:
                                                                                                     value_name))
 
     def print_name(self):
-        output.screen(self.name)
+        self.pt.single_print(self.name)
 
     def get_value(self, section, key, fallback, interpreter="str"):
         if self._args == "verbose" and section.lower() == self.name.lower():
@@ -143,12 +139,16 @@ class Section:
 
     @classmethod
     def _set_infile_directory(cls, self):
-        """ Set path to input file directory """
+        """ 
+        Set path to input file directory.
+        This is the directory that we read input from.
+        If no infile is supplied (i.e. we have indict), then no need for this.
+        """
         cwd = getcwd().split('/')
-        path_to_file = self._args.infile.split('/')[:-1]
+        path_to_file = self.infile.split('/')[:-1] if self.infile else None
         if not path_to_file:
             cls._infile_directory = ''
-        elif not path.isabs(self._args.infile):
+        elif not path.isabs(self.infile):
             cls._infile_directory = '/'.join(path_to_file)
         else:
             count = 0

@@ -173,18 +173,18 @@ the example folder, try recompiling lammps with these alternative
 D flags.
 
 #. Alternative D flags for python/omp errors::
-            cmake -D LAMMPS_EXCEPTIONS=on \
-                  -D PKG_PYTHON=on \
-                  -D BUILD_SHARED_LIBS=on \
-                  -D CMAKE_BUILD_TYPE=Debug \
-                  -D PKG_ML-IAP=on \
-                  -D PKG_ML-PACE=on \
-                  -D PKG_ML-SNAP=on \
-                  -D BUILD_MPI=on \
-                  -D BUILD_OMP=off \
-                  -D CMAKE_INSTALL_PREFIX=<$HOME>/.local \
-                  -D PKG_MOLECULE=on \
-                  ../cmake/
+
+            cmake ../cmake -D LAMMPS_EXCEPTIONS=on \
+                           -D PKG_PYTHON=on \
+                           -D BUILD_SHARED_LIBS=on \
+                           -D CMAKE_BUILD_TYPE=Debug \
+                           -D PKG_ML-IAP=on \
+                           -D PKG_ML-PACE=on \
+                           -D PKG_ML-SNAP=on \
+                           -D BUILD_MPI=on \
+                           -D BUILD_OMP=off \
+                           -D CMAKE_INSTALL_PREFIX=<$HOME>/.local \
+                           -D PKG_MOLECULE=on
 
 With key changes coming from turning off omp.
 

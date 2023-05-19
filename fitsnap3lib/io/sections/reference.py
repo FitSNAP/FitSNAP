@@ -1,14 +1,14 @@
 from fitsnap3lib.io.sections.sections import Section
-from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.parallel_tools import ParallelTools
 
 
-pt = ParallelTools()
+#pt = ParallelTools()
 
 
 class Reference(Section):
 
-    def __init__(self, name, config, args):
-        super().__init__(name, config, args)
+    def __init__(self, name, config, pt, infile, args):
+        super().__init__(name, config, pt, infile, args)
         self.allowedkeys = ['units', 'atom_style', 'pair_style', 'pair_coeff']
 
         # for value_name in config['REFERENCE']:

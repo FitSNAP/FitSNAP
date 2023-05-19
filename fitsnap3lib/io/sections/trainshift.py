@@ -1,15 +1,15 @@
 from fitsnap3lib.io.sections.sections import Section
 import numpy as np
-from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.parallel_tools import ParallelTools
 
 
-pt = ParallelTools()
+#pt = ParallelTools()
 
 
 class Trainshift(Section):
 
-    def __init__(self, name, config, args):
-        super().__init__(name, config, args)
+    def __init__(self, name, config, pt, infile, args):
+        super().__init__(name, config, pt, infile, args)
 
         if config.has_section("BISPECTRUM"):
             self.types = self.get_value("BISPECTRUM", "type", "H").split()

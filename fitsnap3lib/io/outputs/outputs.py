@@ -1,5 +1,5 @@
-from fitsnap3lib.io.input import Config
-from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.io.input import Config
+#from fitsnap3lib.parallel_tools import ParallelTools
 from contextlib import contextmanager
 import gzip
 from datetime import datetime
@@ -12,9 +12,9 @@ import logging
 
 class Output:
 
-    def __init__(self, name):
-        self.config = Config()
-        self.pt = ParallelTools()
+    def __init__(self, name, pt, config):
+        self.config = config #Config()
+        self.pt = pt #ParallelTools()
         self.name = name
         self._screen = self.config.args.screen
         self._pscreen = self.config.args.pscreen
@@ -68,6 +68,10 @@ class Output:
 
     def output(self, *args):
         pass
+    
+    def write_lammps(self, *args):
+        """Parent class function for writing LAMMPS-ready potential files."""
+        pass
 
     #@pt.rank_zero
     def write_errors(self, errors):
@@ -101,15 +105,18 @@ class Output:
             with optional_open(fname, write_type) as file:
                 function(file, **arguments)
 
+        # Don't write errors if using scalapack.
         if not self.config.sections["SOLVER"].true_multinode: 
-            decorated_write_errors()
+            # Don't write errors if `errors` is a list (default is empty list).
+            if type(errors) != type([]):
+                decorated_write_errors()
 
     def write_errors_nn(self, errors):
         """ 
         Write errors for nonlinear fits. 
         
         Args:
-            errors : sequence of dictionaries (mae_f, mae_e, rmse_e, rmse_f, count_train, count_test)
+            errors : sequence of dictionaries (mae_f, mae_e, rmse_f, rmse_e, count_train, count_test)
         """
         @self.pt.rank_zero
         def decorated_write_errors_nn():

@@ -8,10 +8,10 @@ from fitsnap3lib.scrapers.vasp_scraper import Vasp
 #pt = ParallelTools()
 
 
-def scraper(scraper_name):
+def scraper(scraper_name, pt, config):
     """Section Factory"""
     instance = search(scraper_name)
-    instance.__init__(scraper_name)
+    instance.__init__(scraper_name, pt, config)
     return instance
 
 

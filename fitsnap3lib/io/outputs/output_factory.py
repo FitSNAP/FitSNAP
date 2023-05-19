@@ -7,6 +7,12 @@ from fitsnap3lib.io.outputs.custom import Custom
 
 #pt = ParallelTools()
 
+def output(output_name, pt, cfg):
+    """Output Factory"""
+    instance = search(output_name)
+    instance.__init__(output_name, pt, cfg)
+    return instance
+
 
 def output_factory(output_name):
     """Output Factory"""

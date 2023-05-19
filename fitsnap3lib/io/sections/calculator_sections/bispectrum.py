@@ -5,8 +5,8 @@ import numpy as np
 
 class Bispectrum(Section):
 
-    def __init__(self, name, config, args):
-        super().__init__(name, config, args)
+    def __init__(self, name, config, pt, infile, args):
+        super().__init__(name, config, pt, infile, args)
 
         self.allowedkeys = ['numTypes', 'twojmax', 'rcutfac', 'rfac0', 'rmin0', 'wj', 'radelem', 'type',
                             'wselfallflag', 'chemflag', 'bzeroflag', 'quadraticflag', 'bnormflag', 'bikflag',
@@ -47,8 +47,8 @@ class Bispectrum(Section):
             raise ValueError("Quadratic chemsnap not impelemented.")
         # bikflag true enables computing of bispectrum per atom instead of sum
         self.bikflag = self.get_value("BISPECTRUM", "bikflag", "0", "bool")
-        if self.bikflag:
-            self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
+        #if self.bikflag:
+        #    self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
         self._generate_b_list()
         self._reset_chemflag()
         Section.num_desc = len(self.blist)

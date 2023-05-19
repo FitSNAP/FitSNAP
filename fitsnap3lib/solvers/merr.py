@@ -1,22 +1,15 @@
 from fitsnap3lib.io.outputs.outputs import optional_open
 from fitsnap3lib.io.outputs.snap import _to_coeff_string
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 import numpy as np
 from sys import float_info as fi
 
 from .lreg import lreg_merr
 
-#pt = ParallelTools()
-#config = Config()
-
 class MERR(Solver):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
 
     def perform_fit(self):
         @self.pt.sub_rank_zero
@@ -100,11 +93,11 @@ class MERR(Solver):
         decorated_perform_fit()
 
     def _dump_a(self):
-        np.savez_compressed('a.npz', a=pt.shared_arrays['a'].array)
+        np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)
 
     def _dump_x(self):
         np.savez_compressed('x.npz', x=self.fit)
 
     def _dump_b(self):
-        b = pt.shared_arrays['a'].array @ self.fit
+        b = self.pt.shared_arrays['a'].array @ self.fit
         np.savez_compressed('b.npz', b=b)

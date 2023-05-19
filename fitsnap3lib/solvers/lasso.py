@@ -1,11 +1,5 @@
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 import numpy as np
-
-
-#config = Config()
-#pt = ParallelTools()
 
 
 try:
@@ -14,22 +8,22 @@ try:
 
     class LASSO(Solver):
 
-        def __init__(self, name):
-            super().__init__(name)
-            self.pt = ParallelTools()
-            self.config = Config()
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config)
 
+        #@pt.sub_rank_zero
         def perform_fit(self):
-            @self.pt.sub_rank_zero
+            pt = self.pt
+            config = self.config
             def decorated_perform_fit():
-                training = [not elem for elem in self.pt.fitsnap_dict['Testing']]
-                w = self.pt.shared_arrays['w'].array[training]
-                aw, bw = w[:, np.newaxis] * self.pt.shared_arrays['a'].array[training], w * self.pt.shared_arrays['b'].array[training]
-                if self.config.sections['EXTRAS'].apply_transpose:
+                training = [not elem for elem in pt.fitsnap_dict['Testing']]
+                w = pt.shared_arrays['w'].array[training]
+                aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
+                if config.sections['EXTRAS'].apply_transpose:
                     bw = aw.T @ bw
                     aw = aw.T @ aw
-                alval = self.config.sections['LASSO'].alpha
-                maxitr = self.config.sections['LASSO'].max_iter
+                alval = config.sections['LASSO'].alpha
+                maxitr = config.sections['LASSO'].max_iter
                 reg = Lasso(alpha=alval, fit_intercept=False, max_iter=maxitr)
                 reg.fit(aw, bw)
                 self.fit = reg.coef_
@@ -37,7 +31,7 @@ try:
 
         #@staticmethod
         def _dump_a():
-            np.savez_compressed('a.npz', a= self.pt.shared_arrays['a'].array)
+            np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)
 
         def _dump_x(self):
             np.savez_compressed('x.npz', x=self.fit)

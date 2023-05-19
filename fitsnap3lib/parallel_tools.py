@@ -51,22 +51,6 @@ try:
 except ModuleNotFoundError:
     stubs = 1
 
-
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if (
-                kwargs is not None
-                and "comm" in kwargs.keys()
-                and kwargs["comm"] is not None
-        ):
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
 def printf(*args, **kw):
     kw['flush'] = True
 
@@ -157,7 +141,8 @@ def print_lammps(method):
     return new_method
 
 
-class ParallelTools(metaclass=Singleton):
+#class ParallelTools(metaclass=Singleton):
+class ParallelTools():
     """
     This classes creates and contains arrays used for fitting, across multiple processors.
 
@@ -167,19 +152,16 @@ class ParallelTools(metaclass=Singleton):
     """
 
     def __init__(self, comm=None):
-
         self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
-
         if stubs == 0:
             if comm is None:
                 comm = MPI.COMM_WORLD
             self._comm = comm
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
-            """
-            Set this to False if want to avoid shared arrays. This is helpful when using the library 
-            to loop over functions that create shared arrays, to avoid mem leaks.
-            """
+            #print(f">>> Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
+            # Set this to False if want to avoid shared arrays. This is helpful when using the library 
+            # to loop over functions that create shared arrays, to avoid mem leaks.
             self.create_shared_bool = True
 
         if stubs == 1:
@@ -204,6 +186,21 @@ class ParallelTools(metaclass=Singleton):
         self.logger = None
         self.pytest = False
         self._fp = None
+
+    """
+    def __del__(self):
+        self.free()
+        del self
+    """
+
+    """
+    def __setattr__(self, name:str, value):
+        protected = ("_comm")
+        if name in protected and hasattr(self, name):
+            raise AttributeError(f"Overwriting {name} is not allowed.")
+        else:
+            super().__setattr__(name, value)
+    """
 
     @stub_check
     def _comm_split(self):
@@ -319,11 +316,31 @@ class ParallelTools(metaclass=Singleton):
             return check_if_rank_zero
         else:
             return dummy_function
+        
+    def free(self):
+        """ Free memory associated with all shared arrays. """
+        if not stubs:
+            for name in self.shared_arrays:
+                # There is no mpi4py native clean way to check if an array is
+                # already freed, so let's do try/except for now.
+                try:
+                    self.shared_arrays[name].win.Free()
+                except:
+                    pass
+        else:
+            self.single_print("Trying to free a stubs array; doing nothing.")
 
     def create_shared_array(self, name, size1, size2=1, dtype='d', tm=0):
 
         if isinstance(name, str):
             if (stubs == 0 and self.create_shared_bool):
+                # If key exists, free the window memory to prevent memory leaks.
+                # TODO: Is there a way to check state of the window instead of the key?
+                if (name in self.shared_arrays and not stubs):
+                    try:
+                        self.shared_arrays[name].win.Free()
+                    except Exception as e:
+                        self.single_print(f"Trouble deallocating shared array with name {name}: {e}.")
                 comms = [[self._comm, self._rank, self._size],
                          [self._sub_comm, self._sub_rank, self._sub_size],
                          [self._head_group_comm, self._node_index, self._number_of_nodes]]
@@ -344,7 +361,8 @@ class ParallelTools(metaclass=Singleton):
         if isinstance(name, str):
             if (self.check_fitsnap_exist):
                 if name in self.fitsnap_dict:
-                    raise NameError("name is already in dictionary")
+                    #raise NameError("name is already in dictionary")
+                    self.fitsnap_dict.pop(name)
             self.fitsnap_dict[name] = an_object
         else:
             raise TypeError("name must be a string")
@@ -361,11 +379,23 @@ class ParallelTools(metaclass=Singleton):
         self.fitsnap_dict[name] = self._sub_comm.bcast(self.fitsnap_dict[name])
 
     @stub_check
-    def gather_fitsnap(self, name):
-
+    def gather_fitsnap(self, name, allgather:bool=None):
+        """
+        Gather distributed lists.
+        Args:
+            allgather: If true then we allgather. When number of procs is large this can 
+                       result in large (but not prohibitive) memory usage, where each proc has 
+                       ~10 lists with size of number of configs.
+        """
         if name not in self.fitsnap_dict:
             raise NameError("Dictionary element not yet in fitsnap_dictionary")
-        self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
+        # TODO: Make some sort of option to either gather or allgather.
+        #       It saves memory to simply gather, but allgather is useful in 
+        #       scenarios when using multiple instances in parallel, we might need 
+        #       the fitsnap dict on all procs.
+        # NOTE: When number of procs is large, allgather could quickly consume all memory.
+        #self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
+        self.fitsnap_dict[name] = self._sub_comm.allgather(self.fitsnap_dict[name])
 
     @stub_check
     @_sub_rank_zero
@@ -481,6 +511,23 @@ class ParallelTools(metaclass=Singleton):
             self._lmp.close()   
             self._lmp = None
         return self._lmp
+    
+    def get_ncpn(self, nconfigs):
+        """
+        Get number of configs per node; return nconfigs if stubs.
+
+        Args:
+            nconfigs: integer number of configurations on this process, typically length of list of 
+                      data dictionaries.
+
+        Returns number of configs per node, reduced across procs, or just nconfigs if stubs.
+        """
+        if not stubs:
+            ncpp = np.array([nconfigs]) # Num. configs per proc.
+            ncpn = np.array([0]) # Num. configs per node.
+            self._comm.Allreduce([ncpp, MPI.INT], [ncpn, MPI.INT])
+            return ncpn[0]
+        return nconfigs
 
     def slice_array(self, name):
         if name in self.shared_arrays:
@@ -870,9 +917,9 @@ class SharedArray:
             self._nbytes = 0
 
         #win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
-        win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
+        self.win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
 
-        buff, item_size = win.Shared_query(0)
+        buff, item_size = self.win.Shared_query(0)
 
         if dtype == 'd':
             assert item_size == MPI.DOUBLE.Get_size()

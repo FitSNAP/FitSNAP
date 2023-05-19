@@ -3,7 +3,6 @@ import itertools
 #from fitsnap3lib.lib.sym_ACE.rpi_lib import *
 #from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import  *
 from fitsnap3lib.io.sections.sections import Section
-from fitsnap3lib.parallel_tools import ParallelTools
 
 try:
 
@@ -12,8 +11,8 @@ try:
 
     class Ace(Section):
 
-        def __init__(self, name, config, args):
-            super().__init__(name, config, args)
+        def __init__(self, name, config, pt, infile, args):
+            super().__init__(name, config, pt, infile, args)
             
             allowedkeys = ['numTypes', 'ranks', 'lmax', 'nmax', 'mumax', 'nmaxbase', 'rcutfac', 'lambda', 
                           'type', 'bzeroflag', 'erefs', 'rcinner', 'drcinner', 'RPI_heuristic', 'lmin', 
@@ -45,10 +44,9 @@ try:
             self.bzeroflag = self.get_value("ACE", "bzeroflag", "0", "bool")
             self.wigner_flag = self.get_value("ACE", "wigner_flag", "1", "bool")
 
-            if self.bikflag:
-                self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
+            #if self.bikflag:
+            #    self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
             self.lmax_dct = {int(rnk):int(lmx) for rnk,lmx in zip(self.ranks,self.lmax)}
-            self.pt = ParallelTools()
             if self.RPI_heuristic != 'root_SO3_span':
                 self.pt.single_print('WARNING: do not change RPI flags unless you know what you are doing!')
             self._generate_b_list()
@@ -148,6 +146,6 @@ except ModuleNotFoundError:
         """
         Dummy class for factory to read if torch is not available for import.
         """
-        def __init__(self, name, config, args):
-            super().__init__(name, config, args)
+        def __init__(self, name, config, pt, infile, args):
+            super().__init__(name, config, pt, infile, args)
             raise ModuleNotFoundError("Missing sympy or pyyaml modules.")

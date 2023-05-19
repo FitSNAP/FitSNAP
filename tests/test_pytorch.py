@@ -8,6 +8,7 @@ from mpi4py import MPI
 import argparse
 import random
 import torch
+from fitsnap3lib.fitsnap import FitSnap
 
 
 this_path = Path(__file__).parent.resolve()
@@ -22,41 +23,34 @@ def test_fd_single_elem():
 
     h = 1e-4 # size of finite difference
 
-    # import parallel tools and create pt object
-    from fitsnap3lib.parallel_tools import ParallelTools
-    #pt = ParallelTools(comm=comm)
-    pt = ParallelTools()
-    # don't check for existing fitsnap objects since we'll be overwriting things
-    pt.check_fitsnap_exist = False
-    from fitsnap3lib.io.input import Config
-    #fitsnap_in = "../examples/Ta_Pytorch_NN/Ta-example.in"
     fitsnap_in = ta_example_file.as_posix()
-    config = Config(arguments_lst = [fitsnap_in, "--overwrite"])
-    config.sections['BISPECTRUM'].switchflag = 1 # required for smooth finite difference
-    config.sections['PYTORCH'].manual_seed_flag = 1
-    config.sections['PYTORCH'].dtype = torch.float64
-    config.sections['PYTORCH'].shuffle_flag = False # helps these finite difference tests
+
+    comm = MPI.COMM_WORLD
+    snap = FitSnap(fitsnap_in, comm=comm, arglist=["--overwrite"])
+    snap.config.sections['BISPECTRUM'].switchflag = 1 # required for smooth finite difference
+    snap.config.sections['PYTORCH'].manual_seed_flag = 1
+    snap.config.sections['PYTORCH'].dtype = torch.float64
+    snap.config.sections['PYTORCH'].shuffle_flag = False # helps these finite difference tests
     # only perform calculations on displaced BCC structures
-    config.sections['GROUPS'].group_table = {'Displaced_BCC': \
+    snap.config.sections['GROUPS'].group_table = {'Displaced_BCC': \
         {'training_size': 1.0, \
         'testing_size': 0.0, \
         'eweight': 100.0, \
         'fweight': 1.0, \
         'vweight': 1e-08}}
-    # create a fitsnap object
-    from fitsnap3lib.fitsnap import FitSnap
-    snap = FitSnap()
 
     # get config positions
     snap.scrape_configs()
     data0 = snap.data
     # don't delete the data since we'll use it many times with finite difference
     snap.delete_data = False 
+    # don't check for existing fitsnap objects since we'll be overwriting things
+    snap.pt.check_fitsnap_exist = False
 
     # calculate model forces
 
     snap.process_configs()
-    pt.all_barrier()
+    snap.pt.all_barrier()
     snap.solver.create_datasets()
     (energies_model, forces_model) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
 
@@ -118,9 +112,9 @@ def test_fd_single_elem():
 
     assert(mean_err < 0.001 and max_err < 0.1)
 
-    del pt
-    del config
-    del snap.data
+    #del pt
+    #del config
+    #del snap.data
     del snap
 
 def test_fd_multi_elem():
@@ -128,41 +122,34 @@ def test_fd_multi_elem():
 
     h = 1e-4 # size of finite difference
 
-    # import parallel tools and create pt object
-    from fitsnap3lib.parallel_tools import ParallelTools
-    #pt = ParallelTools(comm=comm)
-    pt = ParallelTools()
-    # don't check for existing fitsnap objects since we'll be overwriting things
-    pt.check_fitsnap_exist = False
-    from fitsnap3lib.io.input import Config
-    #fitsnap_in = "../examples/WBe_Pytorch_NN/WBe-example.in"
     fitsnap_in = wbe_example_file.as_posix()
-    config = Config(arguments_lst = [fitsnap_in, "--overwrite"])
-    config.sections['BISPECTRUM'].switchflag = 1 # required for smooth finite difference
-    config.sections['PYTORCH'].manual_seed_flag = 1
-    config.sections['PYTORCH'].dtype = torch.float64
-    config.sections['PYTORCH'].shuffle_flag = False # helps these finite difference tests
-    # only perform calculations on a certain group
-    config.sections['GROUPS'].group_table = {'DFT_MD_300K': \
+
+    comm = MPI.COMM_WORLD
+    snap = FitSnap(fitsnap_in, comm=comm, arglist=["--overwrite"])
+    snap.config.sections['BISPECTRUM'].switchflag = 1 # required for smooth finite difference
+    snap.config.sections['PYTORCH'].manual_seed_flag = 1
+    snap.config.sections['PYTORCH'].dtype = torch.float64
+    snap.config.sections['PYTORCH'].shuffle_flag = False # helps these finite difference tests
+    # only perform calculations on certain group
+    snap.config.sections['GROUPS'].group_table = {'DFT_MD_300K': \
         {'training_size': 0.01, \
         'testing_size': 0.0, \
         'eweight': 100.0, \
         'fweight': 1.0, \
         'vweight': 1e-08}}
-    # create a fitsnap object
-    from fitsnap3lib.fitsnap import FitSnap
-    snap = FitSnap()
 
     # get config positions
     snap.scrape_configs()
     data0 = snap.data
     # don't delete the data since we'll use it many times with finite difference
     snap.delete_data = False 
+    # don't check for existing fitsnap objects since we'll be overwriting things
+    snap.pt.check_fitsnap_exist = False
 
     # calculate model forces
 
     snap.process_configs()
-    pt.all_barrier()
+    snap.pt.all_barrier()
     snap.solver.create_datasets()
     (energies_model, forces_model) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
 
@@ -228,9 +215,6 @@ def test_fd_multi_elem():
 
     assert(mean_err < 0.001 and max_err < 0.1)
 
-    del pt
-    del config
-    del snap.data
     del snap
 
 def test_fd_ace_single_elem():
@@ -238,41 +222,33 @@ def test_fd_ace_single_elem():
 
     h = 1e-4 # size of finite difference
 
-    # import parallel tools and create pt object
-    from fitsnap3lib.parallel_tools import ParallelTools
-    #pt = ParallelTools(comm=comm)
-    pt = ParallelTools()
-    # don't check for existing fitsnap objects since we'll be overwriting things
-    pt.check_fitsnap_exist = False
-    from fitsnap3lib.io.input import Config
-    #fitsnap_in = "../examples/Ta_Pytorch_NN/Ta-example.in"
     fitsnap_in = ace_ta_example_file.as_posix()
-    config = Config(arguments_lst = [fitsnap_in, "--overwrite"])
-    #config.sections['ACE'].switchflag = 1 # required for smooth finite difference
-    config.sections['PYTORCH'].manual_seed_flag = 1
-    config.sections['PYTORCH'].dtype = torch.float64
-    config.sections['PYTORCH'].shuffle_flag = False # helps these finite difference tests
+
+    comm = MPI.COMM_WORLD
+    snap = FitSnap(fitsnap_in, comm=comm, arglist=["--overwrite"])
+    snap.config.sections['PYTORCH'].manual_seed_flag = 1
+    snap.config.sections['PYTORCH'].dtype = torch.float64
+    snap.config.sections['PYTORCH'].shuffle_flag = False # helps these finite difference tests
     # only perform calculations on displaced BCC structures
-    config.sections['GROUPS'].group_table = {'Displaced_BCC': \
+    snap.config.sections['GROUPS'].group_table = {'Displaced_BCC': \
         {'training_size': 1.0, \
         'testing_size': 0.0, \
         'eweight': 100.0, \
         'fweight': 1.0, \
         'vweight': 1e-08}}
-    # create a fitsnap object
-    from fitsnap3lib.fitsnap import FitSnap
-    snap = FitSnap()
 
     # get config positions
     snap.scrape_configs()
     data0 = snap.data
     # don't delete the data since we'll use it many times with finite difference
     snap.delete_data = False 
+    # don't check for existing fitsnap objects since we'll be overwriting things
+    snap.pt.check_fitsnap_exist = False
 
     # calculate model forces
 
     snap.process_configs()
-    pt.all_barrier()
+    snap.pt.all_barrier()
     snap.solver.create_datasets()
     (energies_model, forces_model) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
 
@@ -335,7 +311,4 @@ def test_fd_ace_single_elem():
 
     assert(mean_err < 0.001 and max_err < 0.1)
 
-    del pt
-    del config
-    del snap.data
     del snap

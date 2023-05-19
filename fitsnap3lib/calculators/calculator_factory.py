@@ -2,19 +2,20 @@ from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.calculators.calculator import Calculator
 from fitsnap3lib.calculators.lammps_pace import LammpsPace
 from fitsnap3lib.calculators.lammps_snap import LammpsSnap
-from fitsnap3lib.calculators.basic_calculator import Basic
+#from fitsnap3lib.calculators.basic_calculator import Basic
 from fitsnap3lib.calculators.lammps_custom import LammpsCustom
 
 
 #pt = ParallelTools()
 
-def calculator(calculator_name):
+def calculator(calculator_name, pt, cfg):
     """Calculator Factory"""
     instance = search(calculator_name)
-    pt = ParallelTools()
-    pt.single_print("Using {} as FitSNAP calculator".format(calculator_name))
+    #pt = ParallelTools()
+    if cfg.args.verbose:
+        pt.single_print("Using {} as FitSNAP calculator".format(calculator_name))
     
-    instance.__init__(calculator_name)
+    instance.__init__(calculator_name, pt, cfg)
     return instance
 
 

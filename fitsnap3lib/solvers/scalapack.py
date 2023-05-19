@@ -1,11 +1,5 @@
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 import numpy as np
-
-
-#config = Config()
-#pt = ParallelTools()
 
 
 try:
@@ -13,10 +7,8 @@ try:
 
     class ScaLAPACK(Solver):
 
-        def __init__(self, name):
-            super().__init__(name)
-            self.config = Config()
-            self.pt = ParallelTools()
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config)
 
         def perform_fit(self):
             # This dictionary is NoneType on other subranks.
@@ -62,14 +54,14 @@ except ModuleNotFoundError:
 
     class ScaLAPACK(Solver):
 
-        def __init__(self, name):
-            super().__init__(name)
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config)
             raise ModuleNotFoundError("ScaLAPACK module not installed in lib")
 
 except ImportError:
 
     class ScaLAPACK(Solver):
 
-        def __init__(self, name):
-            super().__init__(name)
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config)
             raise ImportError("ScaLAPACK module not installed in lib")

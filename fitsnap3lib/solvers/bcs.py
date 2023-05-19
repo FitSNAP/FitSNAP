@@ -1,11 +1,7 @@
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 from scipy.linalg import lstsq
 import numpy as np
 
-pt = ParallelTools()
-config = Config()
 
 def bcs(A, y, sigma2=None, eta=1.e-8, adaptive=0, optimal=1, scale=0.1):
     #------------------------------------------------------------------
@@ -208,11 +204,13 @@ def bcs(A, y, sigma2=None, eta=1.e-8, adaptive=0, optimal=1, scale=0.1):
 
 class BCS(Solver):
 
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
 
     @pt.sub_rank_zero
     def perform_fit(self):
+        pt = self.pt
+        config = self.config
         if pt.shared_arrays['configs_per_group'].testing_elements != 0:
             testing = -1*pt.shared_arrays['configs_per_group'].testing_elements
         else:
@@ -241,11 +239,11 @@ class BCS(Solver):
         # self.fit_sam = self.fit + np.sqrt(np.diag(self.cov))*np.random.randn(nsam,nbas)
 
     def _dump_a(self):
-        np.savez_compressed('a.npz', a=pt.shared_arrays['a'].array)
+        np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)
 
     def _dump_x(self):
         np.savez_compressed('x.npz', x=self.fit)
 
     def _dump_b(self):
-        b = pt.shared_arrays['a'].array @ self.fit
+        b = self.pt.shared_arrays['a'].array @ self.fit
         np.savez_compressed('b.npz', b=b)

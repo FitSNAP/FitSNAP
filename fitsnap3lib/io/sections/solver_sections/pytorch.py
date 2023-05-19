@@ -1,5 +1,4 @@
 from fitsnap3lib.io.sections.sections import Section
-from fitsnap3lib.parallel_tools import ParallelTools
 
 try:
     import torch
@@ -9,8 +8,8 @@ try:
 
     class PYTORCH(Section):
 
-        def __init__(self, name, config, args):
-            super().__init__(name, config, args)
+        def __init__(self, name, config, pt, infile, args):
+            super().__init__(name, config, pt, infile, args)
             self.allowedkeys = ['layer_sizes', 'learning_rate', 'num_epochs', 'batch_size', 'save_state_output',
                                 'save_freq', 'save_state_input', 'output_file', 'energy_weight', 'force_weight',
                                 'training_fraction', 'multi_element_option', 'num_elements', 'manual_seed_flag',
@@ -49,7 +48,6 @@ try:
 
             # catch errors associated with settings, and set necessary flags for later
 
-            self.pt = ParallelTools()
             if (self.energy_weight != self.energy_weight and self.force_weight == self.force_weight):
                 raise Exception("Must use global energy weight with global force weight.")
             elif (self.energy_weight == self.energy_weight and self.force_weight != self.force_weight):

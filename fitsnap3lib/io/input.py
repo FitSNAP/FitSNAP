@@ -3,59 +3,54 @@ import argparse
 import sys
 from pickle import HIGHEST_PROTOCOL
 from fitsnap3lib.io.sections.section_factory import new_section
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.parallel_output import Output
 from pathlib import Path
 import random
 
 
-output = Output()
-#pt = ParallelTools()
-
-
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if (
-                kwargs is not None
-                and "arguments_lst" in kwargs.keys()
-                and kwargs["arguments_lst"] is not None
-        ):
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
-class Config(metaclass=Singleton):
+class Config():
     """ 
     Class for storing input settings in a `config` instance. The `config` instance is first created 
-    in `io/output.py`.
+    in `io/output.py`. If given a path to an input script, we use Python's native ConfigParser 
+    to parse the settings. If given a nested dictionary, the sections are determined from the 
+    first keys and specific settings from the nested keys.
+
+    Args:
+        pt: A ParallelTools instance.
+        input: Optional input can either be a filename or a dictionary.
+        arguments_lst: List of args that can be supplied at the command line.
 
     Attributes:
-        parse_cmdline (list): List of args that can be supplied at the command line, must include a 
-            string to the location of the FitSNAP input script .
+        infile: String for optional input filename. Defaults to None.
+        indict: Dictionary for optional input dictionary of settings, to replace input file. Defaults 
+            to None.
+        
     """
 
-    def __init__(self, arguments_lst=None):
-        self.pt = ParallelTools()
+    def __init__(self, pt, input: (str | dict) = None, arguments_lst: list = None):
+        self.pt = pt
+        self.input = input
+        # Input file (infile) and dictionary (indict) set to None by default and get set in 
+        # parse_config.
+        self.infile = None
+        self.indict = None
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
         self.parse_cmdline(arguments_lst=arguments_lst)
         self.sections = {}
         self.parse_config()
 
-        # Generate random 128 bit hash to identify this fit
-
+        # Generate random 128 bit hash to identify this fit on rank 0.
         if self.pt._rank == 0:
             self.hash = f"{random.getrandbits(128):032x}"
+        else:
+            self.hash = None
 
     def parse_cmdline(self, arguments_lst=None):
+        """ Parse command line args. """
         parser = argparse.ArgumentParser(prog="fitsnap3")
-
-        parser.add_argument("infile", action="store",
-                            help="Input file with bispectrum etc. options")
+        if (self.input is None):
+            parser.add_argument("infile", action="store",
+                                help="Input file with bispectrum etc. options")
 
         # Optional args.
         parser.add_argument("--lammpslog", "-l", action="store_true", dest="lammpslog",
@@ -88,7 +83,6 @@ class Config(metaclass=Singleton):
                             default=None, help="Write fitsnap log to this file.")
         parser.add_argument("--screen2file", "-s2f", action="store", dest="screen2file",
                             default=None, help="Print screen to a file")
-
         # Not Implemented.
         """
         parser.add_argument("--lammps_noexceptions", action="store_true",
@@ -108,22 +102,45 @@ class Config(metaclass=Singleton):
     def parse_config(self):
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
         tmp_config.optionxform = str
-        if not Path(self.args.infile).is_file():
-            raise FileNotFoundError("Input file not found")
-        tmp_config.read(self.args.infile)
-        infile_folder = str(Path(self.args.infile).parent.absolute())
-        file_name = self.args.infile.split('/')[-1]
-        if not Path(infile_folder+'/'+file_name).is_file():
-            raise RuntimeError("Input file {} not found in {}", file_name, infile_folder)
+        if self.input is not None:
+            if (isinstance(self.input, str)):
+                self.infile = self.input
+            elif (isinstance(self.input, dict)):
+                self.indict = self.input
+        else:
+            if not Path(self.args.infile).is_file():
+                raise FileNotFoundError("Input file not found")
+            self.infile = self.args.infile
 
-        vprint = output.screen if self.args.verbose else lambda *arguments, **kwargs: None
-        if self.args.keyword_replacements:
-            for kwg, kwn, kwv in self.args.keyword_replacements:
-                if kwg not in tmp_config:
-                    raise ValueError(f"{kwg} is not a valid keyword group")
-                vprint(f"Substituting {kwg}:{kwn}={kwv}")
-                tmp_config[kwg][kwn] = kwv
+        if (self.infile is not None):
+            # We have an input file.
+            tmp_config.read(self.infile)
+            infile_folder = str(Path(self.infile).parent.absolute())
+            file_name = self.infile.split('/')[-1]
+            if not Path(infile_folder+'/'+file_name).is_file():
+                raise RuntimeError("Input file {} not found in {}", file_name, infile_folder)
 
+            #vprint = output.screen if self.args.verbose else lambda *arguments, **kwargs: None
+            # This adds keyword replacements to the config.
+            if self.args.keyword_replacements:
+                for kwg, kwn, kwv in self.args.keyword_replacements:
+                    if kwg not in tmp_config:
+                        raise ValueError(f"{kwg} is not a valid keyword group")
+                    tmp_config[kwg][kwn] = kwv
+
+        elif (self.indict is not None):
+            # We have an input dictionary  instead of a file.
+            for key1, data1 in self.indict.items():
+                tmp_config[key1] = {}
+                for key2, data2 in data1.items():
+                    tmp_config[key1]["{}".format(key2)] = str(data2)
+            # Default missing sections to empty dicts which will prompt default values.
+            names = ["ESHIFT", "EXTRAS", "GROUPS", "MEMORY"]
+            for name in names:
+                if name not in tmp_config:
+                    tmp_config[name] = {}
+
+        # Make sections based on input settings.
         self.set_sections(tmp_config)
 
     def set_sections(self, tmp_config):
@@ -133,4 +150,4 @@ class Config(metaclass=Singleton):
                 section = "DEFAULT"
             if section == "BASIC_CALCULATOR":
                 section = "BASIC"
-            self.sections[section] = new_section(section, tmp_config, self.args)
+            self.sections[section] = new_section(section, tmp_config, self.pt, self.infile, self.args)

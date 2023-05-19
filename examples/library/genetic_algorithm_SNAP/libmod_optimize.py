@@ -1,19 +1,19 @@
 """
 Genetic algorithm optimization of SNAP potential
 
-Usage:
+Serial usage:
 
-    #parallel
-    mpirun -n 2 python3 libmod_optimize.py --fitsnap_in Ta-example.in --optimization_style genetic_algorithm
-    #serial
-    python3 libmod_optimize.py --fitsnap_in Ta-example.in --optimization_style genetic_algorithm
+    python libmod_optimize.py --fitsnap_in Ta-example.in --optimization_style genetic_algorithm
+
+Parallel usage:
+
+    mpirun -n 2 python libmod_optimize.py --fitsnap_in Ta-example.in --optimization_style genetic_algorithm
 """
 
 import numpy as np
 from mpi4py import MPI
+from fitsnap3lib.fitsnap import FitSnap
 import argparse
-import gc
-import pandas as pd
 import warnings
 import time
 # NOTE warnings have been turned off for zero divide errors!
@@ -29,40 +29,34 @@ args = parser.parse_args()
 optimization_style = args.optimization_style
 
 comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
 
-# import parallel tools and create pt object
-# this is the backbone of FitSNAP
-from fitsnap3lib.parallel_tools import ParallelTools
-pt = ParallelTools(comm=comm)
-# Config class reads the input
-from fitsnap3lib.io.input import Config
-config = Config(arguments_lst = [args.fitsnap_in, "--overwrite", "--screen2file", "detailed-output.txt"])
-# create a fitsnap object
-from fitsnap3lib.fitsnap import FitSnap
-snap = FitSnap()
-# import other necessaries to run basic example
-from fitsnap3lib.io.output import output
-from fitsnap3lib.initialize import initialize_fitsnap_run
+settings = args.fitsnap_in
 
-pt.single_print("FitSNAP input script:",args.fitsnap_in)
+# Create a FitSnap instance using the communicator and settings:
+snap = FitSnap(settings, comm=comm, arglist=["--overwrite", "--screen2file", "detailed-output.txt"])
+snap.pt.single_print("FitSNAP input script:",args.fitsnap_in)
+
+snap.pt.single_print("FitSNAP input script:",args.fitsnap_in)
 
 # run initial fit (calculate descriptors)
 snap.scrape_configs()
 snap.process_configs()
-pt.all_barrier()
+snap.pt.all_barrier()
 snap.perform_fit()
 fit1 = snap.solver.fit
 errs1 = snap.solver.errors
 
 
 # get groups and weights 
-gtks = config.sections["GROUPS"].group_table.keys()
+gtks = snap.config.sections["GROUPS"].group_table.keys()
 gtks = list(gtks)
-pt.single_print('groups',gtks)
+snap.pt.single_print('groups',gtks)
 
-size_b = np.shape(pt.fitsnap_dict['Row_Type'])[0]
-grouptype = pt.fitsnap_dict['Groups'].copy()
-rowtype = pt.fitsnap_dict['Row_Type'].copy()
+size_b = np.shape(snap.pt.fitsnap_dict['Row_Type'])[0]
+grouptype = snap.pt.fitsnap_dict['Groups'].copy()
+rowtype = snap.pt.fitsnap_dict['Row_Type'].copy()
 
 
 rmse_e = errs1.iloc[:,2].to_numpy()
@@ -70,20 +64,20 @@ rmse_counts = errs1.iloc[:,0].to_numpy()
 rmse_eat = rmse_e[0]
 rmse_fat = rmse_e[1]
 rmse_tot = rmse_eat + rmse_fat
-pt.single_print('Initial fit',rmse_eat,rmse_fat,rmse_tot)
+snap.pt.single_print('Initial fit',rmse_eat,rmse_fat,rmse_tot)
 
 snap.solver.fit = None
 
-pt.single_print("FitSNAP optimization algorithm:",args.optimization_style)
+snap.pt.single_print("FitSNAP optimization algorithm:",args.optimization_style)
 class CostObject:
-    @pt.rank_zero
+    @snap.pt.rank_zero
     def __init__(self):
         self.conts = None
         self.cost = 999999999.9999
         self.unweighted = np.array([])
         self.weights = np.array([])
 
-    @pt.rank_zero
+    @snap.pt.rank_zero
     def cost_contributions(self,cost_conts,weights):
         cost_conts = np.array(cost_conts) 
         weights = np.array(weights)
@@ -92,7 +86,7 @@ class CostObject:
         self.weights = weights
         self.conts = wc_conts
 
-    @pt.rank_zero
+    @snap.pt.rank_zero
     def add_contribution(self,costi,weighti=1.0):
         try:
             if self.conts == None:
@@ -113,14 +107,14 @@ class CostObject:
             self.weights = np.append(self.weights,weighti)
             self.unweighted = np.append(self.unweighted,costi)
 
-    @pt.rank_zero
+    @snap.pt.rank_zero
     def evaluate_cost(self):
         costi = np.sum(self.conts)
         self.cost = costi
         return costi
 
 class HyperparameterStruct:
-    @pt.rank_zero
+    @snap.pt.rank_zero
     def __init__(self,
             ne,
             nf,
@@ -134,7 +128,7 @@ class HyperparameterStruct:
         self.set_eranges()
         self.set_ffactors()
 
-    @pt.rank_zero
+    @snap.pt.rank_zero
     def set_eranges(self):
         if len(self.erangesin) != self.ne and len(self.erangesin) == 1:
             self.eranges = self.erangesin * self.ne
@@ -143,7 +137,7 @@ class HyperparameterStruct:
         else:
             raise ValueError('incorrect number of values for energy group weight ranges, ether specify range for each group or sepecify one range to be applied to all groups')
 
-    @pt.rank_zero
+    @snap.pt.rank_zero
     def set_ffactors(self):
         if len(self.ffactorsin) != self.nf and len(self.ffactorsin) == 1:
             self.ffactors = self.ffactorsin * self.nf
@@ -152,7 +146,7 @@ class HyperparameterStruct:
         else:
             raise ValueError('incorrect number of values for force group weight ratios, ether specify range for each group or sepecify one range to be applied to all groups')
     
-    @pt.rank_zero
+    @snap.pt.rank_zero
     def random_params(self,inputseed=None):
         if inputseed != None:
             np.random.seed(inputseed)
@@ -162,7 +156,7 @@ class HyperparameterStruct:
         return np.append(self.eweights,self.fweights)
 
 # tournament selection
-@pt.rank_zero
+@snap.pt.rank_zero
 def tournament_selection(population, scores, k=3, inputseed=None):
     if inputseed != None:
         np.random.seed(inputseed)
@@ -174,19 +168,19 @@ def tournament_selection(population, scores, k=3, inputseed=None):
     return population[selection_ix]
 
 class Selector:
-    @pt.rank_zero
+    @snap.pt.rank_zero
     def __init__(self,selection_style = 'tournament'):
         self.selection_style = selection_style
         self.set_selector()
 
-    @pt.rank_zero
+    @snap.pt.rank_zero
     def set_selector(self):
         if self.selection_style == 'tournament':
             self.selection = tournament_selection
 
 # when 2 parent creatures love eachother very much, they make/adopt 2 children creatures
 # this does not include cross-over for stresses yet.
-@pt.rank_zero
+@snap.pt.rank_zero
 def crossover(p1, p2, ne, w_combo_delta=np.array([]), ef_rat_delta=np.array([]), inputseed=None):
     if inputseed != None:
         np.random.seed(inputseed)
@@ -213,7 +207,7 @@ def crossover(p1, p2, ne, w_combo_delta=np.array([]), ef_rat_delta=np.array([]),
     return [c1, c2]
 
 
-@pt.rank_zero
+@snap.pt.rank_zero
 def update_weights(test_w_combo, test_ef_rat, test_virial_w=(1.e-8,), gtks = gtks, size_b = size_b, grouptype = grouptype):
     if len(test_virial_w) == 1:
         tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_virial_w[0]} for ig,gkey in enumerate(gtks)  }
@@ -225,14 +219,14 @@ def update_weights(test_w_combo, test_ef_rat, test_virial_w=(1.e-8,), gtks = gtk
     #loop through data and update pt shared array based on group type
     for index_b in range(size_b):
         gkey = grouptype[index_b]
-        if pt.fitsnap_dict['Row_Type'][index_b] == 'Energy':
-            pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['eweight']
-        elif pt.fitsnap_dict['Row_Type'][index_b] == 'Force':
-            pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['fweight']
-        elif pt.fitsnap_dict['Row_Type'][index_b] == 'Stress':
-            pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['vweight']
+        if snap.pt.fitsnap_dict['Row_Type'][index_b] == 'Energy':
+            snap.pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['eweight']
+        elif snap.pt.fitsnap_dict['Row_Type'][index_b] == 'Force':
+            snap.pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['fweight']
+        elif snap.pt.fitsnap_dict['Row_Type'][index_b] == 'Stress':
+            snap.pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['vweight']
 
-@pt.rank_zero
+@snap.pt.rank_zero
 def ediff_cost(fit,g1,g2,target,grouptype=grouptype,rowtype=rowtype):
     # provides 'cost' for energy differences for amatrix entries:
     #  (\beta * a1 - \beta * a2) - target
@@ -243,20 +237,20 @@ def ediff_cost(fit,g1,g2,target,grouptype=grouptype,rowtype=rowtype):
     indexg2 = grouptype.index(g2)
     assert rowtype[indexg1] == 'Energy',"not accessing energy row for group %s" % g1
     assert rowtype[indexg2] == 'Energy',"not accessing energy row for group %s" % g2
-    a1 = pt.shared_arrays['a'].array[indexg1].copy()
-    a2 = pt.shared_arrays['a'].array[indexg2].copy()
+    a1 = snap.pt.shared_arrays['a'].array[indexg1].copy()
+    a2 = snap.pt.shared_arrays['a'].array[indexg2].copy()
 
     e1 = np.sum(a1*fit)
     e2 = np.sum(a2*fit)
     diff = e1-e2
 
-    #pt.single_print(e1,e2,diff,target)
+    #snap.pt.single_print(e1,e2,diff,target)
 
     return np.abs(diff - target)
 
 #NOTE fit_and_cost will likely need to be modified to print current fit if
 # other objective functions are to be added. 
-@pt.rank_zero
+@snap.pt.rank_zero
 def fit_and_cost(snap,costweights):
     etot_weight, ftot_weight = tuple(costweights)
     #clear old fit and solve test fit
@@ -267,7 +261,7 @@ def fit_and_cost(snap,costweights):
     rmse_tst = errstst.iloc[:,2].to_numpy()
     rmse_countstst = errstst.iloc[:,0].to_numpy()
 
-    #pt.single_print(errstst)
+    #snap.pt.single_print(errstst)
     rmse_eattst = rmse_tst[0]
     rmse_fattst = rmse_tst[1]
     CO = CostObject()
@@ -284,13 +278,13 @@ def fit_and_cost(snap,costweights):
     del CO
     return cost
 
-@pt.rank_zero
+@snap.pt.rank_zero
 def seed_maker(mc,mmax = 1000000000,use_saved_seeds=True):
     if use_saved_seeds:
         try:
             seeds = np.load('seeds.npy')
             if np.shape(seeds)[0] < mc:
-                pt.single_print('potentially not enough seeds for this run, appending more')
+                snap.pt.single_print('potentially not enough seeds for this run, appending more')
                 seeds = np.append(seeds , np.random.randint(0,mmax, mc- (np.shape(seeds)[0])  ))
                 np.save('seeds.npy',seeds)
             else:
@@ -303,7 +297,7 @@ def seed_maker(mc,mmax = 1000000000,use_saved_seeds=True):
         np.save('seeds.npy',seeds)
     return seeds
 
-@pt.rank_zero
+@snap.pt.rank_zero
 def mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng,w_combo_delta=np.array([]),ef_rat_delta=np.array([]),apply_random=True,full_mutation=False):
     if type(current_w_combo) == tuple:
         current_w_combo = np.array(current_w_combo)
@@ -338,20 +332,20 @@ def mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng,w_combo_
         return test_w_combo,test_ef_rat
 
 
-@pt.rank_zero
+@snap.pt.rank_zero
 def print_final(ew_frcrat_final,train_sz=1.0,test_sz=0.0):
     ew_final,frcrat_final = ew_frcrat_final
-    pt.single_print('Best group weights\n')
+    snap.pt.single_print('Best group weights\n')
     for idi,dat in enumerate(gtks):
         en_weight = ew_final[idi]
         frc_weight = ew_final[idi]*frcrat_final[idi]
-        pt.single_print('%s       =  %1.2f      %1.2f      %.16E      %.16E      1.E-12' % (dat, train_sz,test_sz,en_weight,frc_weight))
+        snap.pt.single_print('%s       =  %1.2f      %1.2f      %.16E      %.16E      1.E-12' % (dat, train_sz,test_sz,en_weight,frc_weight))
 
 #-----------------------------------------------------------------------
 # begin the primary optimzation functions
 #-----------------------------------------------------------------------
 time1 = time.time()
-@pt.rank_zero
+@snap.pt.rank_zero
 def sim_anneal():
     #---------------------------------------------------------------------------
     #Begin optimization hyperparameters
@@ -417,17 +411,17 @@ def sim_anneal():
 
             meta = (tuple(list(current_w_combo)),) + (tuple(list(current_ef_rat)),)
             count += 1
-            pt.single_print('beta',beta,'count',count,' accept ratio for current beta %f' % (naccepti/count) ,meta,boltz,rmse_tottst,rmse_tot)
+            snap.pt.single_print('beta',beta,'count',count,' accept ratio for current beta %f' % (naccepti/count) ,meta,boltz,rmse_tottst,rmse_tot)
             tot_count += 1
             np.random.seed(seedsi[tot_count])
     # write output for optimized potential
     print_final(meta)
     time2 = time.time()
-    pt.single_print('Total optimization time,', time2 - time1, 'total number of fits', tot_count)
+    snap.pt.single_print('Total optimization time,', time2 - time1, 'total number of fits', tot_count)
     snap.write_output()
 
 
-@pt.rank_zero
+@snap.pt.rank_zero
 def genetic_algorithm():
     #---------------------------------------------------------------------------
     #Begin optimization hyperparameters
@@ -504,8 +498,8 @@ def genetic_algorithm():
             # to run the lammps/pylammps simulation. To do so, the fitsnap output file name prefix should
             # be updated per step, then snap.write_output() should be called per step. This will likely increase
             # the optimization time.
-        # Anything printed with pt.single_print will be included in output file.
-        pt.single_print('generation,scores,popsize:',generation,len(scores),population_size)
+        # Anything printed with snap.pt.single_print will be included in output file.
+        snap.pt.single_print('generation,scores,popsize:',generation,len(scores),population_size)
         # Print generation and best fit.
         bestfit = min(scores)
         print(f"{generation} {bestfit}")
@@ -518,7 +512,7 @@ def genetic_algorithm():
         except IndexError:
             conv_flag = False
         printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape(2,ne).tolist()])
-        pt.single_print('generation:',generation, 'score:',scores[i])#generation, score
+        snap.pt.single_print('generation:',generation, 'score:',scores[i])#generation, score
         print_final(printbest,train_sz=1.0,test_sz=0.0)
         slct = Selector(selection_style = selection_method)
         selected = [slct.selection(population, scores) for creature_idx in range(population_size)]
@@ -557,7 +551,7 @@ def genetic_algorithm():
     costi = fit_and_cost(snap,[etot_weight,ftot_weight])
     print_final(tuple([best_ew,best_ffac]))
     time2 = time.time()
-    pt.single_print('Total optimization time,', time2 - time1)
+    snap.pt.single_print('Total optimization time,', time2 - time1)
     snap.write_output()
 
 if optimization_style == 'simulated_annealing':

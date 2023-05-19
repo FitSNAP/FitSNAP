@@ -1,7 +1,5 @@
 from fitsnap3lib.io.outputs.outputs import Output, optional_open
-from fitsnap3lib.parallel_tools import ParallelTools
 from datetime import datetime
-from fitsnap3lib.io.input import Config
 import numpy as np
 import random
 import tarfile
@@ -13,10 +11,10 @@ import tarfile
 
 class Custom(Output):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self.config = Config()
-        self.pt = ParallelTools()
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
+        #self.config = Config()
+        #self.pt = ParallelTools()
 
     def output(self, coeffs, errors):
         self.write_nn(errors)

@@ -62,7 +62,7 @@ class FitSnap:
             descriptors and fitting data.
         solver (:obj:`class` Solver): Instance of the Solver class for performing a fit.
     """
-    def __init__(self, input: (str | dict)=None, comm=None, arglist: list=None):
+    def __init__(self, input: (str | dict)=None, comm=None, arglist: list=[]):
         self.comm = comm
         # Instantiate ParallelTools and Config instances belonging to this FitSnap instance.
         # NOTE: Each proc in `comm` creates a different `pt` object, but shared arrays still share 

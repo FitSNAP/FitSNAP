@@ -16,12 +16,12 @@ Rohskopf et al., (2023). FitSNAP: Atomistic machine learning with LAMMPS. Journa
 
 #### Dependencies:
 
-* This package expects Python 3.8+ 
+* This package expects Python 3.10+ 
 * Python dependencies: See `pyproject.toml`
 * [Compile LAMMPS as a shared library with python support](https://docs.lammps.org/Python_head.html). 
 If you can run `import lammps; lmp = lammps.lammps()` without errors in your Python interpreter, 
 you're good to go!
-* [Optional] To use neural network fitting functionality, install PyTorch with `pip install torch`. 
+* [Optional] To use neural network fitting functionality, install PyTorch. 
 * [Optional] For optimal performance, also install your favorite flavor of MPI (OpenMPI, MPICH) and 
 the Python package `mpi4py`. If installing mpi4py with a Python package manager, we recommend using 
 pip over conda as pip will auto-configure your package to your system's defaut MPI version 

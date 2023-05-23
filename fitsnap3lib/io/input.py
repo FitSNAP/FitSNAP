@@ -26,7 +26,7 @@ class Config():
         
     """
 
-    def __init__(self, pt, input: (str | dict) = None, arguments_lst: list = []):
+    def __init__(self, pt, input=None, arguments_lst: list = []):
         self.pt = pt
         self.input = input
         # Input file (infile) and dictionary (indict) set to None by default and get set in 

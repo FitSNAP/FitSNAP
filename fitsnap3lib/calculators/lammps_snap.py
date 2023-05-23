@@ -270,15 +270,15 @@ class LammpsSnap(LammpsBase):
                 nrows += 6
             nd = np.shape(lmp_snap)[1]-1
             na = nrows #np.shape(lmp_snap)[0]
-            a = np.zeros((na, nd))
-            b = np.zeros(na)
-            w = np.zeros(na)
         else:
             nd = np.shape(lmp_snap)[1]
             na = np.shape(lmp_snap)[0]
-            a = np.zeros((na, nd))
-            b = np.zeros(na)
-            w = np.zeros(na)
+
+        if self.config.sections['BISPECTRUM'].bzeroflag:
+            nd -= 1
+        a = np.zeros((na, nd))
+        b = np.zeros(na)
+        w = np.zeros(na)
 
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
             raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],

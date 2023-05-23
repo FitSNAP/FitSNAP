@@ -26,7 +26,7 @@ class Config():
         
     """
 
-    def __init__(self, pt, input=None, arguments_lst: list = []):
+    def __init__(self, pt, input=None, arguments_lst=None):
         self.pt = pt
         self.input = input
         # Input file (infile) and dictionary (indict) set to None by default and get set in 
@@ -45,7 +45,7 @@ class Config():
         else:
             self.hash = None
 
-    def parse_cmdline(self, arguments_lst=[]):
+    def parse_cmdline(self, arguments_lst=None):
         """ Parse command line args. """
         parser = argparse.ArgumentParser(prog="fitsnap3")
         if (self.input is None):

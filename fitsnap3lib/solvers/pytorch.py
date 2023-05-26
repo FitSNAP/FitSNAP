@@ -4,6 +4,7 @@ from fitsnap3lib.solvers.solver import Solver
 from time import time
 import numpy as np
 import psutil
+import sys
 
 try:
     from fitsnap3lib.lib.neural_networks.pytorch import FitTorch, create_torch_network
@@ -286,6 +287,7 @@ try:
                 target_pas_plot_val = []
                 model_pas_plot_val = []
                 natoms_per_config = [] # stores natoms per config for calculating eV/atom errors later.
+                min_val_loss = sys.float_info.max # Store min validation loss
                 if (self.config.args.verbose or verbose):
                     self.pt.single_print(f"{'Epoch': <2} {'Train': ^10} {'Val': ^10} {'Time (s)': >2}")
                 for epoch in range(self.config.sections["PYTORCH"].num_epochs):
@@ -497,15 +499,22 @@ try:
 
                     # average training and validation losses across all batches
 
-                    progress_str = f"{epoch: <2} {np.mean(np.asarray(train_losses_step)): ^10.3e} {np.mean(np.asarray(val_losses_step)): ^10.3e} {time()-start: >2.3e}"
+                    mean_val_loss = np.mean(np.asarray(val_losses_step))
+                    mean_train_loss = np.mean(np.asarray(train_losses_step))
+                    progress_str = f"{epoch: <2} {mean_train_loss: ^10.3e} {mean_val_loss: ^10.3e} {time()-start: >2.3e}"
                     #self.pt.single_print(progress_str)
                     if (self.config.args.verbose or verbose):
                         self.pt.single_print(progress_str)
                     if outfile is not None:
                         fh.write(progress_str + "\n")
-                    train_losses_epochs.append(np.mean(np.asarray(train_losses_step)))
-                    val_losses_epochs.append(np.mean(np.asarray(val_losses_step)))
-                    if epoch % self.config.sections['PYTORCH'].save_freq == 0:
+                    train_losses_epochs.append(mean_train_loss)
+                    val_losses_epochs.append(mean_val_loss)
+                    # TODO: Use conditional here to save minimum validation loss.
+                    #       Base this on 
+                    #if epoch % self.config.sections['PYTORCH'].save_freq == 0:
+                    if mean_val_loss < min_val_loss:
+                        print(">>> New best model! Saving.")
+                        min_val_loss = mean_val_loss
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': self.model.state_dict(),

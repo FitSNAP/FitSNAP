@@ -5,6 +5,7 @@ from time import time
 import numpy as np
 import psutil
 import sys
+from copy import deepcopy
 
 try:
     from fitsnap3lib.lib.neural_networks.pytorch import FitTorch, create_torch_network
@@ -515,6 +516,7 @@ try:
                     if mean_val_loss < min_val_loss:
                         print(">>> New best model! Saving.")
                         min_val_loss = mean_val_loss
+                        self.model_best = deepcopy(self.model)
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': self.model.state_dict(),
@@ -632,6 +634,10 @@ try:
 
             @self.pt.sub_rank_zero
             def decorated_evaluate_configs():
+                
+                if hasattr(self, "model_best"):
+                    self.model = self.model_best
+
                 #self.create_datasets()
                 # Convert model to dtype
                 self.model.to(dtype)

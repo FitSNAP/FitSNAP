@@ -94,6 +94,8 @@ class LammpsSnap(LammpsBase):
         # everything is handled by LAMMPS compute snap
 
         base_snap = "compute snap all snap ${rcutfac} ${rfac0} ${twojmax}"
+        #print(base_snap)
+        #print(kwargs)
         command = f"{base_snap} {radelem} {wj} {kwargs}"
         self._lmp.command(command)
 
@@ -324,6 +326,11 @@ class LammpsSnap(LammpsBase):
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
 
             # Get matrix of descriptors (A).
+
+            print(np.shape(a))
+            print(b_sum_temp)
+            print(np.shape(b_sum_temp))
+            assert(False)
             a[irow:irow+bik_rows] = b_sum_temp * self.config.sections["BISPECTRUM"].blank2J[np.newaxis, :]
 
             # Get vector of truths (b).

@@ -1,4 +1,5 @@
-from fitsnap3lib.parallel_tools import double_size, DistributedList, stubs #, ParallelTools
+#from fitsnap3lib.parallel_tools import double_size, DistributedList, stubs #, ParallelTools
+from fitsnap3lib.parallel_tools import DistributedList
 #from fitsnap3lib.io.input import Config
 #from fitsnap3lib.io.output import output
 import numpy as np
@@ -116,7 +117,7 @@ class Calculator:
 
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
 
-            a_size = ( (a_len * a_width) + (dgrad_len * a_width) ) * double_size
+            a_size = ( (a_len * a_width) + (dgrad_len * a_width) ) * self.pt.double_size
             if self.config.args.verbose:
                 self.pt.single_print(">>> Matrix of descriptors and descriptor derivatives takes up ", 
                               "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
@@ -196,7 +197,7 @@ class Calculator:
             assert isinstance(neighlist_width, int)
 
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
-            a_size = (neighlist_len * neighlist_width + 2 * c_len * c_width) * double_size
+            a_size = (neighlist_len * neighlist_width + 2 * c_len * c_width) * self.pt.double_size
             if self.config.args.verbose:
                 self.pt.single_print(">>> Matrix of data takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
                               "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
@@ -274,7 +275,7 @@ class Calculator:
             assert isinstance(a_width, int)
 
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
-            a_size = a_len * a_width * double_size
+            a_size = a_len * a_width * self.pt.double_size
             if self.config.args.verbose:
                 self.pt.single_print(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
                               "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB") #, "on rank", "{:d}".format(self.pt._rank))
@@ -319,7 +320,7 @@ class Calculator:
         for key in self.pt.fitsnap_dict.keys():
             if isinstance(self.pt.fitsnap_dict[key], DistributedList):
                 self.pt.gather_fitsnap(key)
-                if self.pt.fitsnap_dict[key] is not None and stubs != 1:
+                if self.pt.fitsnap_dict[key] is not None and self.pt.stubs != 1:
                     self.pt.fitsnap_dict[key] = [item for sublist in self.pt.fitsnap_dict[key] for item in sublist]
                 elif self.pt.fitsnap_dict[key] is not None:
                     self.pt.fitsnap_dict[key] = self.pt.fitsnap_dict[key].get_list()

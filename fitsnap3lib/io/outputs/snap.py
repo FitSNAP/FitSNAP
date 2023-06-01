@@ -29,30 +29,31 @@ class Snap(Output):
         Args:
             coeffs: list of linear model coefficients.
         """
-        if self.config.sections["EXTRAS"].only_test != 1:
-            if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
-                raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
-        with optional_open(self.config.sections["OUTFILE"].potential_name and
-                            self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
-            file.write(_to_coeff_string(self.config, coeffs))
-        with optional_open(self.config.sections["OUTFILE"].potential_name and
-                            self.config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
-            file.write(_to_param_string(self.config))
-        with optional_open(self.config.sections["OUTFILE"].potential_name and
-                            self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
-            file.write(_to_potential_file(self.config))
-        if (self._tarball):
-            with optional_open("in.lammps", 'wt') as file:
-                file.write(_to_lammps_input())
-            # Package these files into a tarball
-            fp = tarfile.open(f"fit-{self.config.hash}.tar.gz", 'w:gz')
-            potname = self.config.sections["OUTFILE"].potential_name
-            potname_prefix = potname.split('/')[-1]
-            fp.add(potname + '.snapcoeff', arcname = potname_prefix + '.snapcoeff')
-            fp.add(potname + '.snapparam', arcname = potname_prefix + '.snapparam')
-            fp.add(potname + '.mod', arcname = potname_prefix)
-            fp.add("in.lammps")
-            fp.close()
+        if (coeffs is not None):
+            if self.config.sections["EXTRAS"].only_test != 1:
+                if self.config.sections["CALCULATOR"].calculator != "LAMMPSSNAP":
+                    raise TypeError("SNAP output style must be paired with LAMMPSSNAP calculator")
+            with optional_open(self.config.sections["OUTFILE"].potential_name and
+                                self.config.sections["OUTFILE"].potential_name + '.snapcoeff', 'wt') as file:
+                file.write(_to_coeff_string(self.config, coeffs))
+            with optional_open(self.config.sections["OUTFILE"].potential_name and
+                                self.config.sections["OUTFILE"].potential_name + '.snapparam', 'wt') as file:
+                file.write(_to_param_string(self.config))
+            with optional_open(self.config.sections["OUTFILE"].potential_name and
+                                self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
+                file.write(_to_potential_file(self.config))
+            if (self._tarball):
+                with optional_open("in.lammps", 'wt') as file:
+                    file.write(_to_lammps_input())
+                # Package these files into a tarball
+                fp = tarfile.open(f"fit-{self.config.hash}.tar.gz", 'w:gz')
+                potname = self.config.sections["OUTFILE"].potential_name
+                potname_prefix = potname.split('/')[-1]
+                fp.add(potname + '.snapcoeff', arcname = potname_prefix + '.snapcoeff')
+                fp.add(potname + '.snapparam', arcname = potname_prefix + '.snapparam')
+                fp.add(potname + '.mod', arcname = potname_prefix)
+                fp.add("in.lammps")
+                fp.close()
 
     #@pt.rank_zero
     def write(self, coeffs, errors):

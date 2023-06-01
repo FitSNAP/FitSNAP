@@ -11,9 +11,9 @@ class RIDGE(Solver):
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
 
-    def perform_fit(self):
+    def perform_fit(self, a=None, b=None, w=None, trainall=False):
         @self.pt.sub_rank_zero
-        def decorated_perform_fit():
+        def decorated_perform_fit(a=None, b=None, w=None):
 
             training = [not elem for elem in self.pt.fitsnap_dict['Testing']]
             w = self.pt.shared_arrays['w'].array[training]
@@ -37,7 +37,7 @@ class RIDGE(Solver):
             self.pt.single_print('printing fit: ', reg.coef_)
             self.fit = reg.coef_
             residues = np.matmul(aw,reg.coef_) - bw
-        decorated_perform_fit()
+        decorated_perform_fit(a,b,w)
 
 
     #@staticmethod

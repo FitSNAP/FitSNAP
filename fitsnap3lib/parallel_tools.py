@@ -43,13 +43,15 @@ from pkgutil import iter_modules
 from importlib import import_module
 from copy import deepcopy
 
-
+"""
 try:
     # stubs = 0 MPI is active
     stubs = 0
     from mpi4py import MPI
 except ModuleNotFoundError:
     stubs = 1
+"""
+
 
 def printf(*args, **kw):
     kw['flush'] = True
@@ -124,7 +126,7 @@ def _rank_zero_decorator(decorator):
 def dummy_function(*args, **kw):
     return None
 
-
+"""
 def stub_check(method):
     def stub_function(*args, **kw):
         if stubs == 0:
@@ -132,6 +134,7 @@ def stub_check(method):
         else:
             return dummy_function(*args, **kw)
     return stub_function
+"""
 
 
 def print_lammps(method):
@@ -153,9 +156,16 @@ class ParallelTools():
 
     def __init__(self, comm=None):
         self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
-        if stubs == 0:
+        if comm is None:
+            self.stubs = 1
+        else:
+            self.stubs = 0
+
+        if self.stubs == 0:
+            from mpi4py import MPI
+            self.MPI = MPI
             if comm is None:
-                comm = MPI.COMM_WORLD
+                comm = self.MPI.COMM_WORLD
             self._comm = comm
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
@@ -164,7 +174,9 @@ class ParallelTools():
             # to loop over functions that create shared arrays, to avoid mem leaks.
             self.create_shared_bool = True
 
-        if stubs == 1:
+            self.double_size = self.MPI.DOUBLE.Get_size()
+
+        if self.stubs == 1:
             self._rank = 0
             self._size = 1
             self._comm = None
@@ -174,10 +186,13 @@ class ParallelTools():
             self._sub_head_proc = 0
             self._node_index = 0
             self._number_of_nodes = 1
+            self.double_size = ctypes.sizeof(ctypes.c_double)
 
         self.killer = GracefulKiller(self._comm)
 
-        self._comm_split()
+        if self.stubs == 0:
+            self._comm_split()
+
         self._lmp = None
         self._seed = 0.0
         self._set_seed()
@@ -202,9 +217,9 @@ class ParallelTools():
             super().__setattr__(name, value)
     """
 
-    @stub_check
+    #@stub_check
     def _comm_split(self):
-        self._sub_comm = self._comm.Split_type(MPI.COMM_TYPE_SHARED)
+        self._sub_comm = self._comm.Split_type(self.MPI.COMM_TYPE_SHARED)
         self._sub_rank = self._sub_comm.Get_rank()
         self._sub_size = self._sub_comm.Get_size()
         self._sub_head_proc = 0
@@ -221,7 +236,7 @@ class ParallelTools():
     def _set_seed(self):
         if self._rank == 0.0:
             self._seed = randint(0, 1e5)
-        if stubs == 0:
+        if self.stubs == 0:
             self._seed = self._comm.bcast(self._seed)
 
     def get_seed(self):
@@ -319,7 +334,7 @@ class ParallelTools():
         
     def free(self):
         """ Free memory associated with all shared arrays. """
-        if not stubs:
+        if not self.stubs:
             for name in self.shared_arrays:
                 # There is no mpi4py native clean way to check if an array is
                 # already freed, so let's do try/except for now.
@@ -328,15 +343,16 @@ class ParallelTools():
                 except:
                     pass
         else:
-            self.single_print("Trying to free a stubs array; doing nothing.")
+            #self.single_print("No need to free a stubs array.")
+            pass
 
     def create_shared_array(self, name, size1, size2=1, dtype='d', tm=0):
 
         if isinstance(name, str):
-            if (stubs == 0 and self.create_shared_bool):
+            if (self.stubs == 0 and self.create_shared_bool):
                 # If key exists, free the window memory to prevent memory leaks.
                 # TODO: Is there a way to check state of the window instead of the key?
-                if (name in self.shared_arrays and not stubs):
+                if (name in self.shared_arrays and not self.stubs):
                     try:
                         self.shared_arrays[name].win.Free()
                     except Exception as e:
@@ -348,7 +364,8 @@ class ParallelTools():
                 self.shared_arrays[name] = SharedArray(size1, size2=size2,
                                                        dtype=dtype,
                                                        multinode=tm,
-                                                       comms=comms)
+                                                       comms=comms,
+                                                       MPI=self.MPI)
             else:   
                 self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)
         else:
@@ -367,18 +384,19 @@ class ParallelTools():
         else:
             raise TypeError("name must be a string")
 
-    @stub_check
+    #@stub_check
     def _bcast_fitsnap(self, name):
 
-        if self._sub_rank == 0:
-            if name not in self.fitsnap_dict:
-                raise NameError("Dictionary element not yet in fitsnap_dictionary")
-        else:
-            self.fitsnap_dict[name] = None
+        if self.stubs == 0:
+            if self._sub_rank == 0:
+                if name not in self.fitsnap_dict:
+                    raise NameError("Dictionary element not yet in fitsnap_dictionary")
+            else:
+                self.fitsnap_dict[name] = None
 
-        self.fitsnap_dict[name] = self._sub_comm.bcast(self.fitsnap_dict[name])
+            self.fitsnap_dict[name] = self._sub_comm.bcast(self.fitsnap_dict[name])
 
-    @stub_check
+    #@stub_check
     def gather_fitsnap(self, name, allgather:bool=None):
         """
         Gather distributed lists.
@@ -387,32 +405,37 @@ class ParallelTools():
                        result in large (but not prohibitive) memory usage, where each proc has 
                        ~10 lists with size of number of configs.
         """
-        if name not in self.fitsnap_dict:
-            raise NameError("Dictionary element not yet in fitsnap_dictionary")
-        # TODO: Make some sort of option to either gather or allgather.
-        #       It saves memory to simply gather, but allgather is useful in 
-        #       scenarios when using multiple instances in parallel, we might need 
-        #       the fitsnap dict on all procs.
-        # NOTE: When number of procs is large, allgather could quickly consume all memory.
-        #self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
-        self.fitsnap_dict[name] = self._sub_comm.allgather(self.fitsnap_dict[name])
+        if self.stubs == 0:
+            if name not in self.fitsnap_dict:
+                raise NameError("Dictionary element not yet in fitsnap_dictionary")
+            # TODO: Make some sort of option to either gather or allgather.
+            #       It saves memory to simply gather, but allgather is useful in 
+            #       scenarios when using multiple instances in parallel, we might need 
+            #       the fitsnap dict on all procs.
+            # NOTE: When number of procs is large, allgather could quickly consume all memory.
+            #self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
+            self.fitsnap_dict[name] = self._sub_comm.allgather(self.fitsnap_dict[name])
 
-    @stub_check
+    #@stub_check
     @_sub_rank_zero
     def gather_to_head_node(self, array):
-        return self._head_group_comm.allgather(array)
+        if self.stubs == 0:
+            return self._head_group_comm.allgather(array)
 
-    @stub_check
+    #@stub_check
     def gather_distributed_list(self, dist_list):
-        gathered_list = self._sub_comm.allgather(dist_list)
+        if self.stubs == 0:
+            gathered_list = self._sub_comm.allgather(dist_list)
 
-    @stub_check
+    #@stub_check
     def all_barrier(self):
-        self._comm.Barrier()
+        if self.stubs == 0:
+            self._comm.Barrier()
 
-    @stub_check
+    #@stub_check
     def sub_barrier(self):
-        self._sub_comm.Barrier()
+        if self.stubs == 0:
+            self._sub_comm.Barrier()
 
     def split_by_node(self, obj):
         if isinstance(obj, list):
@@ -430,7 +453,7 @@ class ParallelTools():
             difference = np.zeros(self._number_of_nodes)
             if self._sub_rank == 0:
                 lengths[self._node_index] = scraped_length - length
-                self._head_group_comm.Allreduce([lengths, MPI.DOUBLE], [difference, MPI.DOUBLE])
+                self._head_group_comm.Allreduce([lengths, self.MPI.DOUBLE], [difference, self.MPI.DOUBLE])
                 if self._rank == 0:
                     if np.sum(difference) != 0:
                         raise ValueError(np.sum(difference), "sum of differences must be zero")
@@ -471,7 +494,7 @@ class ParallelTools():
 
     def check_lammps(self, lammps_noexceptions=0):
         cmds = ["-screen", "none", "-log", "none"]
-        if stubs == 0:
+        if self.stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
         else:
             self._lmp = lammps(cmdargs=cmds)
@@ -494,7 +517,7 @@ class ParallelTools():
         if not lammpslog:
             cmds.append("-log")
             cmds.append("none")
-        if stubs == 0:
+        if self.stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
             self.initialize_mliap()
         else:
@@ -522,10 +545,10 @@ class ParallelTools():
 
         Returns number of configs per node, reduced across procs, or just nconfigs if stubs.
         """
-        if not stubs:
+        if not self.stubs:
             ncpp = np.array([nconfigs]) # Num. configs per proc.
             ncpn = np.array([0]) # Num. configs per node.
-            self._comm.Allreduce([ncpp, MPI.INT], [ncpn, MPI.INT])
+            self._comm.Allreduce([ncpp, self.MPI.INT], [ncpn, self.MPI.INT])
             return ncpn[0]
         return nconfigs
 
@@ -764,12 +787,13 @@ class ParallelTools():
         self._bcast_fitsnap("sub_neighlist_indices")
         self.fitsnap_dict["sub_neighlist_indices"] = indices[self._sub_rank]
 
-    @stub_check
+    #@stub_check
     def combine_coeffs(self, coeff):
         new_coeff = None
-        if self._sub_rank == 0:
-            new_coeff = self._head_group_comm.allreduce(coeff) / self._number_of_nodes
-        return self._sub_comm.bcast(new_coeff)
+        if self.stubs == 0:
+            if self._sub_rank == 0:
+                new_coeff = self._head_group_comm.allreduce(coeff) / self._number_of_nodes
+            return self._sub_comm.bcast(new_coeff)
 
     @staticmethod
     def get_ram():
@@ -880,7 +904,9 @@ class DistributedList:
 
 class SharedArray:
 
-    def __init__(self, size1, size2=1, dtype='d', multinode=0, comms=None):
+    def __init__(self, size1, size2=1, dtype='d', multinode=0, comms=None, MPI=None):
+        
+        self.MPI = MPI
 
         # total array for all procs
         self.array = None
@@ -906,9 +932,9 @@ class SharedArray:
             self.multinode_lengths()
 
         if dtype == 'd':
-            item_size = MPI.DOUBLE.Get_size()
+            item_size = self.MPI.DOUBLE.Get_size()
         elif dtype == 'i':
-            item_size = MPI.INT.Get_size()
+            item_size = self.MPI.INT.Get_size()
         else:
             raise TypeError("dtype {} has not been implemented yet".format(dtype))
         if self._comms[1][1] == 0:
@@ -917,14 +943,14 @@ class SharedArray:
             self._nbytes = 0
 
         #win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
-        self.win = MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
+        self.win = self.MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
 
         buff, item_size = self.win.Shared_query(0)
 
         if dtype == 'd':
-            assert item_size == MPI.DOUBLE.Get_size()
+            assert item_size == self.MPI.DOUBLE.Get_size()
         elif dtype == 'i':
-            assert item_size == MPI.INT32_T.Get_size()
+            assert item_size == self.MPI.INT32_T.Get_size()
         if self._width == 1:
             self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, ))
         else:
@@ -986,9 +1012,10 @@ class StubsArray:
     def get_memory(self):
         return self.array.nbytes
 
-
+"""
 if __name__.split(".")[-1] == "parallel_tools":
     if stubs == 0:
         double_size = MPI.DOUBLE.Get_size()
     else:
         double_size = ctypes.sizeof(ctypes.c_double)
+"""

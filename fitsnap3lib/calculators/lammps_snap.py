@@ -250,6 +250,8 @@ class LammpsSnap(LammpsBase):
 
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
 
+        #print(np.shape(lmp_snap))
+
         # We want first column to be 1, 0, ... 0.
         # Next columns are bispectrum components.
         # Take last column of `lmp_snap` as the `b` vector.
@@ -270,15 +272,15 @@ class LammpsSnap(LammpsBase):
                 nrows += 6
             nd = np.shape(lmp_snap)[1]-1
             na = nrows #np.shape(lmp_snap)[0]
-            a = np.zeros((na, nd))
-            b = np.zeros(na)
-            w = np.zeros(na)
         else:
             nd = np.shape(lmp_snap)[1]
             na = np.shape(lmp_snap)[0]
-            a = np.zeros((na, nd))
-            b = np.zeros(na)
-            w = np.zeros(na)
+
+        if self.config.sections['BISPECTRUM'].bzeroflag and not self.config.sections['BISPECTRUM'].bikflag:
+            nd -= 1
+        a = np.zeros((na, nd))
+        b = np.zeros(na)
+        w = np.zeros(na)
 
         if (np.isinf(lmp_snap)).any() or (np.isnan(lmp_snap)).any():
             raise ValueError('Nan in computed data of file {} in group {}'.format(self._data["File"],
@@ -324,6 +326,7 @@ class LammpsSnap(LammpsBase):
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
 
             # Get matrix of descriptors (A).
+
             a[irow:irow+bik_rows] = b_sum_temp * self.config.sections["BISPECTRUM"].blank2J[np.newaxis, :]
 
             # Get vector of truths (b).

@@ -87,13 +87,19 @@ def collate_data(atoms, name: str=None, group_dict: dict=None) -> dict:
 
     data = {}
     data['Group'] = name #'ASE' # TODO: Make this customizable for ASE groups.
-    data['File'] = None
-    data['Stress'] = atoms.get_stress(voigt=False)
     data['Positions'] = positions
-    data['Energy'] = atoms.get_total_energy()
     data['AtomTypes'] = atoms.get_chemical_symbols()
+    if (atoms.calc is None): # Add check for calculator - if it is not present 
+        # (e.g. just calculating descriptors) just assign 0.
+        data['Energy'] = 0.0
+        data['Forces'] = np.zeros((len(atoms), 3))
+        data['Stress'] = np.zeros(6)
+    else:
+        data['Energy'] = atoms.get_total_energy()
+        data['Forces'] = atoms.get_forces()
+        data['Stress'] = atoms.get_stress(voigt=False)
     data['NumAtoms'] = len(atoms)
-    data['Forces'] = atoms.get_forces()
+    data['File'] = None
     data['QMLattice'] = cell
     data['test_bool'] = 0
     data['Lattice'] = cell

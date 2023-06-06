@@ -401,9 +401,7 @@ class ParallelTools():
         """
         Gather distributed lists.
         Args:
-            allgather: If true then we allgather. When number of procs is large this can 
-                       result in large (but not prohibitive) memory usage, where each proc has 
-                       ~10 lists with size of number of configs.
+            allgather: If true then we allgather. When number of procs is large this will use more memory.
         """
         if self.stubs == 0:
             if name not in self.fitsnap_dict:

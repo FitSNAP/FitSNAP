@@ -26,7 +26,7 @@ class Config():
         
     """
 
-    def __init__(self, pt, input=None, arguments_lst=None):
+    def __init__(self, pt, input=None, arguments_lst: list = []):
         self.pt = pt
         self.input = input
         # Input file (infile) and dictionary (indict) set to None by default and get set in 
@@ -45,8 +45,8 @@ class Config():
         else:
             self.hash = None
 
-    def parse_cmdline(self, arguments_lst=None):
-        """ Parse command line args. """
+    def parse_cmdline(self, arguments_lst: list = []):
+        """ Parse command line args if using executable mode, or a list if using library mode. """
         parser = argparse.ArgumentParser(prog="fitsnap3")
         if (self.input is None):
             parser.add_argument("infile", action="store",
@@ -97,7 +97,14 @@ class Config():
             if (item=="build" or item=="html" or item=="source"):
                 # We're building docs in this case.
                 arguments_lst = arguments_lst=["../examples/Ta_Linear_JCP2014/Ta-example-nodump.in", "--overwrite"]
-        self.args = parser.parse_args(arguments_lst)
+        
+        if arguments_lst:
+            # If arg list is not empty we are feeding in arguments with library mode, and args should be parse 
+            # according to this list.
+            self.args = parser.parse_args(arguments_lst)
+        else:
+            # If arguments list is empty, we can parse the args like usual with executable mode.
+            self.args = parser.parse_args()
 
     def parse_config(self):
         tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')

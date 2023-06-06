@@ -150,7 +150,7 @@ so the installation instructions are a little different if you want to use ACE.
         git clone https://github.com/jmgoff/lammps-user-pace-1
         cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2022.10.15/ML-PACE/ace-evaluator/
         make -j
-        make install
+        make install-python
 
 
 #. Now, set up paths::
@@ -165,7 +165,7 @@ so the installation instructions are a little different if you want to use ACE.
         # Set python path so you can run FitSNAP as executable:
         export PYTHONPATH=$PYTHONPATH:/path/to/where/you/want/FitSNAP
 
-Note for infrequent installtion issues: For some versions of OMP, the 
+Note for infrequent installation issues: For some versions of OMP, the 
 LAMMPS/PYTHON interface may produce errors when running, leading to a
 LAMMPS exception that kills FitSNAP jobs. If your install completes
 successfully and you have problems with the execution of examples in

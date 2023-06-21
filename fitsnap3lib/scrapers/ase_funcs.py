@@ -90,27 +90,34 @@ def collate_data(atoms, name: str=None, group_dict: dict=None, f: int=0) -> dict
     data = {}
     data['Group'] = name #'ASE' # TODO: Make this customizable for ASE groups.
     data['File'] = f"{name}_{f}" #None
-    data['Stress'] = atoms.get_stress(voigt=False)
     #print(data['Stress'])
     #assert(False)
     data['Positions'] = positions
-    data['Energy'] = atoms.get_total_energy()
     data['AtomTypes'] = atoms.get_chemical_symbols()
+    if (atoms.calc is None): # Add check for calculator - if it is not present 
+        # (e.g. just calculating descriptors) just assign 0.
+        data['Energy'] = 0.0
+        data['Forces'] = np.zeros((len(atoms), 3))
+        data['Stress'] = np.zeros(6)
+    else:
+        data['Energy'] = atoms.get_total_energy()
+        data['Forces'] = atoms.get_forces()
+        data['Stress'] = atoms.get_stress(voigt=False)
     data['NumAtoms'] = len(atoms)
-    data['Forces'] = atoms.get_forces()
     data['QMLattice'] = cell
-    data['test_bool'] = group_dict['test_bools'][f]
     data['Lattice'] = cell
     data['Rotation'] = np.array([[1,0,0],[0,1,0],[0,0,1]])
     data['Translation'] = np.zeros((len(atoms), 3))
-    # Inject the weights.
+    # Inject the weights and other group quantities.
     if group_dict is not None:
         data['eweight'] = group_dict["eweight"] if "eweight" in group_dict else 1.0
         data['fweight'] = group_dict["fweight"] if "fweight" in group_dict else 1.0
         data['vweight'] = group_dict["vweight"] if "vweight" in group_dict else 1.0
+        data['test_bool'] = group_dict['test_bools'][f]
     else:
         data['eweight'] = 1.0
         data['fweight'] = 1.0
         data['vweight'] = 1.0
+        data['test_bool'] = 0
 
     return data

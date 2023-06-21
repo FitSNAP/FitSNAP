@@ -13,7 +13,7 @@ def make_table(group_settings):
     group_sections = group_settings.pop("group_sections")
     group_table = {}
     for k, v in group_settings.items():
-        print(f"{k} {v}")
+        #print(f"{k} {v}")
         group_table[k] = {group_sections[i]: item for i, item in enumerate(v)}
     return group_table
 

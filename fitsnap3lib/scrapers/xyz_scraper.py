@@ -459,9 +459,6 @@ class XYZ(Scraper):
 
                     self.data['Group'] = ".".join(filename.split("/")[-1].split(".")[:-1])
                     self.data['File'] = filename.split("/")[-1]
-
-                    pt.shared_arrays["number_of_atoms"].sliced_array[i] = self.data['NumAtoms']
-
                     self.data["QMLattice"] = self.data["Lattice"] * self.conversions["Lattice"]
 
                     # Populate with LAMMPS-normalized lattice

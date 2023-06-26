@@ -63,7 +63,6 @@ class Json(Scraper):
                             self.data[key] = np.asarray(self.data[key])
 
                     natoms = np.shape(self.data["Positions"])[0]
-                    #self.pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
                     self.data["QMLattice"] = (self.data["Lattice"] * self.conversions["Lattice"]).T
 
                     # Populate with LAMMPS-normalized lattice

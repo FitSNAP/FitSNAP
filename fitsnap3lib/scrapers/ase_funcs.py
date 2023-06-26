@@ -7,14 +7,15 @@ import numpy as np
 from fitsnap3lib.tools.group_tools import assign_validation
 
 #def ase_scraper(s, data):
-def ase_scraper(data) -> list:
+def ase_scraper(data, random_test: bool=False) -> list:
     """
     Function to organize groups and allocate shared arrays used in Calculator. For now when using 
     ASE frames, we don't have groups.
 
     Args:
-        s: fitsnap instance.
         data: List of ASE frames or dictionary group table containing frames.
+        random_test: Select test data randomly if True, else take last percentage of configs in a group for 
+                     reproducibility.
 
     Returns a list of data dictionaries suitable for fitsnap descriptor calculator.
     If running in parallel, this list will be distributed over procs, so that each proc will have a 
@@ -27,14 +28,14 @@ def ase_scraper(data) -> list:
         return [collate_data(atoms) for atoms in data]
     # If we have a dictionary, assume we are dealing with groups.
     elif type(data) == dict:
-        assign_validation(data)
+        assign_validation(data, random_test=random_test)
         #s.data = []
         ret = []
         for name in data:
             frames = data[name]["frames"]
             # Extend the fitsnap data list with this group.
             #s.data.extend([collate_data(atoms, name, data[name]) for atoms in frames])
-            ret.extend([collate_data(atoms, name, data[name]) for atoms in frames])
+            ret.extend([collate_data(atoms, name, data[name], f) for f, atoms in enumerate(frames)])
         return ret
     else:
         raise Exception("Argument must be list or dictionary for ASE scraper.")
@@ -65,7 +66,7 @@ def get_apre(cell):
 
     return np.array(((xhi, 0, 0), (xyp, yhi, 0), (xzp, yzp, zhi)))
 
-def collate_data(atoms, name: str=None, group_dict: dict=None) -> dict:
+def collate_data(atoms, name: str=None, group_dict: dict=None, f: int=0) -> dict:
     """
     Function to organize fitting data for FitSNAP from ASE atoms objects.
 
@@ -73,6 +74,7 @@ def collate_data(atoms, name: str=None, group_dict: dict=None) -> dict:
         atoms: ASE atoms object for a single configuration of atoms.
         name: Optional name of this configuration.
         group_dict: Optional dictionary containing group information.
+        f: Optional index associated with configuration in a group.
 
     Returns a data dictionary for a single configuration.
     """
@@ -87,6 +89,9 @@ def collate_data(atoms, name: str=None, group_dict: dict=None) -> dict:
 
     data = {}
     data['Group'] = name #'ASE' # TODO: Make this customizable for ASE groups.
+    data['File'] = f"{name}_{f}" #None
+    #print(data['Stress'])
+    #assert(False)
     data['Positions'] = positions
     data['AtomTypes'] = atoms.get_chemical_symbols()
     if (atoms.calc is None): # Add check for calculator - if it is not present 
@@ -99,20 +104,20 @@ def collate_data(atoms, name: str=None, group_dict: dict=None) -> dict:
         data['Forces'] = atoms.get_forces()
         data['Stress'] = atoms.get_stress(voigt=False)
     data['NumAtoms'] = len(atoms)
-    data['File'] = None
     data['QMLattice'] = cell
-    data['test_bool'] = 0
     data['Lattice'] = cell
     data['Rotation'] = np.array([[1,0,0],[0,1,0],[0,0,1]])
     data['Translation'] = np.zeros((len(atoms), 3))
-    # Inject the weights.
+    # Inject the weights and other group quantities.
     if group_dict is not None:
         data['eweight'] = group_dict["eweight"] if "eweight" in group_dict else 1.0
         data['fweight'] = group_dict["fweight"] if "fweight" in group_dict else 1.0
         data['vweight'] = group_dict["vweight"] if "vweight" in group_dict else 1.0
+        data['test_bool'] = group_dict['test_bools'][f]
     else:
         data['eweight'] = 1.0
         data['fweight'] = 1.0
         data['vweight'] = 1.0
+        data['test_bool'] = 0
 
     return data

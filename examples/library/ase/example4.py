@@ -81,17 +81,17 @@ fs = FitSnap(settings, comm=comm, arglist=["--overwrite"])
 group_settings = {
     "group_sections": ["training_size", "testing_size", "eweight", "fweight", "vweight"],
     "Displaced_A15" :  [1.0,    0.0,      100,            1,               1.00E-08],
-    "Displaced_BCC" :  [1.0,    0.0,       100,             1,               1.00E-08],
-    "Displaced_FCC" :  [1.0,    0.0,       100,             1,               1.00E-08],
+    "Displaced_BCC" :  [1.0,    0.0,       100,             1,             1.00E-08],
+    "Displaced_FCC" :  [1.0,    0.0,       100,             1,             1.00E-08],
     "Elastic_BCC"   :  [1.0,    0.0,     1.00E-08,        1.00E-08,        0.0001],
     "Elastic_FCC"   :  [1.0,    0.0,     1.00E-09,        1.00E-09,        1.00E-09],
-    "GSF_110"       :  [1.0,    0.0,      100,             1,               1.00E-08],
-    "GSF_112"       :  [1.0,    0.0,      100,             1,               1.00E-08],
-    "Liquid"        :  [1.0,    0.0,       4.67E+02,        1,               1.00E-08],
-    "Surface"       :  [1.0,    0.0,       100,             1,               1.00E-08],
-    "Volume_A15"    :  [1.0,    0.0,      1.00E+00,        1.00E-09,        1.00E-09],
-    "Volume_BCC"    :  [1.0,    0.0,      1.00E+00,        1.00E-09,        1.00E-09],
-    "Volume_FCC"    :  [1.0,    0.0,      1.00E+00,        1.00E-09,        1.00E-09]
+    "GSF_110"       :  [1.0,    0.0,      100,             1,              1.00E-08],
+    "GSF_112"       :  [1.0,    0.0,      100,             1,              1.00E-08],
+    "Liquid"        :  [1.0,    0.0,       4.67E+02,        1,             1.00E-08],
+    "Surface"       :  [1.0,    0.0,       100,             1,             1.00E-08],
+    "Volume_A15"    :  [1.0,    0.0,      1.00E+00,        1.00E-09,       1.00E-09],
+    "Volume_BCC"    :  [1.0,    0.0,      1.00E+00,        1.00E-09,       1.00E-09],
+    "Volume_FCC"    :  [1.0,    0.0,      1.00E+00,        1.00E-09,       1.00E-09]
     }
 
 group_table = make_table(group_settings)
@@ -121,3 +121,6 @@ fs.solver.error_analysis()
 
 # Write error metric and LAMMPS files.
 fs.output.output(fs.solver.fit, fs.solver.errors)
+
+# Dataframe of detailed errors per group.
+print(fs.solver.errors)

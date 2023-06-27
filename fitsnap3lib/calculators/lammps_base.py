@@ -1,18 +1,12 @@
 import ctypes
 from fitsnap3lib.calculators.calculator import Calculator
-from fitsnap3lib.parallel_tools import ParallelTools, DistributedList
-from fitsnap3lib.io.input import Config
 import numpy as np
-
-
-#config = Config()
-#pt = ParallelTools()
 
 
 class LammpsBase(Calculator):
 
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
         self._data = {}
         self._i = 0
         self._lmp = None
@@ -21,23 +15,17 @@ class LammpsBase(Calculator):
     def create_a(self):
         super().create_a()
 
-    def preprocess_allocate(self, nconfigs):
+    def preprocess_allocate(self, nconfigs: int):
         """
         Allocate arrays to be used by this proc. These arrays have size nconfigs.
 
-        Attributes
-        ----------
-        nconfigs : int 
-            number of configs on this proc
-
-        pt.shared_arrays['number_of_dgradrows'] : np array
-            number of dgrad rows per config, organized like the other shared arrays in calculator.py
-            
-        pt.shared_arrays['number_of_neighs'] : np array
-            number of neighbors per config, organized like the other shared arrays in calculator.py
+        Args:
+            nconfigs : number of configs on this proc
         """
         self.dgradrows = np.zeros(nconfigs).astype(int)
+        # number of dgrad rows per config, organized like the other shared arrays in calculator.py
         self.pt.create_shared_array('number_of_dgradrows', nconfigs, tm=self.config.sections["SOLVER"].true_multinode)
+        # number of neighbors per config, organized like the other shared arrays in calculator.py
         self.pt.create_shared_array('number_of_neighs', nconfigs, tm=self.config.sections["SOLVER"].true_multinode)
         self.nconfigs = nconfigs
 
@@ -62,6 +50,14 @@ class LammpsBase(Calculator):
             raise e
 
     def process_configs(self, data, i):
+        """
+        Calculate descriptors for a given configuration.
+        Action of this function is altered by certain attributes.
+
+        Args:
+            transpose_trick : Don't touch shared arrays in `_collect_lammps()` if true. Instead 
+                              store smaller matrices `self.aw`, `self.bw`.
+        """
         try:
             self._data = data
             self._i = i
@@ -71,16 +67,16 @@ class LammpsBase(Calculator):
             self._collect_lammps()
             self._lmp = self.pt.close_lammps()
         except Exception as e:
-            if self.config.args.printlammps:
-                self._data = data
-                self._i = i
-                self._initialize_lammps(1)
-                self._prepare_lammps()
-                self._run_lammps()
-                self._collect_lammps()
-                self._lmp = self.pt.close_lammps()
+            #if self.config.args.printlammps:
+            self._data = data
+            self._i = i
+            self._initialize_lammps(1)
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps()
+            self._lmp = self.pt.close_lammps()
             raise e
-
+        
     def process_configs_nonlinear(self, data, i):
         try:
             self._data = data
@@ -100,6 +96,33 @@ class LammpsBase(Calculator):
             self._collect_lammps_nonlinear()
             self._lmp = self.pt.close_lammps()
             raise e
+
+        
+    def process_single(self, data, i=0):
+        """
+        Calculate descriptors on a single configuration without touching the shraed arrays.
+
+        Args:
+            data: dictionary of structural and fitting info for a configuration in fitsnap
+                  data dictionary format.
+            i: integer index which is optional, mainly for debugging purposes.
+        
+        Returns: 
+            - A matrix of descriptors depending on settings declared in `CALCULATOR`. If 
+              `bikflag` is 0 (default) then A has 1 and 0s in the first column since it is ready to 
+              fit with linear solvers; the descriptors are also divided by no. atoms in this case. 
+              If `bikflag` is 1, then A is simply an unaltered per-atom descriptor matrix.
+            - b vector of truths
+            - w vector of weights
+        """
+        self._data = data
+        self._i = i
+        self._initialize_lammps()
+        self._prepare_lammps()
+        self._run_lammps()
+        a,b,w = self._collect_lammps_single()
+        self._lmp = self.pt.close_lammps()
+        return a,b,w
 
     def _prepare_lammps(self):
         raise NotImplementedError

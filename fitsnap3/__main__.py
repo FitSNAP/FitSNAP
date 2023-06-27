@@ -15,6 +15,7 @@
 # #### Key contributors (alphabetical):
 #     Mary Alice Cusentino (Sandia National Labs)
 #     Nicholas Lubbers (Los Alamos National Lab)
+#     Drew Rohskopf (Sandia National Labs)
 #     Charles Sievers (UC Davis, Sandia National Labs)
 #     Adam Stephens (Sandia National Labs)
 #     Mitchell Wood (Sandia National Labs)
@@ -29,26 +30,35 @@
 # <!-----------------END-HEADER------------------------------------->
 
 from fitsnap3lib.fitsnap import FitSnap
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.output import output
-from fitsnap3lib.initialize import initialize_fitsnap_run
+
+try:
+    # stubs = 0 MPI is active
+    stubs = 0
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+except ModuleNotFoundError:
+    stubs = 1
+    comm = None
 
 
-pt = ParallelTools()
-
-
-@pt.single_timeit
 def main():
-    try:
-        initialize_fitsnap_run()
-        snap = FitSnap()
-        snap.scrape_configs()
-        snap.process_configs()
-        pt.all_barrier()
-        snap.perform_fit()
-        snap.write_output()
+    # Instantiate single fitsnap instance for traditional flow of control.
+    # This will create an internal parallel tools instance which will detect
+    # availability of MPI for parallelization.
+    snap = FitSnap(comm=comm)
+    snap.scrape_configs(delete_scraper=True)
+    snap.process_configs(delete_data=True)
+    # Good practice after a large parallel operation is to impose a barrier.
+    snap.pt.all_barrier()
+    snap.perform_fit()
+    snap.write_output()
+    """
+    # TODO: Might be cleaner ways to output errors when doing massively parallel runs.
     except Exception as e:
-        output.exception(e)
+        #output.exception(e)
+        print(str(e))
+        snap.pt.single_print(f"{e}")
+    """
 
 
 if __name__ == "__main__":

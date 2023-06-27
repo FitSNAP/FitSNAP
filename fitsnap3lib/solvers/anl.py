@@ -1,30 +1,32 @@
 from fitsnap3lib.io.outputs.outputs import optional_open
 from fitsnap3lib.io.outputs.snap import _to_coeff_string
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 import numpy as np
 from sys import float_info as fi
 
-#pt = ParallelTools()
-#config = Config()
-
 class ANL(Solver):
 
-    def __init__(self, name):
-        super().__init__(name)
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, name, pt, config):
+        super().__init__(name ,pt, config)
 
     #@pt.sub_rank_zero
-    def perform_fit(self):
+    def perform_fit(self, a=None, b=None, w=None, trainall=False):
         @self.pt.sub_rank_zero
-        def decorated_perform_fit():
+        def decorated_perform_fit(a=None, b=None, w=None):
             pt = self.pt   
             config = self.config
-            training = [not elem for elem in pt.fitsnap_dict['Testing']]
-            w = pt.shared_arrays['w'].array[training]
-            aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
+
+            if not trainall:
+                training = [not elem for elem in pt.fitsnap_dict['Testing']]
+            else:
+                training = [True]*np.shape(a)[0]
+
+            if a is None and b is None and w is None:
+                w = pt.shared_arrays['w'].array[training]
+                aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
+            else:
+                aw, bw = w[:, np.newaxis] * a[training], w * b[training]
+
     #       TODO: See if the transpose trick works or is nonsense when feeding into the UQ algos (probably nonsense)
             if config.sections['EXTRAS'].apply_transpose:
                 if np.linalg.cond(aw)**2 < 1 / fi.epsilon:
@@ -63,7 +65,7 @@ class ANL(Solver):
                 self.fit_sam = np.random.multivariate_normal(self.fit, self.cov, size=(nsam,))
             # self.fit_sam = self.fit + np.sqrt(np.diag(self.cov))*np.random.randn(nsam,nbas)
 
-        decorated_perform_fit()
+        decorated_perform_fit(a,b,w)
 
 
     @staticmethod

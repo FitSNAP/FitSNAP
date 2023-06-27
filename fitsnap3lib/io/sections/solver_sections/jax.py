@@ -17,7 +17,7 @@ try:
 
     class JAX(Section):
 
-        def __init__(self, name, config, args):
+        def __init__(self, name, config, pt, infile, args):
             raise Exception("JAX solver not implemented yet.")
             super().__init__(name, config, args)
             self.allowedkeys = ['layer_sizes', 'learning_rate', 'num_epochs', 'batch_size', 'output_style',

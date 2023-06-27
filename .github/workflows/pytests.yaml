@@ -88,7 +88,7 @@ jobs:
         cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2022.10.15/ML-PACE/ace-evaluator/
         make -j 20
         make install-python
-        cd ../../../FitSNAP
+        #cd ../../../FitSNAP
 
         # Procedure for installing the standard LAMMPS develop branch:
 

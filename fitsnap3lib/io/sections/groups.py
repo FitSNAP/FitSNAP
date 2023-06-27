@@ -2,12 +2,12 @@
 from fitsnap3lib.io.sections.sections import Section
 from pandas import read_csv
 from os import path
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.parallel_output import Output
+#from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.parallel_output import Output
 
 
-pt = ParallelTools()
-output = Output()
+#pt = ParallelTools()
+#output = Output()
 
 
 def _str_2_fun(some_list):
@@ -24,10 +24,10 @@ def _str_2_fun(some_list):
 
 class Groups(Section):
 
-    def __init__(self, name, config, args):
-        super().__init__(name, config, args)
+    def __init__(self, name, config, pt, infile, args):
+        super().__init__(name, config, pt, infile, args)
         self.allowedkeys = ['group_sections', 'group_types', 'smartweights', 'random_sampling', 
-                            'random_seed', 'vasp_use_TOTEN', 'vasp_json_pathname',
+                            'random_seed', 'vasp_use_TOTEN','vasp_json_pathname',
                             'vasp_ignore_incomplete','vasp_ignore_jsons','vasp_unconverged_label',
                             'BOLTZ']
 

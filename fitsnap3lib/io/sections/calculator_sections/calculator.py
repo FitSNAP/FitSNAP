@@ -1,5 +1,5 @@
 from fitsnap3lib.io.sections.sections import Section
-from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.parallel_tools import ParallelTools
 
 
 #pt = ParallelTools()
@@ -7,9 +7,9 @@ from fitsnap3lib.parallel_tools import ParallelTools
 
 class Calculator(Section):
 
-    def __init__(self, name, config, args):
-        super().__init__(name, config, args)
-        self.pt = ParallelTools()
+    def __init__(self, name, config, pt, infile, args):
+        super().__init__(name, config, pt, infile, args)
+        #self.pt = ParallelTools()
         self.allowedkeys = ['calculator', 'energy', 'per_atom_energy', 'force', 'stress', \
                             'nonlinear', 'per_atom_scalar']
         self._check_section()

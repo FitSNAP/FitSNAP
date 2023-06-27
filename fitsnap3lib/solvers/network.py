@@ -1,13 +1,9 @@
 import sys
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 from time import time
 import numpy as np
 import psutil
 
-#config = Config()
-#pt = ParallelTools()
 
 try:
     from fitsnap3lib.lib.neural_networks.pairwise import FitTorch, create_torch_network
@@ -33,11 +29,8 @@ try:
             training_loader (:obj:`torch.utils.data.DataLoader`): Data loader for loading in datasets
         """
 
-        def __init__(self, name):
-            super().__init__(name, linear=False)
-
-            self.pt = ParallelTools()
-            self.config = Config()
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config, linear=False)
 
             self.global_weight_bool = self.config.sections['NETWORK'].global_weight_bool
             self.energy_weight = self.config.sections['NETWORK'].energy_weight

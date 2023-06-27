@@ -62,37 +62,40 @@ def initialize_fitsnap_run():
         pt.single_print("Finished reading input")
         pt.single_print("------------------")
 
-        from fitsnap3lib.io.input import output
+        #from fitsnap3lib.io.input import output
     except Exception as e:
         pt.single_print("Trouble reading input, exiting...")
         pt.exception(e)
 
     try:
-        output.screen("mpi4py version: ", mpi4py.__version__)
+        pt.single_print("mpi4py version: ", mpi4py.__version__)
 
     except NameError:
         print("No mpi4py detected, using fitsnap stubs...")
 
     try:
         import numpy as np
-        output.screen("numpy version: ", np.__version__)
+        #output.screen("numpy version: ", np.__version__)
+        pt.single_print
     except Exception as e:
-        output.screen("Trouble importing numpy package, exiting...")
-        output.exception(e)
+        #output.screen("Trouble importing numpy package, exiting...")
+        #output.exception(e)
+        pt.single_print("Trouble importing numpy package, exiting...")
+        pt.single_print(f"{e}")
 
     try:
         import scipy as sp
-        output.screen("scipy version: ", sp.__version__)
+        pt.single_print("scipy version: ", sp.__version__)
     except Exception as e:
-        output.screen("Trouble importing scipy package, exiting...")
-        output.exception(e)
+        pt.single_print("Trouble importing scipy package, exiting...")
+        pt.single_print(e)
 
     try:
         import pandas as pd
-        output.screen("pandas version: ", pd.__version__)
+        pt.single_print("pandas version: ", pd.__version__)
     except Exception as e:
-        output.screen("Trouble importing pandas package, exiting...")
-        output.exception(e)
+        pt.single_print("Trouble importing pandas package, exiting...")
+        pt.single_print(e)
 
     try:
         import lammps
@@ -102,4 +105,4 @@ def initialize_fitsnap_run():
     except Exception as e:
         print("Trouble importing LAMMPS library, exiting...")
         raise e
-    output.screen("-----------")
+    pt.single_print("-----------")

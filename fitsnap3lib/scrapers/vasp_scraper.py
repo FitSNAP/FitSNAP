@@ -1,7 +1,7 @@
 from fitsnap3lib.scrapers.scrape import Scraper, convert
-from fitsnap3lib.io.input import Config
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.output import output
+#from fitsnap3lib.io.input import Config
+#from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.io.output import output
 from copy import copy
 from glob import glob
 from random import shuffle
@@ -10,8 +10,8 @@ import numpy as np
 import os, json
 
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 class Vasp(Scraper):
 

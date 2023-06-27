@@ -29,31 +29,23 @@
 #
 # <!-----------------END-HEADER------------------------------------->
 
-from fitsnap3lib.io.input import Config
 from os import path, listdir, stat
 import numpy as np
-from random import seed, random, shuffle
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.output import output
+from random import random, seed, shuffle
 from fitsnap3lib.units.units import convert
 from copy import copy
-# from natsort import natsorted
-
-
-#config = Config()
-#pt = ParallelTools()
 
 
 class Scraper:
 
-    def __init__(self, name):
-        self.pt = ParallelTools()
-        self.config = Config()
+    def __init__(self, name, pt, config):
+        self.pt = pt #ParallelTools()
+        self.config = config #Config()
         self.name = name
         self.group_types = {}
         self.group_table = []
         self.files = {}
-        self.configs = {}
+        self.configs = {} # Originally a dict for `scrape_groups` but gets transformed to list of files.
         self.tests = None
         self.data = {}
         self.test_bool = None
@@ -64,6 +56,12 @@ class Scraper:
         self._init_units()
 
     def scrape_groups(self):
+        """
+        Scrape groups of files for a particular fitsnap instance.
+        """
+        # Reset as empty dict in case running scrape twice.
+        self.files = {}
+
         group_dict = {k: self.config.sections["GROUPS"].group_types[i]
                       for i, k in enumerate(self.config.sections["GROUPS"].group_sections)}
         self.group_table = self.config.sections["GROUPS"].group_table
@@ -72,7 +70,8 @@ class Scraper:
         user_set_random_seed = self.config.sections["GROUPS"].random_seed ## default is 0
 
         if self.config.sections["GROUPS"].random_sampling:
-            output.screen(f"Random sampling of groups toggled on.")
+            #output.screen(f"Random sampling of groups toggled on.")
+            self.pt.single_print(f"Random sampling of groups toggled on.")
             if not user_set_random_seed:
                 sampling_seed = self.pt.get_seed()
                 seed_txt = f"FitSNAP-generated seed for random sampling: {self.pt.get_seed()}"
@@ -83,7 +82,7 @@ class Scraper:
                 if user_set_random_seed.is_integer():
                     sampling_seed = int(user_set_random_seed)
                 seed_txt = f"User-set seed for random sampling: {sampling_seed}"
-            output.screen(seed_txt)
+            self.pt.single_print(seed_txt)
             seed(sampling_seed)
             self._write_seed_file(seed_txt)
 
@@ -131,13 +130,12 @@ class Scraper:
             testing_size = self._float_to_int(testing_size)
             if nfiles-testing_size-training_size < 0:
                 # Force testing_size and training_size to add up to nfiles.
-                #raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
-                #    training_size, testing_size, nfiles))
                 warnstr = f"\nWARNING: {key} train size {training_size} + test size {testing_size} > nfiles {nfiles}\n"
                 warnstr += "         Forcing testing size to add up properly.\n"
                 self.pt.single_print(warnstr)
                 testing_size = nfiles - training_size
-            output.screen(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
+            if (self.config.args.verbose):
+                self.pt.single_print(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
             if self.tests is None:
                 self.tests = {}
             self.tests[folder] = []
@@ -152,6 +150,11 @@ class Scraper:
 
     # TODO : Fix divvy up to distribute groups evenly and based on memory
     def divvy_up_configs(self):
+        """
+        Function to organize groups and allocate shared arrays used in Calculator.
+        """
+
+        # Loop over `configs` which is a list of filenames, and organize into groups.
         self.test_bool = []
         groups = []
         group_list = []
@@ -197,33 +200,18 @@ class Scraper:
         for i in range(len(group_test)):
             group_test[i] += '_testing'
 
+        # TODO: `configs_per_group` shared array doesn't seemed to be used anywhere except bcs, 
+        #       mcmc, and opt solvers.
         self.pt.create_shared_array('configs_per_group', len(group_counts), dtype='i')
         if self.pt.get_rank() == 0:
             for i in range(len(group_counts)):
                 self.pt.shared_arrays['configs_per_group'].array[i] = group_counts[i]
         self.pt.shared_arrays['configs_per_group'].list = group_set + group_test
-
         self.pt.shared_arrays['configs_per_group'].testing = 0
         if self.tests is not None:
             self.pt.shared_arrays['configs_per_group'].testing = len(test_list)
 
-        number_of_configs_per_node = len(self.configs)
-        self.pt.create_shared_array('number_of_atoms', number_of_configs_per_node, dtype='i')
-        self.pt.slice_array('number_of_atoms')
-        self.pt.shared_arrays['number_of_atoms'].configs = temp_configs
-
-        # number of dgrad rows serves similar purpose as number of atoms
-        
-        self.pt.create_shared_array('number_of_dgrad_rows', number_of_configs_per_node, dtype='i')
-        self.pt.slice_array('number_of_dgrad_rows')
-        self.pt.shared_arrays['number_of_dgrad_rows'].configs = temp_configs
-
-        # number of neighs serves similar purpose as number of atoms for custom calculator
-        
-        self.pt.create_shared_array('number_of_neighs_scrape', number_of_configs_per_node, dtype='i')
-        self.pt.slice_array('number_of_neighs_scrape')
-
-        # PROCS SPLIT UP HERE
+        # Procs split up here. This is for injecting into the data dictionary in `scrape_configs()`.
         self.test_bool = self.pt.split_within_node(self.test_bool)
         self.configs = self.pt.split_within_node(self.configs)
 

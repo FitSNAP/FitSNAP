@@ -1,6 +1,6 @@
 from os import path
 from fitsnap3lib.io.sections.sections import Section
-from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.parallel_tools import ParallelTools
 
 
 #pt = ParallelTools()
@@ -8,9 +8,9 @@ from fitsnap3lib.parallel_tools import ParallelTools
 
 class Outfile(Section):
 
-    def __init__(self, name, config, args):
-        super().__init__(name, config, args)
-        self.pt = ParallelTools()
+    def __init__(self, name, config, pt, infile, args):
+        super().__init__(name, config, pt, infile, args)
+        #self.pt = ParallelTools()
         self.allowedkeys = ['output_style',
                             'metrics',
                             'metrics_style',

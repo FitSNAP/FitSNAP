@@ -1,13 +1,10 @@
 import sys
 from fitsnap3lib.solvers.solver import Solver
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.input import Config
 from time import time
 import numpy as np
 import psutil
-
-#config = Config()
-#pt = ParallelTools()
+import sys
+from copy import deepcopy
 
 try:
     from fitsnap3lib.lib.neural_networks.pytorch import FitTorch, create_torch_network
@@ -35,11 +32,8 @@ try:
             training_loader (torch.utils.data.DataLoader): Data loader for loading datasets.
         """
 
-        def __init__(self, name):
-            super().__init__(name, linear=False)
-
-            self.pt = ParallelTools()
-            self.config = Config()
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config, linear=False)
 
             self.global_weight_bool = self.config.sections['PYTORCH'].global_weight_bool
             self.energy_weight = self.config.sections['PYTORCH'].energy_weight
@@ -113,7 +107,8 @@ try:
 
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             # self.device = "cpu"
-            self.pt.single_print("Pytorch device is set to", self.device)
+            if (self.config.args.verbose):
+                self.pt.single_print("Pytorch device is set to", self.device)
             self.model = self.model.to(self.device)
             self.total_data = None
             self.training_data = None
@@ -123,59 +118,75 @@ try:
         def weighted_mse_loss(self, prediction, target, weight):
             return torch.mean(weight * (prediction - target)**2)
 
-        def create_datasets(self):
+        def create_datasets(self, configs=None, pt=None):
             """
             Creates the dataset to be used for training and the data loader for the batch system.
+
+            Args:
+                configs: Optional list of Configuration objects. If not supplied, we generate a 
+                         configs list using the shared arrays.
+                pt: Optional ParallelTools instance containing data we want to fit to.
             """
 
             # TODO: when only fitting to energy, we don't need all this extra data, and could save 
-            # resources by only fitting some configs to forces. 
+            # resources by only fitting some configs to forces.
 
-            self.configs = [Configuration(int(natoms)) for natoms in self.pt.fitsnap_dict['NumAtoms']]
+            #print(f">>> rank {pt._rank} dict {pt.fitsnap_dict}")
+            if pt is None:
+                pt = self.pt
 
-            # add descriptors and atom types
+            if configs is None:
+                self.configs = [Configuration(int(natoms)) for natoms in pt.fitsnap_dict['NumAtoms']]
 
-            indx_natoms_low = 0
-            indx_forces_low = 0
-            indx_dgrad_low = 0
-            sample_weights = []
-            for i, config in enumerate(self.configs):
-                
-                indx_natoms_high = indx_natoms_low + config.natoms
-                indx_forces_high = indx_forces_low + 3*config.natoms
+                # check whether importance sampling was activated before looping over configs
+                # TODO: add same behavior to other nonlinear solvers 
+                has_sweights = ('sweight' in self.config.sections['GROUPS'].group_sections) or (self.config.sections['GROUPS'].smartsample == 1)
 
-                if (self.pt.fitsnap_dict['force']):
-                    nrows_dgrad = int(self.pt.fitsnap_dict["NumDgradRows"][i])
-                    indx_dgrad_high = indx_dgrad_low + nrows_dgrad
-                    config.forces = self.pt.shared_arrays['c'].array[indx_forces_low:indx_forces_high]
-                    config.dgrad = self.pt.shared_arrays['dgrad'].array[indx_dgrad_low:indx_dgrad_high]
-                    config.dgrad_indices = self.pt.shared_arrays['dbdrindx'].array[indx_dgrad_low:indx_dgrad_high]
-                    indx_dgrad_low += nrows_dgrad
+                # add descriptors and atom types
 
-                if (self.pt.fitsnap_dict['energy']):
-                    config.energy = self.pt.shared_arrays['b'].array[i]
-                    config.weights = self.pt.shared_arrays['w'].array[i]
+                indx_natoms_low = 0
+                indx_forces_low = 0
+                indx_dgrad_low = 0
+                sample_weights = []
+                for i, config in enumerate(self.configs):
+                    
+                    indx_natoms_high = indx_natoms_low + config.natoms
+                    indx_forces_high = indx_forces_low + 3*config.natoms
 
-                if (self.pt.fitsnap_dict['per_atom_scalar']):
-                    config.pas = self.pt.shared_arrays['pas'].array[indx_natoms_low:indx_natoms_high]
+                    if (pt.fitsnap_dict['force']):
+                        nrows_dgrad = int(pt.fitsnap_dict["NumDgradRows"][i])
+                        indx_dgrad_high = indx_dgrad_low + nrows_dgrad
+                        config.forces = pt.shared_arrays['c'].array[indx_forces_low:indx_forces_high]
+                        config.dgrad = pt.shared_arrays['dgrad'].array[indx_dgrad_low:indx_dgrad_high]
+                        config.dgrad_indices = pt.shared_arrays['dbdrindx'].array[indx_dgrad_low:indx_dgrad_high]
+                        indx_dgrad_low += nrows_dgrad
 
-                config.filename = self.pt.fitsnap_dict['Configs'][i]
-                config.group = self.pt.fitsnap_dict['Groups'][i]
-                config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
-                config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
-                config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
+                    if (pt.fitsnap_dict['energy']):
+                        config.energy = pt.shared_arrays['b'].array[i]
+                        config.weights = pt.shared_arrays['w'].array[i]
 
-                # Make list of sampling weights for training data only.
+                    if (pt.fitsnap_dict['per_atom_scalar']):
+                        config.pas = pt.shared_arrays['pas'].array[indx_natoms_low:indx_natoms_high]
 
-                if not config.testing_bool:
-                    sample_weights.append(self.pt.shared_arrays['w'].array[i,2])
+                    config.filename = self.pt.fitsnap_dict['Configs'][i]
+                    config.group = self.pt.fitsnap_dict['Groups'][i]
+                    config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
+                    config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
+                    config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
 
-                indx_natoms_low += config.natoms
-                indx_forces_low += 3*config.natoms
+                    # Make list of sampling weights for training data only, if importance sampling activated
+                    if not config.testing_bool and has_sweights:
+                        sample_weights.append(self.pt.shared_arrays['w'].array[i,2])
 
-            # check that we make assignments (not copies) of data, to save memory
+                    indx_natoms_low += config.natoms
+                    indx_forces_low += 3*config.natoms
 
-            assert(np.shares_memory(self.configs[0].descriptors, self.pt.shared_arrays['a'].array))
+                # check that we make assignments (not copies) of data, to save memory
+
+                assert(np.shares_memory(self.configs[0].descriptors, pt.shared_arrays['a'].array))
+
+            else:
+                self.configs = configs
 
             self.total_data = InRAMDatasetPyTorch(self.configs)
 
@@ -198,12 +209,14 @@ try:
 
                 # we are using group training/testing fractions
 
-                training_bool_indices = [not elem for elem in self.pt.fitsnap_dict['Testing']]
+                #blah = [not config.testing_bool for config in self.configs]
+
+                #training_bool_indices = [not elem for elem in self.pt.fitsnap_dict['Testing']]
+                training_bool_indices = [not config.testing_bool for config in self.configs]
                 training_indices = [i for i, x in enumerate(training_bool_indices) if x]
                 testing_indices = [i for i, x in enumerate(training_bool_indices) if not x]
                 self.training_data = torch.utils.data.Subset(self.total_data, training_indices)
                 self.validation_data = torch.utils.data.Subset(self.total_data, testing_indices)
-
 
             #print(len(sample_weights))
             #assert(False)
@@ -252,21 +265,32 @@ try:
                                               collate_fn=torch_collate,
                                               num_workers=0) if len(self.validation_data) > 1 else []
         #@pt.sub_rank_zero
-        def perform_fit(self):
+        def perform_fit(self, configs: list=None, pt=None, outfile: str=None, verbose: bool=True):
             """
             Performs PyTorch fitting using previously calculated descriptors. 
+
+            Args:
+                configs: Optional list of Configuration objects to perform fitting on.
+                pt: ParallelTools instance containing shared arrays and data we want 
+                    to fit to.
+                outfile: Optional output file to write progress to.
+                verbose: Optional flag to print progress to screen; overrides the verbose CLI.
             """
 
             @self.pt.sub_rank_zero
-            def decorated_perform_fit():
-                self.create_datasets()
+            def perform_fit(pt=None,outfile=None):
+                pt = self.pt if pt is None else pt
+                if outfile is not None:
+                    fh = open(outfile, 'w')
+                
+                #self.create_datasets()
                 if self.config.sections['PYTORCH'].save_state_input is None:
 
                     # standardization
                     # need to perform on all network types in the model
 
-                    inv_std = 1/np.std(self.pt.shared_arrays['a'].array, axis=0)
-                    mean_inv_std = np.mean(self.pt.shared_arrays['a'].array, axis=0) * inv_std
+                    inv_std = 1/np.std(pt.shared_arrays['a'].array, axis=0)
+                    mean_inv_std = np.mean(pt.shared_arrays['a'].array, axis=0) * inv_std
                     state_dict = self.model.state_dict()
 
                     # look for the first layer for all types of networks, these are keys like
@@ -305,8 +329,10 @@ try:
                 target_pas_plot_val = []
                 model_pas_plot_val = []
                 natoms_per_config = [] # stores natoms per config for calculating eV/atom errors later.
+                min_val_loss = sys.float_info.max # Store min validation loss
+                if (self.config.args.verbose or verbose):
+                    self.pt.single_print(f"{'Epoch': <2} {'Train': ^10} {'Val': ^10} {'Time (s)': >2}")
                 for epoch in range(self.config.sections["PYTORCH"].num_epochs):
-                    print(f"----- epoch: {epoch}")
                     start = time()
 
                     # loop over training data
@@ -515,11 +541,23 @@ try:
 
                     # average training and validation losses across all batches
 
-                    self.pt.single_print("Batch averaged train/val loss:", np.mean(np.asarray(train_losses_step)), np.mean(np.asarray(val_losses_step)))
-                    train_losses_epochs.append(np.mean(np.asarray(train_losses_step)))
-                    val_losses_epochs.append(np.mean(np.asarray(val_losses_step)))
-                    self.pt.single_print("Epoch time", time()-start)
-                    if epoch % self.config.sections['PYTORCH'].save_freq == 0:
+                    mean_val_loss = np.mean(np.asarray(val_losses_step))
+                    mean_train_loss = np.mean(np.asarray(train_losses_step))
+                    progress_str = f"{epoch: <2} {mean_train_loss: ^10.3e} {mean_val_loss: ^10.3e} {time()-start: >2.3e}"
+                    #self.pt.single_print(progress_str)
+                    if (self.config.args.verbose or verbose):
+                        self.pt.single_print(progress_str)
+                    if outfile is not None:
+                        fh.write(progress_str + "\n")
+                    train_losses_epochs.append(mean_train_loss)
+                    val_losses_epochs.append(mean_val_loss)
+                    # TODO: Use conditional here to save minimum validation loss.
+                    #       Base this on 
+                    #if epoch % self.config.sections['PYTORCH'].save_freq == 0:
+                    if mean_val_loss < min_val_loss:
+                        print(">>> New best model! Saving.")
+                        min_val_loss = mean_val_loss
+                        self.model_best = deepcopy(self.model)
                         torch.save({
                             'epoch': epoch,
                             'model_state_dict': self.model.state_dict(),
@@ -605,8 +643,6 @@ try:
                 val_losses_epochs = np.array([val_losses_epochs]).T
                 loss_dat = np.concatenate((epochs,train_losses_epochs,val_losses_epochs),axis=1)
                 np.savetxt("loss_vs_epochs.dat", loss_dat)
-
-                self.pt.single_print("Average loss over batches is", np.mean(np.asarray(train_losses_step)))
                 
                 #if 'lammps.mliap' in sys.modules:
                 self.model.write_lammps_torch(self.config.sections["PYTORCH"].output_file)
@@ -616,7 +652,8 @@ try:
                 
                 self.fit = None
 
-            decorated_perform_fit()
+            self.create_datasets(configs=configs, pt=pt)
+            perform_fit(pt=pt, outfile=outfile)
 
         #@pt.sub_rank_zero
         def evaluate_configs(self, config_idx = 0, standardize_bool = True, dtype=torch.float64, eval_device='cpu'):
@@ -638,6 +675,10 @@ try:
 
             @self.pt.sub_rank_zero
             def decorated_evaluate_configs():
+                
+                if hasattr(self, "model_best"):
+                    self.model = self.model_best
+
                 #self.create_datasets()
                 # Convert model to dtype
                 self.model.to(dtype)

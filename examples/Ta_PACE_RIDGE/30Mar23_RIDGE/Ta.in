@@ -1,0 +1,75 @@
+[ACE]
+numTypes = 1
+rcutfac = 4.25
+lambda = 1.275
+rcinner = 1.2
+drcinner = 0.01
+ranks = 1 2 3 4
+lmax =  0 5 2 1
+nmax =  22 5 3 1
+mumax = 1
+lmin = 0 0 1 1
+nmaxbase = 22
+type = Ta
+bzeroflag = 0
+
+[CALCULATOR]
+calculator = LAMMPSPACE
+energy = 1
+force = 1
+stress = 0
+
+[ESHIFT]
+Ta = 0.0
+
+[SOLVER]
+solver = RIDGE
+compute_testerrs = 1
+detailed_errors = 1
+
+[RIDGE]
+local_solver = 1
+alpha = 1.e-4
+
+[SCRAPER]
+scraper = JSON
+
+[PATH]
+dataPath = ../Ta_Linear_JCP2014/JSON
+
+[OUTFILE]
+output_style = PACE
+metrics = Ta_metrics.md
+potential = Ta_pot
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = hybrid/overlay zero 4.25 
+pair_coeff1 = * * zero
+
+[GROUPS]
+group_sections = name training_size testing_size eweight fweight vweight
+group_types = str float float float float float
+smartweights = 1
+random_sampling = 0
+Displaced_A15 =  1.0    0.0           1. 20. 1.E-8
+Displaced_BCC =  1.0    0.0           1. 20. 1.E-8
+Displaced_FCC =  1.0    0.0           1. 20. 1.E-8
+Elastic_BCC   =  1.0    0.0           1. 10. 1.E-8
+Elastic_FCC   =  1.0    0.0           1. 10. 1.E-8
+GSF_110       =  1.0    0.0           1. 10. 1.E-8
+GSF_112       =  1.0    0.0           1. 10. 1.E-8
+Liquid        =  1.0    0.0           1. 10. 1.E-8
+Surface       =  1.0    0.0           1. 10. 1.E-8
+Volume_A15    =  1.0    0.0           1.5 15. 1.E-8
+Volume_BCC    =  1.0    0.0           1.5 15. 1.E-8
+Volume_FCC    =  1.0    0.0           1.5 15. 1.E-8
+
+[EXTRAS]
+dump_descriptors = 0
+dump_truth = 0
+dump_weights = 0
+
+[MEMORY]
+override = 0

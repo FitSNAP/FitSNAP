@@ -16,9 +16,9 @@ class Solver:
         fit: Numpy array containing coefficients of fit.
     """
 
-    def __init__(self, name, linear=True):
-        self.config = Config()
-        self.pt = ParallelTools()
+    def __init__(self, name, pt, config, linear=True):
+        self.config = config #Config()
+        self.pt = pt #ParallelTools()
         self.name = name
         self.configs = None
         self.fit = None
@@ -159,14 +159,15 @@ class Solver:
                 count_train['*ALL']["nconfigs"] = 0 # Total number test configs in group.
                 count_train['*ALL']["natoms"] = 0 # Total number test atoms in group.
 
-                if (self.config.sections["EXTRAS"].dump_peratom):
-                    fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
-                    line = f"Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
-                    fha.write(line + "\n")
-                if (self.config.sections["EXTRAS"].dump_perconfig):
-                    fhc = open(self.config.sections["EXTRAS"].perconfig_file, 'w')
-                    line = f"Filename Group Natoms Energy_Truth Energy_Pred Testing_Bool"
-                    fhc.write(line + "\n")
+                if 'EXTRAS' in self.config.sections:
+                    if (self.config.sections["EXTRAS"].dump_peratom):
+                        fha = open(self.config.sections["EXTRAS"].peratom_file, 'w')
+                        line = f"Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool"
+                        fha.write(line + "\n")
+                    if (self.config.sections["EXTRAS"].dump_perconfig):
+                        fhc = open(self.config.sections["EXTRAS"].perconfig_file, 'w')
+                        line = f"Filename Group Natoms Energy_Truth Energy_Pred Testing_Bool"
+                        fhc.write(line + "\n")
                 atom_indx = 0
                 m = 0
                 for idx, c in enumerate(self.configs):
@@ -327,11 +328,10 @@ class Solver:
             if self.config.sections["EXTRAS"].dump_dataframe:
                 self.df.to_pickle(self.config.sections['EXTRAS'].dataframe_file)
 
-            # proceed with error analysis if doing a fit
+            # Proceed with error analysis if doing a fit.
+            if self.fit is not None and not self.config.sections["SOLVER"].true_multinode:
 
-            if self.fit is not None:
-
-                # return data for each group
+                # Return data for each group.
 
                 grouped = self.df.groupby(['Groups', \
                     'Testing', \
@@ -360,6 +360,10 @@ class Solver:
                 # combine dataframes
 
                 self.errors = concat([concat({'*ALL':all}, names=['Groups']), grouped])
+                #print(self.errors['mae'].keys())
+                #print(self.errors['mae'][('*ALL', 'Unweighted', False, 'Energy')])
+
+                #assert(False)
                 self.errors.ncount = self.errors.ncount.astype(int)
                 self.errors.index.rename(["Group", "Weighting", "Testing", "Subsystem", ], inplace=True)
 
@@ -368,11 +372,15 @@ class Solver:
                 self.errors.index = self.errors.index.set_levels(['Testing' if e else 'Training' \
                     for e in self.errors.index.levels[2]], \
                         level=2)
-                
+            
+            # Adjust coefficients for bzeroflag.
+            if self.fit is not None: 
                 if (self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and \
                     self.config.sections["BISPECTRUM"].bzeroflag):
                     self._offset()
 
+        # Reset errors to default empty list.
+        self.errors = []
         decorated_error_analysis()
 
     def _all_error(self):

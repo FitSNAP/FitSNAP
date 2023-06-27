@@ -1,7 +1,4 @@
 from fitsnap3lib.scrapers.scrape import Scraper
-from fitsnap3lib.io.input import Config
-from fitsnap3lib.parallel_tools import ParallelTools
-from fitsnap3lib.io.output import output
 import numpy as np
 from random import shuffle, random
 from os import path, listdir
@@ -10,8 +7,8 @@ import re
 from _collections import defaultdict
 
 
-config = Config()
-pt = ParallelTools()
+#config = Config()
+#pt = ParallelTools()
 
 
 UNPROCESSED_KEYS = ['uid']
@@ -274,33 +271,39 @@ def _read_xyz_frame(lines, natoms, properties_parser=key_val_str_to_dict, nvec=0
 
 class XYZ(Scraper):
 
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)
         self.conversions = copy(self.default_conversions)
         self.all_data = []
         self.style_info = {}
 
     def scrape_groups(self):
-        if config.sections["SCRAPER"].save_group_scrape != "None":
-            save_file = config.sections["PATH"].relative_directory + '/' + config.sections["SCRAPER"].save_group_scrape
+        # Reset as empty dict in case running scrape twice.
+        self.files = {}
+        self.configs = {}
+
+        pt = self.pt
+        config = self.config
+        if self.config.sections["SCRAPER"].save_group_scrape != "None":
+            save_file = self.config.sections["PATH"].relative_directory + '/' + self.config.sections["SCRAPER"].save_group_scrape
             if pt.get_rank() == 0:
                 with open(save_file, 'w') as fp:
                     fp.write('')
         else:
             save_file = None
-        if config.sections["SCRAPER"].read_group_scrape != "None":
-            if config.sections["SCRAPER"].save_group_scrape != "None":
+        if self.config.sections["SCRAPER"].read_group_scrape != "None":
+            if self.config.sections["SCRAPER"].save_group_scrape != "None":
                 raise RuntimeError("Do not set both reading and writing of group_scrape")
-            read_file = config.sections["PATH"].relative_directory + '/' + config.sections["SCRAPER"].read_group_scrape
+            read_file = self.config.sections["PATH"].relative_directory + '/' + self.config.sections["SCRAPER"].read_group_scrape
         else:
             read_file = None
 
-        group_dict = {k: config.sections["GROUPS"].group_types[i]
-                      for i, k in enumerate(config.sections["GROUPS"].group_sections)}
-        self.group_table = config.sections["GROUPS"].group_table
+        group_dict = {k: self.config.sections["GROUPS"].group_types[i]
+                      for i, k in enumerate(self.config.sections["GROUPS"].group_sections)}
+        self.group_table = self.config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
-        folder_files = listdir(config.sections["PATH"].datapath)
+        folder_files = listdir(self.config.sections["PATH"].datapath)
 
         for key in self.group_table:
             bc_bool = False
@@ -322,14 +325,14 @@ class XYZ(Scraper):
             if training_size is None:
                 raise ValueError("Please set training size for {}".format(key))
 
-            file_base = path.join(config.sections["PATH"].datapath, key)
+            file_base = path.join(self.config.sections["PATH"].datapath, key)
 
             if file_base.split('/')[-1] + ".extxyz" in folder_files:
                 file_name = file_base + ".extxyz"
             elif file_base.split('/')[-1] + ".xyz" in folder_files:
                 file_name = file_base + ".xyz"
             else:
-                raise FileNotFoundError("{}.xyz not found in {}".format(file_base, config.sections["PATH"].datapath))
+                raise FileNotFoundError("{}.xyz not found in {}".format(file_base, self.config.sections["PATH"].datapath))
 
             if file_base + '.xyz' not in self.files or file_base + '.extxyz':
                 self.files[file_base] = []
@@ -339,7 +342,7 @@ class XYZ(Scraper):
 
             self.files[file_base].append(file_name)
 
-            if config.sections["SCRAPER"].read_group_scrape != "None":
+            if self.config.sections["SCRAPER"].read_group_scrape != "None":
                 with open(read_file, 'r') as fp:
                     for line in fp:
                         split_line = line.split()
@@ -390,7 +393,7 @@ class XYZ(Scraper):
             if nconfigs - testing_size - training_size < 0:
                 raise ValueError("training size: {} + testing size: {} is greater than files in folder: {}".format(
                     training_size, testing_size, nconfigs))
-            output.screen(key, ": Detected ", nconfigs, " fitting on ", training_size, " testing on ", testing_size)
+            pt.single_print(key, ": Detected ", nconfigs, " fitting on ", training_size, " testing on ", testing_size)
             if self.tests is None:
                 self.tests = {}
             self.tests[file_base] = []
@@ -404,6 +407,15 @@ class XYZ(Scraper):
             # self.files[folder] = natsorted(self.files[folder])
 
     def scrape_configs(self):
+        """
+        Scrape configs defined in the iterables of files and configs.
+
+        Returns a list of data dictionaries containing structural info.
+        """
+        self.all_data = [] # Reset to empty list in case running scraper twice.
+
+        pt = self.pt
+        config = self.config
         for folder_num, folder in enumerate(self.files):
             filename = self.files[folder][0]
             with open(filename) as file:
@@ -447,9 +459,6 @@ class XYZ(Scraper):
 
                     self.data['Group'] = ".".join(filename.split("/")[-1].split(".")[:-1])
                     self.data['File'] = filename.split("/")[-1]
-
-                    pt.shared_arrays["number_of_atoms"].sliced_array[i] = self.data['NumAtoms']
-
                     self.data["QMLattice"] = self.data["Lattice"] * self.conversions["Lattice"]
 
                     # Populate with LAMMPS-normalized lattice

@@ -1,21 +1,21 @@
 from fitsnap3lib.io.sections.sections import Section
-from fitsnap3lib.parallel_tools import ParallelTools
+#from fitsnap3lib.parallel_tools import ParallelTools
 
 
-pt = ParallelTools()
+#pt = ParallelTools()
 
 
 class Extras(Section):
 
-    def __init__(self, name, config, args):
-        super().__init__(name, config, args)
+    def __init__(self, name, config, pt, infile, args):
+        super().__init__(name, config, pt, infile, args)
         self.allowedkeys = ['multinode_testing', 'apply_transpose', 'only_test', \
                             'dump_descriptors', 'dump_truth', 'dump_weights', 'dump_dataframe', \
                             'dump_peratom', 'dump_perconfig', 'dump_configs']
         self._check_section()
 
         # Set EXTRAS section file dump flags.
-
+        
         self.multinode_testing = self.get_value("EXTRAS", "multinode_testing", "0", "bool")
         self.apply_transpose = self.get_value("EXTRAS", "apply_transpose", "0", "bool")
         self.only_test = self.get_value("EXTRAS", "only_test", "0", "bool")

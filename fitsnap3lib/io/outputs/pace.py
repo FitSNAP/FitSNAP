@@ -1,7 +1,5 @@
 from fitsnap3lib.io.outputs.outputs import Output, optional_open
-from fitsnap3lib.parallel_tools import ParallelTools
 from datetime import datetime
-from fitsnap3lib.io.input import Config
 import numpy as np
 import itertools
 
@@ -14,10 +12,10 @@ try:
 
     class Pace(Output):
 
-        def __init__(self, name):
-            super().__init__(name)
-            self.config = Config()
-            self.pt = ParallelTools()
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config)
+            #self.config = Config()
+            #self.pt = ParallelTools()
 
         def output(self, coeffs, errors):
             if (self.config.sections["CALCULATOR"].nonlinear):
@@ -29,17 +27,35 @@ try:
                     coeffs = new_coeffs
                 self.write(coeffs, errors)
 
+        def write_lammps(self, coeffs):
+            """
+            Write LAMMPS ready ACE files.
+
+            Args:
+                coeffs: list of linear model coefficients.
+            """
+            if self.config.sections["EXTRAS"].only_test != 1:
+                if self.config.sections["CALCULATOR"].calculator != "LAMMPSPACE":
+                    raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
+                with optional_open(self.config.sections["OUTFILE"].potential_name and
+                                  self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
+                    file.write(_to_coeff_string(coeffs, self.config))
+                self.write_potential(coeffs)
+
         #@pt.rank_zero
         def write(self, coeffs, errors):
             @self.pt.rank_zero
             def decorated_write():
+                """
                 if self.config.sections["EXTRAS"].only_test != 1:
                     if self.config.sections["CALCULATOR"].calculator != "LAMMPSPACE":
                         raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
                     with optional_open(self.config.sections["OUTFILE"].potential_name and
                                       self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
-                        file.write(_to_coeff_string(coeffs))
+                        file.write(_to_coeff_string(coeffs, self.config))
                     self.write_potential(coeffs)
+                """
+                self.write_lammps(coeffs)
                 self.write_errors(errors)
             decorated_write()
 
@@ -104,7 +120,7 @@ try:
                 rcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcinner)}
                 drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
 
-            apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, self.lmin, self.RPI_heuristic)
+            apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.RPI_heuristic)
             apot.set_betas(coeffs,has_zeros=True)
             apot.set_funcs()
             apot.write_pot(self.config.sections["OUTFILE"].potential_name)
@@ -129,13 +145,12 @@ except ModuleNotFoundError:
             super().__init__(name)
             raise ModuleNotFoundError("Missing sympy or pyyaml modules.")
 
-def _to_coeff_string(coeffs):
+def _to_coeff_string(coeffs, config):
     """
-    Convert a set of coefficients along with bispec options into a .snapparam file
+    Convert a set of coefficients along with descriptor options to a coeffs file.
     """
-    config = Config()
-    desc_str = "ACE"
 
+    desc_str = "ACE"
     coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))
     blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
     if config.sections[desc_str].bzeroflag:

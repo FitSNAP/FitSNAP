@@ -222,42 +222,53 @@ try:
             #assert(False)
 
             # Choose a sampler if desired.
-            """
-            num_samples = len(self.training_data)
-            replacement = True
-            sample_weights = num_samples*[0.1] # TODO: this is user-supplied with weights per group
-            weight_important = 0.25 # 1/batch_size
-            weight_other = (1.0 - weight_important)/num_samples
-            sample_weights = 100*[weight_other]
-            sample_weights[0] = weight_important
+            if has_sweights:
+                # if we're using importance sampling
+                """
+                num_samples = len(self.training_data)
+                replacement = True
+                sample_weights = num_samples*[0.1] # TODO: this is user-supplied with weights per group
+                weight_important = 0.25 # 1/batch_size
+                weight_other = (1.0 - weight_important)/num_samples
+                sample_weights = 100*[weight_other]
+                sample_weights[0] = weight_important
 
-            print(self.training_data[0])
-            """
-            num_samples = len(sample_weights)
+                print(self.training_data[0])
+                """
+                num_samples = len(sample_weights)
 
-            sampler = torch.utils.data.WeightedRandomSampler(weights=sample_weights,
-                                                             num_samples=num_samples,
-                                                             replacement=True)
+                sampler = torch.utils.data.WeightedRandomSampler(weights=sample_weights,
+                                                                num_samples=num_samples,
+                                                                replacement=True)
 
-            # Make training and validation data loaders for batch training, depending on settings.
-            # Note that sampler option is mutually exclusive with shuffle.
+                # Make training and validation data loaders for batch training, depending on settings.
+                # Note that sampler option is mutually exclusive with shuffle.
 
-            # if we're doing importance sampling (no shuffle here):
-            self.training_loader = DataLoader(self.training_data,
-                                              batch_size=self.config.sections["PYTORCH"].batch_size,
-                                              #shuffle=self.config.sections['PYTORCH'].shuffle_flag,
-                                              sampler=sampler,
-                                              collate_fn=torch_collate,
-                                              num_workers=0)
-            # if we're doing a random shuffle:
-            """
-            self.training_loader = DataLoader(self.training_data,
+                # if we're doing importance sampling (no shuffle here):
+                self.training_loader = DataLoader(self.training_data,
+                                                batch_size=self.config.sections["PYTORCH"].batch_size,
+                                                #shuffle=self.config.sections['PYTORCH'].shuffle_flag,
+                                                sampler=sampler,
+                                                collate_fn=torch_collate,
+                                                num_workers=0)
+            
+            else:
+                # if we're doing a random shuffle:
+                """
+                self.training_loader = DataLoader(self.training_data,
+                                                batch_size=self.config.sections["PYTORCH"].batch_size,
+                                                shuffle=self.config.sections['PYTORCH'].shuffle_flag,
+                                                #sampler=sampler,
+                                                collate_fn=torch_collate,
+                                                num_workers=0)
+                """
+
+                # TODO: check this! the DataLoader code is copied from master branch, PR #205 (commit 4ed3484)
+                self.training_loader = DataLoader(self.training_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
                                               shuffle=self.config.sections['PYTORCH'].shuffle_flag,
-                                              #sampler=sampler,
                                               collate_fn=torch_collate,
                                               num_workers=0)
-            """
 
             self.validation_loader = DataLoader(self.validation_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,

@@ -135,19 +135,21 @@ try:
             if pt is None:
                 pt = self.pt
 
+            #self.has_sweights = False
+
             if configs is None:
                 self.configs = [Configuration(int(natoms)) for natoms in pt.fitsnap_dict['NumAtoms']]
 
                 # check whether importance sampling was activated before looping over configs
                 # TODO: add same behavior to other nonlinear solvers 
-                has_sweights = ('sweight' in self.config.sections['GROUPS'].group_sections) or (self.config.sections['GROUPS'].smartsample == 1)
+                self.has_sweights = ('sweight' in self.config.sections['GROUPS'].group_sections) or (self.config.sections['GROUPS'].smartsample == 1)
 
                 # add descriptors and atom types
 
                 indx_natoms_low = 0
                 indx_forces_low = 0
                 indx_dgrad_low = 0
-                sample_weights = []
+                self.sample_weights = []
                 for i, config in enumerate(self.configs):
                     
                     indx_natoms_high = indx_natoms_low + config.natoms
@@ -175,8 +177,8 @@ try:
                     config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
 
                     # Make list of sampling weights for training data only, if importance sampling activated
-                    if not config.testing_bool and has_sweights:
-                        sample_weights.append(self.pt.shared_arrays['w'].array[i,2])
+                    if not config.testing_bool and self.has_sweights:
+                        self.sample_weights.append(self.pt.shared_arrays['w'].array[i,2])
 
                     indx_natoms_low += config.natoms
                     indx_forces_low += 3*config.natoms
@@ -222,7 +224,7 @@ try:
             #assert(False)
 
             # Choose a sampler if desired.
-            if has_sweights:
+            if self.has_sweights:
                 # if we're using importance sampling
                 """
                 num_samples = len(self.training_data)
@@ -235,9 +237,9 @@ try:
 
                 print(self.training_data[0])
                 """
-                num_samples = len(sample_weights)
+                num_samples = len(self.sample_weights)
 
-                sampler = torch.utils.data.WeightedRandomSampler(weights=sample_weights,
+                sampler = torch.utils.data.WeightedRandomSampler(weights=self.sample_weights,
                                                                 num_samples=num_samples,
                                                                 replacement=True)
 
@@ -357,6 +359,7 @@ try:
                         indices = batch['i'].to(self.device)
                         num_atoms = batch['noa'].to(self.device)
                         targets = batch['y'].to(self.device).requires_grad_(True)
+                        pairmap = batch['pairmap']
 
                         if (self.pt.fitsnap_dict['energy']):
                             #targets = batch['y'].to(self.device).requires_grad_(True)
@@ -388,6 +391,20 @@ try:
                                                            atom_types, dbdrindx, unique_j, unique_i, 
                                                            self.device)
                             energies = torch.div(energies,num_atoms)
+
+                            #print(pairmap)
+                            #print(energies)
+                            #pairkeys = list(pairmap.keys())
+                            pairindices = [[k,v['pairidx']] for k, v in pairmap.items()]
+                            ediff_target = torch.tensor([v['ediff'] for _, v in pairmap.items()]).requires_grad_(True)
+                            #print(pairindices)
+                            #print(ediff_target)
+                            ediff = torch.tensor([energies[p[0]] - energies[p[1]] for p in pairindices]).requires_grad_(True)
+                            #print(ediff)
+                            ediff_weights = torch.tensor([v['weight'] for _, v in pairmap.items()]).to(self.device)
+                            #print(ediff_weights)
+                            #assert(False)
+
                         else:
                             # calculate per-atom scalars
                             pas = self.model(descriptors, num_atoms, atom_types, self.device)
@@ -429,6 +446,12 @@ try:
                             if (self.global_weight_bool):
                                 loss = self.energy_weight*self.loss_function(energies, targets) \
                                      + self.force_weight*self.loss_function(forces, target_forces)
+                            elif pairindices:
+                                # If we have energy diff pairs.
+                                loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
+                                    +  self.weighted_mse_loss(forces, target_forces, force_weights) \
+                                    +  self.weighted_mse_loss(ediff, ediff_target, ediff_weights)
+                                assert(False)
                             else:
                                 loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
                                     + self.weighted_mse_loss(forces, target_forces, force_weights)
@@ -577,52 +600,6 @@ try:
                             self.config.sections['PYTORCH'].save_state_output
                         )
 
-                # TODO: Remove the following commented block after long-term use confirms that new
-                #       detailed errors make this redundant. 
-                """
-                if (self.pt.fitsnap_dict['force']):
-
-                    # print target and model forces
-                    # training
-                    target_force_plot = np.concatenate(target_force_plot)
-                    model_force_plot = np.concatenate(model_force_plot)
-                    target_force_plot = np.array([target_force_plot]).T
-                    model_force_plot = np.array([model_force_plot]).T
-                    dat = np.concatenate((model_force_plot, target_force_plot), axis=1)
-                    np.savetxt("force_comparison.dat", dat)
-                    # validation
-                    if (target_force_plot_val):
-                        target_force_plot_val = np.concatenate(target_force_plot_val)
-                        model_force_plot_val = np.concatenate(model_force_plot_val)
-                        target_force_plot_val = np.array([target_force_plot_val]).T
-                        model_force_plot_val = np.array([model_force_plot_val]).T
-                        dat_val = np.concatenate((model_force_plot_val, target_force_plot_val), axis=1)
-                        np.savetxt("force_comparison_val.dat", dat_val) 
-
-                if (self.pt.fitsnap_dict['energy']):
-
-                    # print target and model energies
-                    # training
-                    target_energy_plot = np.concatenate(target_energy_plot)
-                    model_energy_plot = np.concatenate(model_energy_plot)
-
-                    target_energy_plot = np.array([target_energy_plot]).T
-                    model_energy_plot = np.array([model_energy_plot]).T
-
-                    dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
-                    np.savetxt("energy_comparison.dat", dat)
-                    # validation
-                    if (target_energy_plot_val):
-                        target_energy_plot_val = np.concatenate(target_energy_plot_val)
-                        model_energy_plot_val = np.concatenate(model_energy_plot_val)
-                        #natoms_per_config = np.concatenate(natoms_per_config)
-                        target_energy_plot_val = np.array([target_energy_plot_val]).T
-                        model_energy_plot_val = np.array([model_energy_plot_val]).T
-                        #natoms_per_config = np.array([natoms_per_config]).T
-                        dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val), axis=1)
-                        np.savetxt("energy_comparison_val.dat", dat_val)
-                """
-
                 if (self.pt.fitsnap_dict['per_atom_scalar']):
 
                     # print target and model energies
@@ -663,6 +640,12 @@ try:
                 
                 self.fit = None
 
+            # Create list of configs and corresponding PyTorch datasets.
+            # TODO: Split up the logic here more. Sometimes we want to supply a list of configs, then create dataset from
+            #       that. Currently this function both creates configs and PyTorch datasets from shared arrays.
+
+            #print(configs)
+            #assert(False)
             self.create_datasets(configs=configs, pt=pt)
             perform_fit(pt=pt, outfile=outfile)
 

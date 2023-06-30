@@ -58,7 +58,7 @@ class InRAMDatasetPyTorch(InRAMDataset):
         if hasattr(self.configs[idx], "pair"):
             # Now we need to return two configs, let's return a list of dicts.
             pairidx = self.configs[idx].pair
-            print(f"{self.configs[pairidx].filename} {pairidx}")
+            #print(f"{self.configs[pairidx].filename} {pairidx}")
             pairname = self.configs[pairidx].filename
             confdict = self.config2dict(idx, pairidx)
             #pairconf = self.configs[pairindx]
@@ -134,15 +134,15 @@ def torch_collate(batch):
         batch: list of dictionaries containing config info, possibly list of lists if pairs are included.
     """
 
-    print(type(batch))
-    print(type(batch[0]))
+    #print(type(batch))
+    #print(type(batch[0]))
 
     # Flatten the list of lists
     #flat1 = list(chain.from_iterable(batch))
     flatten_list = lambda y:[x for a in y for x in flatten_list(a)] if type(y) is list else [y]
     batch = flatten_list(batch)
 
-    print(len(batch))
+    #print(len(batch))
     # Make a map so that model knows how to calculate ediff.
     # pairmap[i] gives index j in batch that we should calculate Ei - Ej.
     # pairdiff[i] gives target Ei - Ej, where j will line up with pairmap[i]
@@ -150,12 +150,12 @@ def torch_collate(batch):
     pairmap = {}
     #pairdiff = {}
     for i, c in enumerate(batch):
-        print(c['pairinfo'])
+        #print(c['pairinfo'])
         if c['pairinfo'] is not None:
             pairmap[i] = {}
             pairmap[i]['pairidx'] = i+1 # Pair index j is always index after i
             pairmap[i]['ediff'] = c['pairinfo']['ediff']
-            pairmap[i]['weight'] = 1.0 # TODO: Make this a defined weight in the driving python script.
+            pairmap[i]['weight'] = 1e1 #100.0 # TODO: Make this a defined weight in the driving python script.
             #pairdiff[i] = c['pairinfo']['ediff']
 
     batch_of_descriptors = torch.cat([conf['x'] for conf in batch], dim=0)

@@ -2,6 +2,7 @@ import lammps
 from mpi4py import MPI
 import numpy as np
 from fitsnap3lib.fitsnap import FitSnap
+import torch
 
 
 # Set up your communicator.
@@ -37,7 +38,7 @@ settings = \
     {
     "layer_sizes": "num_desc 64 64 1",
     "learning_rate": 1e-4,
-    "num_epochs": 1,
+    "num_epochs": 100,
     "batch_size": 4, # 363 configs in entire set
     "save_state_output": "Ta_Pytorch.pt"
     },
@@ -51,15 +52,14 @@ settings = \
     },
 "PATH":
     {
-    "dataPath": "../../Ta_PyTorch_NN/JSON"
+    "dataPath": "JSON" #"../../Ta_PyTorch_NN/JSON"
     },
 "REFERENCE":
     {
     "units": "metal",
     "atom_style": "atomic",
-    "pair_style": "hybrid/overlay zero 6.0 zbl 4.0 4.8",
-    "pair_coeff1": "* * zero",
-    "pair_coeff2": "* * zbl 73 73"
+    "pair_style": "zero 6.0",
+    "pair_coeff": "* *"
     },
 "GROUPS":
     {
@@ -67,6 +67,7 @@ settings = \
     "group_types": "str float float float float float",
     "smartweights": 0,
     "random_sampling": 0,
+    "BCC_Diff"      :  "1.0 0.0 1e2  1 0.003",
     "Displaced_A15" :  "0.7 0.3 1e-2 1 0.003",
     "Displaced_BCC" :  "0.7 0.3 1e-2 1 0.003",
     "Displaced_FCC" :  "0.7 0.3 1e-2 1 0.003",
@@ -74,7 +75,7 @@ settings = \
     "Elastic_FCC"   :  "0.7 0.3 1e-2 1 0.003",
     "GSF_110"       :  "0.7 0.3 1e-2 1 0.003",
     "GSF_112"       :  "0.7 0.3 1e-2 1 0.003",
-    "Liquid"        :  "0.7 0.3 1e-2 1 1.0",
+    "Liquid"        :  "0.7 0.3 1e-2 1 0.003",
     "Surface"       :  "0.7 0.3 1e-2 1 0.003",
     "Volume_A15"    :  "0.7 0.3 1e-2 1 0.003",
     "Volume_BCC"    :  "0.7 0.3 1e-2 1 0.003",
@@ -95,8 +96,10 @@ print(len(configs))
 
 # Assign certain configs a pair index to another config.
 # Say we wanna focus on \Delta E between two specific configs with known filenames.
-ic2 = [(i,c) for i, c in enumerate(configs) if c.filename == "A15_7.json"][0]
-ic1 = [(i,c) for i, c in enumerate(configs) if c.filename == "Ta_liquid_1.json"][0]
+#ic1 = [(i,c) for i, c in enumerate(configs) if c.filename == "Ta_liquid_1.json"][0]
+#ic2 = [(i,c) for i, c in enumerate(configs) if c.filename == "A15_7.json"][0]
+ic1 = [(i,c) for i, c in enumerate(configs) if c.filename == "BCC_1.json"][0]
+ic2 = [(i,c) for i, c in enumerate(configs) if c.filename == "FCC_1.json"][0]
 
 print(ic1)
 print(ic2)
@@ -107,7 +110,6 @@ ic1[1].pair = ic2[0]
 i1 = ic1[0]
 i2 = ic2[0]
 ic1[1].ediff = configs[i1].energy - configs[i2].energy
-#ic2[1].pair = ic1[0]
 
 # This modifies the `configs` list in place.
 
@@ -121,16 +123,16 @@ print(configs[ic1[0]].ediff)
 fs.solver.perform_fit(configs=configs)
 
 
+emodel_list = []
+for idx, c in enumerate(configs):
+    (energies_model, forces_model) = fs.solver.evaluate_configs(config_idx=idx, \
+                                                            standardize_bool=False, \
+                                                            dtype=torch.float64)
+    e_pred = energies_model.detach().numpy()/c.natoms # Model per-atom energy.
+    emodel_list.append(e_pred)
 
-"""
-print(config1)
-print(config2)
-
-config1.pair = 
-
-configs[0].pair = None
-
-print(hasattr(configs[0], "pair"))
-
-"""
+ediff = emodel_list[i1] - emodel_list[i2]
+ediff_target = configs[i1].energy - configs[i2].energy
+ediff_mae = abs(ediff - ediff_target)
+print(f"ediff target mae: {ediff} {ediff_target} {ediff_mae}")
 

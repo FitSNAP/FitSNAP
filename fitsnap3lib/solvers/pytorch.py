@@ -343,6 +343,9 @@ try:
                 model_pas_plot_val = []
                 natoms_per_config = [] # stores natoms per config for calculating eV/atom errors later.
                 min_val_loss = sys.float_info.max # Store min validation loss
+
+                batchnum = 0 # counting total batch number across all epochs
+                fh_b = open("error_vs_batch.dat", 'w')
                 if (self.config.args.verbose or verbose):
                     self.pt.single_print(f"{'Epoch': <2} {'Train': ^10} {'Val': ^10} {'Time (s)': >2}")
                 for epoch in range(self.config.sections["PYTORCH"].num_epochs):
@@ -387,10 +390,10 @@ try:
 
                         if (self.pt.fitsnap_dict['energy'] or (self.pt.fitsnap_dict['force'])):
                             # we are fitting energies/forces
-                            (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
+                            (energies_noperatom,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
                                                            atom_types, dbdrindx, unique_j, unique_i, 
                                                            self.device)
-                            energies = torch.div(energies,num_atoms)
+                            energies = torch.div(energies_noperatom,num_atoms)
 
                             #print(pairmap)
                             #print(energies)
@@ -451,7 +454,14 @@ try:
                                 loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
                                     +  self.weighted_mse_loss(forces, target_forces, force_weights) \
                                     +  self.weighted_mse_loss(ediff, ediff_target, ediff_weights)
-                                assert(False)
+                                #assert(False)
+                                ediff_error = ediff_target.cpu().detach().numpy() - ediff.cpu().detach().numpy()
+                                ediff_mae = np.abs(np.mean(ediff_error))
+                                #print(ediff_mae)
+                                #assert(False)
+                                print(f"{epoch} {i} {ediff_mae} {len(ediff_error)}")
+                                fh_b.write(f"{epoch} {batchnum} {ediff_mae}\n")
+                                batchnum += 1
                             else:
                                 loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
                                     + self.weighted_mse_loss(forces, target_forces, force_weights)

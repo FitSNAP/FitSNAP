@@ -243,7 +243,8 @@ class LammpsPace(LammpsBase):
             #print(lmp_pace[0:,:])
             #assert(False)
         else:
-            nd = np.shape(lmp_pace)[1]
+            #nd = np.shape(lmp_pace)[1] # Note that one column is a reference column.
+            nd = num_types * n_coeff + num_types
             na = np.shape(lmp_pace)[0]
             a = np.zeros((na, nd))
             b = np.zeros(na)
@@ -261,11 +262,16 @@ class LammpsPace(LammpsBase):
         if self.config.sections['ACE'].bikflag:
             bik_rows = num_atoms
         icolref = ncols_bispectrum
+
         if self.config.sections["CALCULATOR"].energy:
-            b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
+            #b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
+            #b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
             if not self.config.sections["ACE"].bikflag:
                 # Divide by natoms if not extracting per-atom descriptors.
-                b_sum_temp /= num_atoms
+                #b_sum_temp /= num_atoms
+                b_sum_temp = lmp_pace[irow, :ncols_bispectrum] / num_atoms
+            else:
+                b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
 
             # Check for no neighbors using B[0,0,0] components
             # these strictly increase with total neighbor count
@@ -275,6 +281,8 @@ class LammpsPace(LammpsBase):
             b000sum0 = 0.0
             nstride = n_coeff
             b000sum = sum(b_sum_temp[::nstride])
+            #print(b_sum_temp)
+            #print(b000sum)
             if not self.config.sections['ACE'].bikflag:
                 if not self.config.sections["ACE"].bzeroflag:
                     b000sum0 = 1.0
@@ -291,6 +299,17 @@ class LammpsPace(LammpsBase):
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
 
             #a[irow] = b_sum_temp * self.config.sections["ACE"].blank2J
+            """
+            print(f">>> ncols_bispectrum: {ncols_bispectrum}")
+            print(f">>> shape(a): {np.shape(a)}")
+            print(f">>> nd: {nd}")
+            print(f">>> n_coeff: {n_coeff}")
+            print(f">>> num_types: {num_types}")
+            print(f">>> num_types * n_coeff + num_types: {num_types * n_coeff + num_types}")
+            print(np.shape(b_sum_temp))
+            print(np.shape(self.config.sections["ACE"].blank2J[np.newaxis, :]))
+            """
+            #assert(False)
             a[irow:irow+bik_rows] = b_sum_temp * self.config.sections["ACE"].blank2J[np.newaxis, :]
             ref_energy = lmp_pace[irow, icolref]
             b[irow] = (energy - ref_energy) / num_atoms

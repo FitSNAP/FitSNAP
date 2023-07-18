@@ -250,16 +250,7 @@ class LammpsSnap(LammpsBase):
 
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
 
-        #print(np.shape(lmp_snap))
-
-        # We want first column to be 1, 0, ... 0.
-        # Next columns are bispectrum components.
-        # Take last column of `lmp_snap` as the `b` vector.
-
         # Get individual A matrices for this configuration.
-
-        #print(np.shape(lmp_snap))
-        #assert(False)
 
         # If doing per-atom descriptors, we want a different shape (one less column).
         if self.config.sections['BISPECTRUM'].bikflag:
@@ -271,14 +262,14 @@ class LammpsSnap(LammpsBase):
             if self.config.sections['CALCULATOR'].stress:
                 nrows += 6
             nd = np.shape(lmp_snap)[1]-1
-            na = nrows #np.shape(lmp_snap)[0]
+            na = nrows
         else:
-            nd = self.get_width() #np.shape(lmp_snap)[1]
+            nd = self.get_width()
             na = np.shape(lmp_snap)[0]
 
         #if self.config.sections['BISPECTRUM'].bzeroflag and not self.config.sections['BISPECTRUM'].bikflag:
         #    nd -= 1
-        
+
         a = np.zeros((na, nd))
         b = np.zeros(na)
         w = np.zeros(na)

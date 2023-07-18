@@ -236,15 +236,12 @@ class LammpsPace(LammpsBase):
             if self.config.sections['CALCULATOR'].stress:
                 nrows += 6
             nd = np.shape(lmp_pace)[1]-1
-            na = nrows #np.shape(lmp_snap)[0]
+            na = nrows
             a = np.zeros((na, nd))
             b = np.zeros(na)
             w = np.zeros(na)
-            #print(lmp_pace[0:,:])
-            #assert(False)
         else:
-            #nd = np.shape(lmp_pace)[1] # Note that one column is a reference column.
-            nd = num_types * n_coeff + num_types
+            nd = self.get_width()
             na = np.shape(lmp_pace)[0]
             a = np.zeros((na, nd))
             b = np.zeros(na)
@@ -298,18 +295,6 @@ class LammpsPace(LammpsBase):
                 #b_sum_temp.shape = (num_types * (n_coeff + num_types))
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
 
-            #a[irow] = b_sum_temp * self.config.sections["ACE"].blank2J
-            """
-            print(f">>> ncols_bispectrum: {ncols_bispectrum}")
-            print(f">>> shape(a): {np.shape(a)}")
-            print(f">>> nd: {nd}")
-            print(f">>> n_coeff: {n_coeff}")
-            print(f">>> num_types: {num_types}")
-            print(f">>> num_types * n_coeff + num_types: {num_types * n_coeff + num_types}")
-            print(np.shape(b_sum_temp))
-            print(np.shape(self.config.sections["ACE"].blank2J[np.newaxis, :]))
-            """
-            #assert(False)
             a[irow:irow+bik_rows] = b_sum_temp * self.config.sections["ACE"].blank2J[np.newaxis, :]
             ref_energy = lmp_pace[irow, icolref]
             b[irow] = (energy - ref_energy) / num_atoms

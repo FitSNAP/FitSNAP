@@ -276,8 +276,9 @@ class LammpsSnap(LammpsBase):
             nd = self.get_width() #np.shape(lmp_snap)[1]
             na = np.shape(lmp_snap)[0]
 
-        if self.config.sections['BISPECTRUM'].bzeroflag and not self.config.sections['BISPECTRUM'].bikflag:
-            nd -= 1
+        #if self.config.sections['BISPECTRUM'].bzeroflag and not self.config.sections['BISPECTRUM'].bikflag:
+        #    nd -= 1
+        
         a = np.zeros((na, nd))
         b = np.zeros(na)
         w = np.zeros(na)

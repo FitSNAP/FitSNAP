@@ -118,17 +118,17 @@ settings = \
 {
 "BISPECTRUM":
     {
-    "numTypes": 1,
-    "twojmax": 6,
-    "rcutfac": 4.67637,
+    "numTypes": 2,
+    "twojmax": "8 8",
+    "rcutfac": 4.812302818,
     "rfac0": 0.99363,
     "rmin0": 0.0,
-    "wj": 1.0,
-    "radelem": 0.5,
-    "type": "Ta",
+    "wj": "1.0 0.9590493408",
+    "radelem": "0.5 0.417932464",
+    "type": "W Be",
     "wselfallflag": 0,
     "chemflag": 0,
-    "bzeroflag": 0,
+    "bzeroflag": 1,
     "quadraticflag": 0,
     },
 "CALCULATOR":
@@ -140,7 +140,8 @@ settings = \
     },
 "ESHIFT":
     {
-    "Ta": 0.0
+    "W": 0.0,
+    "Be": 0.0
     },
 "SOLVER":
     {
@@ -154,12 +155,12 @@ settings = \
     },
 "PATH":
     {
-    "dataPath": "../../Ta_Linear_JCP2014/JSON"
+    "dataPath": "../../WBe_PRB2019/JSON"
     },
 "OUTFILE":
     {
-    "metrics": "Ta_metrics.md",
-    "potential": "Ta_pot"
+    "metrics": "WBe_metrics.md",
+    "potential": "WBe_pot"
     },
 "REFERENCE":
     {
@@ -167,33 +168,28 @@ settings = \
     "atom_style": "atomic",
     "pair_style": "hybrid/overlay zero 10.0 zbl 4.0 4.8",
     "pair_coeff1": "* * zero",
-    "pair_coeff2": "* * zbl 73 73"
+    "pair_coeff2": "1 1 zbl 74 74",
+    "pair_coeff3": "1 2 zbl 74 4",
+    "pair_coeff4": "2 2 zbl 4 4"
     },
 "EXTRAS":
     {
-    "dump_descriptors": 1,
-    "dump_truth": 1,
-    "dump_weights": 1,
-    "dump_dataframe": 1
+    "dump_descriptors": 0,
+    "dump_truth": 0,
+    "dump_weights": 0,
+    "dump_dataframe": 0
     },
 "GROUPS":
     {
     "group_sections": "name training_size testing_size eweight fweight vweight",
     "group_types": "str float float float float float",
     "smartweights": 0,
-    "random_sampling": 0,
-    "Displaced_A15" :  "1.0    0.0       100             1               1.00E-08",
-    "Displaced_BCC" :  "1.0    0.0       100             1               1.00E-08",
-    "Displaced_FCC" :  "1.0    0.0       100             1               1.00E-08",
-    "Elastic_BCC"   :  "1.0    0.0     1.00E-08        1.00E-08        0.0001",
-    "Elastic_FCC"   :  "1.0    0.0     1.00E-09        1.00E-09        1.00E-09",
-    "GSF_110"       :  "1.0    0.0      100             1               1.00E-08",
-    "GSF_112"       :  "1.0    0.0      100             1               1.00E-08",
-    "Liquid"        :  "1.0    0.0       4.67E+02        1               1.00E-08",
-    "Surface"       :  "1.0    0.0       100             1               1.00E-08",
-    "Volume_A15"    :  "1.0    0.0      1.00E+00        1.00E-09        1.00E-09",
-    "Volume_BCC"    :  "1.0    0.0      1.00E+00        1.00E-09        1.00E-09",
-    "Volume_FCC"    :  "1.0    0.0      1.00E+00        1.00E-09        1.00E-09"
+    "random_sampling": 1,
+    "DFT_MD_1000K":     "0.2      0.05      1e-2      1.0      1.E-12",
+    "DFT_MD_300K":      "0.2      0.05      1e-2      1.0      1.E-12",
+    "EOS_BCC":          "0.1      0.05      1e-2      1.0      1.E-12",
+    "Elast_BCC_Shear":  "0.1      0.05      1e-2      1.0      1.E-12",
+    "Elast_BCC_Vol":    "0.1      0.05      1e-2      1.0      1.E-12"
     },
 "MEMORY":
     {
@@ -205,29 +201,29 @@ settings = \
 #settings = "../../Ta_Linear_JCP2014/Ta-example.in"
 
 # Create a FitSnap instance using the communicator and settings:
-fitsnap = FitSnap(settings, comm=comm, arglist=["--overwrite"])
+fs = FitSnap(settings, comm=comm, arglist=["--overwrite"])
 
 # Scrape configurations to create and populate the `snap.data` list of dictionaries with structural info.
-fitsnap.scrape_configs()
+fs.scrape_configs()
 
 # Allocate `C` and `d` fitting arrays.
-a_width = fitsnap.calculator.get_width()
+a_width = fs.calculator.get_width()
 c = np.zeros((a_width,a_width)) # This will also include weights.
 d = np.zeros((a_width,1))
 
 # Create fitsnap dictionaries (optional if you want access to distributed lists of groups, etc.)
-fitsnap.calculator.create_dicts(len(fitsnap.data))
+fs.calculator.create_dicts(len(fs.data))
 # Create `C` and `d` arrays for solving lstsq with transpose trick.
-a_width = fitsnap.calculator.get_width()
+a_width = fs.calculator.get_width()
 c = np.zeros((a_width,a_width))
 d = np.zeros((a_width,1))
 c_all = np.zeros((a_width,a_width))
 d_all = np.zeros((a_width,1))
-for i, configuration in enumerate(fitsnap.data):
+for i, configuration in enumerate(fs.data):
     # TODO: Add option to print descriptor calculation progress on single proc.
     if (i % 10 == 0):
-        fitsnap.pt.single_print(i)
-    a,b,w = fitsnap.calculator.process_single(configuration, i)
+        fs.pt.single_print(i)
+    a,b,w = fs.calculator.process_single(configuration, i)
     aw, bw = w[:, np.newaxis] * a, w * b
 
     cm = np.matmul(np.transpose(aw), aw)
@@ -235,17 +231,25 @@ for i, configuration in enumerate(fitsnap.data):
     c += cm
     d += dm
 # Good practice after a large parallel operation is to impose a barrier to wait for all procs to complete.
-fitsnap.pt.all_barrier()
+fs.pt.all_barrier()
 
 # Reduce C and D arrays across procs.
 comm.Allreduce([c, MPI.DOUBLE], [c_all, MPI.DOUBLE])
 comm.Allreduce([d, MPI.DOUBLE], [d_all, MPI.DOUBLE])
 
 if rank == 0:
-
     # Perform least squares fit.
-    coeffs = least_squares(c_all,d_all)
-    #coeffs = ridge(c_all, d_all)
+    #coeffs = least_squares(c_all,d_all)
+    coeffs = ridge(c_all, d_all)
+
+    # Apply offsets if bzeroflag
+    if fs.config.sections["BISPECTRUM"].bzeroflag:
+        num_types = fs.config.sections["BISPECTRUM"].numtypes
+        if num_types > 1:
+            coeffs = coeffs.reshape(num_types, fs.config.sections["BISPECTRUM"].ncoeff)
+            offsets = np.zeros((num_types, 1))
+            coeffs = np.concatenate([offsets, coeffs], axis=1)
+            coeffs = coeffs.reshape((-1, 1))
 
     # Now `coeffs` is owned by all procs, good for parallel error analysis.
 
@@ -254,4 +258,4 @@ if rank == 0:
 
     # Write LAMMPS files.
     # NOTE: Without error analysis, `fitsnap.solver.errors` is an empty list and will not be written to file.
-    fitsnap.output.output(coeffs, fitsnap.solver.errors)
+    fs.output.output(coeffs, fs.solver.errors)

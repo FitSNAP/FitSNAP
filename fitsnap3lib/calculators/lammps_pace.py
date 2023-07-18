@@ -243,6 +243,8 @@ class LammpsPace(LammpsBase):
         else:
             nd = self.get_width()
             na = np.shape(lmp_pace)[0]
+            if not self.config.sections["CALCULATOR"].stress:
+                na -= 6
             a = np.zeros((na, nd))
             b = np.zeros(na)
             w = np.zeros(na)
@@ -417,6 +419,8 @@ class LammpsPace(LammpsBase):
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
             self.pt.shared_arrays['a'].array[index] = b_sum_temp * self.config.sections["ACE"].blank2J
+            #print(b_sum_temp * self.config.sections["ACE"].blank2J)
+            #assert(False)
             ref_energy = lmp_pace[irow, icolref]
             self.pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
             self.pt.shared_arrays['w'].array[index] = self._data["eweight"]

@@ -266,6 +266,8 @@ class LammpsSnap(LammpsBase):
         else:
             nd = self.get_width()
             na = np.shape(lmp_snap)[0]
+            if not self.config.sections["CALCULATOR"].stress:
+                na -= 6
 
         #if self.config.sections['BISPECTRUM'].bzeroflag and not self.config.sections['BISPECTRUM'].bikflag:
         #    nd -= 1

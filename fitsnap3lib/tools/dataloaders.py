@@ -2,6 +2,8 @@ import torch.utils.data
 from sys import float_info
 import numpy as np
 from torch.utils.data import DataLoader
+#from torch.utils.data import WeightedRandomSampler
+from itertools import chain
 
 class InRAMDataset(torch.utils.data.Dataset):
     """
@@ -42,12 +44,41 @@ class InRAMDatasetPyTorch(InRAMDataset):
     def __getitem__(self, idx):
         """
         Convert configuration quantities to tensors and return them, for a single configuration in a 
-        batch. 
+        batch. We have a "map-style dataset" since we implement this method.
 
         TODO: We could eliminate this costly conversion by storing all of these as tensors instead 
         of numpy arrays from the beginning, when processing configs in the Calculator class.
         """
 
+        # Check that the oversampled index is what we think (e.g. doing this for a single liquid in Ta)
+        #print(f"{idx} {self.configs[idx].filename}")
+
+        # Check if this config has a pair
+        
+        if hasattr(self.configs[idx], "pair"):
+            # Now we need to return two configs, let's return a list of dicts.
+            pairidx = self.configs[idx].pair
+            #print(f"{self.configs[pairidx].filename} {pairidx}")
+            pairname = self.configs[pairidx].filename
+            confdict = self.config2dict(idx, pairidx)
+            #pairconf = self.configs[pairindx]
+            pairconfdict = self.config2dict(pairidx)
+            return [confdict, pairconfdict]
+        
+        else:
+            confdict = self.config2dict(idx)
+            return confdict
+    
+    def config2dict(self, idx, pairidx=None):
+        """
+        Convert config at specific index in the `self.configs` list into dict format.
+
+        Args:
+            idx: int index of a config in the `self.configs` list.
+            pairidx: Optional index of a nother pair for which to take energy difference.
+                     The energy diff we fit to is (E_idx - E_pairidx).
+        """
+        
         config_descriptors = torch.tensor(self.configs[idx].descriptors).float()
         atom_types = torch.tensor(self.configs[idx].types).long()
 
@@ -75,6 +106,12 @@ class InRAMDatasetPyTorch(InRAMDataset):
 
         number_of_atoms = torch.tensor(self.configs[idx].natoms)
 
+        pairinfo = None
+        if pairidx is not None:
+            pairname = self.configs[pairidx].filename
+            ediff = self.configs[idx].ediff
+            pairinfo = {'pairname': pairname, 'ediff': ediff}
+
         configuration = {'x': config_descriptors,
                          'y': target, #target.reshape(-1),
                          'y_forces': target_forces,
@@ -83,15 +120,43 @@ class InRAMDatasetPyTorch(InRAMDataset):
                          'w': weights,
                          'dgrad': dgrad,
                          'dbdrindx': dbdrindx,
-                         'configs': self.configs[idx]}
+                         'configs': self.configs[idx],
+                         'pairinfo': pairinfo}
 
         return configuration
-
+        
 
 def torch_collate(batch):
     """
     Collate batch of data, which collates a stack of configurations from Dataset into a batch.
+
+    Args:
+        batch: list of dictionaries containing config info, possibly list of lists if pairs are included.
     """
+
+    #print(type(batch))
+    #print(type(batch[0]))
+
+    # Flatten the list of lists
+    #flat1 = list(chain.from_iterable(batch))
+    flatten_list = lambda y:[x for a in y for x in flatten_list(a)] if type(y) is list else [y]
+    batch = flatten_list(batch)
+
+    #print(len(batch))
+    # Make a map so that model knows how to calculate ediff.
+    # pairmap[i] gives index j in batch that we should calculate Ei - Ej.
+    # pairdiff[i] gives target Ei - Ej, where j will line up with pairmap[i]
+    # TODO: Maybe combine pairmap and pairdiff dicts into a single dict, where pairmap[i] gives a list [j, ediff] ?
+    pairmap = {}
+    #pairdiff = {}
+    for i, c in enumerate(batch):
+        #print(c['pairinfo'])
+        if c['pairinfo'] is not None:
+            pairmap[i] = {}
+            pairmap[i]['pairidx'] = i+1 # Pair index j is always index after i
+            pairmap[i]['ediff'] = c['pairinfo']['ediff']
+            pairmap[i]['weight'] = 1e1 #100.0 # TODO: Make this a defined weight in the driving python script.
+            #pairdiff[i] = c['pairinfo']['ediff']
 
     batch_of_descriptors = torch.cat([conf['x'] for conf in batch], dim=0)
     batch_of_types = torch.cat([conf['t'] for conf in batch], dim=0)
@@ -157,6 +222,9 @@ def torch_collate(batch):
     #print(batch_of_target_forces)
     #print(batch_of_unique_j)
 
+    #print(pairmap)
+    #assert(False)
+
     collated_batch = {'x': batch_of_descriptors,
                       't': batch_of_types,
                       'y': batch_of_targets,
@@ -168,7 +236,8 @@ def torch_collate(batch):
                       'dbdrindx': batch_of_dbdrindx,
                       'unique_j': batch_of_unique_j,
                       'unique_i': batch_of_unique_i,
-                      'testing_bools': batch_of_testing_bools}
+                      'testing_bools': batch_of_testing_bools,
+                      'pairmap': pairmap}
 
     return collated_batch
 

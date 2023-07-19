@@ -1,4 +1,3 @@
-
 import sys
 from fitsnap3lib.solvers.solver import Solver
 from time import time
@@ -136,14 +135,21 @@ try:
             if pt is None:
                 pt = self.pt
 
+            #self.has_sweights = False
+
             if configs is None:
                 self.configs = [Configuration(int(natoms)) for natoms in pt.fitsnap_dict['NumAtoms']]
+
+                # check whether importance sampling was activated before looping over configs
+                # TODO: add same behavior to other nonlinear solvers 
+                self.has_sweights = ('sweight' in self.config.sections['GROUPS'].group_sections) or (self.config.sections['GROUPS'].smartsample == 1)
 
                 # add descriptors and atom types
 
                 indx_natoms_low = 0
                 indx_forces_low = 0
                 indx_dgrad_low = 0
+                self.sample_weights = []
                 for i, config in enumerate(self.configs):
                     
                     indx_natoms_high = indx_natoms_low + config.natoms
@@ -164,11 +170,15 @@ try:
                     if (pt.fitsnap_dict['per_atom_scalar']):
                         config.pas = pt.shared_arrays['pas'].array[indx_natoms_low:indx_natoms_high]
 
-                    config.filename = pt.fitsnap_dict['Configs'][i]
-                    config.group = pt.fitsnap_dict['Groups'][i]
-                    config.testing_bool = pt.fitsnap_dict['Testing'][i]
-                    config.descriptors = pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
-                    config.types = pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
+                    config.filename = self.pt.fitsnap_dict['Configs'][i]
+                    config.group = self.pt.fitsnap_dict['Groups'][i]
+                    config.testing_bool = self.pt.fitsnap_dict['Testing'][i]
+                    config.descriptors = self.pt.shared_arrays['a'].array[indx_natoms_low:indx_natoms_high]
+                    config.types = self.pt.shared_arrays['t'].array[indx_natoms_low:indx_natoms_high] - 1 # start types at zero
+
+                    # Make list of sampling weights for training data only, if importance sampling activated
+                    if not config.testing_bool and self.has_sweights:
+                        self.sample_weights.append(self.pt.shared_arrays['w'].array[i,2])
 
                     indx_natoms_low += config.natoms
                     indx_forces_low += 3*config.natoms
@@ -183,7 +193,7 @@ try:
             self.total_data = InRAMDatasetPyTorch(self.configs)
 
             # randomly shuffle and split into training/validation data if using global fractions
-
+            
             if (self.global_fraction_bool):
 
                 if (self.training_fraction == 0.0):
@@ -210,9 +220,53 @@ try:
                 self.training_data = torch.utils.data.Subset(self.total_data, training_indices)
                 self.validation_data = torch.utils.data.Subset(self.total_data, testing_indices)
 
-            # make training and validation data loaders for batch training
+            #print(len(sample_weights))
+            #assert(False)
 
-            self.training_loader = DataLoader(self.training_data,
+            # Choose a sampler if desired.
+            if self.has_sweights:
+                # if we're using importance sampling
+                """
+                num_samples = len(self.training_data)
+                replacement = True
+                sample_weights = num_samples*[0.1] # TODO: this is user-supplied with weights per group
+                weight_important = 0.25 # 1/batch_size
+                weight_other = (1.0 - weight_important)/num_samples
+                sample_weights = 100*[weight_other]
+                sample_weights[0] = weight_important
+
+                print(self.training_data[0])
+                """
+                num_samples = len(self.sample_weights)
+
+                sampler = torch.utils.data.WeightedRandomSampler(weights=self.sample_weights,
+                                                                num_samples=num_samples,
+                                                                replacement=True)
+
+                # Make training and validation data loaders for batch training, depending on settings.
+                # Note that sampler option is mutually exclusive with shuffle.
+
+                # if we're doing importance sampling (no shuffle here):
+                self.training_loader = DataLoader(self.training_data,
+                                                batch_size=self.config.sections["PYTORCH"].batch_size,
+                                                #shuffle=self.config.sections['PYTORCH'].shuffle_flag,
+                                                sampler=sampler,
+                                                collate_fn=torch_collate,
+                                                num_workers=0)
+            
+            else:
+                # if we're doing a random shuffle:
+                """
+                self.training_loader = DataLoader(self.training_data,
+                                                batch_size=self.config.sections["PYTORCH"].batch_size,
+                                                shuffle=self.config.sections['PYTORCH'].shuffle_flag,
+                                                #sampler=sampler,
+                                                collate_fn=torch_collate,
+                                                num_workers=0)
+                """
+
+                # TODO: check this! the DataLoader code is copied from master branch, PR #205 (commit 4ed3484)
+                self.training_loader = DataLoader(self.training_data,
                                               batch_size=self.config.sections["PYTORCH"].batch_size,
                                               shuffle=self.config.sections['PYTORCH'].shuffle_flag,
                                               collate_fn=torch_collate,
@@ -289,6 +343,9 @@ try:
                 model_pas_plot_val = []
                 natoms_per_config = [] # stores natoms per config for calculating eV/atom errors later.
                 min_val_loss = sys.float_info.max # Store min validation loss
+
+                batchnum = 0 # counting total batch number across all epochs
+                fh_b = open("error_vs_batch.dat", 'w')
                 if (self.config.args.verbose or verbose):
                     self.pt.single_print(f"{'Epoch': <2} {'Train': ^10} {'Val': ^10} {'Time (s)': >2}")
                 for epoch in range(self.config.sections["PYTORCH"].num_epochs):
@@ -305,6 +362,7 @@ try:
                         indices = batch['i'].to(self.device)
                         num_atoms = batch['noa'].to(self.device)
                         targets = batch['y'].to(self.device).requires_grad_(True)
+                        pairmap = batch['pairmap']
 
                         if (self.pt.fitsnap_dict['energy']):
                             #targets = batch['y'].to(self.device).requires_grad_(True)
@@ -332,10 +390,24 @@ try:
 
                         if (self.pt.fitsnap_dict['energy'] or (self.pt.fitsnap_dict['force'])):
                             # we are fitting energies/forces
-                            (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
+                            (energies_noperatom,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
                                                            atom_types, dbdrindx, unique_j, unique_i, 
                                                            self.device)
-                            energies = torch.div(energies,num_atoms)
+                            energies = torch.div(energies_noperatom,num_atoms)
+
+                            #print(pairmap)
+                            #print(energies)
+                            #pairkeys = list(pairmap.keys())
+                            pairindices = [[k,v['pairidx']] for k, v in pairmap.items()]
+                            ediff_target = torch.tensor([v['ediff'] for _, v in pairmap.items()]).requires_grad_(True)
+                            #print(pairindices)
+                            #print(ediff_target)
+                            ediff = torch.tensor([energies[p[0]] - energies[p[1]] for p in pairindices]).requires_grad_(True)
+                            #print(ediff)
+                            ediff_weights = torch.tensor([v['weight'] for _, v in pairmap.items()]).to(self.device)
+                            #print(ediff_weights)
+                            #assert(False)
+
                         else:
                             # calculate per-atom scalars
                             pas = self.model(descriptors, num_atoms, atom_types, self.device)
@@ -377,6 +449,19 @@ try:
                             if (self.global_weight_bool):
                                 loss = self.energy_weight*self.loss_function(energies, targets) \
                                      + self.force_weight*self.loss_function(forces, target_forces)
+                            elif pairindices:
+                                # If we have energy diff pairs.
+                                loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
+                                    +  self.weighted_mse_loss(forces, target_forces, force_weights) \
+                                    +  self.weighted_mse_loss(ediff, ediff_target, ediff_weights)
+                                #assert(False)
+                                ediff_error = ediff_target.cpu().detach().numpy() - ediff.cpu().detach().numpy()
+                                ediff_mae = np.abs(np.mean(ediff_error))
+                                #print(ediff_mae)
+                                #assert(False)
+                                print(f"{epoch} {i} {ediff_mae} {len(ediff_error)}")
+                                fh_b.write(f"{epoch} {batchnum} {ediff_mae}\n")
+                                batchnum += 1
                             else:
                                 loss = self.weighted_mse_loss(energies, targets, weights[:,0]) \
                                     + self.weighted_mse_loss(forces, target_forces, force_weights)
@@ -525,52 +610,6 @@ try:
                             self.config.sections['PYTORCH'].save_state_output
                         )
 
-                # TODO: Remove the following commented block after long-term use confirms that new
-                #       detailed errors make this redundant. 
-                """
-                if (self.pt.fitsnap_dict['force']):
-
-                    # print target and model forces
-                    # training
-                    target_force_plot = np.concatenate(target_force_plot)
-                    model_force_plot = np.concatenate(model_force_plot)
-                    target_force_plot = np.array([target_force_plot]).T
-                    model_force_plot = np.array([model_force_plot]).T
-                    dat = np.concatenate((model_force_plot, target_force_plot), axis=1)
-                    np.savetxt("force_comparison.dat", dat)
-                    # validation
-                    if (target_force_plot_val):
-                        target_force_plot_val = np.concatenate(target_force_plot_val)
-                        model_force_plot_val = np.concatenate(model_force_plot_val)
-                        target_force_plot_val = np.array([target_force_plot_val]).T
-                        model_force_plot_val = np.array([model_force_plot_val]).T
-                        dat_val = np.concatenate((model_force_plot_val, target_force_plot_val), axis=1)
-                        np.savetxt("force_comparison_val.dat", dat_val) 
-
-                if (self.pt.fitsnap_dict['energy']):
-
-                    # print target and model energies
-                    # training
-                    target_energy_plot = np.concatenate(target_energy_plot)
-                    model_energy_plot = np.concatenate(model_energy_plot)
-
-                    target_energy_plot = np.array([target_energy_plot]).T
-                    model_energy_plot = np.array([model_energy_plot]).T
-
-                    dat = np.concatenate((model_energy_plot, target_energy_plot), axis=1)
-                    np.savetxt("energy_comparison.dat", dat)
-                    # validation
-                    if (target_energy_plot_val):
-                        target_energy_plot_val = np.concatenate(target_energy_plot_val)
-                        model_energy_plot_val = np.concatenate(model_energy_plot_val)
-                        #natoms_per_config = np.concatenate(natoms_per_config)
-                        target_energy_plot_val = np.array([target_energy_plot_val]).T
-                        model_energy_plot_val = np.array([model_energy_plot_val]).T
-                        #natoms_per_config = np.array([natoms_per_config]).T
-                        dat_val = np.concatenate((model_energy_plot_val, target_energy_plot_val), axis=1)
-                        np.savetxt("energy_comparison_val.dat", dat_val)
-                """
-
                 if (self.pt.fitsnap_dict['per_atom_scalar']):
 
                     # print target and model energies
@@ -611,6 +650,12 @@ try:
                 
                 self.fit = None
 
+            # Create list of configs and corresponding PyTorch datasets.
+            # TODO: Split up the logic here more. Sometimes we want to supply a list of configs, then create dataset from
+            #       that. Currently this function both creates configs and PyTorch datasets from shared arrays.
+
+            #print(configs)
+            #assert(False)
             self.create_datasets(configs=configs, pt=pt)
             perform_fit(pt=pt, outfile=outfile)
 

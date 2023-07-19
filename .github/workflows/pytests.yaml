@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        test: [mpi, quad, pace] #, eme, xyz, neme, spin]
+        test: [mpi, quad, pace, neme] #, eme, xyz, neme, spin]
         python-version: ["3.10"]
       max-parallel: 20
     runs-on: ${{ matrix.os }}

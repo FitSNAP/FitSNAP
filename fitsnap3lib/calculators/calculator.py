@@ -132,7 +132,7 @@ class Calculator:
                                         tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('w', b_len, 3, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
             if self.config.sections["CALCULATOR"].per_atom_scalar:
                 # create per-atom scalar arrays

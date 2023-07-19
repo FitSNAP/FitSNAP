@@ -178,6 +178,10 @@ class LammpsSnap(LammpsBase):
         self.pt.shared_arrays['b'].array[index_b] = (energy - ref_energy)/num_atoms
         self.pt.shared_arrays['w'].array[index_b,0] = self._data["eweight"]
         self.pt.shared_arrays['w'].array[index_b,1] = self._data["fweight"]
+        if 'sweight' in self._data.keys():
+            # add importance sampling weights, if activated
+            # TODO: add same behavior to other nonlinear calculators
+            self.pt.shared_arrays['w'].array[index_b,2] = self._data["sweight"]
         index_b += 1
 
         if (self.config.sections['CALCULATOR'].force):

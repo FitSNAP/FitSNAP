@@ -193,7 +193,7 @@ def _to_potential_file(config):
         # add pair coeff commands from input, ignore if pair zero
         for pc in config.sections["REFERENCE"].lmp_pairdecl[1:]:
             out += f"{pc}\n" if "zero" not in pc else ""
-        pc_ace = f"pair_coeff * * ace {ace_filename}.yace"
+        pc_ace = f"pair_coeff * * pace {ace_filename}.yace"
         for t in config.sections["ACE"].types:
             pc_ace += f" {t}"
         out += pc_ace

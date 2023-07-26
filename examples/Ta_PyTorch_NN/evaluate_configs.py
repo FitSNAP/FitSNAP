@@ -15,32 +15,66 @@ import numpy as np
 import pickle
 import torch
 from pathlib import Path
+from fitsnap3lib.fitsnap import FitSnap
 
 with open(r"configs.pickle", "rb") as file:
     configs = pickle.load(file)
 
-# Import parallel tools and create corresponding object.
-from fitsnap3lib.parallel_tools import ParallelTools
-#pt = ParallelTools(comm=comm)
-pt = ParallelTools()
-# don't check for existing fitsnap objects since we'll be overwriting things
-pt.check_fitsnap_exist = False
-from fitsnap3lib.io.input import Config
-# Declare input script and create config object.
-# fitsnap_in = ta_example_file.as_posix() # Use posix if file is Path object
-fitsnap_in = "Ta-example.in"
-config = Config(arguments_lst = [fitsnap_in, "--overwrite"])
-# Load pytorch file from a previous fit.
-config.sections['PYTORCH'].save_state_input = "Ta_Pytorch.pt"
-# Create a fitsnap object.
-from fitsnap3lib.fitsnap import FitSnap
-snap = FitSnap()
+# NOTE: Settings dictionary needs to be same as input script.
+# TODO: Relieve dependence on using unrelated sections like BISPECTRUM and CALCULATOR for simple NN eval.
+settings = \
+{
+"BISPECTRUM":
+    {
+    "numTypes": 1,
+    "twojmax": 6,
+    "rcutfac": 4.67637,
+    "rfac0": 0.99363,
+    "rmin0": 0.0,
+    "wj": 1.0,
+    "radelem": 0.5,
+    "type": "Ta",
+    "wselfallflag": 0,
+    "chemflag": 0,
+    "bzeroflag": 1,
+    "bikflag": 1,
+    "dgradflag": 1
+    },
+"CALCULATOR":
+    {
+    "calculator": "LAMMPSSNAP",
+    "energy": 1,
+    "force": 1,
+    "per_atom_energy": 1,
+    "nonlinear": 1
+    },
+"PYTORCH":
+    {
+    "layer_sizes": "num_desc 64 64 1",
+    "learning_rate": 1e-4,
+    "num_epochs": 10,
+    "batch_size": 4, # 363 configs in entire set
+    "save_state_input": "Ta_Pytorch.pt"
+    },
+"SOLVER":
+    {
+    "solver": "PYTORCH"
+    }
+}
 
-# Calculate model energies/forces.
+fs = FitSnap(settings, arglist=["--overwrite"])
 
-snap.solver.configs = configs
-(energies_model, forces_model) = snap.solver.evaluate_configs(config_idx=None, standardize_bool=True)
+fs.solver.configs = configs
+(energies_model, forces_model) = fs.solver.evaluate_configs(config_idx=None, standardize_bool=True)
+
+# Convert to numpy arrays.
+nconfigs = len(energies_model)
+for m in range(nconfigs):
+    energies_model[m] = energies_model[m].detach().numpy().astype(float)
+    forces_model[m] = forces_model[m].detach().numpy()
 
 print(f"{len(energies_model)} configurations")
-print(type(forces_model))
-print(forces_model[0])
+print(energies_model[0])
+
+# We return total energies, so calculate per-atom energies like:
+print(energies_model[0]/configs[0].natoms)

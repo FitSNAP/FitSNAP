@@ -332,7 +332,7 @@ class Scraper:
                 self.data['fweight'] /= natoms*3
 
             if self.config.sections["CALCULATOR"].stress:
-                self.data['fweight'] /= 6
+                self.data['vweight'] /= 6
 
     #@pt.rank_zero
     def _write_seed_file(self, txt):

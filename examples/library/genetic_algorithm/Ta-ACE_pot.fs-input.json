@@ -1,0 +1,78 @@
+{
+    "ACE": {
+        "numtypes": "1",
+        "rcutfac": "6.026",
+        "lambda": "1.808",
+        "rcinner": "0.580",
+        "drcinner": "0.01",
+        "ranks": "1 2 3 4",
+        "lmax": "0 5 3 1",
+        "nmax": "12 7 3 1",
+        "mumax": "1",
+        "lmin": "0 0 1 1",
+        "nmaxbase": "12",
+        "type": "Ta",
+        "bzeroflag": "0"
+    },
+    "CALCULATOR": {
+        "calculator": "LAMMPSPACE",
+        "energy": "1",
+        "force": "1",
+        "stress": "0"
+    },
+    "ESHIFT": {
+        "ta": "0.0"
+    },
+    "SOLVER": {
+        "solver": "RIDGE",
+        "compute_testerrs": "1",
+        "detailed_errors": "1"
+    },
+    "RIDGE": {
+        "alpha": "1.E-5"
+    },
+    "SCRAPER": {
+        "scraper": "JSON"
+    },
+    "PATH": {
+        "datapath": "JSON"
+    },
+    "OUTFILE": {
+        "output_style": "PACE",
+        "metrics": "Ta-ACE_metrics.md",
+        "potential": "Ta-ACE_pot"
+    },
+    "REFERENCE": {
+        "units": "metal",
+        "atom_style": "atomic",
+        "pair_style": "hybrid/overlay zero 6.035556 zbl 0.580000 2.320000",
+        "pair_coeff1": "* * zero",
+        "pair_coeff2": "1 1 zbl 73 73"
+    },
+    "GROUPS": {
+        "group_sections": "name training_size testing_size eweight fweight vweight",
+        "group_types": "str float float float float float",
+        "smartweights": "0",
+        "random_sampling": "0",
+        "Displaced_A15": "1.0      0.0      0.03188701260490832      0.016428550613849874",
+        "Displaced_BCC": "1.0      0.0      0.013991011501663117      6.563756241326426e-05",
+        "Displaced_FCC": "1.0      0.0      0.7276901272794604      7.3829887416674636",
+        "Elastic_BCC": "1.0      0.0      20.69738108167817      5.663589343249895",
+        "Elastic_FCC": "1.0      0.0      1.01704158856301      4.72403323564443",
+        "GSF_110": "1.0      0.0      0.3470732000200599      19.953371578410554",
+        "GSF_112": "1.0      0.0      10.508642421887458      0.006474580871784665",
+        "Liquid": "1.0      0.0      135.9605202116309      10.604275130971544",
+        "Surface": "1.0      0.0      0.0002638448282943967      0.0007032180326164671",
+        "Volume_A15": "1.0      0.0      0.01777556102551868      0.0",
+        "Volume_BCC": "1.0      0.0      912.9560113447552      0.0",
+        "Volume_FCC": "1.0      0.0      18.36959719496612      0.0"
+    },
+    "EXTRAS": {
+        "dump_descriptors": "0",
+        "dump_truth": "0",
+        "dump_weights": "0"
+    },
+    "MEMORY": {
+        "override": "0"
+    }
+}

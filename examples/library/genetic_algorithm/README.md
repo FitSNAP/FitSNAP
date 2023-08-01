@@ -85,7 +85,7 @@ will use the seeds in this folder first, before generating
 its own. This allows for the approximate reproducibility of
 models from machine to machine. You should be able to 
 reproduce, to within numerical precision, the reference for
-this potential in 24Apr23_Standard.
+this potential in 1Aug23_Standard.
 
 ### Notes
 The initial calculation of the descriptors may be done in
@@ -94,7 +94,8 @@ are some numpy parallelism tricks that may be used to take
 advantage of multithreading for the optimization loop, but 
 these have not been implemented for this example yet. 
 
-Alternatively if one does not use the local RIDGE solver
+For ACE fits alone: 
+If one does not use the local RIDGE solver
 for this optimization and instead uses the sklearn RIDGE
 solver, some of the sklearn multithreading tools and flags
 may be used. For example, setting OMP_NUM_THREADS=4, will 

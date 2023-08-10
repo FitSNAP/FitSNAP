@@ -409,7 +409,7 @@ def prep_fitsnap_input(snap, smartweights_override=False):
     # for now, elegantly crash if user has 3 or fewer groups 
     num_groups = len(snap.config.sections["GROUPS"].group_table.keys())
     if num_groups <= 3:
-        snap.single_print("\n!ERROR: Need more than 3 groups to use genetic algorithm (see comment)!")
+        snap.single_print("\n!ERROR: Need 4 or more groups to use genetic algorithm (see comment)!")
         snap.single_print("!ERROR: I am elegantly crashing now so that you can contact the FitSNAP team to have them solve this for you!!\n")
         exit()
 

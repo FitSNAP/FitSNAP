@@ -25,8 +25,8 @@ def main():
     size = comm.Get_size()
 
     # parse command line args
-    #fs_input="SNAP_Ta.in"
-    fs_input="ACE_Ta.in"
+    fs_input="SNAP_Ta.in"
+    # fs_input="ACE_Ta.in"
     optimization_style = "genetic_algorithm"
     popsize, ngen = 4, 4 # default values: 50, 100; testing values:  4, 4
     smartweights_override = False

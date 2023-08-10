@@ -40,6 +40,8 @@ def main():
     # advanced parameters, see libmod_optimize.py genetic_algorithm arguments for defaults
     my_w_ranges = [1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4]
     my_ef_ratios = [0.001,0.01,0.1,1,10,100,1000]
+    etot_weight = 1.0
+    ftot_weight = 1.0
     r_cross = 0.9
     r_mut = 0.1
     convthr = 1.E-10

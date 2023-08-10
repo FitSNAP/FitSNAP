@@ -537,8 +537,7 @@ def sim_anneal(snap):
 
 
 # @snap.pt.rank_zero
-def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], r_cross=0.9, r_mut=0.1, 
-    convthr = 1.E-10, conv_check = 2., opt_stress=False, write_to_json=False):
+def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, r_cross=0.9, r_mut=0.1, convthr = 1.E-10, conv_check = 2., write_to_json=False, opt_stress=False, ):
     #---------------------------------------------------------------------------
     # Begin in-function optimization hyperparameters
     # snap: FitSnap instance being handled by genetic algorithm
@@ -546,6 +545,7 @@ def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1
     # ngenerations: maximum number of allowed iterations of populations. this ends the genetic algorithm calculations if the convergence threshold (convthr, see below) is not reached beforehand
     # my_w_ranges: allowed scaling factors for energy weights
     # my_ef_ratios: allowed scaling factors for force weights
+    # etot_weight and ftot_weight: weights for energy and force rmse in the optimizer cost function
     # r_cross and r_mut: cross over (parenting) and mutation hyperparameters
     # convthr: convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
     # conv_check: fraction of ngenerations to start checking for convergence (convergence checks wont be performed very early)
@@ -583,22 +583,6 @@ def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1
     else:
         nh = ne + nf + ns
 
-    # weights for energy and force rmse in the optimizer cost function
-    # TODO implement stresses (maybe)?'
-    if "BISPECTRUM" in snap.config.sections.keys():
-        etot_weight = 1.0
-        ftot_weight = 1.0 # TODO was originally 5.0
-        stot_weight = 0.0
-        if opt_stress:
-            stot_weight = 1.0
-    elif "ACE" in snap.config.sections.keys():
-        # TODO check other params
-        etot_weight = 1.0
-        ftot_weight = 1.0
-        stot_weight = 0.0
-        if opt_stress:
-            stot_weight = 1.0
-
     # update ranges and ratios
     eranges = [my_w_ranges]
     ffactors = [my_ef_ratios]
@@ -607,7 +591,7 @@ def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1
     # TODO implement other methods?
     selection_method = 'tournament'
 
-    #End optimization hyperparameters
+    # End optimization hyperparameters
     #---------------------------------------------------------------------------
 
     # set up generation 0

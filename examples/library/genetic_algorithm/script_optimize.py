@@ -34,8 +34,8 @@ def main():
     # Genetic algorithm parameters
     
     # basic parameters
-    population_size = 20 # <-- for testing, default is 50
-    ngenerations = 50 # <-- for testing, default is 100
+    population_size = 4 # <-- for testing, default is 100
+    ngenerations = 100 # <-- for testing, default is 50
 
     # advanced parameters, see libmod_optimize.py genetic_algorithm arguments for defaults
     my_w_ranges = [1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4]
@@ -46,6 +46,7 @@ def main():
     r_mut = 0.1
     conv_thr = 1.E-10
     conv_check = 2.
+    force_delta_keywords = ["Displace"]
     write_to_json = True # write final best generation to FitSnap-compatible JSON dictionary. default is False
     
     # End genetic algorithm parameters
@@ -100,6 +101,7 @@ def main():
                                 r_mut=r_mut,
                                 conv_thr=conv_thr, 
                                 conv_check=conv_check, 
+                                force_delta_keywords=force_delta_keywords,
                                 write_to_json=write_to_json)
     snap.pt.single_print("Script complete, exiting")
 

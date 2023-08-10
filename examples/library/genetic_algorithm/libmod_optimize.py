@@ -536,7 +536,7 @@ def sim_anneal(snap):
 
 
 # @snap.pt.rank_zero
-def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., write_to_json=False, opt_stress=False, ):
+def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], write_to_json=False, opt_stress=False, ):
     #---------------------------------------------------------------------------
     # Begin in-function optimization hyperparameters
     # snap: FitSnap instance being handled by genetic algorithm
@@ -617,8 +617,12 @@ def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1
     np.random.seed(sim_seeds[generation])
     w_combo_delta = np.ones(len(gtks))
 
-    # delta function to zero out force weights on structures without forces
-    ef_rat_delta = np.array([1.0 if 'Volume' not in gti else 0.0 for gti in gtks])
+    # delta function to zero out force weights on structures without forces  
+    # now implemented with user-specified keywords
+    if force_delta_keywords != []:
+        not_in_fdkws = lambda gti: all([True if fdkw not in gti else False for fdkw in force_delta_keywords])
+        ef_rat_delta = np.array([1.0 if not_in_fdkws(gti) else 0.0 for gti in gtks])
+        
     while generation <= ngenerations and best_eval > conv_thr and not conv_flag:
         scores = []
         # current generation

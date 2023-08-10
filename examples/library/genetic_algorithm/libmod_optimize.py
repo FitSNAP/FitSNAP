@@ -537,9 +537,18 @@ def sim_anneal(snap):
 
 
 # @snap.pt.rank_zero
-def genetic_algorithm(snap, population_size=100, ngenerations=50, opt_stress=False, write_to_json=False):
+def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], r_cross=0.9, r_mut=0.1, 
+    convthr = 1.E-10, conv_check = 2., opt_stress=False, write_to_json=False):
     #---------------------------------------------------------------------------
-    #Begin optimization hyperparameters
+    # Begin in-function optimization hyperparameters
+    # snap: FitSnap instance being handled by genetic algorithm
+    # population_size: number of candidates ("creatures") generated within one generation and tested for fitness. in this code, fitness is how well group weights perform in a FitSnap fit (no puns intended)
+    # ngenerations: maximum number of allowed iterations of populations. this ends the genetic algorithm calculations if the convergence threshold (convthr, see below) is not reached beforehand
+    # my_w_ranges: allowed scaling factors for energy weights
+    # my_ef_ratios: allowed scaling factors for force weights
+    # r_cross and r_mut: cross over (parenting) and mutation hyperparameters
+    # convthr: convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
+    # conv_check: fraction of ngenerations to start checking for convergence (convergence checks wont be performed very early)
     time1 = time.time()
 
     # population of generations
@@ -590,28 +599,13 @@ def genetic_algorithm(snap, population_size=100, ngenerations=50, opt_stress=Fal
         if opt_stress:
             stot_weight = 1.0
 
-    # allowed scaling factors for energy weights
-    # my_w_ranges = [1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3] # TODO original
-    my_w_ranges = [1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4]
+    # update ranges and ratios
     eranges = [my_w_ranges]
-    # allowed scaling factors for force weights
-    # my_ef_ratios = [0.1,1,10,100] # TODO original
-    my_ef_ratios = [0.001,0.01,0.1,1,10,100,1000]
     ffactors = [my_ef_ratios]
 
     # selection method (only tournament is currently implemented)
+    # TODO implement other methods?
     selection_method = 'tournament'
-
-    # cross over (parenting) and mutation hyperparameters
-    r_cross = 0.9
-    r_mut = 0.1
-
-    # convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
-    # convthr = 0.005 # TODO original
-    convthr = 1.E-10 
-    # fraction of ngenerations to start checking for convergence (convergence checks wont be performed very early)
-    # conv_check = 1.2 # TODO original
-    conv_check = 2. 
 
     #End optimization hyperparameters
     #---------------------------------------------------------------------------
@@ -636,6 +630,7 @@ def genetic_algorithm(snap, population_size=100, ngenerations=50, opt_stress=Fal
     sim_seeds = seedsi[population_size:]
     np.random.seed(sim_seeds[generation])
     w_combo_delta = np.ones(len(gtks))
+
     # delta function to zero out force weights on structures without forces
     ef_rat_delta = np.array([1.0 if 'Volume' not in gti else 0.0 for gti in gtks])
     while generation <= ngenerations and best_eval > convthr and not conv_flag:

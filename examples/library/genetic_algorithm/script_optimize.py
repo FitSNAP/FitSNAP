@@ -18,6 +18,7 @@ import libmod_optimize as lm_opt
 # NOTE warnings have been turned off for zero divide errors!
 warnings.filterwarnings('ignore')
 
+
 def main():
     # set up mpi
     comm = MPI.COMM_WORLD
@@ -28,9 +29,25 @@ def main():
     fs_input="SNAP_Ta.in"
     # fs_input="ACE_Ta.in"
     optimization_style = "genetic_algorithm"
-    popsize, ngen = 4, 4 # default values: 50, 100; testing values:  4, 4
-    smartweights_override = False
 
+    #---------------------------------------------------------------------------
+    # Genetic algorithm parameters
+    
+    # basic parameters
+    population_size = 4 # <-- for testing, default is 50
+    ngenerations = 4 # <-- for testing, default is 100
+
+    # advanced parameters, see libmod_optimize.py genetic_algorithm arguments for defaults
+    my_w_ranges = [1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4]
+    my_ef_ratios = [0.001,0.01,0.1,1,10,100,1000]
+    r_cross = 0.9
+    r_mut = 0.1
+    convthr = 1.E-10
+    conv_check = 2.
+    write_to_json = True # write final best generation to FitSnap-compatible JSON dictionary. default is False
+    
+    # End genetic algorithm parameters
+    #---------------------------------------------------------------------------
     parser = argparse.ArgumentParser(description='FitSNAP example.')
     parser.add_argument("--fitsnap_in", help="FitSNAP input script.", default=fs_input)
     parser.add_argument("--optimization_style", help="optimization algorithm: 'simulated_annealing' or 'genetic_algorithm' ", default=optimization_style)
@@ -70,7 +87,16 @@ def main():
     if optimization_style == 'simulated_annealing':
         lm_opt.sim_anneal(snap)
     elif optimization_style == 'genetic_algorithm':
-       lm_opt.genetic_algorithm(snap, population_size=popsize, ngenerations=ngen, write_to_json=True)
+       lm_opt.genetic_algorithm(snap, 
+                                population_size=population_size, 
+                                ngenerations=ngenerations, 
+                                my_w_ranges=my_w_ranges, 
+                                my_ef_ratios=my_ef_ratios, 
+                                r_cross=r_cross, 
+                                r_mut=r_mut,
+                                convthr=convthr, 
+                                conv_check=conv_check, 
+                                write_to_json=write_to_json)
     snap.pt.single_print("Script complete, exiting")
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-import os, json, time
+import os, json, time, math
 import numpy as np
 
 class CostObject:
@@ -450,7 +450,7 @@ def prep_fitsnap_input(snap, smartweights_override=False):
 # @snap.pt.rank_zero
 def sim_anneal(snap):
     #---------------------------------------------------------------------------
-    #Begin optimization hyperparameters
+    # Begin optimization hyperparameters
     time1 = time.time()
 
     # get groups and weights 
@@ -482,8 +482,7 @@ def sim_anneal(snap):
     countmaxtot = int(np.sum(count_per_beta))
     seedsi = seed_maker(snap, countmaxtot + seedpad)
 
-
-    #End optimization hyperparameters
+    # End optimization hyperparameters
     #---------------------------------------------------------------------------
     
     tot_count = 0
@@ -537,17 +536,17 @@ def sim_anneal(snap):
 
 
 # @snap.pt.rank_zero
-def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, r_cross=0.9, r_mut=0.1, convthr = 1.E-10, conv_check = 2., write_to_json=False, opt_stress=False, ):
+def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., write_to_json=False, opt_stress=False, ):
     #---------------------------------------------------------------------------
     # Begin in-function optimization hyperparameters
     # snap: FitSnap instance being handled by genetic algorithm
     # population_size: number of candidates ("creatures") generated within one generation and tested for fitness. in this code, fitness is how well group weights perform in a FitSnap fit (no puns intended)
-    # ngenerations: maximum number of allowed iterations of populations. this ends the genetic algorithm calculations if the convergence threshold (convthr, see below) is not reached beforehand
+    # ngenerations: maximum number of allowed iterations of populations. this ends the genetic algorithm calculations if the convergence threshold (conv_thr, see below) is not reached beforehand
     # my_w_ranges: allowed scaling factors for energy weights
     # my_ef_ratios: allowed scaling factors for force weights
     # etot_weight and ftot_weight: weights for energy and force rmse in the optimizer cost function
     # r_cross and r_mut: cross over (parenting) and mutation hyperparameters
-    # convthr: convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
+    # conv_thr: convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
     # conv_check: fraction of ngenerations to start checking for convergence (convergence checks wont be performed very early)
     time1 = time.time()
 
@@ -591,6 +590,9 @@ def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1
     # TODO implement other methods?
     selection_method = 'tournament'
 
+    # modify convergence check for new conv_flag
+    check_gen = int((ngenerations/conv_check))
+
     # End optimization hyperparameters
     #---------------------------------------------------------------------------
 
@@ -617,7 +619,7 @@ def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1
 
     # delta function to zero out force weights on structures without forces
     ef_rat_delta = np.array([1.0 if 'Volume' not in gti else 0.0 for gti in gtks])
-    while generation <= ngenerations and best_eval > convthr and not conv_flag:
+    while generation <= ngenerations and best_eval > conv_thr and not conv_flag:
         scores = []
         # current generation
         for creature in population:
@@ -645,7 +647,10 @@ def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1
                 best, best_eval = tuple(population[i]), scores[i]
         best_evals.append(best_eval)
         try:
+            ## Original flag
             conv_flag = np.round(np.var(best_evals[int(ngenerations/conv_check)-int(ngenerations/10):]),14) == 0
+            ## New flag, currently testing
+            # conv_flag = np.round(np.var(best_evals[-(check_gen*math.floor(len(best_evals)/check_gen)):]),14) == 0
         except IndexError:
             conv_flag = False
         printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape(2,ne).tolist()])

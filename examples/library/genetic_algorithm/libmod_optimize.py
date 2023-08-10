@@ -287,17 +287,28 @@ def mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng,w_combo_
 
 
 # @snap.pt.rank_zero
-def print_final(snap, gtks, ew_frcrat_final, train_sz=1.0,test_sz=0.0, write_to_json=False):
+def print_final(snap, gtks, ew_frcrat_final, write_to_json=False):
     ew_final,frcrat_final = ew_frcrat_final
+
+    # fitsnap TODO: to accurately output the best weights, we also need the train/test split specified by the user. at least when using the JSON scraper, training_size and_testing size are converted from floats into integers, which is inconsistent and should be updated. to work around that for now, we take the testing_size and training_size integers and convert them back into fractions. these will probably be very similar to the user's input, but may vary a little bit.
+    loc_gt = snap.config.sections["GROUPS"].group_table
+
     collect_lines = []
     snap.pt.single_print('\n--> Best group weights:')
     for idi, dat in enumerate(gtks):
+
         en_weight = ew_final[idi]
         frc_weight = ew_final[idi]*frcrat_final[idi]
 
-        # TODO continue implementing stress weights
-        # stress weight (if included)
-        # for now, a dummy value that causes no harm
+        ntrain = loc_gt[dat]['training_size']
+        ntest = loc_gt[dat]['testing_size']
+        ntot = ntrain + ntest
+        train_sz = round(ntrain/ntot,2)
+        test_sz = round(ntest/ntot,2)
+
+        # TODO continue implementing stress weights, or at least whatever user has in input file
+        # stress weight is currently excluded automatically because code crashes if fitting to stresses
+        # in the future, we can still print whatever user has for group_variables (even if not fit to)
         str_weight = ''
 
         # snap.pt.single_print('%s       =  %1.2f      %1.2f      %.16E      %.16E      1.E-12' % (dat, train_sz,test_sz,en_weight,frc_weight))
@@ -313,8 +324,7 @@ def print_final(snap, gtks, ew_frcrat_final, train_sz=1.0,test_sz=0.0, write_to_
         settings = snap.config.indict
 
         # if a dictionary wasn't used to import settings, create one from the input file
-        # TODO can probably refactor in more FitSNAP API-friendly way... 
-        # would also avoid lower case bug
+        # TODO can probably refactor in more FitSNAP API-friendly way... would also avoid case-sensitivity bug
         if settings == None:
             # read in config again
             import configparser
@@ -322,8 +332,10 @@ def print_final(snap, gtks, ew_frcrat_final, train_sz=1.0,test_sz=0.0, write_to_
             c.read(infile_name)
             settings = {s:dict(c.items(s)) for s in c.sections()}
 
-        # update smartweights from config object
-        # TODO make sure to manage this if smartweights management changes
+        # remove stress parameters and update smartweights from config object
+        # TODO make sure to manage this if stress/smartweights management changes
+        settings["GROUPS"]["group_sections"] = " ".join([gs for gs in settings["GROUPS"]["group_sections"].split() if gs != "vweight"])
+        settings["GROUPS"]["group_types"] = " ".join([gt for gt in settings["GROUPS"]["group_types"].split()][:-1])
         settings["GROUPS"]["smartweights"] = str(snap.config.sections["GROUPS"].smartweights)
 
         # automatically create an outfile name from the potential name
@@ -661,7 +673,7 @@ def genetic_algorithm(snap, population_size=100, ngenerations=50, opt_stress=Fal
         snap.pt.single_print('generation:',generation, 'score:', scores[i])
 
         # TODO input user's settings or warn user that it will be overwritten (train_sz, test_sz)
-        print_final(snap, gtks, printbest,train_sz=1.0,test_sz=0.0)
+        print_final(snap, gtks, printbest)
         slct = Selector(selection_style = selection_method)
         selected = [slct.selection(population, scores) for creature_idx in range(population_size)]
         del slct

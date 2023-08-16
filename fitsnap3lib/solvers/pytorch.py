@@ -512,9 +512,9 @@ try:
                     val_losses_epochs.append(mean_val_loss)
                     # TODO: Use conditional here to save minimum validation loss.
                     #       Base this on 
-                    #if epoch % self.config.sections['PYTORCH'].save_freq == 0:
-                    if mean_val_loss < min_val_loss:
-                        print(">>> New best model! Saving.")
+                    # if epoch % self.config.sections['PYTORCH'].save_freq == 0:
+                    if (mean_val_loss < min_val_loss) or (np.isnan(mean_val_loss)):
+                        # print(">>> New best model! Saving.")
                         min_val_loss = mean_val_loss
                         self.model_best = deepcopy(self.model)
                         torch.save({

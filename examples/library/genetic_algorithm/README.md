@@ -1,38 +1,36 @@
 # FitSnap3 Ta optimization
 
 ### Usage 
-Usage: 
 
-<code>
-```
-#parallel (NOTE: only descriptor design matrix is calculated in parallel)
+Parallel (NOTE: only descriptor design matrix is calculated in parallel) :
 
-mpirun -n 2 python3 libmod_optimize.py --fitsnap_in SNAP-Ta.in --optimization_style genetic_algorithm
+    mpirun -n 2 python3 libmod_optimize.py --fitsnap_in SNAP-Ta.in --optimization_style genetic_algorithm
 
-#serial
-python3 libmod_optimize.py --fitsnap_in SNAP-Ta.in --optimization_style genetic_algorithm
+Serial:
 
-```
-</code>
-(or replace SNAP-Ta.in with ACE-Ta.in to run an ACE fit)
+    python3 libmod_optimize.py --fitsnap_in SNAP-Ta.in --optimization_style genetic_algorithm
+
+Replace SNAP-Ta.in with ACE-Ta.in to run an ACE fit.
 
 
 ### Files in this directory
-SNAP-Ta.in or ACE-Ta.in: FitSNAP input files for initial fit and 
+
+- `SNAP-Ta.in` or `ACE-Ta.in`: FitSNAP input files for initial fit and 
 template for iteratated fits.
 
-script_optimize.py : python script that sets up and performs
+- `script_optimize.py` : python script that sets up and performs
 optimization, performing the initial fit and thereafter 
 making use of the functions and objects in libmod_optimize.py.
 
-libmod_optimize.py : python script containing functions and
+- `libmod_optimize.py` : python script containing functions and
 objects to perform hyperparameter optimizations from a 
 FitSNAP library mode instance.
 
-Seeds.npy : numpy array of seeds for random number 
+- `Seeds.npy` : numpy array of seeds for random number 
 generation during the optimization loop.
 
 ### Hyperparameter optimization from memory
+
 In this example, the hyperparameters for a SNAP or ACE model of Ta
 are optimized for a fixed set of descriptors. That is, the
 training matrix for the model is stored in memory, and a Ta
@@ -62,6 +60,7 @@ parameters that do not change the entries in the descriptor
 design matrix, such as regularization penalties.
 
 ### Other hyperparameters
+
 For this example, model hyperparameters that do not affect
 the SNAP or ACE descriptors (numerical form or number of 
 descriptors) are optimized using a modified simulated 
@@ -79,6 +78,7 @@ a gridsearch over these hyperparameters or to perform a
 more formal optimization.
 
 ### Reproducability
+
 The seeds used to generate random numbers for each step are
 saved in the 'seeds.npy' file. By default, the optimizer
 will use the seeds in this folder first, before generating 
@@ -88,6 +88,7 @@ reproduce, to within numerical precision, the reference for
 this potential in 1Aug23_Standard.
 
 ### Notes
+
 The initial calculation of the descriptors may be done in
 parallel, but the optimization algorithm is serial. There
 are some numpy parallelism tricks that may be used to take
@@ -107,6 +108,7 @@ See https://scikit-learn.org/stable/computing/parallelism.html
 for more info.
 
 ### Output: Save the STDOUT !
+
 The optimizer will print ouput the final optimized 
 potential after reaching a specified number of steps or
 after reaching some target threshhold for accuracy. The
@@ -132,6 +134,7 @@ optimization. Some of which are local minima in
 hyperparameter space and may be useful.
 
 #### Genetic algorithm output
+
 The hyperparameters for the best candidate from each 
 generation are printed to SDTOUT. The initial generation of
 candidates is generated using a latin hypercube sampling

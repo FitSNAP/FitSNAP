@@ -1,79 +1,15 @@
-"""
-Genetic algorithm optimization of SNAP potential
-
-Usage:
-
-    #parallel
-    mpirun -n 2 python3 libmod_optimize.py --fitsnap_in Ta.in --optimization_style genetic_algorithm
-    #serial
-    python3 libmod_optimize.py --fitsnap_in Ta.in --optimization_style genetic_algorithm
-"""
-
+import os, json, time, math
 import numpy as np
-from mpi4py import MPI
-from fitsnap3lib.fitsnap import FitSnap
-import argparse
-import warnings
-import time
-# NOTE warnings have been turned off for zero divide errors!
-warnings.filterwarnings('ignore')
 
-# parse command line args
-
-parser = argparse.ArgumentParser(description='FitSNAP example.')
-parser.add_argument("--fitsnap_in", help="FitSNAP input script.", default=None)
-parser.add_argument("--optimization_style", help="optimization algorithm: 'simulated_annealing' or 'genetic_algorithm' ", default=None)
-args = parser.parse_args()
-
-optimization_style = args.optimization_style
-
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-
-settings = args.fitsnap_in
-
-# Create a FitSnap instance using the communicator and settings:
-snap = FitSnap(settings, comm=comm, arglist=["--overwrite", "--screen2file", "detailed-output.txt"])
-snap.pt.single_print("FitSNAP input script:",args.fitsnap_in)
-
-# run initial fit (calculate descriptors)
-snap.scrape_configs()
-snap.process_configs()
-snap.pt.all_barrier()
-snap.perform_fit()
-fit1 = snap.solver.fit
-errs1 = snap.solver.errors
-
-# get groups and weights 
-gtks = snap.config.sections["GROUPS"].group_table.keys()
-gtks = list(gtks)
-snap.pt.single_print('groups',gtks)
-
-size_b = np.shape(snap.pt.fitsnap_dict['Row_Type'])[0]
-grouptype = snap.pt.fitsnap_dict['Groups'].copy()
-rowtype = snap.pt.fitsnap_dict['Row_Type'].copy()
-
-
-rmse_e = errs1.iloc[:,2].to_numpy()
-rmse_counts = errs1.iloc[:,0].to_numpy()
-rmse_eat = rmse_e[0]
-rmse_fat = rmse_e[1]
-rmse_tot = rmse_eat + rmse_fat
-snap.pt.single_print('Initial fit',rmse_eat,rmse_fat,rmse_tot)
-
-snap.solver.fit = None
-
-snap.pt.single_print("FitSNAP optimization algorithm:",args.optimization_style)
 class CostObject:
-    @snap.pt.rank_zero
+    # @snap.pt.rank_zero
     def __init__(self):
         self.conts = None
         self.cost = 999999999.9999
         self.unweighted = np.array([])
         self.weights = np.array([])
 
-    @snap.pt.rank_zero
+    # @snap.pt.rank_zero
     def cost_contributions(self,cost_conts,weights):
         cost_conts = np.array(cost_conts) 
         weights = np.array(weights)
@@ -82,7 +18,7 @@ class CostObject:
         self.weights = weights
         self.conts = wc_conts
 
-    @snap.pt.rank_zero
+    # @snap.pt.rank_zero
     def add_contribution(self,costi,weighti=1.0):
         try:
             if self.conts == None:
@@ -103,14 +39,14 @@ class CostObject:
             self.weights = np.append(self.weights,weighti)
             self.unweighted = np.append(self.unweighted,costi)
 
-    @snap.pt.rank_zero
+    # @snap.pt.rank_zero
     def evaluate_cost(self):
         costi = np.sum(self.conts)
         self.cost = costi
         return costi
 
 class HyperparameterStruct:
-    @snap.pt.rank_zero
+    # @snap.pt.rank_zero
     def __init__(self,
             ne,
             nf,
@@ -124,7 +60,7 @@ class HyperparameterStruct:
         self.set_eranges()
         self.set_ffactors()
 
-    @snap.pt.rank_zero
+    # @snap.pt.rank_zero
     def set_eranges(self):
         if len(self.erangesin) != self.ne and len(self.erangesin) == 1:
             self.eranges = self.erangesin * self.ne
@@ -133,7 +69,7 @@ class HyperparameterStruct:
         else:
             raise ValueError('incorrect number of values for energy group weight ranges, ether specify range for each group or sepecify one range to be applied to all groups')
 
-    @snap.pt.rank_zero
+    # @snap.pt.rank_zero
     def set_ffactors(self):
         if len(self.ffactorsin) != self.nf and len(self.ffactorsin) == 1:
             self.ffactors = self.ffactorsin * self.nf
@@ -142,7 +78,7 @@ class HyperparameterStruct:
         else:
             raise ValueError('incorrect number of values for force group weight ratios, ether specify range for each group or sepecify one range to be applied to all groups')
     
-    @snap.pt.rank_zero
+    # @snap.pt.rank_zero
     def random_params(self,inputseed=None):
         if inputseed != None:
             np.random.seed(inputseed)
@@ -151,8 +87,28 @@ class HyperparameterStruct:
         self.fweights = self.eweights * f_factors
         return np.append(self.eweights,self.fweights)
 
+    # @snap.pt.rank_zero
+    def lhs_params(self,num_samples, inputseed=None):
+        if inputseed != None:
+            np.random.seed(inputseed)
+        variable_ranges_dicti = {}
+        variable_types_dict = {}
+        for i in range(self.ne):
+            print (i,'ew,fr', [np.log10(min(self.eranges[0])),np.log10(max(self.eranges[0]))], [np.log10(min(self.ffactors[0])),np.log10(max(self.ffactors[0]))])
+            #variable_ranges_dict['ew%d'%i] = [min(self.eranges),max(self.eranges)]
+            variable_ranges_dicti['ew%d'%i] = [float(np.log10(min(self.eranges[0]))),float(np.log10(max(self.eranges[0])))]
+            #variable_ranges_dict['fr%d'%i] = [min(self.ffactors),max(self.ffactors)]
+            variable_ranges_dicti['fr%d'%i] = [float(np.log10(min(self.ffactors[0]))),float(np.log10(max(self.ffactors[0])))]
+            #variable_types_dict['ew%d'%i] = float
+            variable_types_dict['ew%d'%i] = 'logfloat'
+            #variable_types_dict['fr%d'%i] = float
+            variable_types_dict['fr%d'%i] = 'logfloat'
+        print ("HH varrange dict: ",variable_ranges_dicti)
+        lhsamples = latin_hypercube_sample(variable_ranges_dicti, variable_types_dict, num_samples)
+        return lhsamples
+
 # tournament selection
-@snap.pt.rank_zero
+# @snap.pt.rank_zero
 def tournament_selection(population, scores, k=3, inputseed=None):
     if inputseed != None:
         np.random.seed(inputseed)
@@ -164,19 +120,19 @@ def tournament_selection(population, scores, k=3, inputseed=None):
     return population[selection_ix]
 
 class Selector:
-    @snap.pt.rank_zero
+    # @snap.pt.rank_zero
     def __init__(self,selection_style = 'tournament'):
         self.selection_style = selection_style
         self.set_selector()
 
-    @snap.pt.rank_zero
+    # @snap.pt.rank_zero
     def set_selector(self):
         if self.selection_style == 'tournament':
             self.selection = tournament_selection
 
 # when 2 parent creatures love eachother very much, they make/adopt 2 children creatures
 # this does not include cross-over for stresses yet.
-@snap.pt.rank_zero
+# @snap.pt.rank_zero
 def crossover(p1, p2, ne, w_combo_delta=np.array([]), ef_rat_delta=np.array([]), inputseed=None):
     if inputseed != None:
         np.random.seed(inputseed)
@@ -185,26 +141,28 @@ def crossover(p1, p2, ne, w_combo_delta=np.array([]), ef_rat_delta=np.array([]),
     c2e,c2f = tuple(c2.reshape(2,ne))
     p1e,p1f = tuple(p1.reshape(2,ne))
     p2e,p2f = tuple(p2.reshape(2,ne))
+
     # select crossover point that corresponds to a certain group
-    pt = np.random.randint(1, ne-2)
+    # NOTE meg changed var name 'pt' to 'cpt' to avoid confusion with parallel tools "pt" later
+    cpt = np.random.randint(1, ne-2)
     # only perform crossover between like hyperparameters (energy and energy then force and force, etc.)
     if np.shape(w_combo_delta)[0] != 0:
-        c1e = np.append(p1e[:pt], p2e[pt:])*w_combo_delta
-        c1f = np.append(p1f[:pt], p2f[pt:])*ef_rat_delta
-        c2e = np.append(p2e[:pt], p1e[pt:])*w_combo_delta
-        c2f = np.append(p2f[:pt], p1f[pt:])*ef_rat_delta
+        c1e = np.append(p1e[:cpt], p2e[cpt:])*w_combo_delta
+        c1f = np.append(p1f[:cpt], p2f[cpt:])*ef_rat_delta
+        c2e = np.append(p2e[:cpt], p1e[cpt:])*w_combo_delta
+        c2f = np.append(p2f[:cpt], p1f[cpt:])*ef_rat_delta
     else:
-        c1e = np.append(p1e[:pt] , p2e[pt:])
-        c1f = np.append(p1f[:pt] , p2f[pt:])
-        c2e = np.append(p2e[:pt] , p1e[pt:])
-        c2f = np.append(p2f[:pt] , p1f[pt:])
+        c1e = np.append(p1e[:cpt] , p2e[cpt:])
+        c1f = np.append(p1f[:cpt] , p2f[cpt:])
+        c2e = np.append(p2e[:cpt] , p1e[cpt:])
+        c2f = np.append(p2f[:cpt] , p1f[cpt:])
     c1 = np.append(c1e,c1f)
     c2 = np.append(c2e,c2f)
     return [c1, c2]
 
 
-@snap.pt.rank_zero
-def update_weights(test_w_combo, test_ef_rat, test_virial_w=(1.e-8,), gtks = gtks, size_b = size_b, grouptype = grouptype):
+# @snap.pt.rank_zero
+def update_weights(snap, test_w_combo, test_ef_rat, gtks, size_b, grouptype, test_virial_w=(1.e-8,)):
     if len(test_virial_w) == 1:
         tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_virial_w[0]} for ig,gkey in enumerate(gtks)  }
     elif len(test_virial_w) == len(test_ef_rat):
@@ -222,15 +180,13 @@ def update_weights(test_w_combo, test_ef_rat, test_virial_w=(1.e-8,), gtks = gtk
         elif snap.pt.fitsnap_dict['Row_Type'][index_b] == 'Stress':
             snap.pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['vweight']
 
-@snap.pt.rank_zero
-def ediff_cost(fit,g1,g2,target,grouptype=grouptype,rowtype=rowtype):
-    """
-    Provides 'cost' for energy differences for amatrix entries:
-     (\beta * a1 - \beta * a2) - target
-    where target is some target energy difference between structures from group 1 and group 2.
-    NOTE: a1 and a2 matrix entries are identified by indexing. You MUST put only one structure 
-    per group to use in this objective function.
-    """
+# @snap.pt.rank_zero
+def ediff_cost(snap, fit, g1, g2, target, grouptype, rowtype):
+    # provides 'cost' for energy differences for amatrix entries:
+    #  (\beta * a1 - \beta * a2) - target
+    # where target is some target energy difference between structures from group 1 and group 2
+    # NOTE that a1 and a2 Amatrix entries are identified by indexing. You 
+    # MUST put only one structure per group to use in this objective function
     indexg1 = grouptype.index(g1)
     indexg2 = grouptype.index(g2)
     assert rowtype[indexg1] == 'Energy',"not accessing energy row for group %s" % g1
@@ -242,13 +198,13 @@ def ediff_cost(fit,g1,g2,target,grouptype=grouptype,rowtype=rowtype):
     e2 = np.sum(a2*fit)
     diff = e1-e2
 
-    #pt.single_print(e1,e2,diff,target)
+    #snap.pt.single_print(e1,e2,diff,target)
 
     return np.abs(diff - target)
 
 #NOTE fit_and_cost will likely need to be modified to print current fit if
 # other objective functions are to be added. 
-@snap.pt.rank_zero
+# @snap.pt.rank_zero
 def fit_and_cost(snap,costweights):
     etot_weight, ftot_weight = tuple(costweights)
     #clear old fit and solve test fit
@@ -276,8 +232,8 @@ def fit_and_cost(snap,costweights):
     del CO
     return cost
 
-@snap.pt.rank_zero
-def seed_maker(mc,mmax = 1000000000,use_saved_seeds=True):
+# @snap.pt.rank_zero
+def seed_maker(snap, mc,mmax = 1000000000,use_saved_seeds=True):
     if use_saved_seeds:
         try:
             seeds = np.load('seeds.npy')
@@ -295,7 +251,7 @@ def seed_maker(mc,mmax = 1000000000,use_saved_seeds=True):
         np.save('seeds.npy',seeds)
     return seeds
 
-@snap.pt.rank_zero
+# @snap.pt.rank_zero
 def mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng,w_combo_delta=np.array([]),ef_rat_delta=np.array([]),apply_random=True,full_mutation=False):
     if type(current_w_combo) == tuple:
         current_w_combo = np.array(current_w_combo)
@@ -330,26 +286,186 @@ def mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng,w_combo_
         return test_w_combo,test_ef_rat
 
 
-@snap.pt.rank_zero
-def print_final(ew_frcrat_final,train_sz=1.0,test_sz=0.0):
+# @snap.pt.rank_zero
+def print_final(snap, gtks, ew_frcrat_final, write_to_json=False):
     ew_final,frcrat_final = ew_frcrat_final
-    snap.pt.single_print('Best group weights\n')
-    for idi,dat in enumerate(gtks):
+
+    # fitsnap TODO: to accurately output the best weights, we also need the train/test split specified by the user. at least when using the JSON scraper, training_size and_testing size are converted from floats into integers, which is inconsistent and should be updated. to work around that for now, we take the testing_size and training_size integers and convert them back into fractions. these will probably be very similar to the user's input, but may vary a little bit.
+    loc_gt = snap.config.sections["GROUPS"].group_table
+
+    collect_lines = []
+    snap.pt.single_print('\n--> Best group weights:')
+    for idi, dat in enumerate(gtks):
+
         en_weight = ew_final[idi]
         frc_weight = ew_final[idi]*frcrat_final[idi]
-        snap.pt.single_print('%s       =  %1.2f      %1.2f      %.16E      %.16E      1.E-12' % (dat, train_sz,test_sz,en_weight,frc_weight))
+
+        ntrain = loc_gt[dat]['training_size']
+        ntest = loc_gt[dat]['testing_size']
+        ntot = ntrain + ntest
+        train_sz = round(ntrain/ntot,2)
+        test_sz = round(ntest/ntot,2)
+
+        # TODO continue implementing stress weights, or at least whatever user has in input file
+        # stress weight is currently excluded automatically because code crashes if fitting to stresses
+        # in the future, we can still print whatever user has for group_variables (even if not fit to)
+        str_weight = ''
+
+        # snap.pt.single_print('%s       =  %1.2f      %1.2f      %.16E      %.16E      1.E-12' % (dat, train_sz,test_sz,en_weight,frc_weight))
+        group_line = f'{dat}       =  {train_sz}      {test_sz}      {en_weight}      {frc_weight}'
+        if str_weight != "":
+            group_line += f"      {str_weight}"
+        snap.pt.single_print(group_line)
+        collect_lines.append([dat, group_line.replace(f'{dat}       =  ','')])
+    snap.pt.single_print("")
+
+    if write_to_json:
+        infile_name = snap.config.infile
+        settings = snap.config.indict
+
+        # if a dictionary wasn't used to import settings, create one from the input file
+        # TODO can probably refactor in more FitSNAP API-friendly way... would also avoid case-sensitivity bug
+        if settings == None:
+            # read in config again
+            import configparser
+            c = configparser.ConfigParser()
+            c.read(infile_name)
+            settings = {s:dict(c.items(s)) for s in c.sections()}
+
+        # remove stress parameters and update smartweights from config object
+        # TODO make sure to manage this if stress/smartweights management changes
+        settings["GROUPS"]["group_sections"] = " ".join([gs for gs in settings["GROUPS"]["group_sections"].split() if gs != "vweight"])
+        settings["GROUPS"]["group_types"] = " ".join([gt for gt in settings["GROUPS"]["group_types"].split()][:-1])
+        settings["GROUPS"]["smartweights"] = str(snap.config.sections["GROUPS"].smartweights)
+
+        # automatically create an outfile name from the potential name
+        # TODO eventually allow user to override
+        potential = settings["OUTFILE"]["potential"]
+        outfile = f"{potential}.fs-input.json"
+
+        # update group weights string in settings
+        for group, line in collect_lines:
+            settings["GROUPS"][group] = line
+
+        # currently a bug where some lower/uppercase versions of groups are doubled
+        del_invalid = []
+        lower_gtks = [g.lower() for g in gtks]
+        for sgroup in settings["GROUPS"].keys():
+            input_path = snap.config.sections["PATH"].datapath
+            group_path = f"{input_path}/{sgroup}"
+            if not os.path.exists(group_path) and sgroup in lower_gtks:
+                del_invalid.append(sgroup)
+        [settings["GROUPS"].pop(g) for g in del_invalid] 
+
+        # write to json
+        snap.pt.single_print("Writing to JSON: ", outfile)
+        with open(outfile, 'w') as f:
+            json.dump(settings, f, indent=4)
+
+def latin_hypercube_sample(variable_ranges_dict, variable_types_dict, num_samples, seed=12345):
+    # TODO is this doubled from lhparams, should be removed?
+    # TODO if not, should this be varied or taken from lhparams?
+    np.random.seed(seed)
+    variable_ranges = [tuple(v) for v in list(variable_ranges_dict.values())]
+    variable_types = [typ for typ in list(variable_types_dict.values())]
+    num_variables = len(variable_ranges)
+    varseeds = np.random.randint(0,10000,num_variables)
+    samples_per_variable = num_samples // num_variables
+    #samples_per_variable = 1
+    # print (samples_per_variable,num_samples)
+    # Generate the initial Latin Hypercube
+    lhs_matrix = np.zeros((num_samples, num_variables))
+    #(24, 2) (26, 24) nsamp 26
+    # print ('lh info',np.shape(variable_ranges),np.shape(lhs_matrix),'nsamp',num_samples)
+    for i in range(num_variables):
+        np.random.seed(varseeds[i])
+        vtyp = variable_types[i]
+        # print (i,'vtyp',vtyp,'varranges',variable_ranges[i])#,(min(variable_ranges),max(variable_ranges) ))
+        if vtyp == float:
+            lhs_matrix[:, i] = np.random.uniform(min(variable_ranges[i]), max(variable_ranges[i]), num_samples)
+        elif vtyp == int:
+            vrange = list(range(min(variable_ranges[i]),max(variable_ranges[i]) +1,1))
+            lhs_matrix[:, i] = np.random.choice(vrange,size=num_samples)
+        elif vtyp == 'logfloat':
+            #vrange = list(range(min(variable_ranges[i]),max(variable_ranges[i]) +1,1))
+            coldata = np.array([10**kk for kk in np.random.uniform(min(variable_ranges[i]), max(variable_ranges[i]), num_samples)])
+            # print ('col info',i,coldata)
+            lhs_matrix[:, i] = coldata #np.array([10**kk for kk in np.random.choice(vrange,size=num_samples)])
+        elif vtyp == str:
+            lhs_matrix[:, i] = np.random.choice(variable_ranges[i],size=num_samples)
+        else:
+            raise TypeError("variable type not implemented")
+
+    # Shuffle the samples within each variable column
+    for i in range(num_variables):
+        np.random.shuffle(lhs_matrix[:, i])
+    # Randomly select one sample from each column to form the final Latin Hypercube
+    lhs_samples = np.zeros((num_samples, num_variables))
+    for i in range(num_variables):
+        lhs_samples[0 :num_samples , i] = lhs_matrix[0 :num_samples , i]
+
+    return lhs_samples
+
+
+def prep_fitsnap_input(snap, smartweights_override=False):
+    # turn off smartweights and warn user
+    smartweights = snap.config.sections["GROUPS"].smartweights
+    if smartweights == 1 and not smartweights_override:
+      snap.pt.single_print(f"\nWARNING: Smartweights toggled on, but is not recommended for current version of genetic_algorithm.")
+      snap.pt.single_print(f"WARNING: Setting smartweights to 0.")
+      snap.pt.single_print(f"WARNING: Use the argument 'smartweights_override=True' to keep smartweights on.\n")
+      snap.config.sections["GROUPS"].smartweights = 0
+
+    # if the number of groups is three or less, crossover operations will fail
+    # in goffptimize_output, crossover function: cpt = np.random.randint(1, ne-2)
+    # for now, elegantly crash if user has 3 or fewer groups 
+    num_groups = len(snap.config.sections["GROUPS"].group_table.keys())
+    if num_groups <= 3:
+        snap.single_print("\n!ERROR: Need 4 or more groups to use genetic algorithm (see comment)!")
+        snap.single_print("!ERROR: I am elegantly crashing now so that you can contact the FitSNAP team to have them solve this for you!!\n")
+        exit()
+
+    # turn off fitting to stresses 
+    # TODO get rid of this when fitting to stresses implemented
+    calc_stress = snap.config.sections["CALCULATOR"].stress
+    if calc_stress == 1:
+        snap.pt.single_print(f"\n!ERROR: Current version of optimizer does not support fitting to stresses!")
+        snap.pt.single_print(f"!ERROR: Please set [CALCULATOR] stress = 0 and remove 'vweight' columns in [GROUPS], then run script again.")
+        snap.pt.single_print(f"!ERROR: If this elegant crash stresses (!) you out, please contact the FitSNAP team to get this feature implemented!\n")
+        snap.pt.all_barrier()
+        exit()
+
+        # TODO commented-out code below could work, but getting an error in parallel_tools.
+        # snap.pt.single_print(f"WARNING: Current version of optimizer does not support fitting to stresses!")
+        # snap.pt.single_print(f"WARNING: Turning off fitting to stresses, and no vweights will be printed.")
+        # snap.config.sections["CALCULATOR"].stress = 0
+        # for key, val in snap.config.sections["GROUPS"].group_table.items():
+            # if 'vweight' in val.keys():
+                # del val['vweight']
+                # snap.config.sections["GROUPS"].group_table[key] = val
 
 #-----------------------------------------------------------------------
 # begin the primary optimzation functions
 #-----------------------------------------------------------------------
-time1 = time.time()
-@snap.pt.rank_zero
-def sim_anneal():
+# @snap.pt.rank_zero
+def sim_anneal(snap):
     #---------------------------------------------------------------------------
-    #Begin optimization hyperparameters
+    # Begin optimization hyperparameters
+    time1 = time.time()
+
+    # get groups and weights 
+    gtks = snap.config.sections["GROUPS"].group_table.keys()
+    gtks = list(gtks)
+    snap.pt.single_print('groups',gtks)
+
+    size_b = np.shape(snap.pt.fitsnap_dict['Row_Type'])[0]
+    grouptype = snap.pt.fitsnap_dict['Groups'].copy()
+    rowtype = snap.pt.fitsnap_dict['Row_Type'].copy()
+
     etot_weight = 1.0
     ftot_weight = 1.5
     rmse_tot = 500
+
     # sampling magnitudes per hyperparameter
     my_w_ranges = [1.e-3,1.e-2,1.e-1,1.e0,1.e1,1.e2,1.e3]
     my_ef_ratios = [0.1,1,10]
@@ -364,10 +480,9 @@ def sim_anneal():
     seedpad = 50
     #build seeds (uses saved seeds by default)
     countmaxtot = int(np.sum(count_per_beta))
-    seedsi = seed_maker(countmaxtot + seedpad)
+    seedsi = seed_maker(snap, countmaxtot + seedpad)
 
-
-    #End optimization hyperparameters
+    # End optimization hyperparameters
     #---------------------------------------------------------------------------
     
     tot_count = 0
@@ -392,7 +507,7 @@ def sim_anneal():
             else:
                 test_w_combo, test_ef_rat = mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng=len(gtks),apply_random=True,full_mutation=False)
 
-            update_weights(test_w_combo, test_ef_rat, gtks = gtks, size_b = size_b, grouptype = grouptype)
+            update_weights(snap, test_w_combo, test_ef_rat, gtks, size_b, grouptype)
 
             rmse_tottst = fit_and_cost(snap,[etot_weight,ftot_weight])
 
@@ -412,6 +527,7 @@ def sim_anneal():
             snap.pt.single_print('beta',beta,'count',count,' accept ratio for current beta %f' % (naccepti/count) ,meta,boltz,rmse_tottst,rmse_tot)
             tot_count += 1
             np.random.seed(seedsi[tot_count])
+
     # write output for optimized potential
     print_final(meta)
     time2 = time.time()
@@ -419,50 +535,65 @@ def sim_anneal():
     snap.write_output()
 
 
-@snap.pt.rank_zero
-def genetic_algorithm():
+# @snap.pt.rank_zero
+def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], write_to_json=False, opt_stress=False, ):
     #---------------------------------------------------------------------------
-    #Begin optimization hyperparameters
+    # Begin in-function optimization hyperparameters
+    # snap: FitSnap instance being handled by genetic algorithm
+    # population_size: number of candidates ("creatures") generated within one generation and tested for fitness. in this code, fitness is how well group weights perform in a FitSnap fit (no puns intended)
+    # ngenerations: maximum number of allowed iterations of populations. this ends the genetic algorithm calculations if the convergence threshold (conv_thr, see below) is not reached beforehand
+    # my_w_ranges: allowed scaling factors for energy weights
+    # my_ef_ratios: allowed scaling factors for force weights
+    # etot_weight and ftot_weight: weights for energy and force rmse in the optimizer cost function
+    # r_cross and r_mut: cross over (parenting) and mutation hyperparameters
+    # conv_thr: convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
+    # conv_check: fraction of ngenerations to start checking for convergence (convergence checks wont be performed very early)
+    time1 = time.time()
 
     # population of generations
-    population_size = 26
-    # number of generations
-    ngenerations = 300
+    # both moved to function args
+    # population can't have odd numbers currently
+    if population_size % 2 == 1:
+      snap.single_print(f"WARNING: Cannot use odd numbers for population size (input: {population_size})")
+      snap.single_print(f"WARNING: Updating population_size: population_size +=1 (larger populations seem to perform better, in Dakota at least)")
+      population_size += 1
+
+    # get groups and weights 
+    gtks = snap.config.sections["GROUPS"].group_table.keys()
+    gtks = list(gtks)
+    snap.pt.single_print('groups',gtks)
+
+    size_b = np.shape(snap.pt.fitsnap_dict['Row_Type'])[0]
+    grouptype = snap.pt.fitsnap_dict['Groups'].copy()
+    rowtype = snap.pt.fitsnap_dict['Row_Type'].copy()
 
     countmaxtot = int(population_size*(ngenerations+2))
-    seedsi = seed_maker(countmaxtot)
+    seedsi = seed_maker(snap, countmaxtot)
 
     #number of hyperparameters:
     # num of energy group weights
     ne = len(gtks)
     # num of force group weights
     nf = ne
+    ns = ne
     # total
-    nh = ne + nf
+    if not opt_stress:
+        nh = ne + nf
+    else:
+        nh = ne + nf + ns
 
-    # weights for energy and force rmse in the optimizer cost function
-    etot_weight = 1.0
-    ftot_weight = 1.0
-    # allowed scaling factors for energy weights
-    my_w_ranges = [1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3]
+    # update ranges and ratios
     eranges = [my_w_ranges]
-    # allowed scaling factors for force weights
-    my_ef_ratios = [0.1,1,10,100]
     ffactors = [my_ef_ratios]
 
     # selection method (only tournament is currently implemented)
+    # TODO implement other methods?
     selection_method = 'tournament'
 
-    # cross over (parenting) and mutation hyperparameters
-    r_cross = 0.9
-    r_mut = 0.1
+    # modify convergence check for new conv_flag
+    check_gen = int((ngenerations/conv_check))
 
-    # convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
-    convthr = 0.005 
-    # fraction of ngenerations to start checking for convergence (convergence checks wont be performed very early)
-    conv_check = 1.2
-
-    #End optimization hyperparameters
+    # End optimization hyperparameters
     #---------------------------------------------------------------------------
 
     # set up generation 0
@@ -470,7 +601,14 @@ def genetic_algorithm():
     conv_flag = False
     first_seeds = seedsi[:population_size+1]
     hp = HyperparameterStruct(ne,nf,eranges,ffactors)
-    population = [hp.random_params(inputseed=first_seeds[ip]) for ip in range(population_size)]
+
+    # population = [hp.random_params(inputseed=first_seeds[ip]) for ip in range(population_size)] # TODO orig
+
+    # Random initial population for first generation:
+    #population = [hp.random_params(inputseed=first_seeds[ip]) for ip in range(population_size)]
+    # Latin hypercube population for first generation:
+    population = hp.lhs_params(num_samples=population_size,inputseed=first_seeds[0])
+
     generation = 0
 
     best_evals = [best_eval]
@@ -478,18 +616,24 @@ def genetic_algorithm():
     sim_seeds = seedsi[population_size:]
     np.random.seed(sim_seeds[generation])
     w_combo_delta = np.ones(len(gtks))
-    # delta function to zero out force weights on structures without forces
-    ef_rat_delta = np.array([1.0 if 'Volume' not in gti else 0.0 for gti in gtks])
-    while generation <= ngenerations and best_eval > convthr and not conv_flag:
+
+    # delta function to zero out force weights on structures without forces  
+    # now implemented with user-specified keywords
+    if force_delta_keywords != []:
+        not_in_fdkws = lambda gti: all([True if fdkw not in gti else False for fdkw in force_delta_keywords])
+        ef_rat_delta = np.array([1.0 if not_in_fdkws(gti) else 0.0 for gti in gtks])
+        
+    while generation <= ngenerations and best_eval > conv_thr and not conv_flag:
         scores = []
         # current generation
         for creature in population:
             creature_ew, creature_ffac = tuple(creature.reshape(2,ne).tolist())
             creature_ew = tuple(creature_ew)
             creature_ffac = tuple(creature_ffac)
-            update_weights(creature_ew, creature_ffac, gtks = gtks, size_b = size_b, grouptype = grouptype)
+            update_weights(snap, creature_ew, creature_ffac, gtks, size_b, grouptype)
             costi = fit_and_cost(snap,[etot_weight,ftot_weight])
             scores.append(costi)
+
             #NOTE to add another contribution to the cost function , you need to evaluate it in the loop
             # and add it to the fit_and_cost function
             # if this involves a lammps simulation, you will have to print potentials at the different steps
@@ -497,21 +641,27 @@ def genetic_algorithm():
             # be updated per step, then snap.write_output() should be called per step. This will likely increase
             # the optimization time.
         # Anything printed with snap.pt.single_print will be included in output file.
-        snap.pt.single_print('generation,scores,popsize:',generation,len(scores),population_size)
+        snap.pt.single_print('generation, scores, popsize:',generation,len(scores),population_size)
+
         # Print generation and best fit.
-        bestfit = min(scores)
-        print(f"{generation} {bestfit}")
+        # bestfit = min(scores)
+        # print(f"{generation} {bestfit}")
         for i in range(population_size):
             if scores[i] < best_eval:
                 best, best_eval = tuple(population[i]), scores[i]
         best_evals.append(best_eval)
         try:
+            ## Original flag
             conv_flag = np.round(np.var(best_evals[int(ngenerations/conv_check)-int(ngenerations/10):]),14) == 0
+            ## New flag, currently testing
+            # conv_flag = np.round(np.var(best_evals[-(check_gen*math.floor(len(best_evals)/check_gen)):]),14) == 0
         except IndexError:
             conv_flag = False
         printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape(2,ne).tolist()])
-        snap.pt.single_print('generation:',generation, 'score:',scores[i])#generation, score
-        print_final(printbest,train_sz=1.0,test_sz=0.0)
+        snap.pt.single_print('generation:',generation, 'score:', scores[i])
+
+        # TODO input user's settings or warn user that it will be overwritten (train_sz, test_sz)
+        print_final(snap, gtks, printbest)
         slct = Selector(selection_style = selection_method)
         selected = [slct.selection(population, scores) for creature_idx in range(population_size)]
         del slct
@@ -545,14 +695,11 @@ def genetic_algorithm():
     best_ew, best_ffac = tuple(np.array(best).reshape(2,ne).tolist())
     best_ew = tuple(creature_ew)
     best_ffac = tuple(creature_ffac)
-    update_weights(best_ew, best_ffac, gtks = gtks, size_b = size_b, grouptype = grouptype)
+    update_weights(snap, best_ew, best_ffac, gtks, size_b, grouptype)
     costi = fit_and_cost(snap,[etot_weight,ftot_weight])
-    print_final(tuple([best_ew,best_ffac]))
+    print_final(snap, gtks, tuple([best_ew,best_ffac]), write_to_json=write_to_json)
     time2 = time.time()
-    snap.pt.single_print('Total optimization time,', time2 - time1)
+    elapsed = round(time2 - time1, 2)
+    snap.pt.single_print(f'Total optimization time: {elapsed} s')
+    snap.pt.single_print('Writing final output')
     snap.write_output()
-
-if optimization_style == 'simulated_annealing':
-    sim_anneal()
-elif optimization_style == 'genetic_algorithm':
-    genetic_algorithm()

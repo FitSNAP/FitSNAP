@@ -38,8 +38,8 @@ dataPath = ../../Ta_Linear_JCP2014/JSON
 
 [OUTFILE]
 output_style = PACE
-metrics = Ta_metrics.md
-potential = Ta_pot
+metrics = Ta-ACE_metrics.md
+potential = Ta-ACE_pot
 
 [REFERENCE]
 units = metal

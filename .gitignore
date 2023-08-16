@@ -1,5 +1,6 @@
 # ignoring run example files
-examples/*
+#examples/*
+examples/library/genetic_algorithm/__pycache__
 
 # ignoring built test docs
 docs/build/

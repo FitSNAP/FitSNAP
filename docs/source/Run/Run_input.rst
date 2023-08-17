@@ -200,7 +200,9 @@ calculate.
 [ESHIFT]
 ^^^^^^^^
 
-This section declares an energy shift applied to each atom type.
+This section declares an energy shift applied to each atom type. These values are free to choose however desired. For 
+example these values could come from the per-atom energy predicted in a vacuum from *ab initio* calculations. These 
+values may also be treated as hyperparameters.
 
 [SOLVER]
 ^^^^^^^^

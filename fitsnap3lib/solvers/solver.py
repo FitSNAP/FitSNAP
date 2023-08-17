@@ -104,13 +104,32 @@ class Solver:
 
     
     #@pt.rank_zero
-    def error_analysis(self):
+    def error_analysis(self, a=None, b=None, w=None, fs_dict=None):
         """
-        Extracts and stores fitting data, such as descriptor values, truths, and predictions, into
+        If linear fit: extracts and stores fitting data, such as descriptor values, truths, and predictions, into
         a Pandas dataframe.
+
+        If nonlinear fit: evaluate NN on all configurations to get truth values for error calculation.
+
+        The optional arguments are for calculating errors on a given set of inputs. For linear models these inputs are 
+        A matrix, truth array, weights, and a fs dictionary which contains group info. Care must be taken to ensure that 
+        these data structures are already processed and lined up properly, we cannot ensure this.
+
+        Args:
+            a: Optional A matrix numpy array.
+            b: Optional truth matrix numpy array.
+            w: Optional weight matrix numpy array.
+            fs_dict: Optional fs dictionary from a `fs.pt.fitsnap_dict`
         """
-        @self.pt.rank_zero
-        def decorated_error_analysis():
+
+        #@self.pt.rank_zero
+        #def calculate_errors(a=None, b=None, w=None, fs_dict=None):
+        # Reset errors to default empty list.
+        self.errors = []
+
+        # Only calculate errors on rank 0 to reduce unnecessary allocations and calculations.
+
+        if self.pt._rank == 0:
             
             # Proceed with nonlinear error analysis, if doing a fit.
             # If doing a fit, then self.configs is not None.
@@ -316,15 +335,22 @@ class Solver:
             # Proceed with linear error analysis.
             # Collect remaining arrays to write dataframe.
 
-            self.df = DataFrame(self.pt.shared_arrays['a'].array)
-            self.df['truths'] = self.pt.shared_arrays['b'].array.tolist()
+
+            if (a is None and b is None and w is None and fs_dict is None):
+                a = self.pt.shared_arrays['a'].array
+                b = self.pt.shared_arrays['b'].array
+                w = self.pt.shared_arrays['w'].array
+                fs_dict = self.pt.fitsnap_dict
+
+            self.df = DataFrame(a)
+            self.df['truths'] = b.tolist()
             if self.fit is not None:
-                self.df['preds'] = self.pt.shared_arrays['a'].array @ self.fit
-            self.df['weights'] = self.pt.shared_arrays['w'].array.tolist()
-            for key in self.pt.fitsnap_dict.keys():
-                if isinstance(self.pt.fitsnap_dict[key], list) and \
-                    len(self.pt.fitsnap_dict[key]) == len(self.df.index):
-                    self.df[key] = self.pt.fitsnap_dict[key]
+                self.df['preds'] = a @ self.fit
+            self.df['weights'] = w.tolist()
+            for key in fs_dict.keys():
+                if isinstance(fs_dict[key], list) and \
+                    len(fs_dict[key]) == len(self.df.index):
+                    self.df[key] = fs_dict[key]
             if self.config.sections["EXTRAS"].dump_dataframe:
                 self.df.to_pickle(self.config.sections['EXTRAS'].dataframe_file)
 
@@ -380,8 +406,8 @@ class Solver:
                     self._offset()
 
         # Reset errors to default empty list.
-        self.errors = []
-        decorated_error_analysis()
+        #self.errors = []
+        #calculate_errors(a, b, w, fs_dict)
 
     def _all_error(self):
         ## replaced by groupby().apply(ncount_mae_rmse_rsq_unweighted_and_weighted)

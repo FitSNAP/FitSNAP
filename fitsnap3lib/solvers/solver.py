@@ -113,7 +113,7 @@ class Solver:
 
         The optional arguments are for calculating errors on a given set of inputs. For linear models these inputs are 
         A matrix, truth array, weights, and a fs dictionary which contains group info. Care must be taken to ensure that 
-        these data structures are already processed and lined up properly, we cannot ensure this.
+        these data structures are already processed and lined up properly.
 
         Args:
             a: Optional A matrix numpy array.
@@ -122,9 +122,8 @@ class Solver:
             fs_dict: Optional fs dictionary from a `fs.pt.fitsnap_dict`
         """
 
-        #@self.pt.rank_zero
-        #def calculate_errors(a=None, b=None, w=None, fs_dict=None):
         # Reset errors to default empty list.
+
         self.errors = []
 
         # Only calculate errors on rank 0 to reduce unnecessary allocations and calculations.
@@ -335,7 +334,6 @@ class Solver:
             # Proceed with linear error analysis.
             # Collect remaining arrays to write dataframe.
 
-
             if (a is None and b is None and w is None and fs_dict is None):
                 a = self.pt.shared_arrays['a'].array
                 b = self.pt.shared_arrays['b'].array
@@ -404,84 +402,6 @@ class Solver:
                 if (self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP" and \
                     self.config.sections["BISPECTRUM"].bzeroflag):
                     self._offset()
-
-        # Reset errors to default empty list.
-        #self.errors = []
-        #calculate_errors(a, b, w, fs_dict)
-
-    def _all_error(self):
-        ## replaced by groupby().apply(ncount_mae_rmse_rsq_unweighted_and_weighted)
-        # if self.config.sections["CALCULATOR"].energy:
-        #     self._errors("*ALL", "Energy", (self.df['Row_Type'] == 'Energy'))
-        # if self.config.sections["CALCULATOR"].force:
-        #     self._errors("*ALL", "Force", (self.df['Row_Type'] == 'Force'))
-        # if self.config.sections["CALCULATOR"].stress:
-        #     self._errors("*ALL", "Stress", (self.df['Row_Type'] == 'Stress'))
-        pass
-
-    def _group_error(self):
-        ## replaced by groupby().apply(ncount_mae_rmse_rsq_unweighted_and_weighted)
-        # groups = set(self.pt.fitsnap_dict["Groups"])
-        # if self.config.sections["CALCULATOR"].energy:
-        #     energy_filter = self.df['Row_Type'] == 'Energy'
-        # if self.config.sections["CALCULATOR"].force:
-        #     force_filter = self.df['Row_Type'] == 'Force'
-        # if self.config.sections["CALCULATOR"].stress:
-        #     stress_filter = self.df['Row_Type'] == 'Stress'
-        # for group in groups:
-        #     group_filter = self.df['Groups'] == group
-        #     if self.config.sections["CALCULATOR"].energy:
-        #         self._errors(group, "Energy", group_filter & energy_filter)
-        #     if self.config.sections["CALCULATOR"].force:
-        #         self._errors(group, "Force", group_filter & force_filter)
-        #     if self.config.sections["CALCULATOR"].stress:
-        #         self._errors(group, "Stress", group_filter & stress_filter)
-        pass
-        
-    def _config_error(self):
-        # TODO: return normal functionality to detailed errors
-        # configs = set(pt.fitsnap_dict["Configs"])
-        # for this_config in configs:
-        #     if config.sections["CALCULATOR"].energy:
-        #         indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Energy')
-        #         # self._errors(this_config, "Energy", indices)
-        #     if config.sections["CALCULATOR"].force:
-        #         indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Force')
-        #         # self._errors(this_config, "Force", indices)
-        #     if config.sections["CALCULATOR"].stress:
-        #         indices = (self.df['Configs'] == this_config) & (self.df['Row_Type'] == 'Stress')
-        #         # self._errors(this_config, "Stress", indices)
-        pass
-
-
-    def _errors(self, group, rtype, indices):
-        ## replaced by groupby().apply(ncount_mae_rmse_rsq_unweighted_and_weighted)
-        # this_true, this_pred = self.df['truths'][indices], self.df['preds'][indices]
-        # #this_a = self.df.iloc[:, 0:self.pt.shared_arrays['a'].array.shape[1]].loc[indices].to_numpy()
-        # if self.weighted == 'Weighted':
-        #     w = self.pt.shared_arrays['w'].array[indices]
-        #     this_true, this_pred = w * this_true, w * this_pred
-        #     nconfig = np.count_nonzero(w)
-        # else:
-        #     nconfig = len(this_pred)
-        # res = this_true - this_pred
-        # mae = np.sum(np.abs(res) / nconfig)
-        # ssr = np.square(res).sum()
-        # mse = ssr / nconfig
-        # rmse = np.sqrt(mse)
-        # rsq = 1 - ssr / np.sum(np.square(this_true - (this_true / nconfig).sum()))
-        # error_record = {
-        #     "Group": group,
-        #     "Weighting": self.weighted,
-        #     "Subsystem": rtype,
-        #     "ncount": nconfig,
-        #     "mae": mae,
-        #     "rmse": rmse,
-        #     "rsq": rsq}
-        # if self.residuals is not None:
-        #     error_record["residual"] = res
-        # self.errors.append(error_record)
-        pass
 
     def _template_error(self):
         pass

@@ -3,26 +3,47 @@ from fitsnap3lib.lib.ridge_solver.regressor import Local_Ridge
 import numpy as np
 
 
-#config = Config()
-#pt = ParallelTools()
-
 class RIDGE(Solver):
 
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
 
-    def perform_fit(self, a=None, b=None, w=None, trainall=False):
-        @self.pt.sub_rank_zero
-        def decorated_perform_fit(a=None, b=None, w=None):
+    def perform_fit(self, a=None, b=None, w=None, fs_dict=None, trainall=False):
+        """
+        Perform fit on a linear system. If no args are supplied, will use fitting data in `pt.shared_arrays`.
 
-            training = [not elem for elem in self.pt.fitsnap_dict['Testing']]
-            w = self.pt.shared_arrays['w'].array[training]
-            aw, bw = w[:, np.newaxis] * self.pt.shared_arrays['a'].array[training], w * self.pt.shared_arrays['b'].array[training]
+        Args:
+            a (np.array): Optional "A" matrix.
+            b (np.array): Optional Truth array.
+            w (np.array): Optional Weight array.
+            fs_dict (dict): Optional dictionary containing a `Testing` key of which A matrix rows should not be trained.
+            trainall (bool): Optional boolean declaring whether to train on all samples in the A matrix.
+
+        The fit is stored as a member `fs.solver.fit`.
+        """
+        pt = self.pt
+        # Only fit on rank 0 to prevent unnecessary memory and work.
+        if pt._rank == 0:
+            
+            if fs_dict is not None:
+                training = [not elem for elem in fs_dict['Testing']]
+            elif trainall:
+                training = [True]*np.shape(a)[0]
+            else:
+                training = [not elem for elem in pt.fitsnap_dict['Testing']]
+
+            if a is None and b is None and w is None:
+                w = pt.shared_arrays['w'].array[training]
+                aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
+            else:
+                aw, bw = w[:, np.newaxis] * a[training], w * b[training]
+
             if 'EXTRAS' in self.config.sections and self.config.sections['EXTRAS'].apply_transpose:
                 bw = aw.T @ bw
                 aw = aw.T @ aw
+                
             alval = self.config.sections['RIDGE'].alpha
-            #print (self.config.sections['RIDGE'].local_solver, type(self.config.sections['RIDGE'].local_solver))
+
             if not self.config.sections['RIDGE'].local_solver:
                 try:
                     from sklearn.linear_model import Ridge
@@ -37,11 +58,8 @@ class RIDGE(Solver):
             self.pt.single_print('printing fit: ', reg.coef_)
             self.fit = reg.coef_
             residues = np.matmul(aw,reg.coef_) - bw
-        decorated_perform_fit(a,b,w)
 
-
-    #@staticmethod
-    def _dump_a():
+    def _dump_a(self):
         np.savez_compressed('a.npz', a= self.pt.shared_arrays['a'].array)
 
     def _dump_x(self):

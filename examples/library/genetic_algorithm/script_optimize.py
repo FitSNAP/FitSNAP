@@ -34,8 +34,8 @@ def main():
     # Genetic algorithm parameters
     
     # basic parameters
-    population_size = 10 # <-- for testing, default is 100
-    ngenerations = 100 # <-- for testing, default is 50
+    population_size = 100 # <-- minimum 4 for testing, default is 100
+    ngenerations = 50 # <-- minimum 4 for testing, default is 50
 
     # Advanced parameters, see libmod_optimize.py genetic_algorithm arguments for defaults
     # set exploration ranges for energies and forces

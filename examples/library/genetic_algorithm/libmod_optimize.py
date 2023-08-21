@@ -622,6 +622,8 @@ def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1
     if force_delta_keywords != []:
         not_in_fdkws = lambda gti: all([True if fdkw not in gti else False for fdkw in force_delta_keywords])
         ef_rat_delta = np.array([1.0 if not_in_fdkws(gti) else 0.0 for gti in gtks])
+    else:
+        ef_rat_delta = np.array([1.0]*len(gtks))
         
     while generation <= ngenerations and best_eval > conv_thr and not conv_flag:
         scores = []

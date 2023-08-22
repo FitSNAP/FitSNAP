@@ -421,8 +421,8 @@ def prep_fitsnap_input(snap, smartweights_override=False):
     # for now, elegantly crash if user has 3 or fewer groups 
     num_groups = len(snap.config.sections["GROUPS"].group_table.keys())
     if num_groups <= 3:
-        snap.single_print("\n!ERROR: Need 4 or more groups to use genetic algorithm (see comment)!")
-        snap.single_print("!ERROR: I am elegantly crashing now so that you can contact the FitSNAP team to have them solve this for you!!\n")
+        snap.pt.single_print("\n!ERROR: Need 4 or more groups to use genetic algorithm (see comment)!")
+        snap.pt.single_print("!ERROR: I am elegantly crashing now so that you can contact the FitSNAP team to have them solve this for you!!\n")
         exit()
 
     # turn off fitting to stresses 
@@ -554,8 +554,8 @@ def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1
     # both moved to function args
     # population can't have odd numbers currently
     if population_size % 2 == 1:
-      snap.single_print(f"WARNING: Cannot use odd numbers for population size (input: {population_size})")
-      snap.single_print(f"WARNING: Updating population_size: population_size +=1 (larger populations seem to perform better, in Dakota at least)")
+      snap.pt.single_print(f"WARNING: Cannot use odd numbers for population size (input: {population_size})")
+      snap.pt.single_print(f"WARNING: Updating population_size: population_size +=1 (larger populations seem to perform better, in Dakota at least)")
       population_size += 1
 
     # get groups and weights 
@@ -622,6 +622,8 @@ def genetic_algorithm(snap, population_size=50, ngenerations=100, my_w_ranges=[1
     if force_delta_keywords != []:
         not_in_fdkws = lambda gti: all([True if fdkw not in gti else False for fdkw in force_delta_keywords])
         ef_rat_delta = np.array([1.0 if not_in_fdkws(gti) else 0.0 for gti in gtks])
+    else:
+        ef_rat_delta = np.array([1.0]*len(gtks))
         
     while generation <= ngenerations and best_eval > conv_thr and not conv_flag:
         scores = []

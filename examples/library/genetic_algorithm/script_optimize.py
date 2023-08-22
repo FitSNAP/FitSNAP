@@ -34,20 +34,38 @@ def main():
     # Genetic algorithm parameters
     
     # basic parameters
-    population_size = 4 # <-- for testing, default is 100
-    ngenerations = 100 # <-- for testing, default is 50
+    population_size = 100 # <-- minimum 4 for testing, default is 100
+    ngenerations = 50 # <-- minimum 4 for testing, default is 50
 
-    # advanced parameters, see libmod_optimize.py genetic_algorithm arguments for defaults
+    # Advanced parameters, see libmod_optimize.py genetic_algorithm arguments for defaults
+    # set exploration ranges for energies and forces
     my_w_ranges = [1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4]
     my_ef_ratios = [0.001,0.01,0.1,1,10,100,1000]
+    
+    # scaling of weights
     etot_weight = 1.0
     ftot_weight = 1.0
+    
+    # set parameters
     r_cross = 0.9
     r_mut = 0.1
+
+    # set a score threshold for convergence 
+    # TODO: need better explanation of what the score is
+    # NOTE: could also have this operate on MAE or RMSE instead of score?
     conv_thr = 1.E-10
+
+    # set a minimum value of ngenerations to run before checking for convergence (int(ngenerations/conv_check)).
+    # example: if ngenerations = 100 and conv_check = 2, then convergence will only start being checked after half of the generations have been calculated (50 = 100/2).
+    # make this number smaller to check for convergence earlier, and larger for later
+    # tested defaults are between 2 and 3.
     conv_check = 2.
-    force_delta_keywords = ["Displace"]
-    write_to_json = True # write final best generation to FitSnap-compatible JSON dictionary. default is False
+
+    # set designated group's force weights to zero (e.g. volume transformations)
+    force_delta_keywords = []
+    
+    # write final best generation to FitSnap-compatible JSON dictionary. default is False
+    write_to_json = True 
     
     # End genetic algorithm parameters
     #---------------------------------------------------------------------------

@@ -34,7 +34,7 @@ class RIDGE(Solver):
                 reg = Local_Ridge(alpha = alval, fit_intercept = False)
 
             reg.fit(aw, bw)
-            self.pt.single_print('printing fit: ', reg.coef_)
+            # self.pt.single_print('printing fit: ', reg.coef_)
             self.fit = reg.coef_
             residues = np.matmul(aw,reg.coef_) - bw
         decorated_perform_fit(a,b,w)

@@ -31,7 +31,10 @@ class SVD(Solver):
         pt = self.pt
         # Only fit on rank 0 to prevent unnecessary memory and work.
         if pt._rank == 0:
-
+            
+            aw, bw = self.prepare_data(a,b,w,fs_dict)
+            
+            """
             if fs_dict is not None:
                 training = [not elem for elem in fs_dict['Testing']]
             elif trainall:
@@ -44,6 +47,7 @@ class SVD(Solver):
                 aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
             else:
                 aw, bw = w[:, np.newaxis] * a[training], w * b[training]
+            """
 
             if 'EXTRAS' in self.config.sections and self.config.sections['EXTRAS'].apply_transpose:
                 if np.linalg.cond(aw)**2 < 1 / fi.epsilon:

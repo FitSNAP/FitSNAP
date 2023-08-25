@@ -43,6 +43,32 @@ class Solver:
     def fit_gather(self):
         # self.all_fits = pt.gather_to_head_node(self.fit)
         pass
+    
+    def prepare_data(self, a, b, w, fs_dict):
+        """
+        Prepare a, b, w data for fitting by applying weight arrays `w` to the `a` and `b` arrays.
+
+        Args:
+            a (np.array): design matrix
+            b (np.array): truth array
+            w (np.array): weight array
+            fs_dict (dict): dictionary with `Testing` key of bools for which structures to test on. 
+        """
+
+        print(fs_dict)
+        if fs_dict is not None:
+            training = [not elem for elem in fs_dict['Testing']]
+        else:
+            training = [True]*np.shape(a)[0]
+
+        if a is None and b is None and w is None:
+            w = self.pt.shared_arrays['w'].array[training]
+            aw, bw = w[:, np.newaxis] * self.pt.shared_arrays['a'].array[training], w * self.pt.shared_arrays['b'].array[training]
+        else:
+            aw, bw = w[:, np.newaxis] * a[training], w * b[training]
+
+        aw, bw = w[:, np.newaxis] * a[training], w * b[training]
+        return aw, bw
 
     def _offset(self):
         num_types = self.config.sections["BISPECTRUM"].numtypes

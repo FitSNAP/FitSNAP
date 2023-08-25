@@ -41,10 +41,12 @@ def main():
     # set exploration ranges for energies and forces
     my_w_ranges = [1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4]
     my_ef_ratios = [0.001,0.01,0.1,1,10,100,1000]
+    my_es_ratios = [0.001,0.01,0.1,1,10,100,1000]
     
     # scaling of weights
     etot_weight = 1.0
     ftot_weight = 1.0
+    stot_weight = 1.0
     
     # set parameters
     r_cross = 0.9
@@ -63,9 +65,14 @@ def main():
 
     # set designated group's force weights to zero (e.g. volume transformations)
     force_delta_keywords = []
+    stress_delta_keywords = []
     
     # write final best generation to FitSnap-compatible JSON dictionary. default is False
     write_to_json = True 
+    
+    # use_initial_weights reads from current file, default is False
+    ### TODO test this!
+    use_initial_weights = True 
     
     # End genetic algorithm parameters
     #---------------------------------------------------------------------------
@@ -113,14 +120,18 @@ def main():
                                 ngenerations=ngenerations, 
                                 my_w_ranges=my_w_ranges, 
                                 my_ef_ratios=my_ef_ratios, 
+                                my_es_ratios=my_es_ratios, 
                                 etot_weight=etot_weight,
                                 ftot_weight=ftot_weight,
+                                stot_weight=stot_weight,
                                 r_cross=r_cross, 
                                 r_mut=r_mut,
                                 conv_thr=conv_thr, 
                                 conv_check=conv_check, 
                                 force_delta_keywords=force_delta_keywords,
-                                write_to_json=write_to_json)
+                                stress_delta_keywords=force_delta_keywords,
+                                write_to_json=write_to_json,
+                                use_initial_weights_flag=use_initial_weights)
     snap.pt.single_print("Script complete, exiting")
 
 if __name__ == "__main__":

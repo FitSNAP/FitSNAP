@@ -1,8 +1,7 @@
 Contributing
 ============
 
-When contributing it's very important that we all follow a set of rules, else we end up with a  
-hard-to-read code. We want to find a balance between following a set of rules but also allowing 
+We want to find a balance between following a set of rules but also allowing 
 easy development. Important points to follow are explained below.
 
 Style Guide

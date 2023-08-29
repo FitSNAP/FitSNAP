@@ -38,6 +38,9 @@ class Solver:
         self._checks()
 
     def perform_fit(self):
+        """
+        Base class function for performing a fit.
+        """
         pass
 
     def fit_gather(self):
@@ -52,10 +55,12 @@ class Solver:
             a (np.array): design matrix
             b (np.array): truth array
             w (np.array): weight array
-            fs_dict (dict): dictionary with `Testing` key of bools for which structures to test on. 
+            fs_dict (dict): dictionary with `Testing` key of bools for which structures to test on.
+
+        Returns:
+            aw, bw (np.array): design matrix and truth array multiplied by weights.
         """
 
-        print(fs_dict)
         if fs_dict is not None:
             training = [not elem for elem in fs_dict['Testing']]
         else:

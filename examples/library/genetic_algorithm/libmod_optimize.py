@@ -510,8 +510,22 @@ def sim_anneal(snap):  ##LOGAN NOTE: I have not yet updated this function
     # get groups and weights 
     gtks = snap.config.sections["GROUPS"].group_table.keys()
     gtks = list(gtks)
-    snap.pt.single_print('groups',gtks)
+    snap.pt.single_print('Groups:', gtks)
+    snap.pt.single_print('\n')
 
+    # check if fitting to stresses turned on
+    # if not, then set all stress weights to zero by populating stress_delta_keywords with all group names
+    # a warning about this behavior is included in this module's "prep_fitnsap_input" function
+    calc_stress = snap.config.sections["CALCULATOR"].stress
+    if calc_stress:
+        snap.pt.single_print("Stress fitting not yet implemented for simulated anneal!")
+        snap.pt.all_barrier()
+        return 0
+    #for future implementation
+    #if not calc_stress:
+        #stress_delta_keywords = gtks
+
+    
     size_b = np.shape(snap.pt.fitsnap_dict['Row_Type'])[0]
     grouptype = snap.pt.fitsnap_dict['Groups'].copy()
     rowtype = snap.pt.fitsnap_dict['Row_Type'].copy()

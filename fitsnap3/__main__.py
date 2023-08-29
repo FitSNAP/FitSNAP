@@ -45,20 +45,16 @@ def main():
     # Instantiate single fitsnap instance for traditional flow of control.
     # This will create an internal parallel tools instance which will detect
     # availability of MPI for parallelization.
-    snap = FitSnap(comm=comm)
-    snap.scrape_configs(delete_scraper=True)
-    snap.process_configs(delete_data=True)
-    # Good practice after a large parallel operation is to impose a barrier.
-    snap.pt.all_barrier()
-    snap.perform_fit()
-    snap.write_output()
-    """
-    # TODO: Might be cleaner ways to output errors when doing massively parallel runs.
+    try:
+        fs = FitSnap(comm=comm)
+        fs.scrape_configs(delete_scraper=True)
+        fs.process_configs(delete_data=True)
+        # Good practice after a large parallel operation is to impose a barrier.
+        fs.pt.all_barrier()
+        fs.perform_fit()
+        fs.write_output()
     except Exception as e:
-        #output.exception(e)
-        print(str(e))
-        snap.pt.single_print(f"{e}")
-    """
+        fs.pt.exception(e)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,7 @@
 Contributing
 ============
 
-We want to find a balance between following a set of rules but also allowing 
-easy development. Important points to follow are explained below.
+Important points to follow are explained below.
 
 Style Guide
 -----------

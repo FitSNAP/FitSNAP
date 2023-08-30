@@ -330,6 +330,7 @@ class Calculator:
         @self.pt.rank_zero
         def extras():
             if self.config.sections["EXTRAS"].dump_a:
+                #print(f">>> {self.config.sections['EXTRAS'].descriptor_file}")
                 np.save(self.config.sections['EXTRAS'].descriptor_file, self.pt.shared_arrays['a'].array)
             if self.config.sections["EXTRAS"].dump_b:
                 np.save(self.config.sections['EXTRAS'].truth_file, self.pt.shared_arrays['b'].array)

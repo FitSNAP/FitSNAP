@@ -147,7 +147,7 @@ def print_lammps(method):
 #class ParallelTools(metaclass=Singleton):
 class ParallelTools():
     """
-    This classes creates and contains arrays used for fitting, across multiple processors.
+    This class creates and contains arrays used for fitting, across multiple processors.
 
     Attributes:
         check_fitsnap_exist (bool): Checks whether fitsnap dictionaries exist before creating a new 
@@ -207,6 +207,9 @@ class ParallelTools():
         self.free()
         del self
     """
+
+    # Might be worth overwriting ParallelTools `setattr`, since overwriting a communicator would be insane if there are 
+    # already shared arrays allocated.
 
     """
     def __setattr__(self, name:str, value):
@@ -347,6 +350,18 @@ class ParallelTools():
             pass
 
     def create_shared_array(self, name, size1, size2=1, dtype='d', tm=0):
+        """
+        Create a shared memory array as a key in the ``pt.shared_array`` dictionary. This function uses the ``SharedArray`` 
+        class to instantiate a shared memory array in the supplied dictionary key ``name``.
+
+        If the key name already exists, this function will free the memory associated with the existing array.
+
+        Args:
+            name (str): Name of the array which will be the key name.
+            size1 (int): First dimension size.
+            size2 (int): Optional second dimension size, defaults to 1.
+            dtype (str): Optional data type character, defaults to `d` for double.
+        """
 
         if isinstance(name, str):
             if (self.stubs == 0 and self.create_shared_bool):
@@ -373,6 +388,15 @@ class ParallelTools():
 
     # @stub_check
     def add_2_fitsnap(self, name, an_object):
+        """
+        Add an object, such as a `DistributedList`, to the `pt.fitsnap_dict` dictionary. This dictionary contains 
+        configuration information such as group name, filename, testing bools, etc. This function is normally used in 
+        conjunction with the `DistributedList` class, where a distributed memory list is added with a keyname `name`.
+
+        Args:
+            name (str): Key name of the object being added.
+            an_object: A Python object to add, usually an instance of our `DistributedList` class.
+        """
 
         # TODO: Replace cluttered shared array hanging objects!
         if isinstance(name, str):
@@ -551,6 +575,10 @@ class ParallelTools():
         return nconfigs
 
     def slice_array(self, name):
+        """
+        Slices an array using Python's native `slice` function. Creates an attribute `pt.shared_arrays[name].sliced_array` 
+        containing the sliced array.
+        """
         if name in self.shared_arrays:
             if name != 'a':
                 s = slice(self._sub_rank, None, self._sub_size)
@@ -808,6 +836,12 @@ class ParallelTools():
         self._comm.Abort()
 
     def exception(self, err):
+        """
+        Gracefully exit with an exception.
+
+        Args:
+            err (str): Error message to exit with.
+        """
         self.killer.already_killed = True
 
         if self.logger is None and self._rank == 0:
@@ -855,7 +889,12 @@ class ParallelTools():
 
 class DistributedList:
     """
-    A class to wrap python list to ensure size stays the same allowing collection at end.
+    This class is used for distributed memory Python lists. The class to wraps Python's `list` to ensure size stays the 
+    same allowing collection at end. This class is normally used like, for example:
+    ``pt.add_2_fitsnap("Groups", DistributedList(nconfigs))``
+
+    Args:
+        proc_length (int): Number of elements for the list on current process.
 
     Attributes:
         _len (int):
@@ -901,6 +940,19 @@ class DistributedList:
 
 
 class SharedArray:
+    """
+    Instantiating this class will create a shared memory array in the ``array`` attribute.
+
+    Args:
+        size1 (int): First dimension of the array.
+        size2 (int): Optional second dimension of the array, defaults to 1.
+        dtype (str): Optional data type, defaults to `d` for double.
+        multinode (int): Optional multinode flag used for scalapack purposes.
+        comms (MPI.Comm): MPI communicator.
+
+    Attributes:
+        array (np.ndarray): Array of numbers that share memory across processes in the communicator.
+    """
 
     def __init__(self, size1, size2=1, dtype='d', multinode=0, comms=None, MPI=None):
         

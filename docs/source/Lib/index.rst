@@ -1,12 +1,19 @@
 Library
 =======
 
-The FitSNAP library provides a high level connection to FitSNAP methods in external Python scripts.
-The library is designed based on instances of :code:`FitSnap` objects with some important points:
+The FitSNAP library provides a high level connection to FitSNAP methods in external Python scripts. 
+The library is designed to provide effective and massively parallel tools for solving atomistic machine 
+learning problems. Examples include parallel scraping and calculation of atomistic features to fit 
+a potential, or extraction of this data for other unsupervised and supervised learning tasks with 
+external libraries. Familiar users can craft custom atomistic machine learning workflows suited to 
+their particular needs, such as automated active learning procedures and hyperparameter optimizers. 
+The overall goal of the API is to supply tools needed for solving a wide range of atomistic machine 
+learning problems in a flexible manner. API use is based on instances of :code:`FitSnap` objects, 
+noting some important points:
 
 * Each :code:`FitSnap` instance possesses its own settings, such as hyperparameters.
 * Each :code:`FitSnap` instance possesses its own optional MPI communicator over which appropriate 
-  operations, such as calculating descriptors, are parallelized.
+  operations such as calculating descriptors are parallelized, and memory is shared between MPI ranks.
 * All results of collating data, calculating descriptors, and fitting a potential are therefore 
   contained within a :code:`FitSnap` instance; this improves organization of fits and reduces 
   confusion about where a trained model came from.
@@ -69,22 +76,22 @@ dictionary to perform a fit can be defined like::
         }
     }
 
-Create an :code:`FitSnap` instance using these settings with::
+Create an :code:`FitSnap` instance using these settings like::
 
     # The --overwrite command line arg lets us overwrite possible output files.
-    instance = FitSnap(settings, arglist=["--overwrite"])
+    fs = FitSnap(settings, arglist=["--overwrite"])
 
 Then use the *high level* functions for (1) scraping data, (2) calculating descriptors, and (3) 
 performing a fit::
 
     # Scrape fitting data.
-    instance.scrape_configs()
+    fs.scrape_configs()
     # Calculate descriptors.
-    instance.process_configs()
+    fs.process_configs()
     # Fit the model.
-    instance.perform_fit()
+    fs.perform_fit()
     # Observe the errors.
-    print(instance.solver.errors)
+    print(fs.solver.errors)
 
 Each :code:`FitSnap` instance contains its own settings for defining an entire machine learning fit 
 from start to finish. 

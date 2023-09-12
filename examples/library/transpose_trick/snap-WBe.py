@@ -20,6 +20,7 @@ NOTE: This workflow is under development and therefore script requires changes.
 
 """
 
+from time import time
 from mpi4py import MPI
 from fitsnap3lib.fitsnap import FitSnap
 import numpy as np
@@ -113,6 +114,10 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nprocs = comm.Get_size()
 
+if rank == 0:
+    start = time()
+
+
 # Create an input dictionary containing settings.
 settings = \
 {
@@ -177,7 +182,8 @@ settings = \
     "dump_descriptors": 0,
     "dump_truth": 0,
     "dump_weights": 0,
-    "dump_dataframe": 0
+    "dump_dataframe": 0,
+    "multinode_testing": 1
     },
 "GROUPS":
     {
@@ -259,3 +265,8 @@ if rank == 0:
     # Write LAMMPS files.
     # NOTE: Without error analysis, `fitsnap.solver.errors` is an empty list and will not be written to file.
     fs.output.output(coeffs, fs.solver.errors)
+
+    end = time()
+    sec = round(end-start,3)
+    print(f"Time to complete fit: {sec} s")
+

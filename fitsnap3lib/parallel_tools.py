@@ -355,6 +355,8 @@ class ParallelTools():
         class to instantiate a shared memory array in the supplied dictionary key ``name``.
 
         If the key name already exists, this function will free the memory associated with the existing array.
+        
+        If not using MPI, i.e. ``stubs == 0``, we create a ``StubsArray``.
 
         Args:
             name (str): Name of the array which will be the key name.
@@ -1043,6 +1045,18 @@ class SharedArray:
 
 
 class StubsArray:
+    """
+    Instantiating this class will create a stubs array in the ``array`` attribute. In plain speak, 
+    this is just a normal numpy array.
+
+    Args:
+        size1 (int): First dimension of the array.
+        size2 (int): Optional second dimension of the array, defaults to 1.
+        dtype (str): Optional data type, defaults to `d` for double.
+
+    Attributes:
+        array (np.ndarray): Array of numbers that share memory across processes in the communicator.
+    """
 
     def __init__(self, size1, size2=1, dtype='d'):
         # total array for all procs

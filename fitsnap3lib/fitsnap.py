@@ -93,7 +93,7 @@ class FitSnap:
             if (self.config.sections['CALCULATOR'].nonlinear and (self.pt.lammps_version < 20220915) ):
                 raise Exception(f"Please upgrade LAMMPS to 2022-09-15 or later to use nonlinear solvers.")
 
-        if (self.pt._number_of_nodes > 1 and not self.config.sections["SOLVER"].true_multinode):
+        if (self.pt._number_of_nodes > 1 and not self.config.sections["SOLVER"].true_multinode) and not self.config.sections["EXTRAS"].multinode_testing:
             raise Exception(f"Must use ScaLAPACK solver when using > 1 node or you'll fit to 1/nodes of data.")
     
     def __del__(self):

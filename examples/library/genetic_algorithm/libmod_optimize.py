@@ -44,6 +44,17 @@ class CostObject:
 
 
 class HyperparameterStruct:
+    """
+    Manages hyperparameters for genetic algorithm and simulated annealing.
+    
+    Args:  TODO fill in rest
+        ne: number of energy rows
+        nf: number of force rows (same as ne for FitSNAP genetic_algorithm)
+        ns: number of stress rows (same as ne for FitSNAP genetic_algorithm)
+        eranges:
+        ffactors:
+        sfactors:
+    """
     def __init__(self,
             ne,
             nf,
@@ -80,9 +91,7 @@ class HyperparameterStruct:
             raise ValueError('incorrect number of values for force group weight ratios, ether specify range for each group or sepecify one range to be applied to all groups')
     
     
-    # @fs.pt.rank_zero
     def set_sfactors(self):
-        print(self.ns, self.sfactorsin)
         if len(self.sfactorsin) != self.ns and len(self.sfactorsin) == 1:
             self.sfactors = self.sfactorsin * self.ns
         elif len(self.sfactorsin) == self.ns:
@@ -714,12 +723,13 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     # conv_thr: convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
     # conv_check: fraction of ngenerations to start checking for convergence (convergence checks wont be performed very early)
     time1 = time.time()
+    rank = fs.pt.get_rank()
+    ncores = fs.pt.get_size()
 
     # get all group names  
     gtks = fs.config.sections["GROUPS"].group_table.keys()
     gtks = list(gtks)
     fs.pt.single_print('Groups:', gtks)
-    fs.pt.single_print('\n')
 
     # check if fitting to stresses turned on
     # if not, then set all stress weights to zero by populating stress_delta_keywords with all group names
@@ -736,15 +746,26 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         for key in gtks:
             fs.config.sections["GROUPS"].group_table[key]['vweight'] = 0.0
 
-    # population of generations
-    # population can't have odd numbers currently
-    if population_size % 2 == 1:
+    # if in serial, check population can't have odd numbers currently
+    if population_size % 2 == 1 and ncores == 1:
         fs.pt.single_print("\n")
-        fs.pt.single_print(f"WARNING: Cannot use odd numbers for population size (input: {population_size})")
-        fs.pt.single_print(f"WARNING: Updating population_size: population_size +=1 (larger populations seem to perform better, in other GAs at least)")
-        fs.pt.single_print(f"WARNING: New population_size: {population_size+1})")
+        fs.pt.single_print(f"NOTE: Cannot use odd numbers for population size (input: {population_size}), adding one.")
         population_size += 1
+        fs.pt.single_print(f"NOTE: New population_size: {population_size})")
         fs.pt.single_print("\n")
+
+    if parallel_population and ncores > 1:
+        # split population list into a list of lists
+        # index = rank of MPI core
+        if population_size < ncores:
+            fs.pt.single_print("\n")
+            fs.pt.single_print(f"MPI: Population size ({population_size}) is currently smaller than number of available nodes ({ncores}).")
+            fs.pt.single_print(f"MPI: Updating population size to fill all available cores (will add +1 if ncores is odd).")
+            population_size = ncores
+            if population_size % 2 == 1:
+                population_size += 1
+            fs.pt.single_print(f"MPI: New population_size: {population_size}")
+            fs.pt.single_print("\n")
 
     # start getting weights 
     initial_weights={}
@@ -803,10 +824,24 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
     # TODO re-implement initial_weights!
     # Latin hypercube population for first generation:
-    population = hp.lhs_params(num_samples=population_size,inputseed=first_seeds[0])
+    population0 = hp.lhs_params(num_samples=population_size,inputseed=first_seeds[0])
 
-    print(population)
-    print(population.shape)
+    # sort population into indexed ranks for MPI
+    # TODO confirm this works in serial
+    if parallel_population and ncores > 1:
+        npop_per_core = population_size//ncores
+        nremain = population_size % ncores
+        fs.pt.single_print("pop_size, npop, nremain", population_size, npop_per_core, nremain)
+
+        population = [[] for _ in range(ncores)]
+        for i, creature in enumerate(population0):
+            rank_i = i % ncores
+            fs.pt.single_print('i, rank_i, mod, creature', i, rank_i, i % ncores, creature.shape, )
+            population[rank_i].append(creature) 
+
+    else:
+        # serial mode has single list of creatures
+        population = population0
 
     generation = 0
 

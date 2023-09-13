@@ -47,16 +47,20 @@ class HyperparameterStruct:
     def __init__(self,
             ne,
             nf,
+            ns,
             eranges,
-            ffactors,):
+            ffactors,
+            sfactors,):
         self.ne = ne
         self.nf = nf
-        self.nh = ne+nf
+        self.ns = ns
+        self.nh = ne+nf+ns
         self.erangesin = eranges
         self.ffactorsin = ffactors
+        self.sfactorsin = sfactors
         self.set_eranges()
         self.set_ffactors()
-
+        self.set_sfactors()
 
     def set_eranges(self):
         if len(self.erangesin) != self.ne and len(self.erangesin) == 1:
@@ -75,13 +79,27 @@ class HyperparameterStruct:
         else:
             raise ValueError('incorrect number of values for force group weight ratios, ether specify range for each group or sepecify one range to be applied to all groups')
     
+    
+    # @fs.pt.rank_zero
+    def set_sfactors(self):
+        print(self.ns, self.sfactorsin)
+        if len(self.sfactorsin) != self.ns and len(self.sfactorsin) == 1:
+            self.sfactors = self.sfactorsin * self.ns
+        elif len(self.sfactorsin) == self.ns:
+            self.sfactors = self.sfactorsin
+        else:
+            raise ValueError('incorrect number of values for stress group weight ratios, ether specify range for each group or sepecify one range to be applied to all groups')
+
+
     def random_params(self,inputseed=None):
         if inputseed != None:
             np.random.seed(inputseed)
         self.eweights = np.random.rand(self.ne) * np.array([np.random.choice(self.eranges[ihe]) for ihe in range(self.ne)])
         f_factors =  np.random.rand(self.nf) * np.array([np.random.choice(self.ffactors[ihf]) for ihf in range(self.nf)])
         self.fweights = self.eweights * f_factors
-        return np.append(self.eweights,self.fweights)
+        s_factors =  np.random.rand(self.ns) * np.array([np.random.choice(self.sfactors[ihs]) for ihs in range(self.ns)])
+        self.fweights = self.eweights * s_factors
+        return np.concatenate((self.eweights,self.fweights, self.sweights))
 
     def lhs_params(self,num_samples, inputseed=None):
         if inputseed != None:
@@ -89,16 +107,25 @@ class HyperparameterStruct:
         variable_ranges_dicti = {}
         variable_types_dict = {}
         for i in range(self.ne):
-            print (i,'ew,fr', [np.log10(min(self.eranges[0])),np.log10(max(self.eranges[0]))], [np.log10(min(self.ffactors[0])),np.log10(max(self.ffactors[0]))])
-            #variable_ranges_dict['ew%d'%i] = [min(self.eranges),max(self.eranges)]
+            # print (i,'ew,fr', [np.log10(min(self.eranges[0])),np.log10(max(self.eranges[0]))], [np.log10(min(self.ffactors[0])),np.log10(max(self.ffactors[0]))])
+            # set energy range data
             variable_ranges_dicti['ew%d'%i] = [float(np.log10(min(self.eranges[0]))),float(np.log10(max(self.eranges[0])))]
-            #variable_ranges_dict['fr%d'%i] = [min(self.ffactors),max(self.ffactors)]
-            variable_ranges_dicti['fr%d'%i] = [float(np.log10(min(self.ffactors[0]))),float(np.log10(max(self.ffactors[0])))]
-            #variable_types_dict['ew%d'%i] = float
             variable_types_dict['ew%d'%i] = 'logfloat'
-            #variable_types_dict['fr%d'%i] = float
+
+            # set force ratio data
+            variable_ranges_dicti['fr%d'%i] = [float(np.log10(min(self.ffactors[0]))),float(np.log10(max(self.ffactors[0])))]
             variable_types_dict['fr%d'%i] = 'logfloat'
-        print ("HH varrange dict: ",variable_ranges_dicti)
+
+            # set stress ratio data
+            if self.sfactors[0] != [0,0]:
+                variable_ranges_dicti['sr%d'%i] = [float(np.log10(min(self.sfactors[0]))),float(np.log10(max(self.sfactors[0])))] 
+                variable_types_dict['sr%d'%i] = 'logfloat'
+            else:
+                # set to 0 if not fitting stresses
+                variable_ranges_dicti['sr%d'%i] = self.sfactors[0]
+                variable_types_dict['sr%d'%i] = float
+
+        # print ("HH varrange dict: ",variable_ranges_dicti)
         lhsamples = latin_hypercube_sample(variable_ranges_dicti, variable_types_dict, num_samples)
         return lhsamples
 
@@ -188,7 +215,6 @@ def update_weights(fs, test_w_combo, test_ef_rat, test_es_rat, gtks, size_b, gro
     Returns:
         (none, updates FitSNAP instance in-place)
     """
-    if len(test_virial_w) == 1:
     if initial_weights:
         if len(test_es_rat) == 1:
             tstwdct = {gkey:{'eweight':initial_weights[gkey][0]*test_w_combo[ig], 'fweight':initial_weights[gkey][1]*test_w_combo[ig]*test_ef_rat[ig], \
@@ -215,7 +241,6 @@ def update_weights(fs, test_w_combo, test_ef_rat, test_es_rat, gtks, size_b, gro
             fs.pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['fweight']
         elif fs.pt.fitsnap_dict['Row_Type'][index_b] == 'Stress':
             fs.pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['vweight']
-
 
 
 def ediff_cost(fs, fit, g1, g2, target, grouptype, rowtype):
@@ -676,7 +701,7 @@ def sim_anneal(fs):  ##LOGAN NOTE: I have not yet updated this function
 
 
 # @fs.pt.rank_zero
-def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, stot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], stress_delta_keywords=[], write_to_json=False, my_es_ratios=[], use_initial_weights_flag=False ):
+def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, stot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], stress_delta_keywords=[], write_to_json=False, my_es_ratios=[], use_initial_weights_flag=False, parallel_population=True ):
     #---------------------------------------------------------------------------
     # Begin in-function optimization hyperparameters
     # snap: FitSnap instance being handled by genetic algorithm
@@ -750,7 +775,10 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     # update ranges and ratios
     eranges = [my_w_ranges]
     ffactors = [my_ef_ratios]
-    sfactors = [my_es_ratios]  ##LOGAN NOTE: EMPTY LIST IF NOT USING
+    if calc_stress:
+        sfactors = [my_es_ratios]  ##LOGAN NOTE: EMPTY LIST IF NOT USING
+    else:
+        sfactors = [[0.,0.]]
 
     # selection method (only tournament is currently implemented)
     # TODO implement other methods?
@@ -772,8 +800,13 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
     # Random initial population for first generation:
     #population = [hp.random_params(inputseed=first_seeds[ip]) for ip in range(population_size)]
+
+    # TODO re-implement initial_weights!
     # Latin hypercube population for first generation:
     population = hp.lhs_params(num_samples=population_size,inputseed=first_seeds[0])
+
+    print(population)
+    print(population.shape)
 
     generation = 0
 
@@ -798,13 +831,21 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         es_rat_delta = np.array([1.0]*len(gtks))
         
     while generation <= ngenerations and best_eval > conv_thr and not conv_flag:
+
+        print(f"------> DEBUG while generation line ~820, fs comm:", fs.pt.get_rank(), fs.pt.get_size(),'\n')
+
         scores = []
         # current generation
         for creature in population:
-            creature_ew, creature_ffac, creature_sfac = tuple(creature.reshape(3,ne).tolist())
+            creature_ew, creature_ffac, creature_sfac = tuple(creature.reshape(num_wcols,ne).tolist())
             creature_ew = tuple(creature_ew)
             creature_ffac = tuple(creature_ffac)
             creature_sfac = tuple(creature_sfac)
+
+            print(creature_ew)
+            print(creature_ffac)
+            print(creature_sfac)
+            exit()
 
             ##LOGAN NOTE: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
             update_weights(fs, creature_ew, creature_ffac, creature_sfac, gtks, size_b, grouptype,initial_weights=initial_weights)

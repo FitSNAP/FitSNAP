@@ -29,13 +29,14 @@ def main():
     fs_input="SNAP_Ta.in"
     # fs_input="ACE_Ta.in"
     optimization_style = "genetic_algorithm"
+    INITIAL_FIT = False
 
     #---------------------------------------------------------------------------
     # Genetic algorithm parameters
     
     # basic parameters
-    population_size = 100 # <-- minimum 4 for testing, default is 100
-    ngenerations = 50 # <-- minimum 4 for testing, default is 50
+    population_size = 10 # <-- minimum 4 for testing, default is 100
+    ngenerations = 5 # <-- minimum 4 for testing, default is 50
 
     # Advanced parameters, see libmod_optimize.py genetic_algorithm arguments for defaults
     # set exploration ranges for energies and forces
@@ -96,25 +97,24 @@ def main():
     snap.scrape_configs()
     snap.process_configs()
     snap.pt.all_barrier()
-    snap.perform_fit()
-    fit1 = snap.solver.fit
-    errs1 = snap.solver.errors
 
-    # NOTE: when using MPI, the following lines may throw a warning error but the program will still run
-    rmse_e = errs1.iloc[:,2].to_numpy()
-    rmse_counts = errs1.iloc[:,0].to_numpy()
-    rmse_eat = rmse_e[0]
-    rmse_fat = rmse_e[1]
-    rmse_tot = rmse_eat + rmse_fat
-    snap.pt.single_print(f'Initial fit:\n\trsme energies: {rmse_eat}\n\trsme forces: {rmse_fat}\n\t total:{rmse_tot}')
+    if INITIAL_FIT:
+        snap.perform_fit()
+        fit1 = snap.solver.fit
+        errs1 = snap.solver.errors
+
+        # NOTE: when using MPI, the following lines may throw a warning error but the program will still run
+        rmse_e = errs1.iloc[:,2].to_numpy()
+        rmse_counts = errs1.iloc[:,0].to_numpy()
+        rmse_eat = rmse_e[0]
+        rmse_fat = rmse_e[1]
+        rmse_tot = rmse_eat + rmse_fat
+        snap.pt.single_print(f'Initial fit:\n\trsme energies: {rmse_eat}\n\trsme forces: {rmse_fat}\n\t total:{rmse_tot}')
 
     snap.solver.fit = None
 
     snap.pt.single_print("FitSNAP optimization algorithm: ",args.optimization_style)
-
-    if optimization_style == 'simulated_annealing':
-        lm_opt.sim_anneal(snap)
-    elif optimization_style == 'genetic_algorithm':
+    if optimization_style == 'genetic_algorithm':
        lm_opt.genetic_algorithm(snap, 
                                 population_size=population_size, 
                                 ngenerations=ngenerations, 
@@ -132,6 +132,8 @@ def main():
                                 stress_delta_keywords=force_delta_keywords,
                                 write_to_json=write_to_json,
                                 use_initial_weights_flag=use_initial_weights)
+    elif optimization_style == 'simulated_annealing':
+        lm_opt.sim_anneal(snap)
     snap.pt.single_print("Script complete, exiting")
 
 if __name__ == "__main__":

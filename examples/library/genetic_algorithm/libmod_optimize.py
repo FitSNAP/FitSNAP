@@ -247,15 +247,10 @@ def update_weights(fs, test_w_combo, test_ef_rat, test_es_rat, gtks, size_b, gro
         else:
             raise IndexError("not enough virial indices per energy and force indices")
 
-    #loop through data and update pt shared array based on group type
-    # print("\nconfirm existence, rank", fs.pt.get_rank(), "DEBUG fitsnap_dict, par_fs inside update_weight", fs.pt.fitsnap_dict.keys(),  fs.pt.fitsnap_dict["Row_Type"][:5], set(fs.pt.fitsnap_dict["Row_Type"]), fs.pt.shared_arrays['w'],"\n\n----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n")
-    print("DEBUG tstwdct:", tstwdct.keys())
-
     new_w = np.zeros(size_b)
     for index_b in range(size_b):
         gkey = grouptype[index_b]
         if fs.pt.fitsnap_dict['Row_Type'][index_b] == 'Energy':
-            print("DEBUG new w:", new_w, index_b, new_w[index_b], gkey)
             new_w[index_b] = tstwdct[gkey]['eweight']
         elif fs.pt.fitsnap_dict['Row_Type'][index_b] == 'Force':
             new_w[index_b] = tstwdct[gkey]['fweight']
@@ -284,8 +279,7 @@ def ediff_cost(fs, fit, g1, g2, target, grouptype, rowtype):
     Return: 
         np.abs(diff - target): 
         
-    Objective function note: You MUST put only one structure per group to use in this objective function.
-
+    Objective function dev. note: You MUST put only one structure per group to use in this objective function.
     """
 
     indexg1 = grouptype.index(g1)
@@ -303,7 +297,7 @@ def ediff_cost(fs, fit, g1, g2, target, grouptype, rowtype):
 
     return np.abs(diff - target)
 
-#NOTE fit_and_cost will likely need to be modified to print current fit if
+# NOTE from James: fit_and_cost will likely need to be modified to print current fit if
 # other objective functions are to be added. 
 def fit_and_cost(fs, fitobjects, costweights):
     """
@@ -343,7 +337,7 @@ def fit_and_cost(fs, fitobjects, costweights):
     CO.add_contribution(rmse_fattst,ftot_weight)
     CO.add_contribution(rmse_sattst,stot_weight)
 
-    # commented examples on how to use energy differences in the objective function
+    # NOTE from James: commented examples on how to use energy differences in the objective function
     # a SINGLE structure is added to two new fitsnap groups, the corresponding energy
     # difference between group 1 and group 2 is given as the target (in eV) (NOT eV/atom)
     #obj_ads = ediff_cost(fittst,g1='H_ads_W_1',g2='H_above_W_1',target=-777.91314380000-(-775.10721929000),grouptype=grouptype)
@@ -356,7 +350,7 @@ def fit_and_cost(fs, fitobjects, costweights):
     return cost
 
 
-def seed_maker(fs, mc,mmax = 1e9,use_saved_seeds=True):
+def seed_maker(fs, mc, mmax = 1e9,use_saved_seeds=True,seeds_file='seeds.npy'):
     """
     TODO fill in
 
@@ -372,19 +366,20 @@ def seed_maker(fs, mc,mmax = 1e9,use_saved_seeds=True):
 
     if use_saved_seeds:
         try:
-            seeds = np.load('seeds.npy')
+            seeds = np.load(seeds_file)
+            fs.pt.single_print(f'Loaded seeds from {seeds_file}')
             if np.shape(seeds)[0] < mc:
                 fs.pt.single_print('potentially not enough seeds for this run, appending more')
                 seeds = np.append(seeds , np.random.randint(0,mmax, mc- (np.shape(seeds)[0])  ))
-                np.save('seeds.npy',seeds)
+                np.save(seeds_file,seeds)
             else:
                 seeds = seeds
         except FileNotFoundError:
             seeds = np.random.randint(0,mmax,mc)
-            np.save('seeds.npy',seeds)
+            np.save(seeds_file,seeds)
     else:
         seeds = np.random.randint(0,mmax,mc)
-        np.save('seeds.npy',seeds)
+        np.save(seeds_file,seeds)
     return seeds
 
 
@@ -536,7 +531,9 @@ def get_fs_input_dict(fs):
         # read in config again
         import configparser
         c = configparser.ConfigParser()
-        c.optionxform = str # SUPER IMPORTANT!
+
+        # next line is SUPER IMPORTANT! without this, the ConfigParser puts everything into lower case, leading to unmatched variables and bad pathing for group scrapers
+        c.optionxform = str 
         c.read(infile_name)
         settings = {s:dict(c.items(s)) for s in c.sections()}
     return settings
@@ -681,21 +678,37 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     if parallel_population and ncores > 1:
         # split population list into a list of lists
         # index = rank of MPI core
-        if population_size < ncores:
+        npop_per_core = 1 # always 1 for split comm
+        nremain = population_size % ncores
+        npop_per_rank = (population_size//ncores) + 1 if nremain != 0 else (population_size//ncores)
+        nfilled_grid = ncores*npop_per_rank
+        pop_diff = nfilled_grid - population_size
+
+        # if MPI grid uneven, population cost comparison breaks down
+        # to avoid wasting compute power, increase population size to fill an even-sized MPI grid
+        while nfilled_grid % 2 == 1:
+            npop_per_rank += 1
+
+            nfilled_grid = ncores*npop_per_rank
+            pop_diff = nfilled_grid - population_size
+            
+            fs.pt.single_print("DEBUG population_size, ncores, npop_per_rank, nremain, nfilled_grid, pop_diff", population_size, ncores, npop_per_rank, nremain, nfilled_grid, pop_diff)
+
+        if pop_diff != 0:
             fs.pt.single_print("\n")
-            fs.pt.single_print(f"MPI: Population size ({population_size}) is currently smaller than number of available nodes ({ncores}).")
-            fs.pt.single_print(f"MPI: Updating population size to fill all available cores.")
-            population_size = ncores
+            fs.pt.single_print(f"MPI: Population size ({population_size}) is currently smaller than even-sized MPI grid allows ({ncores}x{npop_per_rank}={nfilled_grid}).")
+            fs.pt.single_print(f"MPI: Updating population size by {pop_diff} to fill even-sized MPI grid.")
+            population_size += pop_diff
             fs.pt.single_print(f"MPI: New population_size: {population_size}")
             fs.pt.single_print("\n")
-
-        # if in serial, check population can't have odd numbers currently
-        if population_size % 2 == 1:
-            fs.pt.single_print("\n")
-            fs.pt.single_print(f"NOTE: Cannot use odd numbers for population size (input: {population_size}), adding one.")
-            population_size += 1
-            fs.pt.single_print(f"NOTE: New population_size: {population_size}")
-            fs.pt.single_print("\n")
+     
+    # population can't have odd numbers currently
+    if population_size % 2 == 1:
+        fs.pt.single_print("\n")
+        fs.pt.single_print(f"NOTE: Cannot use odd numbers for population size (input: {population_size}), adding one.")
+        population_size += 1
+        fs.pt.single_print(f"NOTE: New population_size: {population_size}")
+        fs.pt.single_print("\n")
 
     # start getting weights 
     initial_weights={}
@@ -759,22 +772,19 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     first_seeds = seedsi[:population_size+1]
     population0 = hp.lhs_params(num_samples=population_size,inputseed=first_seeds[0])
 
-    # sort population into indexed ranks for MPI
+    # sort population into indexed lists for MPI
     if parallel_population and ncores > 1:
-        npop_per_core = population_size//ncores
-        nremain = population_size % ncores
-        # fs.pt.single_print("pop_size, npop, nremain", population_size, npop_per_core, nremain)
-
         population = [[] for _ in range(ncores)]
-        inputs = [[] for _ in range(ncores)]
         for i, creature in enumerate(population0):
             rank_i = i % ncores
             # fs.pt.single_print('i, rank_i, mod, creature', i, rank_i, i % ncores, creature.shape)
             population[rank_i].append(creature) 
+            
     else:
         # serial mode has single list of creatures
         population = population0
 
+    fs.pt.single_print("DEBUG, post population reassign", len(population))
     generation = 0
 
     best_evals = [best_eval]
@@ -832,19 +842,18 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             # create split comm FitSNAP instance outside of creature loop below
             par_fs = FitSnap(input1, comm=comm_split, arglist=["--overwrite"])
 
+            # prep scores array for MPI
+            scores_nrow, scores_ncol = np.array(population).shape[:2]
         else:
             par_fs = fs
             pop_list = population
+            scores_nrow, scores_ncol = len(population), 1
+        
+        collect_scores = np.full((scores_nrow, scores_ncol), 1e8)
+        fs.pt.single_print("DEBUG, pre creature loop shape POP SCORES, scores rowxcol", np.array(population).shape, collect_scores.shape, scores_nrow, scores_ncol)
 
-        # print("\nconfirm existence\n")
-        # print("DEBUG fitsnap_dict, WORLD", fs.pt.fitsnap_dict["Row_Type"][:10])
-        # print("\n\n----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n")
-        # print("DEBUG fitsnap_dict, POP", par_fs.pt.fitsnap_dict.keys())
-        # print("DEBUG fitsnap_dict, POP", par_fs.pt.fitsnap_dict["Row_Type"][:10])
-
-        scores = []
+        per_rank_scores = np.full(len(pop_list), 1e8)
         for i, creature in enumerate(pop_list):
-            # print("WORLD RANK/SIZE", rank, ncores, "SPLIT RANK/SIZE", rank_split, size_split, "CREATURE INDEX", i, "POP LIST MEMBER", len(creature),)
             mem1 = virtual_memory().total
             
             # get creature values from generated poplation
@@ -860,47 +869,49 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
             costi = fit_and_cost(par_fs, [a, b, new_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
 
-            # Perform fit and create par_fs.solver.fit
-            par_fs.solver.perform_fit(a, b, new_w, fs_dict)
+            per_rank_scores[i] = costi
 
-            # Analyze errors and create par_fs.solver.errors
-            par_fs.solver.error_analysis(a, b, new_w, fs_dict)
+            # print("DEBUG creature i, cotsti, local scores", rank, i, costi, per_rank_scores)
 
             mem2 = virtual_memory().total
             if (rank == 0):
                 print(f"Memory gain after performing fit on second instance: {mem1 - mem2}")
 
-            fit = par_fs.solver.fit
-            errors = par_fs.solver.errors
-            scoretype = 'rmse'
-            emask = errors.index == ('*ALL', 'Unweighted', 'Training',  'Energy')
-            fmask = errors.index == ('*ALL', 'Unweighted', 'Training',  'Force')
-            escore = errors.loc[emask,scoretype].iloc[0]
-            fscore = errors.loc[fmask,scoretype].iloc[0]
-            npscore = np.array([escore, fscore])
-
-            print(rank, rank_split, escore, fscore, '\n---------------\n')
-
+        if parallel_population and ncores > 1:
             par_fs.pt.all_barrier()
 
             ## TODO: MPI Allgather needed here!
-            scores.append(costi)
+            fs.pt._comm.Allgather([per_rank_scores, MPI.FLOAT],[collect_scores, MPI.FLOAT])
+        else:
+            collect_scores = per_rank_scores
 
-            # print(f"------> DEBUG while generation line ~820, fs comm_split:", rank, creature_ew,'\n')
-            # print(f"------> costi", rank, costi,'\n')
+        ## TODO: flatten array to match serial version
+        # unpack in same order as MPI grid assignment
+        scores = collect_scores.flatten()
+        fs.pt.single_print("NOT FLATTENED SCORES: ", collect_scores)
+        fs.pt.single_print("FLATTENED SCORES: ", scores)
 
-            if parallel_population and ncores > 1:
-                del par_fs
-            exit()
+        exit()
 
-            #NOTE to add another contribution to the cost function , you need to evaluate it in the loop
-            # and add it to the fit_and_cost function
-            # if this involves a lammps simulation, you will have to print potentials at the different steps
-            # to run the lammps/pylammps simulation. To do so, the fitsnap output file name prefix should
-            # be updated per step, then fs.write_output() should be called per step. This will likely increase
-            # the optimization time.
+
+        # NOTE from James: to add another contribution to the cost function , you need to evaluate it in the loop
+        # and add it to the fit_and_cost function
+        # if this involves a lammps simulation, you will have to print potentials at the different steps
+        # to run the lammps/pylammps simulation. To do so, the fitsnap output file name prefix should
+        # be updated per step, then fs.write_output() should be called per step. This will likely increase
+        # the optimization time.
+
+        # print(f"------> DEBUG while generation line ~820, fs comm_split:", rank, creature_ew,'\n')
+        # print(f"------> costi", rank, costi,'\n')
+
+        if parallel_population and ncores > 1:
+            del par_fs
+        fs.pt.single_print('Generation, scores, popsize:',generation,len(scores),population_size)
+        fs.pt.single_print('DEBUG scores:',scores)
+        exit()
         # Anything printed with fs.pt.single_print will be included in output file.
         fs.pt.single_print('Generation, scores, popsize:',generation,len(scores),population_size)
+        exit()
 
         # Print generation and best fit.
         # bestfit = min(scores)

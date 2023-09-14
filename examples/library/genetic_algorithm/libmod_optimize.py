@@ -114,7 +114,18 @@ class HyperparameterStruct:
         self.fweights = self.eweights * s_factors
         return np.concatenate((self.eweights,self.fweights, self.sweights))
 
-    def lhs_params(self,num_samples, inputseed=None):
+    def lhs_params(self, num_samples, inputseed=None):
+        """
+        Sets up parameters for this class to sample weights using a Latin hypercube scheme.
+
+            Args:
+                num_samples: 
+                inputseed:
+
+            Returns:
+                lhsamples: a Numpy array of shape (num_samples, self.ne*3). Each sample created is itself a concatenated list of [eweight, fweight, vweight] values (may need reshaping)
+
+        """
         if inputseed != None:
             np.random.seed(inputseed)
         variable_ranges_dicti = {}
@@ -224,28 +235,35 @@ def update_weights(fs, test_w_combo, test_ef_rat, test_es_rat, gtks, size_b, gro
         size_b: length of b matrix
         grouptype: ? TODO check
         test_virial_w: if stress fitting not turned on, sets stress (virial) weights to near-zero value ? TODO double check
+        initial_weights: (out of order)
 
     Returns:
         (none, updates FitSNAP instance in-place)
     """
-    if initial_weights:
-        if len(test_es_rat) == 1:
-            tstwdct = {gkey:{'eweight':initial_weights[gkey][0]*test_w_combo[ig], 
-                'fweight':initial_weights[gkey][1]*test_w_combo[ig]*test_ef_rat[ig], 
-                'vweight':initial_weights[gkey][2]*test_w_combo[ig]*test_es_rat[0]} for ig,gkey in enumerate(gtks)}
-        elif len(test_es_rat) == len(test_ef_rat):
-            tstwdct = {gkey:{'eweight':initial_weights[gkey][0]*test_w_combo[ig], 
-                'fweight':initial_weights[gkey][1]*test_w_combo[ig]*test_ef_rat[ig],
-                'vweight':initial_weights[gkey][2]*test_w_combo[ig]*test_es_rat[ig]} for ig,gkey in enumerate(gtks)}
-        else:
-            raise IndexError("not enough virial indices per energy and force indices")
+    ## TODO re-implement after parallel upgrades
+    # if initial_weights:
+    #     if len(test_es_rat) == 1:
+    #         tstwdct = {gkey:{'eweight':initial_weights[gkey][0]*test_w_combo[ig], 
+    #             'fweight':initial_weights[gkey][1]*test_w_combo[ig]*test_ef_rat[ig], 
+    #             'vweight':initial_weights[gkey][2]*test_w_combo[ig]*test_es_rat[0]} for ig,gkey in enumerate(gtks)}
+    #     elif len(test_es_rat) == len(test_ef_rat):
+    #         tstwdct = {gkey:{'eweight':initial_weights[gkey][0]*test_w_combo[ig], 
+    #             'fweight':initial_weights[gkey][1]*test_w_combo[ig]*test_ef_rat[ig],
+    #             'vweight':initial_weights[gkey][2]*test_w_combo[ig]*test_es_rat[ig]} for ig,gkey in enumerate(gtks)}
+    #     else:
+    #         raise IndexError("not enough virial indices per energy and force indices")
+    # else:
+    if len(test_es_rat) == 1:
+        tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_w_combo[ig]*test_es_rat[0]} for ig,gkey in enumerate(gtks)}
+    elif len(test_es_rat) == len(test_ef_rat):
+        tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_w_combo[ig]*test_es_rat[ig]} for ig,gkey in enumerate(gtks)}
     else:
-        if len(test_es_rat) == 1:
-            tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_w_combo[ig]*test_es_rat[0]} for ig,gkey in enumerate(gtks)}
-        elif len(test_es_rat) == len(test_ef_rat):
-            tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_w_combo[ig]*test_es_rat[ig]} for ig,gkey in enumerate(gtks)}
-        else:
-            raise IndexError("not enough virial indices per energy and force indices")
+        raise IndexError("not enough virial indices per energy and force indices")
+    print("CHECKING WEIGHTS", initial_weights)
+    print(test_w_combo)
+    for ig, gkey in enumerate(gtks):
+        print(ig, test_w_combo[ig], tstwdct[gkey]['eweight'])
+        print(ig, test_w_combo[ig]*test_ef_rat[ig], tstwdct[gkey]['fweight'])
 
     new_w = np.zeros(size_b)
     for index_b in range(size_b):
@@ -709,11 +727,15 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         fs.pt.single_print("\n")
 
     # start getting weights 
+    ## TODO: re-test and re-implement after parallel upgrades!
+    # CURRENTLY PROBABLY BROKEN!
+    # NOTE: important to redo because it offers restart capability! Maybe add seed?
+    use_initial_weights_flag = False 
     initial_weights={}
-    if use_initial_weights_flag:
-        for key in gtks:
-            initial_weights[key] = [fs.config.sections["GROUPS"].group_table[key]['eweight'], fs.config.sections["GROUPS"].group_table[key]['fweight'], \
-                                    fs.config.sections["GROUPS"].group_table[key]['vweight']]
+    # if use_initial_weights_flag:
+    #     for key in gtks:
+    #         initial_weights[key] = [fs.config.sections["GROUPS"].group_table[key]['eweight'], fs.config.sections["GROUPS"].group_table[key]['fweight'], \
+    #                                 fs.config.sections["GROUPS"].group_table[key]['vweight']]
 
     size_b = np.shape(fs.pt.fitsnap_dict['Row_Type'])[0]
     grouptype = fs.pt.fitsnap_dict['Groups'].copy()
@@ -845,17 +867,22 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         # prep scores array for MPI
         scores_nrow, scores_ncol = np.array(population).shape[:2]
 
+        # set up data collection (MPI-friendly)
         collect_scores = np.full((scores_nrow, scores_ncol), 1e8)
-
         per_rank_scores = np.full(len(pop_list), 1e8)
+
+        # loop through creatures in current generation
         for i, creature in enumerate(pop_list):
             mem1 = virtual_memory().total
             
-            # get creature values from generated poplation
-            creature_ew, creature_ffac, creature_sfac = tuple(creature.reshape(num_wcols,ne).tolist())
+            # get creature values from generated population
+            # ccreature = creature.reshape((num_wcols,ne),order='C')
+            fcreature = creature.reshape((num_wcols,ne),order='F')
+            creature_ew, creature_ffac, creature_sfac = tuple(fcreature.tolist())  
             creature_ew = tuple(creature_ew)
             creature_ffac = tuple(creature_ffac)
             creature_sfac = tuple(creature_sfac)
+            print("DEBUG creature_ew", creature_ew)
 
             # make sure original fs_dict is copied to all members of par_fs comm
             par_fs.pt.fitsnap_dict = deepcopy(fs_dict)
@@ -916,7 +943,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             # conv_flag = np.round(np.var(best_evals[-(check_gen*math.floor(len(best_evals)/check_gen)):]),14) == 0
         except IndexError:
             conv_flag = False
-        printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape(num_wcols,ne).tolist()])
+        printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape((num_wcols,ne), order="F").tolist()])
         fs.pt.single_print('\n')
         fs.pt.single_print('Generation:',generation, 'score:', scores[i])
 

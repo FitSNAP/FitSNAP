@@ -691,8 +691,6 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
             nfilled_grid = ncores*npop_per_rank
             pop_diff = nfilled_grid - population_size
-            
-            fs.pt.single_print("DEBUG population_size, ncores, npop_per_rank, nremain, nfilled_grid, pop_diff", population_size, ncores, npop_per_rank, nremain, nfilled_grid, pop_diff)
 
         if pop_diff != 0:
             fs.pt.single_print("\n")
@@ -773,18 +771,18 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     population0 = hp.lhs_params(num_samples=population_size,inputseed=first_seeds[0])
 
     # sort population into indexed lists for MPI
-    if parallel_population and ncores > 1:
-        population = [[] for _ in range(ncores)]
-        for i, creature in enumerate(population0):
-            rank_i = i % ncores
-            # fs.pt.single_print('i, rank_i, mod, creature', i, rank_i, i % ncores, creature.shape)
-            population[rank_i].append(creature) 
-            
-    else:
-        # serial mode has single list of creatures
-        population = population0
+    # this works the same in serial, just is a bit more complex
+    population = [[] for _ in range(ncores)]
+    pop_indices = [[] for _ in range(ncores)] 
+    for i, creature in enumerate(population0):
+        # assign creatures alternating cores (odd creatures => odd cores)
+        rank_i = i % ncores 
 
-    fs.pt.single_print("DEBUG, post population reassign", len(population))
+        # fs.pt.single_print('i, rank_i, mod, creature', i, rank_i, i % ncores, creature.shape)
+        population[rank_i].append(creature) 
+        pop_indices[rank_i].append(i)
+
+    # fs.pt.single_print("DEBUG, post population reassign", len(population))
     generation = 0
 
     best_evals = [best_eval]
@@ -836,21 +834,18 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             rank_split = comm_split.Get_rank()
             size_split = comm_split.Get_size()
 
-            # take the previously-allocated sublist assigned to this rank
-            pop_list = population[rank]
-
             # create split comm FitSNAP instance outside of creature loop below
             par_fs = FitSnap(input1, comm=comm_split, arglist=["--overwrite"])
-
-            # prep scores array for MPI
-            scores_nrow, scores_ncol = np.array(population).shape[:2]
         else:
             par_fs = fs
-            pop_list = population
-            scores_nrow, scores_ncol = len(population), 1
-        
+
+        # take the previously-allocated sublist assigned to this rank
+        pop_list = population[rank]
+
+        # prep scores array for MPI
+        scores_nrow, scores_ncol = np.array(population).shape[:2]
+
         collect_scores = np.full((scores_nrow, scores_ncol), 1e8)
-        fs.pt.single_print("DEBUG, pre creature loop shape POP SCORES, scores rowxcol", np.array(population).shape, collect_scores.shape, scores_nrow, scores_ncol)
 
         per_rank_scores = np.full(len(pop_list), 1e8)
         for i, creature in enumerate(pop_list):
@@ -871,28 +866,31 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
             per_rank_scores[i] = costi
 
-            # print("DEBUG creature i, cotsti, local scores", rank, i, costi, per_rank_scores)
-
-            mem2 = virtual_memory().total
-            if (rank == 0):
-                print(f"Memory gain after performing fit on second instance: {mem1 - mem2}")
-
         if parallel_population and ncores > 1:
             par_fs.pt.all_barrier()
 
             ## TODO: MPI Allgather needed here!
             fs.pt._comm.Allgather([per_rank_scores, MPI.FLOAT],[collect_scores, MPI.FLOAT])
+
+            # clean up split comm FitSNAP instance to prep for next generation
+            del par_fs
         else:
             collect_scores = per_rank_scores
 
-        ## TODO: flatten array to match serial version
+        mem2 = virtual_memory().total
+        fs.pt.single_print(f"Memory gain after performing fit on second instance: {mem1 - mem2}")
+
+        ## TODO: confirm with single population fits that we're mapping the right weight sets to the right indices
         # unpack in same order as MPI grid assignment
-        scores = collect_scores.flatten()
-        fs.pt.single_print("NOT FLATTENED SCORES: ", collect_scores)
-        fs.pt.single_print("FLATTENED SCORES: ", scores)
+        flat_scores = collect_scores.flatten().tolist()
+        flat_pop_indices = [item for items in pop_indices for item in items]
+        scores = [flat_scores[i] for i in flat_pop_indices]
 
-        exit()
+        # fs.pt.single_print("DEBUG, NOT FLATTENED INDICES: ", pop_indices)
+        # fs.pt.single_print("FLATTENED INDICES: ", flat_pop_indices)
 
+        # fs.pt.single_print("DEBUG, NOT SORTED SCORES: ", flat_scores)
+        # fs.pt.single_print("SORTED SCORES: ", scores)
 
         # NOTE from James: to add another contribution to the cost function , you need to evaluate it in the loop
         # and add it to the fit_and_cost function
@@ -901,24 +899,15 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         # be updated per step, then fs.write_output() should be called per step. This will likely increase
         # the optimization time.
 
-        # print(f"------> DEBUG while generation line ~820, fs comm_split:", rank, creature_ew,'\n')
-        # print(f"------> costi", rank, costi,'\n')
-
-        if parallel_population and ncores > 1:
-            del par_fs
-        fs.pt.single_print('Generation, scores, popsize:',generation,len(scores),population_size)
-        fs.pt.single_print('DEBUG scores:',scores)
-        exit()
         # Anything printed with fs.pt.single_print will be included in output file.
         fs.pt.single_print('Generation, scores, popsize:',generation,len(scores),population_size)
-        exit()
 
         # Print generation and best fit.
         # bestfit = min(scores)
         # print(f"{generation} {bestfit}")
         for i in range(population_size):
             if scores[i] < best_eval:
-                best, best_eval = tuple(population[i]), scores[i]
+                best, best_eval = tuple(population0[i]), scores[i]
         best_evals.append(best_eval)
         try:
             ## Original flag
@@ -927,15 +916,17 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             # conv_flag = np.round(np.var(best_evals[-(check_gen*math.floor(len(best_evals)/check_gen)):]),14) == 0
         except IndexError:
             conv_flag = False
-        printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape(3,ne).tolist()])
+        printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape(num_wcols,ne).tolist()])
         fs.pt.single_print('\n')
         fs.pt.single_print('Generation:',generation, 'score:', scores[i])
 
         # TODO input user's settings or warn user that it will be overwritten (train_sz, test_sz)
         print_final(fs, gtks, printbest)
         slct = Selector(selection_style = selection_method)
-        selected = [slct.selection(population, scores) for creature_idx in range(population_size)]
+        selected = [slct.selection(population0, scores) for creature_idx in range(population_size)]
         del slct
+
+        exit()
 
         # new generation
         children = list()

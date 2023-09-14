@@ -175,7 +175,7 @@ class Selector:
             self.selection = tournament_selection
 
 
-def crossover(p1, p2, ne, w_combo_delta=np.array([]), ef_rat_delta=np.array([]), es_rat_delta=np.array([]), inputseed=None):
+def crossover(p1, p2, ne, w_combo_delta=np.array([]), ef_rat_delta=np.array([]), es_rat_delta=np.array([]), num_wcols=3, inputseed=None):
     """
     Genetic operator function that takes two existing population members ('creatures') and recombines them to create two new ones for the next generation. Or in the immortal words of the Goff... "when 2 parent creatures love eachother very much, they make/adopt 2 children creatures"
     
@@ -184,7 +184,9 @@ def crossover(p1, p2, ne, w_combo_delta=np.array([]), ef_rat_delta=np.array([]),
         p2: creature 2
         ne: number of elements
         w_combo_delta: ? TODO check, init weights?
-        ef_rat_delta: sets given energy, force, or stress weights to zero
+        ef_rat_delta: sets certain group force weights to zero
+        es_rat_delta: sets certain group stress weights to zero
+        num_wcols: number of weight columns (2 or 3)
         inputseed: value to initialize RNG for np.random functions
 
     Returns:
@@ -194,10 +196,10 @@ def crossover(p1, p2, ne, w_combo_delta=np.array([]), ef_rat_delta=np.array([]),
     if inputseed != None:
         np.random.seed(inputseed)
     c1, c2 = p1.copy(), p2.copy()
-    c1e,c1f,c1s = tuple(c1.reshape(3,ne))
-    c2e,c2f,c2s = tuple(c2.reshape(3,ne))
-    p1e,p1f,p1s = tuple(p1.reshape(3,ne))
-    p2e,p2f,p2s = tuple(p2.reshape(3,ne))
+    c1e,c1f,c1s = tuple(c1.reshape((num_wcols ,ne),order="F"))
+    c2e,c2f,c2s = tuple(c2.reshape((num_wcols ,ne),order="F"))
+    p1e,p1f,p1s = tuple(p1.reshape((num_wcols ,ne),order="F"))
+    p2e,p2f,p2s = tuple(p2.reshape((num_wcols ,ne),order="F"))
 
     # select crossover point that corresponds to a certain group
     # NOTE meg changed var name 'pt' to 'cpt' to avoid confusion with parallel tools "pt" later
@@ -259,11 +261,6 @@ def update_weights(fs, test_w_combo, test_ef_rat, test_es_rat, gtks, size_b, gro
         tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_w_combo[ig]*test_es_rat[ig]} for ig,gkey in enumerate(gtks)}
     else:
         raise IndexError("not enough virial indices per energy and force indices")
-    print("CHECKING WEIGHTS", initial_weights)
-    print(test_w_combo)
-    for ig, gkey in enumerate(gtks):
-        print(ig, test_w_combo[ig], tstwdct[gkey]['eweight'])
-        print(ig, test_w_combo[ig]*test_ef_rat[ig], tstwdct[gkey]['fweight'])
 
     new_w = np.zeros(size_b)
     for index_b in range(size_b):
@@ -877,12 +874,11 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             
             # get creature values from generated population
             # ccreature = creature.reshape((num_wcols,ne),order='C')
-            fcreature = creature.reshape((num_wcols,ne),order='F')
+            fcreature = creature.reshape((num_wcols,ne), order='F')
             creature_ew, creature_ffac, creature_sfac = tuple(fcreature.tolist())  
             creature_ew = tuple(creature_ew)
             creature_ffac = tuple(creature_ffac)
             creature_sfac = tuple(creature_sfac)
-            print("DEBUG creature_ew", creature_ew)
 
             # make sure original fs_dict is copied to all members of par_fs comm
             par_fs.pt.fitsnap_dict = deepcopy(fs_dict)
@@ -953,8 +949,6 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         selected = [slct.selection(population0, scores) for creature_idx in range(population_size)]
         del slct
 
-        exit()
-
         # new generation
         children = list()
         for ii in range(0, population_size, 2):
@@ -969,16 +963,27 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             for c in cs:
                 # mutation
                 if rndmut <= r_mut:
-                    current_creature_ew, current_creature_ffac, current_creature_sfac = tuple(c.reshape(3,ne))
+                    current_creature_ew, current_creature_ffac, current_creature_sfac = tuple(c.reshape((num_wcols, ne), order="F"))
                     current_creature_ew = tuple(current_creature_ew)
                     current_creature_ffac = tuple(current_creature_ffac)
                     current_creature_sfac = tuple(current_creature_sfac)
 
                     mutated_creature_ew, mutated_creature_ffac, mutated_creature_sfac = mutation(current_creature_ew,current_creature_ffac,current_creature_sfac,\
-                                                                                                 my_w_ranges,my_ef_ratios,my_es_ratios,ng=len(gtks),\
-                                                                                                 w_combo_delta=w_combo_delta,ef_rat_delta=ef_rat_delta, s_combo_delta=es_rat_delta,\
+                    my_w_ranges,my_ef_ratios,my_es_ratios,ng=len(gtks),\
+                    w_combo_delta=w_combo_delta,ef_rat_delta=ef_rat_delta, s_combo_delta=es_rat_delta,\
                     apply_random=True,
                     full_mutation=False)
+
+
+
+                    print("TEST MUTATION")
+                    print(current_creature_ew)
+                    print(current_creature_ffac)
+                    print(current_creature_sfac)
+                    print(mutated_creature_ew)
+                    print(mutated_creature_ffac)
+                    print(mutated_creature_sfac)
+                    exit()
 
                     c = np.concatenate((mutated_creature_ew,mutated_creature_ffac,mutated_creature_sfac))
                     # store for next generation
@@ -986,7 +991,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         generation += 1
         np.random.seed(sim_seeds[generation])
         population = children
-    best_ew, best_ffac, best_sfac = tuple(np.array(best).reshape(3,ne).tolist())
+    best_ew, best_ffac, best_sfac = tuple(np.array(best).reshape(num_wcols ,ne, order="F").tolist())
     best_ew = tuple(creature_ew)
     best_ffac = tuple(creature_ffac)
     best_sfac = tuple(creature_sfac)

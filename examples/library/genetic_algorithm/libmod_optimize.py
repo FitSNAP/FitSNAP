@@ -248,15 +248,21 @@ def update_weights(fs, test_w_combo, test_ef_rat, test_es_rat, gtks, size_b, gro
             raise IndexError("not enough virial indices per energy and force indices")
 
     #loop through data and update pt shared array based on group type
-    print("\nconfirm existence, rank", fs.pt.get_rank(), "DEBUG fitsnap_dict, par_fs inside update_weight", fs.pt.fitsnap_dict.keys(),  fs.pt.fitsnap_dict["Row_Type"][:5], set(fs.pt.fitsnap_dict["Row_Type"]), fs.pt.shared_arrays['w'],"\n\n----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n")
+    # print("\nconfirm existence, rank", fs.pt.get_rank(), "DEBUG fitsnap_dict, par_fs inside update_weight", fs.pt.fitsnap_dict.keys(),  fs.pt.fitsnap_dict["Row_Type"][:5], set(fs.pt.fitsnap_dict["Row_Type"]), fs.pt.shared_arrays['w'],"\n\n----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n")
+    print("DEBUG tstwdct:", tstwdct.keys())
+
+    new_w = np.zeros(size_b)
     for index_b in range(size_b):
         gkey = grouptype[index_b]
         if fs.pt.fitsnap_dict['Row_Type'][index_b] == 'Energy':
-            fs.pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['eweight']
+            print("DEBUG new w:", new_w, index_b, new_w[index_b], gkey)
+            new_w[index_b] = tstwdct[gkey]['eweight']
         elif fs.pt.fitsnap_dict['Row_Type'][index_b] == 'Force':
-            fs.pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['fweight']
+            new_w[index_b] = tstwdct[gkey]['fweight']
         elif fs.pt.fitsnap_dict['Row_Type'][index_b] == 'Stress':
-            fs.pt.shared_arrays['w'].array[index_b] = tstwdct[gkey]['vweight']
+            new_w[index_b] = tstwdct[gkey]['vweight']
+    
+    return new_w
 
 
 def ediff_cost(fs, fit, g1, g2, target, grouptype, rowtype):
@@ -299,7 +305,7 @@ def ediff_cost(fs, fit, g1, g2, target, grouptype, rowtype):
 
 #NOTE fit_and_cost will likely need to be modified to print current fit if
 # other objective functions are to be added. 
-def fit_and_cost(fs,costweights):
+def fit_and_cost(fs, fitobjects, costweights):
     """
     TODO fill in description
 
@@ -310,24 +316,33 @@ def fit_and_cost(fs,costweights):
     Returns:
         cost: 
 
-    
     Objective function note: fit_and_cost will likely need to be modified to print current fit if other objective functions are to be added. See commented-out examples below.
     """
     etot_weight, ftot_weight, stot_weight = tuple(costweights)
+    a, b, w, fs_dict = tuple(fitobjects)
+
     #clear old fit and solve test fit
     fs.solver.fit = None
-    fs.perform_fit()
+    
+    # Perform new fit and create fs.solver.fit object
+    fs.solver.perform_fit(a, b, w, fs_dict)
     fittst = fs.solver.fit
+    
+    # Analyze errors and create fs2.solver.errors object
+    fs.solver.error_analysis(a, b, w, fs_dict)
     errstst = fs.solver.errors
-    rmse_tst = errstst.iloc[:,2].to_numpy()
-    #rmse_countstst = errstst.iloc[:,0].to_numpy()  ##LOGAN NOTE: unused, can just remove unless here for instructive purposes
 
-    #fs.pt.single_print(errstst)
+    # collect rmse errors for score
+    # TODO: eventually refactor for different cost calculation methods, for now keep RMSE
+    rmse_tst = errstst.iloc[:,2].to_numpy()
     rmse_eattst, rmse_fattst, rmse_sattst = rmse_tst[0:3]
+
+    # calculate score 
     CO = CostObject()
     CO.add_contribution(rmse_eattst,etot_weight)
     CO.add_contribution(rmse_fattst,ftot_weight)
     CO.add_contribution(rmse_sattst,stot_weight)
+
     # commented examples on how to use energy differences in the objective function
     # a SINGLE structure is added to two new fitsnap groups, the corresponding energy
     # difference between group 1 and group 2 is given as the target (in eV) (NOT eV/atom)
@@ -335,6 +350,7 @@ def fit_and_cost(fs,costweights):
     #CO.add_contribution(obj_ads,etot_weight * 1)
     #obj_ads = ediff_cost(fittst,g1='H_ads_W_2',g2='H_above_W_2',target=-781.72430764000-(-781.66087408000),grouptype=grouptype)
     #CO.add_contribution(obj_ads,etot_weight * 1)
+
     cost = CO.evaluate_cost()
     del CO
     return cost
@@ -352,7 +368,6 @@ def seed_maker(fs, mc,mmax = 1e9,use_saved_seeds=True):
 
     Returns:
         seeds: 
-
     """
 
     if use_saved_seeds:
@@ -789,7 +804,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     w0 = fs.pt.shared_arrays['w'].array 
     size_b = b.shape[0]
     fs_dict = fs.pt.fitsnap_dict
-    grouptype = fs_dict["Row_Type"]
+    grouptype = fs_dict["Groups"]
         
     while generation <= ngenerations and best_eval > conv_thr and not conv_flag:
 
@@ -841,17 +856,15 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             # make sure original fs_dict is copied to all members of par_fs comm
             par_fs.pt.fitsnap_dict = deepcopy(fs_dict)
 
-            update_weights(par_fs, creature_ew, creature_ffac, creature_sfac, gtks, size_b, grouptype,initial_weights=initial_weights)
-            costi = fit_and_cost(par_fs,[etot_weight,ftot_weight,stot_weight])
+            new_w = update_weights(par_fs, creature_ew, creature_ffac, creature_sfac, gtks, size_b, grouptype,initial_weights=initial_weights)
 
-            # pull out new weight array
-            w = par_fs.pt.shared_arrays['w'].array 
+            costi = fit_and_cost(par_fs, [a, b, new_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
 
             # Perform fit and create par_fs.solver.fit
-            par_fs.solver.perform_fit(a, b, w, fs_dict)
+            par_fs.solver.perform_fit(a, b, new_w, fs_dict)
 
             # Analyze errors and create par_fs.solver.errors
-            par_fs.solver.error_analysis(a, b, w, fs_dict)
+            par_fs.solver.error_analysis(a, b, new_w, fs_dict)
 
             mem2 = virtual_memory().total
             if (rank == 0):
@@ -869,7 +882,6 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             print(rank, rank_split, escore, fscore, '\n---------------\n')
 
             par_fs.pt.all_barrier()
-            exit()
 
             ## TODO: MPI Allgather needed here!
             scores.append(costi)
@@ -951,8 +963,8 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     best_sfac = tuple(creature_sfac)
 
     ##LOGAN NOTE: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
-    update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
-    costi = fit_and_cost(fs,[etot_weight,ftot_weight,stot_weight])
+    best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
+    costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
     # print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), write_to_json=write_to_json)
     time2 = time.time()
     elapsed = round(time2 - time1, 2)
@@ -1036,9 +1048,9 @@ def sim_anneal(fs):  ##LOGAN NOTE: I have not yet updated this function
             else:
                 test_w_combo, test_ef_rat = mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng=len(gtks),apply_random=True,full_mutation=False)
 
-            update_weights(fs, test_w_combo, test_ef_rat, gtks, size_b, grouptype)
+            test_w = update_weights(fs, test_w_combo, test_ef_rat, gtks, size_b, grouptype)
 
-            rmse_tottst = fit_and_cost(fs,[etot_weight,ftot_weight])
+            rmse_tottst = fit_and_cost(fs, [fs.pt.shared_arrays['a'], fs.pt.shared_arrays['b'], test_w, fs.pt.fitsnap_dict],[etot_weight,ftot_weight])
 
             delta_Q = rmse_tottst - rmse_tot
             boltz = np.exp(-beta*delta_Q)

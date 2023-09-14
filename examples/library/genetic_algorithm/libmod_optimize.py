@@ -196,10 +196,10 @@ def crossover(p1, p2, ne, w_combo_delta=np.array([]), ef_rat_delta=np.array([]),
     if inputseed != None:
         np.random.seed(inputseed)
     c1, c2 = p1.copy(), p2.copy()
-    c1e,c1f,c1s = tuple(c1.reshape((num_wcols ,ne),order="F"))
-    c2e,c2f,c2s = tuple(c2.reshape((num_wcols ,ne),order="F"))
-    p1e,p1f,p1s = tuple(p1.reshape((num_wcols ,ne),order="F"))
-    p2e,p2f,p2s = tuple(p2.reshape((num_wcols ,ne),order="F"))
+    c1e,c1f,c1s = tuple(c1.reshape((num_wcols ,ne)))
+    c2e,c2f,c2s = tuple(c2.reshape((num_wcols ,ne)))
+    p1e,p1f,p1s = tuple(p1.reshape((num_wcols ,ne)))
+    p2e,p2f,p2s = tuple(p2.reshape((num_wcols ,ne)))
 
     # select crossover point that corresponds to a certain group
     # NOTE meg changed var name 'pt' to 'cpt' to avoid confusion with parallel tools "pt" later
@@ -458,7 +458,7 @@ def mutation(current_w_combo, current_ef_rat, current_es_rat, my_w_ranges,my_ef_
         return test_w_combo,test_ef_rat,test_es_rat
 
 
-def print_final(fs, gtks, ew_frcrat_final, write_to_json=False):
+def print_final(fs, gtks, ew_frcrat_final, best_gen, write_to_json=False):
     ew_final, frcrat_final, srcrat_final = ew_frcrat_final
 
     calc_stress = fs.config.sections["CALCULATOR"].stress
@@ -472,7 +472,7 @@ def print_final(fs, gtks, ew_frcrat_final, write_to_json=False):
     loc_gt = fs.config.sections["GROUPS"].group_table
 
     collect_lines = []
-    fs.pt.single_print('\n--> Best group weights:')
+    fs.pt.single_print(f'\n---> Best group weights (from generation {best_gen}):')
     for idi, dat in enumerate(gtks):
         en_weight = ew_final[idi]
         frc_weight = ew_final[idi]*frcrat_final[idi]
@@ -600,6 +600,29 @@ def latin_hypercube_sample(variable_ranges_dict, variable_types_dict, num_sample
     return lhs_samples
 
 
+def assign_ranks(population0, ncores):
+    """ 
+    Sort GA populations into indexed lists used in MPI communication. Works the same in serial mode.
+
+        Args:
+            population0: an initial list of creatures with weights
+            ncores: number of cores used to run GA
+
+        Returns: 
+            population: a list of lists containing the number of creatures to calculate per core
+            pop_indices: helper list with the same structure as population that tracks the serial indices of each creature
+    """
+    population = [[] for _ in range(ncores)]
+    pop_indices = [[] for _ in range(ncores)] 
+    for i, creature in enumerate(population0):
+        # assign creatures alternating cores (odd creatures => odd cores)
+        rank_i = i % ncores 
+        population[rank_i].append(creature) 
+        pop_indices[rank_i].append(i)
+    
+    return population, pop_indices
+
+
 def prep_fitsnap_input(fs, smartweights_override=False):
     """ 
     Manages known bugs and code weak spots by elegantly crashing or warning users of potentially-weird behavior. Ideally this would eventually be factored out completely.
@@ -649,6 +672,7 @@ def prep_fitsnap_input(fs, smartweights_override=False):
         fs.pt.single_print(f"!ERROR: Try again after adding that stuff! Now exiting.")
         fs.pt.single_print("\n")
         exit()
+
 
 #-----------------------------------------------------------------------
 # begin the primary optimzation functions
@@ -771,6 +795,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     #---------------------------------------------------------------------------
 
     # set up generation 0
+    best_gen = 0
     best_eval = 9999999.9999
     conv_flag = False
     hp = HyperparameterStruct(ne,nf,ns,eranges,ffactors,sfactors)
@@ -787,25 +812,25 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     input1 = get_fs_input_dict(fs)
     seedsi = seed_maker(fs, countmaxtot)
     first_seeds = seedsi[:population_size+1]
-    population0 = hp.lhs_params(num_samples=population_size,inputseed=first_seeds[0])
+    population_lhs = hp.lhs_params(num_samples=population_size,inputseed=first_seeds[0])
 
-    # sort population into indexed lists for MPI
-    # this works the same in serial, just is a bit more complex
-    population = [[] for _ in range(ncores)]
-    pop_indices = [[] for _ in range(ncores)] 
-    for i, creature in enumerate(population0):
-        # assign creatures alternating cores (odd creatures => odd cores)
-        rank_i = i % ncores 
+    # Reorder here so that reshaping can be done without extra parameter
+    # for N groups, the initial Latin hypercube shape: [group1_eweight, group1_fweight, group1_vweight,... groupN_vweight]
+    # for N groups, the output shape: [group1_eweight, group2_eweight, group3_eweight,...,  group(N-1)_vweight, groupN_vweight]
+    population0 = []
+    for creature0 in population_lhs:
+        creature = creature0.reshape((num_wcols, ne), order='F').flatten()
+        population0.append(creature)
 
-        # fs.pt.single_print('i, rank_i, mod, creature', i, rank_i, i % ncores, creature.shape)
-        population[rank_i].append(creature) 
-        pop_indices[rank_i].append(i)
+    # set up initial MPI settings (even in serial)
+    population, pop_indices = assign_ranks(population0, ncores)
 
-    # fs.pt.single_print("DEBUG, post population reassign", len(population))
+    # set up GA variables
     generation = 0
-
+    best_generations = [0]
     best_evals = [best_eval]
     best = tuple(population[0])
+    best_weights = [best]
     sim_seeds = seedsi[population_size:]
     np.random.seed(sim_seeds[generation])
     w_combo_delta = np.ones(len(gtks))
@@ -832,9 +857,9 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     size_b = b.shape[0]
     fs_dict = fs.pt.fitsnap_dict
     grouptype = fs_dict["Groups"]
-        
+    
+    # begin evolution
     while generation <= ngenerations and best_eval > conv_thr and not conv_flag:
-
         # toggle variable used to assign FitSNAP communicator (comm) type based on MPI state
         # if serial, par_fs is assigned to the current FitSNAP instance
         # if MPI, a new split comm is created and assigned
@@ -869,17 +894,16 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         per_rank_scores = np.full(len(pop_list), 1e8)
 
         # loop through creatures in current generation
+        fs.pt.single_print(f"\n--------- GENERATION {generation} ---------\n")
         for i, creature in enumerate(pop_list):
             mem1 = virtual_memory().total
             
             # get creature values from generated population
-            # ccreature = creature.reshape((num_wcols,ne),order='C')
-            fcreature = creature.reshape((num_wcols,ne), order='F')
-            creature_ew, creature_ffac, creature_sfac = tuple(fcreature.tolist())  
+            creature_ew, creature_ffac, creature_sfac = tuple(creature.reshape((num_wcols,ne)).tolist())  
             creature_ew = tuple(creature_ew)
             creature_ffac = tuple(creature_ffac)
             creature_sfac = tuple(creature_sfac)
-
+            
             # make sure original fs_dict is copied to all members of par_fs comm
             par_fs.pt.fitsnap_dict = deepcopy(fs_dict)
 
@@ -923,15 +947,16 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         # the optimization time.
 
         # Anything printed with fs.pt.single_print will be included in output file.
-        fs.pt.single_print('Generation, scores, popsize:',generation,len(scores),population_size)
 
         # Print generation and best fit.
-        # bestfit = min(scores)
-        # print(f"{generation} {bestfit}")
         for i in range(population_size):
             if scores[i] < best_eval:
                 best, best_eval = tuple(population0[i]), scores[i]
+                best_weights.append(best)
+                best_generations.append(generation)
         best_evals.append(best_eval)
+
+        # check for convergence
         try:
             ## Original flag
             conv_flag = np.round(np.var(best_evals[int(ngenerations/conv_check)-int(ngenerations/10):]),14) == 0
@@ -939,12 +964,12 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             # conv_flag = np.round(np.var(best_evals[-(check_gen*math.floor(len(best_evals)/check_gen)):]),14) == 0
         except IndexError:
             conv_flag = False
-        printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape((num_wcols,ne), order="F").tolist()])
+        printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape((num_wcols,ne)).tolist()])
         fs.pt.single_print('\n')
-        fs.pt.single_print('Generation:',generation, 'score:', scores[i])
+        fs.pt.single_print('Generation:', generation, 'score:', scores[i], f"(best {best_eval})")
+        print_final(fs, gtks, printbest, best_generations[-1], )
 
-        # TODO input user's settings or warn user that it will be overwritten (train_sz, test_sz)
-        print_final(fs, gtks, printbest)
+        # TODO what is the Selector really doing?
         slct = Selector(selection_style = selection_method)
         selected = [slct.selection(population0, scores) for creature_idx in range(population_size)]
         del slct
@@ -956,6 +981,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             p1, p2 = selected[ii], selected[ii+1]
             # crossover and mutation
             rndcross, rndmut = tuple(np.random.rand(2).tolist())
+            # TODO what is this rndcross <= r_cross doing?
             if rndcross <= r_cross:
                 cs = crossover(p1, p2, len(gtks), w_combo_delta, ef_rat_delta, es_rat_delta)
             else:
@@ -963,7 +989,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             for c in cs:
                 # mutation
                 if rndmut <= r_mut:
-                    current_creature_ew, current_creature_ffac, current_creature_sfac = tuple(c.reshape((num_wcols, ne), order="F"))
+                    current_creature_ew, current_creature_ffac, current_creature_sfac = tuple(c.reshape((num_wcols, ne)))
                     current_creature_ew = tuple(current_creature_ew)
                     current_creature_ffac = tuple(current_creature_ffac)
                     current_creature_sfac = tuple(current_creature_sfac)
@@ -974,37 +1000,43 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
                     apply_random=True,
                     full_mutation=False)
 
-
-
-                    print("TEST MUTATION")
-                    print(current_creature_ew)
-                    print(current_creature_ffac)
-                    print(current_creature_sfac)
-                    print(mutated_creature_ew)
-                    print(mutated_creature_ffac)
-                    print(mutated_creature_sfac)
-                    exit()
-
                     c = np.concatenate((mutated_creature_ew,mutated_creature_ffac,mutated_creature_sfac))
-                    # store for next generation
+
+                # store for next generation
                 children.append(c)
         generation += 1
         np.random.seed(sim_seeds[generation])
-        population = children
-    best_ew, best_ffac, best_sfac = tuple(np.array(best).reshape(num_wcols ,ne, order="F").tolist())
+        # print("DEBUG pop[0,0] before kids", population[0][0])
+        # print("")
+        # print("DEBUG children[0,0] before kids", children[0])
+        # print("")
+        population, pop_indices = assign_ranks(children, ncores)
+        # print("DEBUG pop[0,0] after kids", population[0][0])
+        # print("")
+
+    best_ew, best_ffac, best_sfac = tuple(np.array(best).reshape((num_wcols ,ne)).tolist())
     best_ew = tuple(creature_ew)
     best_ffac = tuple(creature_ffac)
     best_sfac = tuple(creature_sfac)
 
     ##LOGAN NOTE: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
+    # 
     best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
     costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
-    # print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), write_to_json=write_to_json)
+
+    print('best generations')
+    print(best_generations)
+    
+    # Print out final best fit
+    print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), best_generations[-1], write_to_json=write_to_json)
+
+    fs.pt.single_print('Writing final output')
+    fs.write_output()
+
+    # output final
     time2 = time.time()
     elapsed = round(time2 - time1, 2)
     fs.pt.single_print(f'Total optimization time: {elapsed} s')
-    fs.pt.single_print('Writing final output')
-    fs.write_output()
 
 
 

@@ -796,7 +796,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
     # set up generation 0
     best_gen = 0
-    best_score = 9999999.9999
+    best_score = 1e10
     conv_flag = False
     hp = HyperparameterStruct(ne,nf,ns,eranges,ffactors,sfactors)
 
@@ -828,10 +828,12 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     # set up GA variables
     generation = 0
     best_gen = 0
-    best_gens = [0]
-    best_scores = [best_score]
-    best = tuple(population[0])
-    best_weights = [best]
+    best_gens = []
+    best_scores = []
+    best = None
+    best_weights = []
+    all_lowest_scores = [best_score] # for mpi testing
+    all_lowest_weights = [tuple(population0[0])] # for mpi testing
     sim_seeds = seedsi[population_size:]
     np.random.seed(sim_seeds[generation])
     w_combo_delta = np.ones(len(gtks))
@@ -896,9 +898,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
         # loop through creatures in current generation
         fs.pt.single_print(f"\n--------- GENERATION {generation} ---------\n")
-        for i, creature in enumerate(pop_list):
-            mem1 = virtual_memory().total
-            
+        for i, creature in enumerate(pop_list):           
             # get creature values from generated population
             creature_ew, creature_ffac, creature_sfac = tuple(creature.reshape((num_wcols,ne)).tolist())  
             creature_ew = tuple(creature_ew)
@@ -925,9 +925,6 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         else:
             collect_scores = per_rank_scores
 
-        mem2 = virtual_memory().total
-        fs.pt.single_print(f"Memory gain after performing fit on second instance: {mem1 - mem2}")
-
         ## TODO: confirm with single population fits that we're mapping the right weight sets to the right indices
         # unpack in same order as MPI grid assignment
         flat_scores = collect_scores.flatten().tolist()
@@ -945,19 +942,25 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
         # Print generation and best fit.
         lowest_score_in_gen = 1e10
+        lowest_weight_in_gen = []
         for i in range(population_size):
             if scores[i] < lowest_score_in_gen:
-                lowest_score_in_gen = scores[i]                
+                lowest_score_in_gen = scores[i]  
+                lowest_weight_in_gen = population0[i]           
             if scores[i] < best_score:
                 best, best_score, best_gen = tuple(population0[i]), scores[i], generation
+        
         best_weights.append(best)
         best_gens.append(best_gen)
         best_scores.append(best_score)
+        all_lowest_weights.append(lowest_weight_in_gen) # for testing mpi       
+        all_lowest_scores.append(lowest_score_in_gen) # for testing mpi 
 
         # check for convergence
         try:
             ## Original flag
             conv_flag = np.round(np.var(best_scores[int(ngenerations/conv_check)-int(ngenerations/10):]),14) == 0
+            if generation == 0: conv_flag = False
             ## New flag, currently testing
             # conv_flag = np.round(np.var(best_scores[-(check_gen*math.floor(len(best_scores)/check_gen)):]),14) == 0
         except IndexError:
@@ -979,7 +982,6 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             p1, p2 = selected[ii], selected[ii+1]
             # crossover and mutation
             rndcross, rndmut = tuple(np.random.rand(2).tolist())
-            # TODO what is this rndcross <= r_cross doing?
             if rndcross <= r_cross:
                 cs = crossover(p1, p2, len(gtks), w_combo_delta, ef_rat_delta, es_rat_delta)
             else:
@@ -1006,10 +1008,10 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         population, pop_indices = assign_ranks(children, ncores)
         generation += 1
 
-    best_ew, best_ffac, best_sfac = tuple(np.array(best).reshape((num_wcols ,ne)).tolist())
-    best_ew = tuple(creature_ew)
-    best_ffac = tuple(creature_ffac)
-    best_sfac = tuple(creature_sfac)
+    best_ew, best_ffac, best_sfac = tuple(np.array(best_weights[-1]).reshape((num_wcols ,ne)).tolist())
+    best_ew = tuple(best_ew)
+    best_ffac = tuple(best_ffac)
+    best_sfac = tuple(best_sfac)
 
     ##LOGAN NOTE: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
     # do final calculations on single core
@@ -1017,9 +1019,8 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
         costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
 
-        print('best generations')
-        print(best_gens)
-    
+        print('\n------------ Final results ------------')
+
     # Print out final best fit
     print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), best_gens[-1],best_scores[-1], write_to_json=write_to_json)
 

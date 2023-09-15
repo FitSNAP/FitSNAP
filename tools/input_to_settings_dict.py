@@ -1,10 +1,13 @@
 """
 ---> Script to convert a FitSNAP input file to a dictionary <---
-Dictonary is printed to stdout and can be copied directly into a FitSNAP script, and can optionally be written to a Python file.
+(complements settings_dict_to_input.py)
+Dictonary is printed to stdout which can be copied into FitSNAP library scripts, and can optionally be written to a Python file.
 
-If write_python_dict = True, writes the dictionary as a variable 'input_dict' to a Python file, which can be copied or imported into any FitSNAP script.
+There are two file formats that you can write to, *.py and *.json.
 The output file name will be automatically generated based on the infile name.
 Optionally, you can also choose your own "output_label" (no need to add file formats, those are added later).
+If write_python_dict = True, writes the dictionary as a variable 'input_dict' to a Python file, which can be copied or imported into any FitSNAP script.
+If write_json = True, writes the dictionary to a JSON file, which can be copied or read into any FitSNAP script using the native Python json module.
 
 """
 import os, configparser, json
@@ -14,8 +17,9 @@ import os, configparser, json
 # REQUIRED: name of FitSNAP input 
 infile = "SNAP_Ta.in"
 
-# OPTIONAL: write to a Python file as a variable 'input_dict'
+# OPTIONAL: write to a Python file as a variable 'input_dict' or a standard JSON file
 write_python_dict = True
+write_json = True
 
 # OPTIONAL: choose a label for *.json or *.py output (file format will be appended)
 # if this is left empty ('' or None or 0 or [] or ...), a name will be automatically generated
@@ -55,3 +59,17 @@ if write_python_dict:
     f.write("\n")
     json.dump(settings, f, indent=4)
   print(f"Wrote '{infile}' dict to output file: ", outfile)
+
+## if you want, can also write to a JSON file 
+## see note at bottom about reading the JSON file in FitSNAP or another program
+if write_json:
+  outfile = f"{infile}.json"
+  with open(outfile, 'w') as f:
+    json.dump(settings, f, indent=4)
+  print(f"Wrote '{infile}' dict to output file: ", outfile)
+
+# to read JSON file in any program, use:
+# with open(outfile, 'r') as f:
+#  new_dict_object = json.loads(f.read(), strict=False)
+#
+# Note: sometimes need the strict=False argument cause json.loads borks on newlines

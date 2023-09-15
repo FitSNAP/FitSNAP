@@ -51,13 +51,13 @@ class HyperparameterStruct:
     """
     Manages hyperparameters for genetic algorithm and simulated annealing.
     
-    Args:  TODO fill in rest
+    Args: 
         ne: number of energy rows
         nf: number of force rows (same as ne for FitSNAP genetic_algorithm)
         ns: number of stress rows (same as ne for FitSNAP genetic_algorithm)
-        eranges:
-        ffactors:
-        sfactors:
+        eranges: allowed span of energy weights
+        ffactors: allowed ratios of forces (relative to energies)
+        sfactors: allowed ratios of stresses (relative to energies)
     """
     def __init__(self,
             ne,
@@ -118,12 +118,12 @@ class HyperparameterStruct:
         """
         Sets up parameters for this class to sample weights using a Latin hypercube scheme.
 
-            Args:
-                num_samples: 
-                inputseed:
+        Args:
+            num_samples: how many Latin Hypercube points to return
+            inputseed: value to initialize RNG for np.random functions
 
-            Returns:
-                lhsamples: a Numpy array of shape (num_samples, self.ne*3). Each sample created is itself a concatenated list of [eweight, fweight, vweight] values (may need reshaping)
+        Returns:
+            lhsamples: a Numpy array of shape (num_samples, self.ne*3). Each sample created is itself a concatenated list of [eweight, fweight, vweight] values (may need reshaping)
 
         """
         if inputseed != None:
@@ -184,7 +184,7 @@ def crossover(p1, p2, ne, w_combo_delta=np.array([]), ef_rat_delta=np.array([]),
         p1: creature 1
         p2: creature 2
         ne: number of elements
-        w_combo_delta: ? TODO check, init weights?
+        w_combo_delta: sets certain group energy weights to zero
         ef_rat_delta: sets certain group force weights to zero
         es_rat_delta: sets certain group stress weights to zero
         num_wcols: number of weight columns (2 or 3)
@@ -232,11 +232,12 @@ def update_weights(fs, test_w_combo, test_ef_rat, test_es_rat, gtks, size_b, gro
     
     Args:
         fs: instance of FitSNAP class
-        test_w_combo: ? TODO check
-        test_ef_rat: sets given energy, force, or stress weights to zero
+        test_w_combo: set of energy weights to test
+        test_ef_rat: set of force weights to test
+        test_es_rat:  set of stress weights to test
         gtks: group table keys from FitSNAP config
         size_b: length of b matrix
-        grouptype: ? TODO check
+        grouptype: list of group labels from fs.pt.fitsnap_dict
         test_virial_w: if stress fitting not turned on, sets stress (virial) weights to near-zero value ? TODO double check
         initial_weights: use the initial weights (? and score?) to seed new candidates
 
@@ -277,18 +278,20 @@ def update_weights(fs, test_w_combo, test_ef_rat, test_es_rat, gtks, size_b, gro
 
 def ediff_cost(fs, fit, g1, g2, target, grouptype, rowtype):
     """
+    NOTE: this function will eventually be used in calculating objective functions on properties, but is currently not implemented!
+
     Provides 'cost' for energy differences for A matrix entries:
         (beta * a1 - beta * a2) - target,
     where target is some target energy difference between structures from group 1 and group 2. 
     Important: note that a1 and a2 A matrix entries are identified by indexing. 
 
-    Args: TODO finish filling in
-        fs: 
-        fit: 
-        g1: 
-        g2: 
-        target: 
-        grouptype:
+    Args: 
+        fs: instance of FitSNAP class 
+        fit: a fit to training performed by FitSNAP. note this does not need to be the same as one contained in the fs object
+        g1: structure group 1
+        g2: structure group 2
+        target: energy threshhold
+        grouptype: list of groups contained in fitsnap_dictionary
         rowtype: whether input is an energy, force, or stress calculation
 
     Return: 
@@ -316,14 +319,14 @@ def ediff_cost(fs, fit, g1, g2, target, grouptype, rowtype):
 # other objective functions are to be added. 
 def fit_and_cost(fs, fitobjects, costweights):
     """
-    TODO fill in description
+    Perform FitSNAP fit and evaluate errors (cost or score).
 
-    Args: TODO fill in rest
-        fs: 
-        costweights: 
+    Args:
+        fs: instance of FitSNAP class
+        costweights: tuple with user-specified weights on energies, forces, stresses, default is (1.,1.,1.) (no special weighting)
 
     Returns:
-        cost: 
+        cost: a value representing the fit's performance (currently uses RMSE on training only)
 
     Objective function note: fit_and_cost will likely need to be modified to print current fit if other objective functions are to be added. See commented-out examples below.
     """
@@ -367,16 +370,19 @@ def fit_and_cost(fs, fitobjects, costweights):
 
 def seed_maker(fs, mc, mmax = 1e9,use_saved_seeds=True,seeds_file='seeds.npy'):
     """
-    TODO fill in
+    Manages the creation and use of seeds for Numpy's random number generators.
+    In the genetic_algorithm function, setting 'use_saved_seeds' to True guarantees that fits with the same FitSNAP input (training, settings, etc.), and evolution parameters are guaranteed to result in the same best scoring fits.
 
-    Args: TODO fill in rest
-        fs:
-        mc:
-        mmax:
-        use_saved_seeds: 
+    Args:
+        fs: instance of FitSNAP class
+        mc: max count of seeds
+        mmax: largest value accepted by random number generator
+        use_saved_seeds: toggle reading of seeds from a file or not
+        seeds_file: name of file to read seeds from, if use_saved_seeds toggled on 
 
     Returns:
-        seeds: 
+        seeds: a Numpy array of integer seeds
+
     """
 
     if use_saved_seeds:
@@ -398,24 +404,28 @@ def seed_maker(fs, mc, mmax = 1e9,use_saved_seeds=True,seeds_file='seeds.npy'):
     return seeds
 
 
-def mutation(current_w_combo, current_ef_rat, current_es_rat, my_w_ranges,my_ef_ratios, my_es_ratios,ng, w_combo_delta=np.array([]), ef_rat_delta=np.array([]), s_combo_delta=np.array([]), apply_random=True, full_mutation=False):
+def mutation(current_w_combo, current_ef_rat, current_es_rat, my_w_ranges, my_ef_ratios, my_es_ratios, ng, w_combo_delta=np.array([]), ef_rat_delta=np.array([]), es_rat_delta=np.array([]), apply_random=True, full_mutation=False):
     """
-    Genetic operator function that ... TODO finish after learning
+    Genetic operator function that injects random values into weights (exploration).
     
-    Args: TODO fill in rest
-        current_w_combo: 
-        current_ef_rat: 
-        my_w_ranges:
-        my_ef_ratios: 
-        ng: ... (also sound that Yoshi makes when trying really hard)
-        w_combo_delta: 
-        ef_rat_delta: 
-        apply-random:
-        full_mutation:
+    Args: 
+        current_w_combo: values of current creature's weight combinations
+        current_ef_rat: values of current creature's force ratios
+        current_es_rat: values of current creature's stress ratios
+        my_w_ranges: allowed ranges of (energy) weights
+        my_ef_ratios: allowed ratios of force weights relative to energy weights
+        my_es_ratios: allowed ratios of stress weights relative to energy weights
+        ng: number of groups
+        w_combo_delta: sets given groups' energy weights to 0
+        ef_rat_delta: sets given groups' force weights to 0
+        efsrat_delta: sets given groups' stress weights to 0
+        apply-random: 
+        full_mutation: 
 
     Returns:
-        test_w_combo:  
-        test_ef_rat: 
+        test_w_combo: new set of energy weights to test
+        test_ef_rat: new set of force weights to test
+        test_es_rat:  new set of stress weights to test
     """
 
     if type(current_w_combo) == tuple:
@@ -453,7 +463,7 @@ def mutation(current_w_combo, current_ef_rat, current_es_rat, my_w_ranges,my_ef_
             test_ef_rat[test_w_ind] = np.random.choice(my_ef_ratios)
             test_es_rat[test_w_ind] = np.random.choice(my_es_ratios)
     if np.shape(w_combo_delta)[0] != 0:
-        return test_w_combo * w_combo_delta, test_ef_rat*ef_rat_delta, test_es_rat*s_combo_delta
+        return test_w_combo * w_combo_delta, test_ef_rat*ef_rat_delta, test_es_rat*es_rat_delta
     else:
         return test_w_combo,test_ef_rat,test_es_rat
 
@@ -468,7 +478,7 @@ def print_final(fs, gtks, ew_frcrat_final, best_gen, best_score, write_to_json=F
     if num_wcols == 2:
         print_stress = False
         
-    # fitsnap TODO: to accurately output the best weights, we also need the train/test split specified by the user. at least when using the JSON scraper, training_size and_testing size are converted from floats into integers, which is inconsistent and should be updated. to work around that for now, we take the testing_size and training_size integers and convert them back into fractions. these will probably be very similar to the user's input, but may vary a little bit
+    # fitsnap TODO: when using the JSON scraper, training_size and_testing size are converted from floats into integers, which is inconsistent and should be updated
     loc_gt = fs.config.sections["GROUPS"].group_table
 
     collect_lines = []
@@ -494,6 +504,7 @@ def print_final(fs, gtks, ew_frcrat_final, best_gen, best_score, write_to_json=F
     fs.pt.single_print("")
 
     # MEG NOTE: this write_to_json works fine but is a bit of a mess
+    # TODO rework with better configparser settings
     if write_to_json:
         settings = get_fs_input_dict(fs)
 
@@ -532,11 +543,11 @@ def get_fs_input_dict(fs):
     """
     Loads or generates current FitSNAP settings
 
-        Args:
-            fs: instance of FitSNAP class
+    Args:
+        fs: instance of FitSNAP class
 
-        Returns:
-            settings: Python dictionary with all FitSNAP settings in current instance
+    Returns:
+        settings: Python dictionary with all FitSNAP settings in current instance
     """
     infile_name = fs.config.infile
     settings = fs.config.indict
@@ -604,13 +615,13 @@ def assign_ranks(population0, ncores):
     """ 
     Sort GA populations into indexed lists used in MPI communication. Works the same in serial mode.
 
-        Args:
-            population0: an initial list of creatures with weights
-            ncores: number of cores used to run GA
+    Args:
+        population0: an initial list of creatures with weights
+        ncores: number of cores used to run GA
 
-        Returns: 
-            population: a list of lists containing the number of creatures to calculate per core
-            pop_indices: helper list with the same structure as population that tracks the serial indices of each creature
+    Returns: 
+        population: a list of lists containing the number of creatures to calculate per core
+        pop_indices: helper list with the same structure as population that tracks the serial indices of each creature
     """
     population = [[] for _ in range(ncores)]
     pop_indices = [[] for _ in range(ncores)] 
@@ -625,12 +636,13 @@ def assign_ranks(population0, ncores):
 
 def prep_fitsnap_input(fs, smartweights_override=False):
     """ 
-    Manages known bugs and code weak spots by elegantly crashing or warning users of potentially-weird behavior. Ideally this would eventually be factored out completely.
+    Manages known bugs and code weak spots by elegantly crashing or warning users of potentially weird behavior. Ideally this will eventually be factored out completely.
 
     Args:
         fs: instance of FitSNAP class
         smartweights_override: allows user to keep the 'smartweights' option turned on
     """
+    # code is currently optimized without smartweights
     # turn off smartweights and warn user
     smartweights = fs.config.sections["GROUPS"].smartweights
     if smartweights == 1 and not smartweights_override:
@@ -650,12 +662,8 @@ def prep_fitsnap_input(fs, smartweights_override=False):
         fs.pt.single_print("\n")
         exit()
 
-    # turn off fitting to stresses
-    # LOGAN NOTE: TODO: HANDLE NO STRESS FITTING WITH SMART REMOVAL OF STRESS VARIABLES IN THIS CODE 
-    # MEG NOTE: we could put the removal here, but i think it makes more sense within the GA itself using the fs.config object settings. 
-    # this function serves to 1) check and make minor changes to the FitSNAP config, and 2) warn the user about that. 
-    # maybe we need to TODO factor out this function and just put those warnings right where things are changed? 
-    # or is it better to warn before the initial fit, to give the panicked user enough time to hit CTRL+C a billion times before it starts rolling?
+    # because fitting to stresses is optional, there are some allowable inconsistencies in the way FitSNAP settings are written
+    # this code takes care of a few of them, other inconsistencies are managed elsewhere in the code
     calc_stress = fs.config.sections["CALCULATOR"].stress
     has_vweights = True if "vweight" in fs.config.sections["GROUPS"].group_sections else False
     if not calc_stress and has_vweights:
@@ -679,17 +687,26 @@ def prep_fitsnap_input(fs, smartweights_override=False):
 #-----------------------------------------------------------------------
 # @fs.pt.rank_zero
 def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, stot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], stress_delta_keywords=[], write_to_json=False, my_es_ratios=[], use_initial_weights_flag=False, parallel_population=True ):
+    """
+    Function to perform optimization of FitSNAP group weights.
+
+    Args:
+        fs: FitSnap instance being handled by genetic algorithm
+        population_size: number of candidates ("creatures") generated within one generation and tested for fitness. in this code, fitness is how well group weights perform in a FitSnap fit (no puns intended)
+        ngenerations: maximum number of allowed iterations of populations. this ends the genetic algorithm calculations if the convergence threshold (conv_thr, see below) is not reached beforehand
+        my_w_ranges: allowed scaling factors for energy weights
+        my_ef_ratios: allowed scaling factors for force weights
+        etot_weight and ftot_weight: weights for energy and force rmse in the optimizer cost function
+        r_cross and r_mut: cross over (parenting) and mutation hyperparameters
+        conv_thr: convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
+        conv_check: fraction of ngenerations to start checking for convergence (convergence checks wont be performed very early)
+
+    Returns:
+        (none, prints best group weights to stdout and/or a JSON file)
+    """
     #---------------------------------------------------------------------------
     # Begin in-function optimization hyperparameters
-    # snap: FitSnap instance being handled by genetic algorithm
-    # population_size: number of candidates ("creatures") generated within one generation and tested for fitness. in this code, fitness is how well group weights perform in a FitSnap fit (no puns intended)
-    # ngenerations: maximum number of allowed iterations of populations. this ends the genetic algorithm calculations if the convergence threshold (conv_thr, see below) is not reached beforehand
-    # my_w_ranges: allowed scaling factors for energy weights
-    # my_ef_ratios: allowed scaling factors for force weights
-    # etot_weight and ftot_weight: weights for energy and force rmse in the optimizer cost function
-    # r_cross and r_mut: cross over (parenting) and mutation hyperparameters
-    # conv_thr: convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
-    # conv_check: fraction of ngenerations to start checking for convergence (convergence checks wont be performed very early)
+
     time1 = time.time()
     rank = fs.pt.get_rank()
     ncores = fs.pt.get_size()
@@ -765,9 +782,10 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     #number of hyperparameters:
     # num of energy group weights
     ne = len(gtks)
-    # num of force group weights
+    # num of force group weights (in general these will always be the same as ne)
     nf = ne
     ns = ne
+
     # total
     if not my_es_ratios:
         nh = ne + nf
@@ -796,20 +814,19 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     best_gen = 0
     best_score = 1e10
     conv_flag = False
+
+    # TODO confirm that seed_maker is working as expected
+    input1 = get_fs_input_dict(fs)
+    seedsi = seed_maker(fs, countmaxtot)
+    first_seeds = seedsi[:population_size+1]
+
+    # Latin hypercube population for first generation
     hp = HyperparameterStruct(ne,nf,ns,eranges,ffactors,sfactors)
 
     # population = [hp.random_params(inputseed=first_seeds[ip]) for ip in range(population_size)] # NOTE orig
 
     # Random initial population for first generation:
     #population = [hp.random_params(inputseed=first_seeds[ip]) for ip in range(population_size)]
-
-    # TODO re-implement initial_weights!
-    # Latin hypercube population for first generation
-    # TODO check that seed_maker is working as expected
-    
-    input1 = get_fs_input_dict(fs)
-    seedsi = seed_maker(fs, countmaxtot)
-    first_seeds = seedsi[:population_size+1]
     population_lhs = hp.lhs_params(num_samples=population_size,inputseed=first_seeds[0])
 
     # Reorder here so that reshaping can be done without extra parameter
@@ -913,16 +930,13 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
         if parallel_population and ncores > 1:
             par_fs.pt.all_barrier()
-
-            ## TODO: MPI Allgather needed here!
             fs.pt._comm.Allgather([per_rank_scores, MPI.FLOAT],[collect_scores, MPI.FLOAT])
 
             # clean up split comm FitSNAP instance to prep for next generation
             del par_fs
         else:
             collect_scores = per_rank_scores
-
-        ## TODO: confirm with single population fits that we're mapping the right weight sets to the right indices
+            
         # unpack in same order as MPI grid assignment
         flat_scores = collect_scores.flatten().tolist()
         flat_pop_indices = [item for items in pop_indices for item in items]
@@ -952,29 +966,23 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         best_weights.append(best)
         best_gens.append(best_gen)
         best_scores.append(best_score)
-        all_lowest_weights.append(lowest_weight_in_gen) # for testing mpi, statistics      
-        all_lowest_scores.append(lowest_score_in_gen) # for testing mpi, statistics
-        all_lowest_creature_idxs.append(lowest_creature_idx) # for testing mpi, statistics 
+        
+        # track generations for testing mpi, statistics
+        all_lowest_weights.append(lowest_weight_in_gen)       
+        all_lowest_scores.append(lowest_score_in_gen)
+        all_lowest_creature_idxs.append(lowest_creature_idx) 
 
         # check for convergence
         try:
-            ## Original flag
+            # original flag
             # conv_flag = np.round(np.var(best_scores[int(ngenerations/conv_check)-int(ngenerations/10):]),14) == 0
 
-            ## New flag, currently testing
+            # new flag, currently testing
             if len(best_scores) >= check_gen:
                 conv_flag = np.round(np.var(best_scores[-(check_gen*math.floor(len(best_scores)/check_gen)):]),14) == 0
             else:
                 conv_flag = False
 
-            if conv_flag: exit()
-
-            # if conv_flag == True:
-            #     fs.pt.single_print("---> Convergence flag: True! ")
-            # old
-            #     fs.pt.single_print(np.round(np.var(best_scores[int(ngenerations/conv_check)-int(ngenerations/10):])),14)
-            # new
-                # fs.pt.single_print(np.var(best_scores[-(check_gen*math.floor(len(best_scores)/check_gen)):]),14)
         except IndexError:
             conv_flag = False
         printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape((num_wcols,ne)).tolist()])
@@ -1008,7 +1016,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
                     mutated_creature_ew, mutated_creature_ffac, mutated_creature_sfac = mutation(current_creature_ew,current_creature_ffac,current_creature_sfac,\
                     my_w_ranges,my_ef_ratios,my_es_ratios,ng=len(gtks),\
-                    w_combo_delta=w_combo_delta,ef_rat_delta=ef_rat_delta, s_combo_delta=es_rat_delta,\
+                    w_combo_delta=w_combo_delta,ef_rat_delta=ef_rat_delta, es_rat_delta=es_rat_delta,\
                     apply_random=True,
                     full_mutation=False)
 
@@ -1021,13 +1029,14 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         population, pop_indices = assign_ranks(children, ncores)
         generation += 1
 
+    # evolution completed, final steps
+    # TODO add message describing whether ngenerations reached or conv_flag = True
     best_ew, best_ffac, best_sfac = tuple(np.array(best_weights[-1]).reshape((num_wcols ,ne)).tolist())
     best_ew = tuple(best_ew)
     best_ffac = tuple(best_ffac)
     best_sfac = tuple(best_sfac)
 
-    ##LOGAN NOTE: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
-    # do final calculations on single core
+    ##LOGAN NOTE | TODO: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
     if rank == 0:
         best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
         costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
@@ -1045,103 +1054,105 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         elapsed = round(time2 - time1, 2)
         fs.pt.single_print(f'Total optimization time: {elapsed} s')
 
+# Currently not implemented 
+# def sim_anneal(fs):  
+#     ##LOGAN NOTE: I have not yet updated this function
+#     ##MEG NOTE: same here
+#     #---------------------------------------------------------------------------
+#     # Begin optimization hyperparameters
+#     time1 = time.time()
 
-def sim_anneal(fs):  ##LOGAN NOTE: I have not yet updated this function
-    #---------------------------------------------------------------------------
-    # Begin optimization hyperparameters
-    time1 = time.time()
+#     # get groups and weights 
+#     gtks = fs.config.sections["GROUPS"].group_table.keys()
+#     gtks = list(gtks)
+#     fs.pt.single_print('Groups:', gtks)
+#     fs.pt.single_print('\n')
 
-    # get groups and weights 
-    gtks = fs.config.sections["GROUPS"].group_table.keys()
-    gtks = list(gtks)
-    fs.pt.single_print('Groups:', gtks)
-    fs.pt.single_print('\n')
-
-    # check if fitting to stresses turned on
-    # if not, then set all stress weights to zero by populating stress_delta_keywords with all group names
-    # a warning about this behavior is included in this module's "prep_fitnsap_input" function
-    calc_stress = fs.config.sections["CALCULATOR"].stress
-    if calc_stress:
-        fs.pt.single_print("Stress fitting not yet implemented for simulated anneal!")
-        fs.pt.all_barrier()
-        return 0
-    #for future implementation
-    #if not calc_stress:
-        #stress_delta_keywords = gtks
+#     # check if fitting to stresses turned on
+#     # if not, then set all stress weights to zero by populating stress_delta_keywords with all group names
+#     # a warning about this behavior is included in this module's "prep_fitnsap_input" function
+#     calc_stress = fs.config.sections["CALCULATOR"].stress
+#     if calc_stress:
+#         fs.pt.single_print("Stress fitting not yet implemented for simulated anneal!")
+#         fs.pt.all_barrier()
+#         return 0
+#     #for future implementation
+#     #if not calc_stress:
+#         #stress_delta_keywords = gtks
 
     
-    size_b = np.shape(fs.pt.fitsnap_dict['Row_Type'])[0]
-    grouptype = fs.pt.fitsnap_dict['Groups'].copy()
-    rowtype = fs.pt.fitsnap_dict['Row_Type'].copy()
+#     size_b = np.shape(fs.pt.fitsnap_dict['Row_Type'])[0]
+#     grouptype = fs.pt.fitsnap_dict['Groups'].copy()
+#     rowtype = fs.pt.fitsnap_dict['Row_Type'].copy()
 
-    etot_weight = 1.0
-    ftot_weight = 1.5
-    rmse_tot = 500
+#     etot_weight = 1.0
+#     ftot_weight = 1.5
+#     rmse_tot = 500
 
-    # sampling magnitudes per hyperparameter
-    my_w_ranges = [1.e-3,1.e-2,1.e-1,1.e0,1.e1,1.e2,1.e3]
-    my_ef_ratios = [0.1,1,10]
+#     # sampling magnitudes per hyperparameter
+#     my_w_ranges = [1.e-3,1.e-2,1.e-1,1.e0,1.e1,1.e2,1.e3]
+#     my_ef_ratios = [0.1,1,10]
 
-    # Artificial temperatures
-    betas = [1.e0,1.e1,1.e2,1.e3,1.e4]
-    # Max number of steps per artificial temperature
-    count_per_beta = [400,400,600,1000,1000]
-    # threshhold for convergence of cost function
-    thresh = 0.005
+#     # Artificial temperatures
+#     betas = [1.e0,1.e1,1.e2,1.e3,1.e4]
+#     # Max number of steps per artificial temperature
+#     count_per_beta = [400,400,600,1000,1000]
+#     # threshhold for convergence of cost function
+#     thresh = 0.005
 
-    seedpad = 50
-    #build seeds (uses saved seeds by default)
-    countmaxtot = int(np.sum(count_per_beta))
-    seedsi = seed_maker(fs, countmaxtot + seedpad)
+#     seedpad = 50
+#     #build seeds (uses saved seeds by default)
+#     countmaxtot = int(np.sum(count_per_beta))
+#     seedsi = seed_maker(fs, countmaxtot + seedpad)
 
-    # End optimization hyperparameters
-    #---------------------------------------------------------------------------
+#     # End optimization hyperparameters
+#     #---------------------------------------------------------------------------
     
-    tot_count = 0
-    #threshold for cost function before accepting model
-    current_w_combo = [1.e0]*len(gtks)
-    current_ef_rat = [10]*len(gtks)
-    tot_count = 0
-    apply_random = True # flag to select a single random hyperparam to step rather than stepping all hyperparams
-    naccept = 0
-    np.random.seed(seedsi[tot_count])
-    # loop over fictitious temperatures
-    for ibeta,beta in enumerate(betas):
-        count = 0
-        naccepti = 0
-        maxcount = count_per_beta[ibeta]
-        # propose trial weights while counts are below maximums and 
-        # objective function is above threshhold
-        while count <= maxcount and rmse_tot >= thresh:
+#     tot_count = 0
+#     #threshold for cost function before accepting model
+#     current_w_combo = [1.e0]*len(gtks)
+#     current_ef_rat = [10]*len(gtks)
+#     tot_count = 0
+#     apply_random = True # flag to select a single random hyperparam to step rather than stepping all hyperparams
+#     naccept = 0
+#     np.random.seed(seedsi[tot_count])
+#     # loop over fictitious temperatures
+#     for ibeta,beta in enumerate(betas):
+#         count = 0
+#         naccepti = 0
+#         maxcount = count_per_beta[ibeta]
+#         # propose trial weights while counts are below maximums and 
+#         # objective function is above threshhold
+#         while count <= maxcount and rmse_tot >= thresh:
 
-            if tot_count <= 5: # allow for large steps early in simulation
-                test_w_combo, test_ef_rat = mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng=len(gtks),apply_random=True,full_mutation=True)
-            else:
-                test_w_combo, test_ef_rat = mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng=len(gtks),apply_random=True,full_mutation=False)
+#             if tot_count <= 5: # allow for large steps early in simulation
+#                 test_w_combo, test_ef_rat = mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng=len(gtks),apply_random=True,full_mutation=True)
+#             else:
+#                 test_w_combo, test_ef_rat = mutation(current_w_combo,current_ef_rat,my_w_ranges,my_ef_ratios,ng=len(gtks),apply_random=True,full_mutation=False)
 
-            test_w = update_weights(fs, test_w_combo, test_ef_rat, gtks, size_b, grouptype)
+#             test_w = update_weights(fs, test_w_combo, test_ef_rat, gtks, size_b, grouptype)
 
-            rmse_tottst = fit_and_cost(fs, [fs.pt.shared_arrays['a'], fs.pt.shared_arrays['b'], test_w, fs.pt.fitsnap_dict],[etot_weight,ftot_weight])
+#             rmse_tottst = fit_and_cost(fs, [fs.pt.shared_arrays['a'], fs.pt.shared_arrays['b'], test_w, fs.pt.fitsnap_dict],[etot_weight,ftot_weight])
 
-            delta_Q = rmse_tottst - rmse_tot
-            boltz = np.exp(-beta*delta_Q)
-            rndi = np.random.rand()
-            logical = rndi <= boltz
-            if logical:
-                naccept += 1
-                naccepti +=1
-                rmse_tot = rmse_tottst
-                current_w_combo = test_w_combo
-                current_ef_rat = test_ef_rat
+#             delta_Q = rmse_tottst - rmse_tot
+#             boltz = np.exp(-beta*delta_Q)
+#             rndi = np.random.rand()
+#             logical = rndi <= boltz
+#             if logical:
+#                 naccept += 1
+#                 naccepti +=1
+#                 rmse_tot = rmse_tottst
+#                 current_w_combo = test_w_combo
+#                 current_ef_rat = test_ef_rat
 
-            meta = (tuple(list(current_w_combo)),) + (tuple(list(current_ef_rat)),)
-            count += 1
-            fs.pt.single_print('beta',beta,'count',count,' accept ratio for current beta %f' % (naccepti/count) ,meta,boltz,rmse_tottst,rmse_tot)
-            tot_count += 1
-            np.random.seed(seedsi[tot_count])
+#             meta = (tuple(list(current_w_combo)),) + (tuple(list(current_ef_rat)),)
+#             count += 1
+#             fs.pt.single_print('beta',beta,'count',count,' accept ratio for current beta %f' % (naccepti/count) ,meta,boltz,rmse_tottst,rmse_tot)
+#             tot_count += 1
+#             np.random.seed(seedsi[tot_count])
 
-    # write output for optimized potential
-    print_final(meta)
-    time2 = time.time()
-    fs.pt.single_print('Total optimization time,', time2 - time1, 'total number of fits', tot_count)
-    fs.write_output()
+#     # write output for optimized potential
+#     print_final(meta)
+#     time2 = time.time()
+#     fs.pt.single_print('Total optimization time,', time2 - time1, 'total number of fits', tot_count)
+#     fs.write_output()

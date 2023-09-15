@@ -911,8 +911,10 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         collect_scores = np.full((scores_nrow, scores_ncol), 1e8)
         per_rank_scores = np.full(len(pop_list), 1e8)
 
-        # loop through creatures in current generation
+        # loop through creatures in current generation          
+        gen_start = time.time()
         for i, creature in enumerate(pop_list):           
+
             # get creature values from generated population
             creature_ew, creature_ffac, creature_sfac = tuple(creature.reshape((num_wcols,ne)).tolist())  
             creature_ew = tuple(creature_ew)
@@ -986,6 +988,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         except IndexError:
             conv_flag = False
         printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape((num_wcols,ne)).tolist()])
+        
         fs.pt.single_print(f"------------ GENERATION {generation} ------------")
         fs.pt.single_print(f'Lowest score:', lowest_score_in_gen)
         print_final(fs, gtks, printbest, best_gens[-1], best_scores[-1])
@@ -1028,6 +1031,10 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         np.random.seed(sim_seeds[generation])
         population, pop_indices = assign_ranks(children, ncores)
         generation += 1
+        gen_end = time.time()
+        elapsed = round(gen_end - gen_start, 2)
+        fs.pt.single_print(f'Total time to compute generation (population_size {population_size}): {elapsed} s')
+        fs.pt.single_print('\n')
 
     # evolution completed, final steps
     # TODO add message describing whether ngenerations reached or conv_flag = True

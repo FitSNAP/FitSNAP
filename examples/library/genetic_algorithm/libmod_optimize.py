@@ -165,6 +165,7 @@ def tournament_selection(population, scores, k=3, inputseed=None):
             selection_ix = ix
     return population[selection_ix]
 
+
 class Selector:
     def __init__(self,selection_style = 'tournament'):
         self.selection_style = selection_style
@@ -237,30 +238,29 @@ def update_weights(fs, test_w_combo, test_ef_rat, test_es_rat, gtks, size_b, gro
         size_b: length of b matrix
         grouptype: ? TODO check
         test_virial_w: if stress fitting not turned on, sets stress (virial) weights to near-zero value ? TODO double check
-        initial_weights: (out of order)
+        initial_weights: use the initial weights (? and score?) to seed new candidates
 
     Returns:
         (none, updates FitSNAP instance in-place)
     """
-    ## TODO re-implement after parallel upgrades
-    # if initial_weights:
-    #     if len(test_es_rat) == 1:
-    #         tstwdct = {gkey:{'eweight':initial_weights[gkey][0]*test_w_combo[ig], 
-    #             'fweight':initial_weights[gkey][1]*test_w_combo[ig]*test_ef_rat[ig], 
-    #             'vweight':initial_weights[gkey][2]*test_w_combo[ig]*test_es_rat[0]} for ig,gkey in enumerate(gtks)}
-    #     elif len(test_es_rat) == len(test_ef_rat):
-    #         tstwdct = {gkey:{'eweight':initial_weights[gkey][0]*test_w_combo[ig], 
-    #             'fweight':initial_weights[gkey][1]*test_w_combo[ig]*test_ef_rat[ig],
-    #             'vweight':initial_weights[gkey][2]*test_w_combo[ig]*test_es_rat[ig]} for ig,gkey in enumerate(gtks)}
-    #     else:
-    #         raise IndexError("not enough virial indices per energy and force indices")
-    # else:
-    if len(test_es_rat) == 1:
-        tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_w_combo[ig]*test_es_rat[0]} for ig,gkey in enumerate(gtks)}
-    elif len(test_es_rat) == len(test_ef_rat):
-        tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_w_combo[ig]*test_es_rat[ig]} for ig,gkey in enumerate(gtks)}
+    if initial_weights:
+        if len(test_es_rat) == 1:
+            tstwdct = {gkey:{'eweight':initial_weights[gkey][0]*test_w_combo[ig], 
+                'fweight':initial_weights[gkey][1]*test_w_combo[ig]*test_ef_rat[ig], 
+                'vweight':initial_weights[gkey][2]*test_w_combo[ig]*test_es_rat[0]} for ig,gkey in enumerate(gtks)}
+        elif len(test_es_rat) == len(test_ef_rat):
+            tstwdct = {gkey:{'eweight':initial_weights[gkey][0]*test_w_combo[ig], 
+                'fweight':initial_weights[gkey][1]*test_w_combo[ig]*test_ef_rat[ig],
+                'vweight':initial_weights[gkey][2]*test_w_combo[ig]*test_es_rat[ig]} for ig,gkey in enumerate(gtks)}
+        else:
+            raise IndexError("not enough virial indices per energy and force indices")
     else:
-        raise IndexError("not enough virial indices per energy and force indices")
+        if len(test_es_rat) == 1:
+            tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_w_combo[ig]*test_es_rat[0]} for ig,gkey in enumerate(gtks)}
+        elif len(test_es_rat) == len(test_ef_rat):
+            tstwdct = {gkey:{'eweight':test_w_combo[ig], 'fweight':test_w_combo[ig]*test_ef_rat[ig], 'vweight':test_w_combo[ig]*test_es_rat[ig]} for ig,gkey in enumerate(gtks)}
+        else:
+            raise IndexError("not enough virial indices per energy and force indices")
 
     new_w = np.zeros(size_b)
     for index_b in range(size_b):
@@ -748,15 +748,13 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         fs.pt.single_print("\n")
 
     # start getting weights 
-    ## TODO: re-test and re-implement after parallel upgrades!
-    # CURRENTLY PROBABLY BROKEN!
-    # NOTE: important to redo because it offers restart capability! Maybe add seed?
-    use_initial_weights_flag = False 
     initial_weights={}
-    # if use_initial_weights_flag:
-    #     for key in gtks:
-    #         initial_weights[key] = [fs.config.sections["GROUPS"].group_table[key]['eweight'], fs.config.sections["GROUPS"].group_table[key]['fweight'], \
-    #                                 fs.config.sections["GROUPS"].group_table[key]['vweight']]
+    if use_initial_weights_flag:
+        fs.pt.single_print("NOTE: Using weights from FitSNAP input to populate first generation!")
+        fs.pt.single_print("\n")
+        for key in gtks:
+            initial_weights[key] = [fs.config.sections["GROUPS"].group_table[key]['eweight'], fs.config.sections["GROUPS"].group_table[key]['fweight'], \
+                                    fs.config.sections["GROUPS"].group_table[key]['vweight']]
 
     size_b = np.shape(fs.pt.fitsnap_dict['Row_Type'])[0]
     grouptype = fs.pt.fitsnap_dict['Groups'].copy()
@@ -832,8 +830,8 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     best_scores = []
     best = None
     best_weights = []
-    all_lowest_scores = [best_score] # for mpi testing
-    all_lowest_weights = [tuple(population0[0])] # for mpi testing
+    all_lowest_scores = [best_score] # for mpi testing, statistics
+    all_lowest_weights = [tuple(population0[0])] # for mpi testing, statistics
     sim_seeds = seedsi[population_size:]
     np.random.seed(sim_seeds[generation])
     w_combo_delta = np.ones(len(gtks))
@@ -853,10 +851,9 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         es_rat_delta = np.array([1.0]*len(gtks))
     
     # prepare fitting objects from original fs descriptor calculation
-    # TODO can factor out some initial_weights code using w0 below?
     a = fs.pt.shared_arrays['a'].array
     b = fs.pt.shared_arrays['b'].array
-    w0 = fs.pt.shared_arrays['w'].array 
+    # w0 = fs.pt.shared_arrays['w'].array 
     size_b = b.shape[0]
     fs_dict = fs.pt.fitsnap_dict
     grouptype = fs_dict["Groups"]
@@ -897,7 +894,6 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         per_rank_scores = np.full(len(pop_list), 1e8)
 
         # loop through creatures in current generation
-        fs.pt.single_print(f"\n--------- GENERATION {generation} ---------\n")
         for i, creature in enumerate(pop_list):           
             # get creature values from generated population
             creature_ew, creature_ffac, creature_sfac = tuple(creature.reshape((num_wcols,ne)).tolist())  
@@ -960,17 +956,23 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         try:
             ## Original flag
             conv_flag = np.round(np.var(best_scores[int(ngenerations/conv_check)-int(ngenerations/10):]),14) == 0
-            if generation == 0: conv_flag = False
+            
+            # Run at least 0th and 1st generation
+            if generation <= 1: conv_flag = False
+
+            # if conv_flag == True:
+            #     fs.pt.single_print("---> Convergence flag: True! ")
+            #     fs.pt.single_print(np.round(np.var(best_scores[int(ngenerations/conv_check)-int(ngenerations/10):])),14)
             ## New flag, currently testing
             # conv_flag = np.round(np.var(best_scores[-(check_gen*math.floor(len(best_scores)/check_gen)):]),14) == 0
         except IndexError:
             conv_flag = False
         printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape((num_wcols,ne)).tolist()])
-        fs.pt.single_print('\n')
-        fs.pt.single_print(f'Lowest score in generation {generation}:', lowest_score_in_gen)
+        fs.pt.single_print(f"------------ GENERATION {generation} ------------")
+        fs.pt.single_print(f'Lowest score:', lowest_score_in_gen)
         print_final(fs, gtks, printbest, best_gens[-1], best_scores[-1])
 
-        # TODO add other selection methods?
+        # Choose/rank candidates for next generation
         slct = Selector(selection_style = selection_method)
         selected = [slct.selection(population0, scores) for creature_idx in range(population_size)]
         del slct
@@ -1004,6 +1006,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
                 # store for next generation
                 children.append(c)
+
         np.random.seed(sim_seeds[generation])
         population, pop_indices = assign_ranks(children, ncores)
         generation += 1
@@ -1019,18 +1022,18 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
         costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
 
-        print('\n------------ Final results ------------')
+        fs.pt.single_print('\n------------ Final results ------------')
 
-    # Print out final best fit
-    print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), best_gens[-1],best_scores[-1], write_to_json=write_to_json)
+        # Print out final best fit
+        print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), best_gens[-1],best_scores[-1], write_to_json=write_to_json)
 
-    fs.pt.single_print('Writing final output')
-    fs.write_output()
+        fs.pt.single_print('Writing final output')
+        fs.write_output()
 
-    # output final
-    time2 = time.time()
-    elapsed = round(time2 - time1, 2)
-    fs.pt.single_print(f'Total optimization time: {elapsed} s')
+        # output final
+        time2 = time.time()
+        elapsed = round(time2 - time1, 2)
+        fs.pt.single_print(f'Total optimization time: {elapsed} s')
 
 
 def sim_anneal(fs):  ##LOGAN NOTE: I have not yet updated this function

@@ -20,6 +20,7 @@ NOTE: This workflow is under development and therefore script requires changes.
 
 """
 
+from time import time
 from mpi4py import MPI
 from fitsnap3lib.fitsnap import FitSnap
 import numpy as np
@@ -113,6 +114,9 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nprocs = comm.Get_size()
 
+if rank == 0:
+    start = time()
+
 # Create an input dictionary containing settings.
 settings = \
 {
@@ -173,7 +177,8 @@ settings = \
     "dump_descriptors": 0,
     "dump_truth": 0,
     "dump_weights": 0,
-    "dump_dataframe": 0
+    "dump_dataframe": 0,
+    "multinode_testing": 1
     },
 "GROUPS":
     {
@@ -240,14 +245,19 @@ fs.pt.all_barrier()
 comm.Allreduce([c, MPI.DOUBLE], [c_all, MPI.DOUBLE])
 comm.Allreduce([d, MPI.DOUBLE], [d_all, MPI.DOUBLE])
 
-# Perform least squares fit.
-#coeffs = least_squares(c_all,d_all)
-coeffs = ridge(c_all, d_all)
-# Now `coeffs` is owned by all procs, good for parallel error analysis.
+if rank == 0:
+    # Perform least squares fit.
+    #coeffs = least_squares(c_all,d_all)
+    coeffs = ridge(c_all, d_all)
+    # Now `coeffs` is owned by all procs, good for parallel error analysis.
 
-# Calculate errors for this instance (not required).
-# error_analysis(fitsnap)
+    # Calculate errors for this instance (not required).
+    # error_analysis(fitsnap)
 
-# Write LAMMPS files.
-# NOTE: Without error analysis, `fitsnap.solver.errors` is an empty list and will not be written to file.
-fs.output.output(coeffs, fs.solver.errors)
+    # Write LAMMPS files.
+    # NOTE: Without error analysis, `fitsnap.solver.errors` is an empty list and will not be written to file.
+    fs.output.output(coeffs, fs.solver.errors)
+
+    end = time()
+    sec = round(end-start,3)
+    print(f"Time to complete fit: {sec} s")

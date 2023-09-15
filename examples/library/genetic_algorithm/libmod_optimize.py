@@ -787,7 +787,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     selection_method = 'tournament'
 
     # modify convergence check for new conv_flag
-    check_gen = int((ngenerations/conv_check))
+    check_gen = int((ngenerations*conv_check))
 
     # End optimization hyperparameters
     #---------------------------------------------------------------------------
@@ -832,6 +832,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     best_weights = []
     all_lowest_scores = [best_score] # for mpi testing, statistics
     all_lowest_weights = [tuple(population0[0])] # for mpi testing, statistics
+    all_lowest_creature_idxs = [-1]
     sim_seeds = seedsi[population_size:]
     np.random.seed(sim_seeds[generation])
     w_combo_delta = np.ones(len(gtks))
@@ -939,32 +940,41 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         # Print generation and best fit.
         lowest_score_in_gen = 1e10
         lowest_weight_in_gen = []
+        lowest_creature_idx = -1
         for i in range(population_size):
             if scores[i] < lowest_score_in_gen:
                 lowest_score_in_gen = scores[i]  
-                lowest_weight_in_gen = population0[i]           
+                lowest_weight_in_gen = population0[i]
+                lowest_creature_idx = i        
             if scores[i] < best_score:
                 best, best_score, best_gen = tuple(population0[i]), scores[i], generation
         
         best_weights.append(best)
         best_gens.append(best_gen)
         best_scores.append(best_score)
-        all_lowest_weights.append(lowest_weight_in_gen) # for testing mpi       
-        all_lowest_scores.append(lowest_score_in_gen) # for testing mpi 
+        all_lowest_weights.append(lowest_weight_in_gen) # for testing mpi, statistics      
+        all_lowest_scores.append(lowest_score_in_gen) # for testing mpi, statistics
+        all_lowest_creature_idxs.append(lowest_creature_idx) # for testing mpi, statistics 
 
         # check for convergence
         try:
             ## Original flag
-            conv_flag = np.round(np.var(best_scores[int(ngenerations/conv_check)-int(ngenerations/10):]),14) == 0
-            
-            # Run at least 0th and 1st generation
-            if generation <= 1: conv_flag = False
+            # conv_flag = np.round(np.var(best_scores[int(ngenerations/conv_check)-int(ngenerations/10):]),14) == 0
+
+            ## New flag, currently testing
+            if len(best_scores) >= check_gen:
+                conv_flag = np.round(np.var(best_scores[-(check_gen*math.floor(len(best_scores)/check_gen)):]),14) == 0
+            else:
+                conv_flag = False
+
+            if conv_flag: exit()
 
             # if conv_flag == True:
             #     fs.pt.single_print("---> Convergence flag: True! ")
+            # old
             #     fs.pt.single_print(np.round(np.var(best_scores[int(ngenerations/conv_check)-int(ngenerations/10):])),14)
-            ## New flag, currently testing
-            # conv_flag = np.round(np.var(best_scores[-(check_gen*math.floor(len(best_scores)/check_gen)):]),14) == 0
+            # new
+                # fs.pt.single_print(np.var(best_scores[-(check_gen*math.floor(len(best_scores)/check_gen)):]),14)
         except IndexError:
             conv_flag = False
         printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape((num_wcols,ne)).tolist()])

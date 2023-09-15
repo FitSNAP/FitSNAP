@@ -1,13 +1,18 @@
 """
-Genetic algorithm optimization of SNAP potential
+Genetic algorithm to optimize group weights in FitSNAP fits
 
 Serial usage:
 
-    python libmod_optimize.py # --fitsnap_in Ta-example.in --optimization_style genetic_algorithm
+    python script_optimize.py 
 
 Parallel usage:
 
-    mpirun -n 2 python libmod_optimize.py # --fitsnap_in Ta-example.in --optimization_style genetic_algorithm
+    mpirun -n 2 python script_optimize.py 
+
+When using MPI, a quick note on number of cores P: 
+- For now, it's best to use an even number of cores P.
+- If your population_size setting is smaller than P, it will be increased to P (to avoid running empty cores per generation).
+- If you're using MPI but don't want to run the GA in parallel, set the optional genetic_algorithm argument `parallel_population = False.`
 """
 
 import os, time, argparse, warnings
@@ -29,13 +34,14 @@ def main():
     fs_input="SNAP_Ta.in"
     # fs_input="ACE_Ta.in"
     optimization_style = "genetic_algorithm"
+    perform_initial_fit = False
 
     #---------------------------------------------------------------------------
     # Genetic algorithm parameters
     
     # basic parameters
-    population_size = 100 # <-- minimum 4 for testing, default is 100
-    ngenerations = 50 # <-- minimum 4 for testing, default is 50
+    population_size = 30 # <-- minimum 4 for testing, default is 100
+    ngenerations = 20 # <-- minimum 4 for testing, default is 50
 
     # Advanced parameters, see libmod_optimize.py genetic_algorithm arguments for defaults
     # set exploration ranges for energies and forces
@@ -43,7 +49,7 @@ def main():
     my_ef_ratios = [0.001,0.01,0.1,1,10,100,1000]
     my_es_ratios = [0.001,0.01,0.1,1,10,100,1000]
     
-    # scaling of weights
+    # scaling of weights relative to each other
     etot_weight = 1.0
     ftot_weight = 1.0
     stot_weight = 1.0
@@ -53,41 +59,32 @@ def main():
     r_mut = 0.1
 
     # set a score threshold for convergence 
-    # TODO: need better explanation of what the score is
-    # NOTE: could also have this operate on MAE or RMSE instead of score?
+    # TODO: need an explanation of what the score is
     conv_thr = 1.E-10
 
-    # set a minimum value of ngenerations to run before checking for convergence (int(ngenerations/conv_check)).
-    # example: if ngenerations = 100 and conv_check = 2, then convergence will only start being checked after half of the generations have been calculated (50 = 100/2).
-    # make this number smaller to check for convergence earlier, and larger for later
-    # tested defaults are between 2 and 3.
-    conv_check = 2.
+    # set a fraction of ngenerations to check for score convergence
+    # example: if ngenerations = 100 and conv_check = 0.5, then convergence will only start being checked at generation 51, after half of the generations have been calculated. 
+    # make this number smaller to check for convergence earlier, and larger for later.
+    # tested defaults are between 0.33 to 0.5.
+    conv_check = 0.5
 
     # set designated group's force weights to zero (e.g. volume transformations)
     force_delta_keywords = []
     stress_delta_keywords = []
     
     # write final best generation to FitSnap-compatible JSON dictionary. default is False
-    write_to_json = True 
+    write_to_json = False 
     
     # use_initial_weights reads from current file, default is False
     ### TODO test this!
-    use_initial_weights = True 
+    use_initial_weights = False 
     
     # End genetic algorithm parameters
     #---------------------------------------------------------------------------
-    parser = argparse.ArgumentParser(description='FitSNAP example.')
-    parser.add_argument("--fitsnap_in", help="FitSNAP input script.", default=fs_input)
-    parser.add_argument("--optimization_style", help="optimization algorithm: 'simulated_annealing' or 'genetic_algorithm' ", default=optimization_style)
-    args = parser.parse_args()
-
-    optimization_style = args.optimization_style
-
-    settings = args.fitsnap_in
 
     # Create a FitSnap instance using the communicator and settings:
-    snap = FitSnap(settings, comm=comm, arglist=["--overwrite"])
-    snap.pt.single_print("FitSNAP input script:", args.fitsnap_in)
+    snap = FitSnap(fs_input, comm=comm, arglist=["--overwrite"])
+    snap.pt.single_print("FitSNAP input script:", fs_input)
 
     # prepare snap config for genetic algorithm
     lm_opt.prep_fitsnap_input(snap)
@@ -96,25 +93,27 @@ def main():
     snap.scrape_configs()
     snap.process_configs()
     snap.pt.all_barrier()
-    snap.perform_fit()
-    fit1 = snap.solver.fit
-    errs1 = snap.solver.errors
 
-    # NOTE: when using MPI, the following lines may throw a warning error but the program will still run
-    rmse_e = errs1.iloc[:,2].to_numpy()
-    rmse_counts = errs1.iloc[:,0].to_numpy()
-    rmse_eat = rmse_e[0]
-    rmse_fat = rmse_e[1]
-    rmse_tot = rmse_eat + rmse_fat
-    snap.pt.single_print(f'Initial fit:\n\trsme energies: {rmse_eat}\n\trsme forces: {rmse_fat}\n\t total:{rmse_tot}')
+    # use can decide whether or not to perform fit with initial fs_input settings
+    # this is useful if one would like to compare the original model with a resulting model
+    if perform_initial_fit:
+        snap.perform_fit()
+        fit1 = snap.solver.fit
+        errs1 = snap.solver.errors
+
+        # NOTE: when using MPI, the following lines may throw a warning error but the program will still run
+        rmse_e = errs1.iloc[:,2].to_numpy()
+        rmse_counts = errs1.iloc[:,0].to_numpy()
+        rmse_eat = rmse_e[0]
+        rmse_fat = rmse_e[1]
+        rmse_tot = rmse_eat + rmse_fat
+        snap.pt.single_print(f'Initial fit:\n\trsme energies: {rmse_eat}\n\trsme forces: {rmse_fat}\n\t total:{rmse_tot}')
 
     snap.solver.fit = None
 
-    snap.pt.single_print("FitSNAP optimization algorithm: ",args.optimization_style)
-
-    if optimization_style == 'simulated_annealing':
-        lm_opt.sim_anneal(snap)
-    elif optimization_style == 'genetic_algorithm':
+    # perform optimization algorithms 
+    snap.pt.single_print("FitSNAP optimization algorithm: ",optimization_style)
+    if optimization_style == 'genetic_algorithm':
        lm_opt.genetic_algorithm(snap, 
                                 population_size=population_size, 
                                 ngenerations=ngenerations, 
@@ -132,6 +131,13 @@ def main():
                                 stress_delta_keywords=force_delta_keywords,
                                 write_to_json=write_to_json,
                                 use_initial_weights_flag=use_initial_weights)
+   
+    # TODO implement other SNAP optimizations
+    # elif optimization_style == 'simulated_annealing':
+    #     # tODO integrate MPI and other new fixes into simulated annealing
+    #     lm_opt.sim_anneal(snap)
+    # elif optimization_style == 'latin_hypercube':
+    #     lm_opt.latin_hypercube_sample(snap)
     snap.pt.single_print("Script complete, exiting")
 
 if __name__ == "__main__":

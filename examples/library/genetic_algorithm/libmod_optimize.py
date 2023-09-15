@@ -694,15 +694,23 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         fs: FitSnap instance being handled by genetic algorithm
         population_size: number of candidates ("creatures") generated within one generation and tested for fitness. in this code, fitness is how well group weights perform in a FitSnap fit (no puns intended)
         ngenerations: maximum number of allowed iterations of populations. this ends the genetic algorithm calculations if the convergence threshold (conv_thr, see below) is not reached beforehand
-        my_w_ranges: allowed scaling factors for energy weights
-        my_ef_ratios: allowed scaling factors for force weights
-        etot_weight and ftot_weight: weights for energy and force rmse in the optimizer cost function
+        my_w_ranges, my_ef_ratios, my_es_ratios: allowed scaling factors for energy, force, and stress weights
+        etot_weight, ftot_weight, stot_weight: weights for energy and force rmse in the optimizer cost function
         r_cross and r_mut: cross over (parenting) and mutation hyperparameters
         conv_thr: convergence threshold for full function (value of RMSE E + RMSE F at which simulation is terminated" 
         conv_check: fraction of ngenerations to start checking for convergence (convergence checks wont be performed very early)
+        force_delta_keywords, stress_delta_keywords: 
+        write_to_json: whether to write the final best fit to a new FitSNAP settings dictionary to a JSON file
+        use_initial_weights_flag: whether to bias fitting with initial_weights 
+        parallel_population: whether to use MPI*/split communicator when ncores > 1
 
     Returns:
         (none, prints best group weights to stdout and/or a JSON file)
+
+    *When using MPI, a quick note on number of cores P: 
+    - For now, it's best to use an even number of cores P.
+    - If your population_size setting is smaller than P, it will be increased to P (to avoid running empty cores per generation).
+    - If you're using MPI but don't want to run the GA in parallel, set the optional genetic_algorithm argument `parallel_population = False.`
     """
     #---------------------------------------------------------------------------
     # Begin in-function optimization hyperparameters
@@ -914,7 +922,6 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         # loop through creatures in current generation          
         gen_start = time.time()
         for i, creature in enumerate(pop_list):           
-
             # get creature values from generated population
             creature_ew, creature_ffac, creature_sfac = tuple(creature.reshape((num_wcols,ne)).tolist())  
             creature_ew = tuple(creature_ew)

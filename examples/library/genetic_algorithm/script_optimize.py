@@ -8,6 +8,11 @@ Serial usage:
 Parallel usage:
 
     mpirun -n 2 python script_optimize.py 
+
+When using MPI, a quick note on number of cores P: 
+- For now, it's best to use an even number of cores P.
+- If your population_size setting is smaller than P, it will be increased to P (to avoid running empty cores per generation).
+- If you're using MPI but don't want to run the GA in parallel, set the optional genetic_algorithm argument `parallel_population = False.`
 """
 
 import os, time, argparse, warnings
@@ -35,8 +40,8 @@ def main():
     # Genetic algorithm parameters
     
     # basic parameters
-    population_size = 100 # <-- minimum 4 for testing, default is 100
-    ngenerations = 50 # <-- minimum 4 for testing, default is 50
+    population_size = 30 # <-- minimum 4 for testing, default is 100
+    ngenerations = 20 # <-- minimum 4 for testing, default is 50
 
     # Advanced parameters, see libmod_optimize.py genetic_algorithm arguments for defaults
     # set exploration ranges for energies and forces

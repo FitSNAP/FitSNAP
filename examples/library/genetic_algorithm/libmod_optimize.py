@@ -458,7 +458,7 @@ def mutation(current_w_combo, current_ef_rat, current_es_rat, my_w_ranges,my_ef_
         return test_w_combo,test_ef_rat,test_es_rat
 
 
-def print_final(fs, gtks, ew_frcrat_final, best_gen, write_to_json=False):
+def print_final(fs, gtks, ew_frcrat_final, best_gen, best_score, write_to_json=False):
     ew_final, frcrat_final, srcrat_final = ew_frcrat_final
 
     calc_stress = fs.config.sections["CALCULATOR"].stress
@@ -472,7 +472,7 @@ def print_final(fs, gtks, ew_frcrat_final, best_gen, write_to_json=False):
     loc_gt = fs.config.sections["GROUPS"].group_table
 
     collect_lines = []
-    fs.pt.single_print(f'\n---> Best group weights (from generation {best_gen}):')
+    fs.pt.single_print(f'\n---> Best group weights (from generation {best_gen}, score {best_score}):')
     for idi, dat in enumerate(gtks):
         en_weight = ew_final[idi]
         frc_weight = ew_final[idi]*frcrat_final[idi]
@@ -796,7 +796,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
     # set up generation 0
     best_gen = 0
-    best_eval = 9999999.9999
+    best_score = 9999999.9999
     conv_flag = False
     hp = HyperparameterStruct(ne,nf,ns,eranges,ffactors,sfactors)
 
@@ -827,8 +827,9 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
     # set up GA variables
     generation = 0
-    best_generations = [0]
-    best_evals = [best_eval]
+    best_gen = 0
+    best_gens = [0]
+    best_scores = [best_score]
     best = tuple(population[0])
     best_weights = [best]
     sim_seeds = seedsi[population_size:]
@@ -859,7 +860,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     grouptype = fs_dict["Groups"]
     
     # begin evolution
-    while generation <= ngenerations and best_eval > conv_thr and not conv_flag:
+    while generation <= ngenerations and best_score > conv_thr and not conv_flag:
         # toggle variable used to assign FitSNAP communicator (comm) type based on MPI state
         # if serial, par_fs is assigned to the current FitSNAP instance
         # if MPI, a new split comm is created and assigned
@@ -933,13 +934,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         flat_pop_indices = [item for items in pop_indices for item in items]
         scores = [flat_scores[i] for i in flat_pop_indices]
 
-        # fs.pt.single_print("DEBUG, NOT FLATTENED INDICES: ", pop_indices)
-        # fs.pt.single_print("FLATTENED INDICES: ", flat_pop_indices)
-
-        # fs.pt.single_print("DEBUG, NOT SORTED SCORES: ", flat_scores)
-        # fs.pt.single_print("SORTED SCORES: ", scores)
-
-        # NOTE from James: to add another contribution to the cost function , you need to evaluate it in the loop
+        # NOTE from James: to add another contribution to the cost function, you need to evaluate it in the loop
         # and add it to the fit_and_cost function
         # if this involves a lammps simulation, you will have to print potentials at the different steps
         # to run the lammps/pylammps simulation. To do so, the fitsnap output file name prefix should
@@ -949,27 +944,31 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         # Anything printed with fs.pt.single_print will be included in output file.
 
         # Print generation and best fit.
+        lowest_score_in_gen = 1e10
         for i in range(population_size):
-            if scores[i] < best_eval:
-                best, best_eval = tuple(population0[i]), scores[i]
-                best_weights.append(best)
-                best_generations.append(generation)
-        best_evals.append(best_eval)
+            print("DEBUG scores[i]", i, scores[i])
+            if scores[i] < lowest_score_in_gen:
+                lowest_score_in_gen = scores[i]                
+            if scores[i] < best_score:
+                best, best_score, best_gen = tuple(population0[i]), scores[i], generation
+        best_weights.append(best)
+        best_gens.append(best_gen)
+        best_scores.append(best_score)
 
         # check for convergence
         try:
             ## Original flag
-            conv_flag = np.round(np.var(best_evals[int(ngenerations/conv_check)-int(ngenerations/10):]),14) == 0
+            conv_flag = np.round(np.var(best_scores[int(ngenerations/conv_check)-int(ngenerations/10):]),14) == 0
             ## New flag, currently testing
-            # conv_flag = np.round(np.var(best_evals[-(check_gen*math.floor(len(best_evals)/check_gen)):]),14) == 0
+            # conv_flag = np.round(np.var(best_scores[-(check_gen*math.floor(len(best_scores)/check_gen)):]),14) == 0
         except IndexError:
             conv_flag = False
         printbest = tuple([tuple(ijk) for ijk in np.array(best).reshape((num_wcols,ne)).tolist()])
         fs.pt.single_print('\n')
-        fs.pt.single_print('Generation:', generation, 'score:', scores[i], f"(best {best_eval})")
-        print_final(fs, gtks, printbest, best_generations[-1], )
+        fs.pt.single_print(f'Lowest score in generation {generation}:', lowest_score_in_gen)
+        print_final(fs, gtks, printbest, best_gens[-1], best_scores[-1])
 
-        # TODO what is the Selector really doing?
+        # TODO add other selection methods?
         slct = Selector(selection_style = selection_method)
         selected = [slct.selection(population0, scores) for creature_idx in range(population_size)]
         del slct
@@ -1004,15 +1003,9 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
                 # store for next generation
                 children.append(c)
-        generation += 1
         np.random.seed(sim_seeds[generation])
-        # print("DEBUG pop[0,0] before kids", population[0][0])
-        # print("")
-        # print("DEBUG children[0,0] before kids", children[0])
-        # print("")
         population, pop_indices = assign_ranks(children, ncores)
-        # print("DEBUG pop[0,0] after kids", population[0][0])
-        # print("")
+        generation += 1
 
     best_ew, best_ffac, best_sfac = tuple(np.array(best).reshape((num_wcols ,ne)).tolist())
     best_ew = tuple(creature_ew)
@@ -1020,15 +1013,16 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     best_sfac = tuple(creature_sfac)
 
     ##LOGAN NOTE: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
-    # 
-    best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
-    costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
+    # do final calculations on single core
+    if rank == 0:
+        best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
+        costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
 
-    print('best generations')
-    print(best_generations)
+        print('best generations')
+        print(best_gens)
     
     # Print out final best fit
-    print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), best_generations[-1], write_to_json=write_to_json)
+    print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), best_gens[-1],best_scores[-1], write_to_json=write_to_json)
 
     fs.pt.single_print('Writing final output')
     fs.write_output()
@@ -1039,8 +1033,6 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     fs.pt.single_print(f'Total optimization time: {elapsed} s')
 
 
-
-# @fs.pt.rank_zero
 def sim_anneal(fs):  ##LOGAN NOTE: I have not yet updated this function
     #---------------------------------------------------------------------------
     # Begin optimization hyperparameters

@@ -615,7 +615,7 @@ def assign_ranks(population0, ncores):
     population = [[] for _ in range(ncores)]
     pop_indices = [[] for _ in range(ncores)] 
     for i, creature in enumerate(population0):
-        # assign creatures alternating cores (odd creatures => odd cores)
+        # assign creatures alternating cores 
         rank_i = i % ncores 
         population[rank_i].append(creature) 
         pop_indices[rank_i].append(i)
@@ -932,7 +932,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         # unpack in same order as MPI grid assignment
         flat_scores = collect_scores.flatten().tolist()
         flat_pop_indices = [item for items in pop_indices for item in items]
-        scores = [flat_scores[i] for i in flat_pop_indices]
+        scores = [flat_scores[flat_pop_indices.index(i)] for i in range(population_size)]
 
         # NOTE from James: to add another contribution to the cost function, you need to evaluate it in the loop
         # and add it to the fit_and_cost function
@@ -946,7 +946,6 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         # Print generation and best fit.
         lowest_score_in_gen = 1e10
         for i in range(population_size):
-            print("DEBUG scores[i]", i, scores[i])
             if scores[i] < lowest_score_in_gen:
                 lowest_score_in_gen = scores[i]                
             if scores[i] < best_score:

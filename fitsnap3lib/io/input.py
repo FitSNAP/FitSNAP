@@ -35,6 +35,7 @@ class Config():
         self.indict = None
         self.default_protocol = HIGHEST_PROTOCOL
         self.args = None
+        self._original_config = None
         self.parse_cmdline(arguments_lst=arguments_lst)
         self.sections = {}
         self.parse_config()
@@ -107,8 +108,8 @@ class Config():
             self.args = parser.parse_args()
 
     def parse_config(self):
-        tmp_config = configparser.ConfigParser(inline_comment_prefixes='#')
-        tmp_config.optionxform = str
+        self._original_config = configparser.ConfigParser(inline_comment_prefixes='#')
+        self._original_config.optionxform = str
         if self.input is not None:
             if (isinstance(self.input, str)):
                 self.infile = self.input
@@ -121,7 +122,9 @@ class Config():
 
         if (self.infile is not None):
             # We have an input file.
-            tmp_config.read(self.infile)
+            self._original_config.read(self.infile)
+
+            # continue setting up self._original_config
             infile_folder = str(Path(self.infile).parent.absolute())
             file_name = self.infile.split('/')[-1]
             if not Path(infile_folder+'/'+file_name).is_file():
@@ -131,26 +134,26 @@ class Config():
             # This adds keyword replacements to the config.
             if self.args.keyword_replacements:
                 for kwg, kwn, kwv in self.args.keyword_replacements:
-                    if kwg not in tmp_config:
+                    if kwg not in self._original_config:
                         raise ValueError(f"{kwg} is not a valid keyword group")
-                    tmp_config[kwg][kwn] = kwv
+                    self._original_config[kwg][kwn] = kwv
 
         elif (self.indict is not None):
-            # We have an input dictionary  instead of a file.
+            # We have an input dictionary instead of a file.
             for key1, data1 in self.indict.items():
-                tmp_config[key1] = {}
+                self._original_config[key1] = {}
                 for key2, data2 in data1.items():
-                    tmp_config[key1]["{}".format(key2)] = str(data2)
+                    self._original_config[key1]["{}".format(key2)] = str(data2)
             # Default missing sections to empty dicts which will prompt default values.
             names = ["ESHIFT", "EXTRAS", "GROUPS", "MEMORY"]
             for name in names:
-                if name not in tmp_config:
-                    tmp_config[name] = {}
+                if name not in self._original_config:
+                    self._original_config[name] = {}
 
         # Make sections based on input settings.
-        self.set_sections(tmp_config)
+        self._set_sections(self._original_config)
 
-    def set_sections(self, tmp_config):
+    def _set_sections(self, tmp_config):
         sections = tmp_config.sections()
         for section in sections:
             if section == "TEMPLATE":
@@ -158,15 +161,15 @@ class Config():
             if section == "BASIC_CALCULATOR":
                 section = "BASIC"
             self.sections[section] = new_section(section, tmp_config, self.pt, self.infile, self.args)
-
-    def view(self,sections=[]):
+    
+    def view(self, sections: list | str = [], original_input = False):
         """
-        Print a view of the current state of the FitSNAP configuration object's sections.
-        If no argument is provided, all sections' information will be output.
-        See imports in fitsnap3lib/io/sections/section_factory.py for all valid section names
+        Print a view of the current sections contained in the FitSNAP configuration object. When no 'sections' argument is provided, all sections' information will be output. If the argument contains invalid section name, it will be printed with a warning, but will not crash. See imports in fitsnap3lib/io/sections/section_factory.py for all valid section names.
 
         Args:
-            sections: optional list of section names, useful to view a subset of  (i.e. ['BISPECTRUM', 'CALCULATOR', 'REFERENCE']). A single string can also be used as input.    
+            sections: optional list of sections or string of a single section name (i.e. ['BISPECTRUM', 'CALCULATOR', 'REFERENCE'], or 'GROUPS') 
+            sections: optional, set this value to "True" to view the original input file (saved in self._original_config) 
+            
         """
 
         all_sections = self.sections.keys() 
@@ -181,8 +184,10 @@ class Config():
         # ensure all input is all caps
         chosen_sections = [s.upper() for s in chosen_sections]
 
-        # skip certain repetitive or unused variables 
-        skip_print = ["name", "allowedkeys", "pt", "infile","mem_bytes","memory","nsam", "cov_nugget", "mcmc_num", "mcmc_gamma","merr_mult","merr_method","merr_cfs"]
+        # skip certain unused or repetitive variables no matter what
+        skip_uq = ["nsam", "cov_nugget", "mcmc_num", "mcmc_gamma","merr_mult","merr_method","merr_cfs"]
+        skip_always = ["name", "allowedkeys", "pt", "infile","mem_bytes","memory"]
+        skip_print = skip_always + skip_uq
 
         # begin print
         self.pt.single_print("----> View of FitSNAP settings")
@@ -192,11 +197,35 @@ class Config():
                 self.pt.single_print("\tERROR: Section not found! Continuing\n")
                 continue
             self.pt.single_print(f"    {sname}")
-            vars_dict = vars(self.sections[sname])
+            if original_input:
+                # this preserves the original, raw input as a dictionary (no added sections or altered variables)
+                raw_config_dict = self.convert_config_to_dict(self._original_config)
+                vars_dict = raw_config_dict[sname]
+            else:
+                vars_dict = vars(self.sections[sname])
             for key, val in vars_dict.items():
                 if key in skip_print or key.startswith("_"):
                     continue
                 self.pt.single_print("\t{0:20} = {1}".format(key, val))
             self.pt.single_print("")
-        
+
+
+    def convert_config_to_dict(self, original_input = False):
+        """
+        Convert the current config object to a dictionary. Note that datatypes may not be preserved.
+
+        Args:
+            original_input: optional, set to True to return the original input 
+
+        Returns:
+            config_dict: Python dictionary containing the same elements as the configuration.
+        """
+        if original_input:
+            config_dict = {s:dict(self._original_config.items(s)) for s in self._original_config.sections()}
+        else:
+            config_dict = {s:dict(self.sections.items(s)) for s in self.sections()}
+        return config_dict
+
+
+
 

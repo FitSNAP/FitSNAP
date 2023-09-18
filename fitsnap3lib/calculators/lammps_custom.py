@@ -101,7 +101,7 @@ class LammpsCustom(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
         # extract positions
 
@@ -235,7 +235,7 @@ class LammpsCustom(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
         # extract positions
 

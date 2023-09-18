@@ -102,10 +102,9 @@ class LammpsSnap(LammpsBase):
         num_types = self.config.sections['BISPECTRUM'].numtypes
         n_coeff = self.config.sections['BISPECTRUM'].ncoeff
         energy = self._data["Energy"]
-        filename = self._data["File"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
         # extract positions
 
@@ -221,8 +220,9 @@ class LammpsSnap(LammpsBase):
         num_types = self.config.sections['BISPECTRUM'].numtypes
         n_coeff = self.config.sections['BISPECTRUM'].ncoeff
         energy = self._data["Energy"]
+
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
         # Extract positions
         lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
@@ -392,7 +392,7 @@ class LammpsSnap(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
         # Extract positions
         lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
@@ -559,7 +559,7 @@ class LammpsSnap(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
         # extract positions
 

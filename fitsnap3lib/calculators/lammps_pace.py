@@ -44,19 +44,19 @@ class LammpsPace(LammpsBase):
             a_t = self.config.sections["ACE"].type_mapping[a_t]
             self._lmp.command(f"create_atoms {a_t} single {a_x:20.20g} {a_y:20.20g} {a_z:20.20g} remap yes")
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, f"Atom counts don't match when creating atoms: {i + 1}, {n_atoms}"
+        assert i + 1 == n_atoms, "Atom counts don't match when creating atoms: {}, {}\nGroup and configuration: {} {}".format(i+1, n_atoms, self._data["Group"], self._data["File"])
 
     def _create_spins(self):
         for i, (s_mag, s_x, s_y, s_z) in enumerate(self._data["Spins"]):
             self._lmp.command(f"set atom {i + 1} spin {s_mag:20.20g} {s_x:20.20g} {s_y:20.20g} {s_z:20.20g} ")
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, f"Atom counts don't match when assigning spins: {i + 1}, {n_atoms}"
+        assert i + 1 == n_atoms, "Atom counts don't match when assigning spins: {}, {}\nGroup and configuration: {} {}".format(i+1, n_atoms, self._data["Group"], self._data["File"])
 
     def _create_charge(self):
         for i, q in enumerate(self._data["Charges"]):
             self._lmp.command(f"set atom {i + 1} charge {q[0]:20.20g} ")
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, f"Atom counts don't match when assigning charge: {i + 1}, {n_atoms}"
+        assert i + 1 == n_atoms, "Atom counts don't match when assigning charge: {}, {}\nGroup and configuration: {} {}".format(i+1, n_atoms, self._data["Group"], self._data["File"])
 
     def _set_variables(self, **lmp_variable_args):
         for k, v in lmp_variable_args.items():
@@ -80,10 +80,9 @@ class LammpsPace(LammpsBase):
         num_types = self.config.sections['ACE'].numtypes
         n_coeff = self.config.sections['ACE'].ncoeff
         energy = self._data["Energy"]
-        filename = self._data["File"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
         # extract positions
 
@@ -200,7 +199,7 @@ class LammpsPace(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
         # Extract positions
         lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
@@ -358,7 +357,7 @@ class LammpsPace(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
         # Extract positions
         lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
@@ -486,7 +485,7 @@ class LammpsPace(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
         # extract positions
 

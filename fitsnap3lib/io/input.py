@@ -158,3 +158,45 @@ class Config():
             if section == "BASIC_CALCULATOR":
                 section = "BASIC"
             self.sections[section] = new_section(section, tmp_config, self.pt, self.infile, self.args)
+
+    def view(self,sections=[]):
+        """
+        Print a view of the current state of the FitSNAP configuration object's sections.
+        If no argument is provided, all sections' information will be output.
+        See imports in fitsnap3lib/io/sections/section_factory.py for all valid section names
+
+        Args:
+            sections: optional list of section names, useful to view a subset of  (i.e. ['BISPECTRUM', 'CALCULATOR', 'REFERENCE']). A single string can also be used as input.    
+        """
+
+        all_sections = self.sections.keys() 
+        if sections == []:
+            chosen_sections = all_sections
+        else:
+            if type(sections) == list:
+                chosen_sections = sections
+            if type(sections) == str:
+                chosen_sections = [sections]
+
+        # ensure all input is all caps
+        chosen_sections = [s.upper() for s in chosen_sections]
+
+        # skip certain repetitive or unused variables 
+        skip_print = ["name", "allowedkeys", "pt", "infile","mem_bytes","memory","nsam", "cov_nugget", "mcmc_num", "mcmc_gamma","merr_mult","merr_method","merr_cfs"]
+
+        # begin print
+        self.pt.single_print("----> View of FitSNAP settings")
+        for sname in chosen_sections:
+            if sname not in all_sections:
+                self.pt.single_print(f"    {sname}")
+                self.pt.single_print("\tERROR: Section not found! Continuing\n")
+                continue
+            self.pt.single_print(f"    {sname}")
+            vars_dict = vars(self.sections[sname])
+            for key, val in vars_dict.items():
+                if key in skip_print or key.startswith("_"):
+                    continue
+                self.pt.single_print("\t{0:20} = {1}".format(key, val))
+            self.pt.single_print("")
+        
+

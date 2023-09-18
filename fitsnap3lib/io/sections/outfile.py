@@ -26,4 +26,8 @@ class Outfile(Section):
     def _outfile(self):
         self.metric_file = self.check_path(self.get_value("OUTFILE", "metrics", "fitsnap_metrics"))
         self.potential_name = self.check_path(self.get_value("OUTFILE", "potential", "fitsnap_potential"))
+
+        # Copy values back to input file variable names for library mode scripts
+        self.metrics = self.metric_file
+        self.potential = self.potential_name
         return

@@ -9,6 +9,8 @@ import itertools
 try:
 
     from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import AcePot
+    from fitsnap3lib.lib.sym_ACE.wigner_couple import *
+    from fitsnap3lib.lib.sym_ACE.clebsch_couple import *
 
     class Pace(Output):
 
@@ -99,11 +101,15 @@ try:
             self.types = self.config.sections["ACE"].types
             self.erefs = self.config.sections["ACE"].erefs
             self.bikflag = self.config.sections["ACE"].bikflag
-            self.RPI_heuristic = self.config.sections["ACE"].RPI_heuristic
+            self.b_basis = self.config.sections["ACE"].b_basis
+            self.wigner_flag = self.config.sections["ACE"].wigner_flag
 
             if self.bzeroflag:
-                assert len(self.types) ==  len(self.erefs), "must provide reference energy for each atom type"
-                reference_ens = [float(e0) for e0 in self.erefs]
+                #assert len(self.types) ==  len(self.erefs), "must provide reference energy for each atom type"
+                if len(self.types) ==  len(self.erefs):
+                    reference_ens = [float(e0) for e0 in self.erefs]
+                else:
+                    reference_ens = [0.0] * len(self.types)
             elif not self.bzeroflag:
                 reference_ens = [0.0] * len(self.types)
             bondinds=range(len(self.types))
@@ -122,9 +128,40 @@ try:
                 rcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcinner)}
                 drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
 
-            apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.RPI_heuristic)
-            apot.set_betas(coeffs,has_zeros=True)
-            apot.set_funcs()
+
+            ldict = {int(rank):int(lmax) for rank,lmax in zip(self.ranks,self.lmax)}
+            L_R = 0
+            M_R = 0
+            rankstrlst = ['%s']*len(self.ranks)
+            rankstr = ''.join(rankstrlst) % tuple(self.ranks)
+            lstrlst = ['%s']*len(self.ranks)
+            lstr = ''.join(lstrlst) % tuple(self.lmax)
+            if not self.wigner_flag:
+                try:
+                    with open('cg_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
+                        ccs = pickle.load(handle)
+                except FileNotFoundError:
+                    ccs = get_cg_coupling(ldict,L_R=L_R)
+                    #print (ccs)
+                    #store them for later so they don't need to be recalculated
+                    store_generalized(ccs, coupling_type='cg',L_R=L_R)
+            else:
+                try:
+                    with open('wig_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
+                        ccs = pickle.load(handle)
+                except FileNotFoundError:
+                    ccs = get_wig_coupling(ldict,L_R)
+                    #print (ccs)
+                    #store them for later so they don't need to be recalculated
+                    store_generalized(ccs, coupling_type='wig',L_R=L_R)
+
+
+            apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.b_basis, **{'ccs':ccs[M_R]})
+            if self.config.sections['ACE'].bzeroflag:
+                apot.set_betas(coeffs,has_zeros=False)
+            else:
+                apot.set_betas(coeffs,has_zeros=True)
+            apot.set_funcs(nulst=self.config.sections['ACE'].nus)
             apot.write_pot(self.config.sections["OUTFILE"].potential_name)
             # Append metadata to .yace file
             unit = f"# units {self.config.sections['REFERENCE'].units}\n"
@@ -155,8 +192,8 @@ def _to_coeff_string(coeffs, config):
     desc_str = "ACE"
     coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))
     blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
-    if config.sections[desc_str].bzeroflag:
-        blank2Js = np.insert(blank2Js, 0, [1.0], axis=1)
+    #if config.sections[desc_str].bzeroflag:
+    #    blank2Js = np.insert(blank2Js, 0, [1.0], axis=1)
     coeffs = np.multiply(coeffs, blank2Js)
     coeff_names = [[0]]+config.sections[desc_str].blist
     type_names = config.sections[desc_str].types

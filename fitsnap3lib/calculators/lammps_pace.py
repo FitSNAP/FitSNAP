@@ -266,6 +266,7 @@ class LammpsPace(LammpsBase):
             #b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
             #b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
             if not self.config.sections["ACE"].bikflag:
+                #b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
                 # Divide by natoms if not extracting per-atom descriptors.
                 #b_sum_temp /= num_atoms
                 b_sum_temp = lmp_pace[irow, :ncols_bispectrum] / num_atoms
@@ -288,13 +289,28 @@ class LammpsPace(LammpsBase):
                     if (abs(b000sum - b000sum0) < EPS): 
                         self.pt.single_print("WARNING: Configuration has no PACE neighbors")
 
+                """
                 b_sum_temp.shape = (num_types, n_coeff)
                 onehot_atoms = np.zeros((num_types, 1))
                 for atom in self._data["AtomTypes"]:
                     onehot_atoms[self.config.sections["ACE"].type_mapping[atom]-1] += 1
                 onehot_atoms /= len(self._data["AtomTypes"])
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
-                #b_sum_temp.shape = (num_types * (n_coeff + num_types))
+                if not self.config.sections["ACE"].bzeroflag:
+                    b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
+                    b_sum_temp.shape = (num_types * n_coeff + num_types)
+                else:
+                    b_sum_temp.shape = (num_types * n_coeff)
+                """
+            if not self.config.sections["ACE"].bzeroflag:
+                if self.config.sections['ACE'].bikflag:
+                    raise NotImplementedError("per atom energy is not implemented without bzeroflag")
+                b_sum_temp.shape = (num_types, n_coeff)
+                onehot_atoms = np.zeros((num_types, 1))
+                for atom in self._data["AtomTypes"]:
+                    onehot_atoms[self.config.sections["ACE"].type_mapping[atom]-1] += 1
+                onehot_atoms /= len(self._data["AtomTypes"])
+                b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
 
             a[irow:irow+bik_rows] = b_sum_temp * self.config.sections["ACE"].blank2J[np.newaxis, :]
@@ -410,6 +426,9 @@ class LammpsPace(LammpsBase):
                     if (abs(b000sum - b000sum0) < EPS): 
                         self.pt.single_print("WARNING: Configuration has no PACE neighbors")
 
+            if not self.config.sections["ACE"].bzeroflag:
+                if self.config.sections['ACE'].bikflag:
+                    raise NotImplementedError("per atom energy is not implemented without bzeroflag")
                 b_sum_temp.shape = (num_types, n_coeff)
                 onehot_atoms = np.zeros((num_types, 1))
                 for atom in self._data["AtomTypes"]:
@@ -417,6 +436,19 @@ class LammpsPace(LammpsBase):
                 onehot_atoms /= len(self._data["AtomTypes"])
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
+
+                """
+                b_sum_temp.shape = (num_types, n_coeff)
+                onehot_atoms = np.zeros((num_types, 1))
+                for atom in self._data["AtomTypes"]:
+                    onehot_atoms[self.config.sections["ACE"].type_mapping[atom]-1] += 1
+                onehot_atoms /= len(self._data["AtomTypes"])
+                b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
+                if self.config.sections['ACE'].bzeroflag:
+                    b_sum_temp.shape = (num_types * n_coeff)
+                else:
+                    b_sum_temp.shape = (num_types * n_coeff + num_types)
+                """
             self.pt.shared_arrays['a'].array[index] = b_sum_temp * self.config.sections["ACE"].blank2J
             #print(b_sum_temp * self.config.sections["ACE"].blank2J)
             #assert(False)

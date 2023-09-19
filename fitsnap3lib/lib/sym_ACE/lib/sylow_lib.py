@@ -5,6 +5,8 @@ import sys
 sys.path.append('../')
 
 # sylow_2_subgroups generated from gap code: https://www.gap-system.org
+sylow_2_s1=[ ((0,),) ]
+sylow_2_s2=[ ((0,),(1,)), ((0,1),) ]
 sylow_2_s4=[ ((0,),(1,),(2,),(3,)), ((2,3),), ((0,1),), ((0,1),(2,3)), ((0,2),(1,3)), ((0,2,1,3),), ((0,3,1,2),), ((0,3),(1,2)) ]
 
 sylow_2_s6=[ ((0,),(1,),(2,),(3,),(4,),(5,)), ((4,5),), ((2,3),), ((2,3),(4,5)), ((0,1),), ((0,1),(4,5)), ((0,1),(2,3)),
@@ -339,7 +341,14 @@ def filled_perm(tups,rank):
 
 def base_automorphisms(l,subtree=False):
     # base automorphism groups for most practical descriptor labels.
-    if len(l) == 4 or len(l) == 5:
+
+    if len(l) == 1:
+        all_ops = sylow_2_s1
+
+    elif len(l) == 2 or len(l) == 3:
+        all_ops = sylow_2_s2
+
+    elif len(l) == 4 or len(l) == 5:
         if not subtree:
             all_ops = sylow_2_s4
         else:

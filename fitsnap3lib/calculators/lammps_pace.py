@@ -44,19 +44,19 @@ class LammpsPace(LammpsBase):
             a_t = self.config.sections["ACE"].type_mapping[a_t]
             self._lmp.command(f"create_atoms {a_t} single {a_x:20.20g} {a_y:20.20g} {a_z:20.20g} remap yes")
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, "Atom counts don't match when creating atoms: {}, {}\nGroup and configuration: {} {}".format(i+1, n_atoms, self._data["Group"], self._data["File"])
+        assert i + 1 == n_atoms, f"Atom counts don't match when creating atoms: {i + 1}, {n_atoms}"
 
     def _create_spins(self):
         for i, (s_mag, s_x, s_y, s_z) in enumerate(self._data["Spins"]):
             self._lmp.command(f"set atom {i + 1} spin {s_mag:20.20g} {s_x:20.20g} {s_y:20.20g} {s_z:20.20g} ")
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, "Atom counts don't match when assigning spins: {}, {}\nGroup and configuration: {} {}".format(i+1, n_atoms, self._data["Group"], self._data["File"])
+        assert i + 1 == n_atoms, f"Atom counts don't match when assigning spins: {i + 1}, {n_atoms}"
 
     def _create_charge(self):
         for i, q in enumerate(self._data["Charges"]):
             self._lmp.command(f"set atom {i + 1} charge {q[0]:20.20g} ")
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, "Atom counts don't match when assigning charge: {}, {}\nGroup and configuration: {} {}".format(i+1, n_atoms, self._data["Group"], self._data["File"])
+        assert i + 1 == n_atoms, f"Atom counts don't match when assigning charge: {i + 1}, {n_atoms}"
 
     def _set_variables(self, **lmp_variable_args):
         for k, v in lmp_variable_args.items():
@@ -80,9 +80,10 @@ class LammpsPace(LammpsBase):
         num_types = self.config.sections['ACE'].numtypes
         n_coeff = self.config.sections['ACE'].ncoeff
         energy = self._data["Energy"]
+        filename = self._data["File"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
 
         # extract positions
 
@@ -199,7 +200,7 @@ class LammpsPace(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
 
         # Extract positions
         lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
@@ -235,15 +236,15 @@ class LammpsPace(LammpsBase):
             if self.config.sections['CALCULATOR'].stress:
                 nrows += 6
             nd = np.shape(lmp_pace)[1]-1
-            na = nrows
+            na = nrows #np.shape(lmp_snap)[0]
             a = np.zeros((na, nd))
             b = np.zeros(na)
             w = np.zeros(na)
+            #print(lmp_pace[0:,:])
+            #assert(False)
         else:
-            nd = self.get_width()
+            nd = np.shape(lmp_pace)[1]
             na = np.shape(lmp_pace)[0]
-            if not self.config.sections["CALCULATOR"].stress:
-                na -= 6
             a = np.zeros((na, nd))
             b = np.zeros(na)
             w = np.zeros(na)
@@ -260,16 +261,14 @@ class LammpsPace(LammpsBase):
         if self.config.sections['ACE'].bikflag:
             bik_rows = num_atoms
         icolref = ncols_bispectrum
-
         if self.config.sections["CALCULATOR"].energy:
-            #b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
-            #b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
+            b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
             if not self.config.sections["ACE"].bikflag:
+                #b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
                 # Divide by natoms if not extracting per-atom descriptors.
-                #b_sum_temp /= num_atoms
-                b_sum_temp = lmp_pace[irow, :ncols_bispectrum] / num_atoms
-            else:
-                b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum]
+                b_sum_temp /= num_atoms
+            #else:
+            #     b_sum_temp = lmp_pace[irow:irow+bik_rows, :ncols_bispectrum + self.config.sections["ACE"].numtypes]
 
             # Check for no neighbors using B[0,0,0] components
             # these strictly increase with total neighbor count
@@ -279,23 +278,37 @@ class LammpsPace(LammpsBase):
             b000sum0 = 0.0
             nstride = n_coeff
             b000sum = sum(b_sum_temp[::nstride])
-            #print(b_sum_temp)
-            #print(b000sum)
             if not self.config.sections['ACE'].bikflag:
                 if not self.config.sections["ACE"].bzeroflag:
                     b000sum0 = 1.0
                     if (abs(b000sum - b000sum0) < EPS): 
                         self.pt.single_print("WARNING: Configuration has no PACE neighbors")
 
+                """
                 b_sum_temp.shape = (num_types, n_coeff)
                 onehot_atoms = np.zeros((num_types, 1))
                 for atom in self._data["AtomTypes"]:
                     onehot_atoms[self.config.sections["ACE"].type_mapping[atom]-1] += 1
                 onehot_atoms /= len(self._data["AtomTypes"])
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
-                #b_sum_temp.shape = (num_types * (n_coeff + num_types))
+                if not self.config.sections["ACE"].bzeroflag:
+                    b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
+                    b_sum_temp.shape = (num_types * n_coeff + num_types)
+                else:
+                    b_sum_temp.shape = (num_types * n_coeff)
+                """
+            if not self.config.sections["ACE"].bzeroflag:
+                if self.config.sections['ACE'].bikflag:
+                    raise NotImplementedError("per atom energy is not implemented without bzeroflag")
+                b_sum_temp.shape = (num_types, n_coeff)
+                onehot_atoms = np.zeros((num_types, 1))
+                for atom in self._data["AtomTypes"]:
+                    onehot_atoms[self.config.sections["ACE"].type_mapping[atom]-1] += 1
+                onehot_atoms /= len(self._data["AtomTypes"])
+                b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
 
+            #a[irow] = b_sum_temp * self.config.sections["ACE"].blank2J
             a[irow:irow+bik_rows] = b_sum_temp * self.config.sections["ACE"].blank2J[np.newaxis, :]
             ref_energy = lmp_pace[irow, icolref]
             b[irow] = (energy - ref_energy) / num_atoms
@@ -357,7 +370,7 @@ class LammpsPace(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
 
         # Extract positions
         lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
@@ -410,6 +423,9 @@ class LammpsPace(LammpsBase):
                     if (abs(b000sum - b000sum0) < EPS): 
                         self.pt.single_print("WARNING: Configuration has no PACE neighbors")
 
+            if not self.config.sections["ACE"].bzeroflag:
+                if self.config.sections['ACE'].bikflag:
+                    raise NotImplementedError("per atom energy is not implemented without bzeroflag")
                 b_sum_temp.shape = (num_types, n_coeff)
                 onehot_atoms = np.zeros((num_types, 1))
                 for atom in self._data["AtomTypes"]:
@@ -417,9 +433,20 @@ class LammpsPace(LammpsBase):
                 onehot_atoms /= len(self._data["AtomTypes"])
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
+
+                """
+                b_sum_temp.shape = (num_types, n_coeff)
+                onehot_atoms = np.zeros((num_types, 1))
+                for atom in self._data["AtomTypes"]:
+                    onehot_atoms[self.config.sections["ACE"].type_mapping[atom]-1] += 1
+                onehot_atoms /= len(self._data["AtomTypes"])
+                b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
+                if self.config.sections['ACE'].bzeroflag:
+                    b_sum_temp.shape = (num_types * n_coeff)
+                else:
+                    b_sum_temp.shape = (num_types * n_coeff + num_types)
+                """
             self.pt.shared_arrays['a'].array[index] = b_sum_temp * self.config.sections["ACE"].blank2J
-            #print(b_sum_temp * self.config.sections["ACE"].blank2J)
-            #assert(False)
             ref_energy = lmp_pace[irow, icolref]
             self.pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
             self.pt.shared_arrays['w'].array[index] = self._data["eweight"]
@@ -485,7 +512,7 @@ class LammpsPace(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms"
 
         # extract positions
 
@@ -524,3 +551,4 @@ class LammpsPace(LammpsBase):
         natoms_sliced = self.pt.shared_arrays['number_of_atoms'].sliced_array[self._i]
         assert(natoms_sliced==num_atoms)
         self.pt.shared_arrays['number_of_dgrad_rows'].sliced_array[self._i] = nrows_dgrad
+

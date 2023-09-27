@@ -320,7 +320,6 @@ class LammpsSnap(LammpsBase):
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
 
             # Get matrix of descriptors (A).
-
             a[irow:irow+bik_rows] = b_sum_temp * self.config.sections["BISPECTRUM"].blank2J[np.newaxis, :]
 
             # Get vector of truths (b).

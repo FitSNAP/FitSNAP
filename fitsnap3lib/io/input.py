@@ -168,7 +168,7 @@ class Config():
 
         Args:
             sections: optional list of sections or string of a single section name (i.e. ['BISPECTRUM', 'CALCULATOR', 'REFERENCE'], or 'GROUPS') 
-            sections: optional, set this value to "True" to view the original input file (saved in self._original_config) 
+            original_input: optional, set this value to "True" to view the original input file (saved in self._original_config) 
             
         """
 

@@ -162,13 +162,15 @@ class Config():
                 section = "BASIC"
             self.sections[section] = new_section(section, tmp_config, self.pt, self.infile, self.args)
     
-    def view(self, sections: list | str = [], original_input = False):
+    def view_state(self, sections: list | str = [], original_input = False):
         """
-        Print a view of the current sections contained in the FitSNAP configuration object. When no 'sections' argument is provided, all sections' information will be output. If the argument contains invalid section name, it will be printed with a warning, but will not crash. See imports in fitsnap3lib/io/sections/section_factory.py for all valid section names.
+        Print a view to screen of the sections contained in the FitSNAP configuration object in its current state. 
+        When no 'sections' argument is provided, all sections' information will be printed to screen. 
+        If the argument contains invalid section name, it will be printed with a warning, but will not crash.       
 
         Args:
             sections: optional list of sections or string of a single section name (i.e. ['BISPECTRUM', 'CALCULATOR', 'REFERENCE'], or 'GROUPS') 
-            original_input: optional, set this value to "True" to view the original input file (saved in self._original_config) 
+            original_input: optional, set this value to "True" to view the original input file (saved in self._original_config) instead of the current state. This can be useful for debugging or cloning FitSNAP input settings objects.
             
         """
 
@@ -189,7 +191,14 @@ class Config():
         skip_always = ["name", "allowedkeys", "pt", "infile","mem_bytes","memory"]
         skip_print = skip_always + skip_uq
 
-        # begin print
+        # prepare raw dict outside loop
+        if original_input: 
+            return_orig = True
+        else:
+            return_orig = False
+        state_dict = self.convert_to_dict(original_input=return_orig)
+        
+        # print chosen sections to screen
         self.pt.single_print("----> View of FitSNAP settings")
         for sname in chosen_sections:
             if sname not in all_sections:
@@ -199,8 +208,7 @@ class Config():
             self.pt.single_print(f"    {sname}")
             if original_input:
                 # this preserves the original, raw input as a dictionary (no added sections or altered variables)
-                raw_config_dict = self.convert_config_to_dict(self._original_config)
-                vars_dict = raw_config_dict[sname]
+                vars_dict = state_dict[sname]
             else:
                 vars_dict = vars(self.sections[sname])
             for key, val in vars_dict.items():
@@ -208,22 +216,22 @@ class Config():
                     continue
                 self.pt.single_print("\t{0:20} = {1}".format(key, val))
             self.pt.single_print("")
+        
 
-
-    def convert_config_to_dict(self, original_input = False):
+    def convert_to_dict(self, original_input=False):
         """
-        Convert the current config object to a dictionary. Note that datatypes may not be preserved.
+        Convert the current config (settings) object to a dictionary. Note that datatypes may not be preserved.
 
         Args:
             original_input: optional, set to True to return the original input 
 
         Returns:
-            config_dict: Python dictionary containing the same elements as the configuration.
+            config_dict: Python dictionary containing the same elements as the original or current config (settings) object.
         """
         if original_input:
             config_dict = {s:dict(self._original_config.items(s)) for s in self._original_config.sections()}
         else:
-            config_dict = {s:dict(self.sections.items(s)) for s in self.sections()}
+            config_dict = {s:vars(self.sections[s]) for s in self.sections}
         return config_dict
 
 

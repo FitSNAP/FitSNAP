@@ -89,6 +89,7 @@ class Scraper:
         for key in self.group_table:
             bc_bool = False
             training_size = None
+            # TODO save user's input (fractions) to these variables, and create new variable to track "size" (makes i/o less confusing)
             if 'size' in self.group_table[key]:
                 training_size = self.group_table[key]['size']
                 bc_bool = True
@@ -107,7 +108,20 @@ class Scraper:
                 raise ValueError("Please set training size for {}".format(key))
 
             folder = path.join(self.config.sections["PATH"].datapath, key)
-            folder_files = listdir(folder)
+
+            # ignore anything in folder that is not a file
+            # each scraper type can decide what to do with "bad" filetypes
+            folder_contents = listdir(folder)
+            folder_files = [f for f in folder_contents if path.isfile(f"{folder}/{f}")]
+            folder_files = folder_contents
+
+            # warn user that a non-file was found, but continue anyway
+            if len(folder_contents) > len(folder_files):
+                non_file_objs = [o for o in folder_contents if o not in folder_files]
+                self.pt.single_print(f"! WARNING: non-file object(s) found in group directory {folder}:")
+                self.pt.single_print(f"! WARNING: {non_file_objs}")
+                self.pt.single_print(f"! WARNING: excluding from training, continuing...")
+
             for file_name in folder_files:
                 if folder not in self.files:
                     self.files[folder] = []
@@ -216,7 +230,7 @@ class Scraper:
         self.configs = self.pt.split_within_node(self.configs)
 
     def scrape_configs(self):
-        raise NotImplementedError("Call to virtual Scraper.scrape_configs method")
+        raise NotImplementedError("Call to virtual Scraper.scrape_configs method!")
 
     def _init_units(self):
         if self.config.sections["REFERENCE"].units == "real":
@@ -299,7 +313,8 @@ class Scraper:
         if a_float == 0:
             return int(a_float)
         if a_float / int(a_float) != 1:
-            raise ValueError("Training and Testing Size must be interpretable as integers")
+            # TODO this is bad overwriting of Config variable, once that's changed review this message
+            raise ValueError("Training and testing Size must be interpretable as integers")
         return int(a_float)
 
     def _weighting(self, natoms):

@@ -128,6 +128,9 @@ class Scraper:
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
             if self.config.sections["GROUPS"].random_sampling:
                 shuffle(self.files[folder], random)
+
+            # TODO: potentially rework "training_size" and "testing_size" variables to be consistent with user input
+            # NOTE for future: In FitSNAP input files, training_size and testing_size are floats between 0.0 and 1.0. Below, they get turned into integers. Was fine before, now inconsistent in API mode when accessing these vars from group_table (esp. b/c their group_types are still "float"). Prob best to refactor training_size/testing_size ints from here forward to "ntraining"/"ntesting" or similar.
             nfiles = len(folder_files)
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:

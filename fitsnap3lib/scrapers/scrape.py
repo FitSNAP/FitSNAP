@@ -89,7 +89,8 @@ class Scraper:
         for key in self.group_table:
             bc_bool = False
             training_size = None
-            # TODO save user's input (fractions) to these variables, and create new variable to track "size" (makes i/o less confusing)
+            # TODO save user's input (fractions) to these variables, and create new variable to track "count" (makes i/o less confusing)
+            # see todo and note below for more info
             if 'size' in self.group_table[key]:
                 training_size = self.group_table[key]['size']
                 bc_bool = True
@@ -113,7 +114,6 @@ class Scraper:
             # each scraper type can decide what to do with "bad" filetypes
             folder_contents = listdir(folder)
             folder_files = [f for f in folder_contents if path.isfile(f"{folder}/{f}")]
-            folder_files = folder_contents
 
             # warn user that a non-file was found, but continue anyway
             if len(folder_contents) > len(folder_files):

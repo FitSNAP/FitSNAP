@@ -101,7 +101,7 @@ class LammpsCustom(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"], self._data["File"])
 
         # extract positions
 
@@ -112,7 +112,7 @@ class LammpsCustom(LammpsBase):
 
         lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
         lmp_volume = self._lmp.get_thermo("vol")
-        assert (np.all(np.round(self._data["Positions"],decimals=6)==np.round(lmp_pos,decimals=6)))
+        assert (np.all(np.round(self._data["Positions"],decimals=6)==np.round(lmp_pos,decimals=6))), "Atom positions inconsistent between read-in data and LAMMPS\nGroup and configuration: {} {}".format(self._data["Group"], self._data["File"])
 
         # extract other quantities (no reference forces for this calculator yet!)
 
@@ -235,7 +235,7 @@ class LammpsCustom(LammpsBase):
         energy = self._data["Energy"]
 
         lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"], self._data["File"])
 
         # extract positions
 

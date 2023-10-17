@@ -223,6 +223,7 @@ class Solver:
                     (energies_model, forces_model) = self.evaluate_configs(config_idx=idx, \
                                                                            standardize_bool=False, \
                                                                            dtype=torch.float64)
+                    energies_model = energies_model.squeeze() # # Evaluating single config still returns 1D tensor; squeeze for scalar.
                     e_pred = energies_model.detach().numpy()/c.natoms # Model per-atom energy.
                     # Custom networks need a further index.
                     if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):

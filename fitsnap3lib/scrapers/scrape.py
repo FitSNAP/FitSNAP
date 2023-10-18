@@ -89,6 +89,8 @@ class Scraper:
         for key in self.group_table:
             bc_bool = False
             training_size = None
+            # TODO save user's input (fractions) to these variables, and create new variable to track "count" (makes i/o less confusing)
+            # see todo and note below for more info
             if 'size' in self.group_table[key]:
                 training_size = self.group_table[key]['size']
                 bc_bool = True
@@ -107,13 +109,28 @@ class Scraper:
                 raise ValueError("Please set training size for {}".format(key))
 
             folder = path.join(self.config.sections["PATH"].datapath, key)
-            folder_files = listdir(folder)
+
+            # ignore anything in folder that is not a file
+            # each scraper type can decide what to do with "bad" filetypes
+            folder_contents = listdir(folder)
+            folder_files = [f for f in folder_contents if path.isfile(f"{folder}/{f}")]
+
+            # warn user that a non-file was found, but continue anyway
+            if len(folder_contents) > len(folder_files):
+                non_file_objs = [o for o in folder_contents if o not in folder_files]
+                self.pt.single_print(f"! WARNING: non-file object(s) found in group directory {folder}:")
+                self.pt.single_print(f"! WARNING: {non_file_objs}")
+                self.pt.single_print(f"! WARNING: excluding from training, continuing...")
+
             for file_name in folder_files:
                 if folder not in self.files:
                     self.files[folder] = []
                 self.files[folder].append([folder + '/' + file_name, int(stat(folder + '/' + file_name).st_size)])
             if self.config.sections["GROUPS"].random_sampling:
                 shuffle(self.files[folder], random)
+
+            # TODO: potentially rework "training_size" and "testing_size" variables to be consistent with user input
+            # NOTE for future: In FitSNAP input files, training_size and testing_size are floats between 0.0 and 1.0. Below, they get turned into integers. Was fine before, now inconsistent in API mode when accessing these vars from group_table (esp. b/c their group_types are still "float"). Prob best to refactor training_size/testing_size ints from here forward to "ntraining"/"ntesting" or similar.
             nfiles = len(folder_files)
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:
@@ -216,7 +233,7 @@ class Scraper:
         self.configs = self.pt.split_within_node(self.configs)
 
     def scrape_configs(self):
-        raise NotImplementedError("Call to virtual Scraper.scrape_configs method")
+        raise NotImplementedError("Call to virtual Scraper.scrape_configs method!")
 
     def _init_units(self):
         if self.config.sections["REFERENCE"].units == "real":
@@ -299,7 +316,8 @@ class Scraper:
         if a_float == 0:
             return int(a_float)
         if a_float / int(a_float) != 1:
-            raise ValueError("Training and Testing Size must be interpretable as integers")
+            # TODO this is bad overwriting of Config variable, once that's changed review this message
+            raise ValueError("Training and testing Size must be interpretable as integers")
         return int(a_float)
 
     def _weighting(self, natoms):

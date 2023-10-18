@@ -304,6 +304,15 @@ def _to_mliap_mod(config):
     ps = config.sections["REFERENCE"].lmp_pairdecl[0]
     snap_filename = config.sections["OUTFILE"].potential_name.split("/")[-1]
 
+    # TODO make compatible with 'NETWORK' section as well
+    if "PYTORCH" in config.sections.keys():
+        pt_filename = config.sections["PYTORCH"].output_file.split("/")[-1]
+    else:
+        pt_filename = "FitTorch_Pytorch.pt"
+    
+    if not pt_filename.endswith(".pt"):
+        pt_filename += ".pt"
+
     out = f"# FitSNAP generated Hash: {config.hash}\n"
 
     if "hybrid" in ps:
@@ -314,7 +323,7 @@ def _to_mliap_mod(config):
             del split[zero_indx]
             del split[zero_indx] # delete the zero pair cutoff
             ps = ' '.join(split)
-        out += ps + f" mliap model mliappy FitTorch_Pytorch.pt descriptor sna {snap_filename}.mliap.descriptor\n"
+        out += ps + f" mliap model mliappy {pt_filename} descriptor sna {snap_filename}.mliap.descriptor\n"
         # add pair coeff commands from input, ignore if pair zero
         for pc in config.sections["REFERENCE"].lmp_pairdecl[1:]:
             out += f"{pc}\n" if "zero" not in pc else ""
@@ -323,7 +332,7 @@ def _to_mliap_mod(config):
             pc_snap += f" {t}"
         out += pc_snap
     else:
-        out += f"pair_style mliap model mliappy FitTorch_Pytorch.pt descriptor sna {snap_filename}.mliap.descriptor\n"
+        out += f"pair_style mliap model mliappy {pt_filename}.pt descriptor sna {snap_filename}.mliap.descriptor\n"
         pc_snap = f"pair_coeff * *"
         for t in config.sections["BISPECTRUM"].types:
             pc_snap += f" {t}"

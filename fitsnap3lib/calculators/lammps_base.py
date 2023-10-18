@@ -100,7 +100,7 @@ class LammpsBase(Calculator):
         
     def process_single(self, data, i=0):
         """
-        Calculate descriptors on a single configuration without touching the shraed arrays.
+        Calculate descriptors on a single configuration without touching the shared arrays.
 
         Args:
             data: dictionary of structural and fitting info for a configuration in fitsnap
@@ -174,7 +174,7 @@ class LammpsBase(Calculator):
          (az, bz, cz)) = self._data["Lattice"]
 
         assert all(abs(c) < 1e-10 for c in (ay, az, bz)), \
-            "Cell not normalized for lammps!"
+            "Cell not normalized for lammps!\nGroup and configuration: {} {}".format(self._data["Group"], self._data["File"])
         region_command = \
             f"region pybox prism 0 {ax:20.20g} 0 {by:20.20g} 0 {cz:20.20g} {bx:20.20g} {cx:20.20g} {cy:20.20g}"
         self._lmp.command(region_command)
@@ -194,19 +194,19 @@ class LammpsBase(Calculator):
             shrinkexceed=False
         )
         n_atoms = int(self._lmp.get_natoms())
-        assert number_of_atoms == n_atoms, f"Atom counts don't match when creating atoms: {number_of_atoms}, {n_atoms}"
+        assert number_of_atoms == n_atoms, "Atom counts don't match when creating atoms: {}, {}\nGroup and configuration: {} {}".format(number_of_atoms, n_atoms, self._data["Group"], self._data["File"])
 
     def _create_spins(self):
         for i, (s_mag, s_x, s_y, s_z) in enumerate(self._data["Spins"]):
             self._lmp.command(f"set atom {i + 1} spin {s_mag:20.20g} {s_x:20.20g} {s_y:20.20g} {s_z:20.20g} ")
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, f"Atom counts don't match when assigning spins: {i + 1}, {n_atoms}"
+        assert i + 1 == n_atoms, "Atom counts don't match when assigning spins: {}, {}\nGroup and configuration: {} {}".format(i + 1, n_atoms, self._data["Group"], self._data["File"])
 
     def _create_charge(self):
         for i, q in enumerate(self._data["Charges"]):
             self._lmp.command(f"set atom {i + 1} charge {q[0]:20.20g} ")
         n_atoms = int(self._lmp.get_natoms())
-        assert i + 1 == n_atoms, f"Atom counts don't match when assigning charge: {i + 1}, {n_atoms}"
+        assert i + 1 == n_atoms, "Atom counts don't match when assigning charge: {}, {}\nGroup and configuration: {} {}".format(i + 1, n_atoms, self._data["Group"], self._data["File"])
 
     def _set_variables(self, **lmp_variable_args):
         for k, v in lmp_variable_args.items():

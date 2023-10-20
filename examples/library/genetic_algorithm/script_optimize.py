@@ -34,13 +34,14 @@ def main():
     parser = argparse.ArgumentParser(description='FitSNAP example.')
     parser.add_argument("--fitsnap_in", help="FitSNAP input script.", default="SNAP_Ta.in")
     parser.add_argument("--optimization_style", help="optimization algorithm: 'simulated_annealing' or 'genetic_algorithm' ", default="genetic_algorithm")
+    parser.add_argument("--perform_initial_fit", help="whether to train a model with starting parameters for comparison.", default=False)
     args = parser.parse_args()
 
     fs_input=args.fitsnap_in
     # fs_input="SNAP_Ta.in"
     # fs_input="ACE_Ta.in"
-    optimization_style = "genetic_algorithm"  ##Make equal to args.optimization_style if we re-enable the simulated anneal
-    perform_initial_fit = False
+    optimization_style = args.optimization_style
+    perform_initial_fit = args.perform_initial_fit
 
     #---------------------------------------------------------------------------
     # Genetic algorithm parameters

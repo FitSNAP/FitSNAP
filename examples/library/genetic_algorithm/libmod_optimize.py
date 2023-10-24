@@ -46,6 +46,116 @@ class CostObject:
         self.cost = costi
         return costi
 
+class ElasticPropertiesFromLAMMPS:
+    def __init__(self, lammps_executable_path, lammps_script_filename, truth_values=False, existing_output_path=False):
+        if existing_output_path:
+            with open("existing_output_path") as truth_file:
+                self.lammps_output = truth_file.readlines()
+                self.output = True
+        self.lmp = lammps_executable_path
+        self.script = lammps_script_filename
+        if truth_values:
+            try:
+                self.true_lattice_constant, self.true_C11, self.true_C12, self.true_C44 = truth_values
+                self.truth_known = True
+            except:
+                self.truth_known=False
+                print("Provide 4 floats in a list to truth_values of ElasticPropertiesFromLAMMPS class ordered as lattice_constant, C11, C12, C44!")
+                print("Continuing as if no truth values provided.")
+                
+    def run_lammps(self):
+        ## should replace this with in-python calls to lammps library eventually, probably
+        self.lammps_output = subprocess.run([self.lmp, '-in', self.script], capture_output=True, text=True)
+        self.output=True
+        
+    def read_lammps_output(self):
+        if not self.output:
+            self.run(lammps)
+        for line in lammps_output.stdout.split('\n'):
+            if "Elastic Constant C11all = " in line:
+                C11=float(line.split()[4])
+            elif "Elastic Constant C22all = " in line:
+                C22=float(line.split()[4])
+            elif "Elastic Constant C33all = " in line:
+                C33=float(line.split()[4])
+            elif "Elastic Constant C12all = " in line:
+                C12=float(line.split()[4])
+            elif "Elastic Constant C13all = " in line:
+                C13=float(line.split()[4])
+            elif "Elastic Constant C23all = " in line:
+                C23=float(line.split()[4])
+            elif "Elastic Constant C44all = " in line:
+                C44=float(line.split()[4])
+            elif "Elastic Constant C55all = " in line:
+                C55=float(line.split()[4])
+            elif "Elastic Constant C66all = " in line:
+                C66=float(line.split()[4])
+            elif "Elastic Constant C14all = " in line:
+                C14=float(line.split()[4])
+            elif "Elastic Constant C15all = " in line:
+                C15=float(line.split()[4])
+            elif "Elastic Constant C16all = " in line:
+                C16=float(line.split()[4])
+            elif "Elastic Constant C24all = " in line:
+                C24=float(line.split()[4])
+            elif "Elastic Constant C25all = " in line:
+                C25=float(line.split()[4])
+            elif "Elastic Constant C26all = " in line:
+                C26=float(line.split()[4])
+            elif "Elastic Constant C34all = " in line:
+                C34=float(line.split()[4])
+            elif "Elastic Constant C35all = " in line:
+                C35=float(line.split()[4])
+            elif "Elastic Constant C36all = " in line:
+                C36=float(line.split()[4])
+            elif "Elastic Constant C45all = " in line:
+                C45=float(line.split()[4])
+            elif "Elastic Constant C46all = " in line:
+                C46=float(line.split()[4])
+            elif "Elastic Constant C56all = " in line:
+                C56=float(line.split()[4])
+            elif "x lattice constant = " in line:
+                x_lattice=float(line.split()[4])
+            elif "y lattice constant = " in line:
+                y_lattice=float(line.split()[4])
+            elif "z lattice constant = " in line:
+                z_lattice=float(line.split()[4])
+
+        if any([val>1e-8 for val in [C14,C15,C16,C24,C25,C26,C34,C35,C36,C45,C46,C56]]):
+            print("Warning! large elastic constants that should be zero!")
+        self.C11_ave = (C11+C22+C33)/3.0
+        self.C12_ave = (C12+C13+C23)/3.0
+        self.C44_ave = (C44+C55+C66)/3.0
+        self.lattice_constant = (x_lattice+y_lattice+z_lattice)/3.0
+        if any([abs(val-C11_ave)>1e-6 for val in [C11, C22, C33]]):
+            print("Warning, large discrepancy in C11 values!")
+        if any([abs(val-C12_ave)>1e-6 for val in [C12, C13, C23]]):
+            print("Warning, large discrepancy in C12 values!")
+        if any([abs(val-C44_ave)>1e-6 for val in [C44, C55, C66]]):
+            print("Warning, large discrepancy in C11 values!")
+        if any([abs(val-lattice_constant)>1e-6 for val in [x_lattice, y_lattice, z_lattice]]):
+            print("Warning, large discrepancy in lattice constant values!")
+        self.calculated_values = True
+
+    def output_vals(self):
+        if not self.calculated_values:
+            self.read_lammps_output()
+        return [self.lattice_constant, self.C11_ave, self.C12_ave, self.C44_ave]
+            
+    def output_error(self):
+        if not self.calculated_values:
+            self.read_lammps_output()
+        if not self.truth_known:
+            print("Warning, truth values not known, returning calculated vals instead of errors!!")
+            return output_vals
+        else:
+            ## read in the values for the proxy somewhere at the start and pass them into this function
+            ## get absolute value of error for C11, C12, C44, and lattice and add to function
+            lattice_error = abs(self.lattice_constant-self.true_lattice_constant)
+            C11_error = abs(self.C11_ave-self.true_C11)
+            C12_error = abs(self.C12_ave-self.true_C12)
+            C44_error = abs(self.C44_ave-self.true_C44)
+            return [lattice_error, C11_error, C12_error, C44_error]
 
 class HyperparameterStruct:
     """

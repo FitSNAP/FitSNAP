@@ -9,9 +9,9 @@ lambda = 3.059235105
 type = Ta
 lmin = 1 1 1 1 1 1
 bzeroflag = 0
-RPI_heuristic = root_SO3_span
 bikflag = 1
 dgradflag = 1
+b_basis = minsub
 
 [CALCULATOR]
 calculator = LAMMPSPACE

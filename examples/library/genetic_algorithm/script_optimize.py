@@ -126,7 +126,7 @@ def main():
     lammps_elastic_input_script = "./in.elastic"
     ## this bit reads in an output of a lammps calculation with a different model form as the truth. normally you would just set these values to exp or DFT data.
     elastic_truth_output_filepath = "./truth_output"
-    reader = lm_opt.ElasticPropertiesFromLAMMPS(lmp, lammps_elastic_input_script, truth_values=False, existing_output_path=elastic_truth_output_filepath):
+    reader = lm_opt.ElasticPropertiesFromLAMMPS(lmp, lammps_elastic_input_script, truth_values=False, existing_output_path=elastic_truth_output_filepath)
     elastic_truth_vals = reader.output_vals()  ##this is where you would normally just set the vals. format: [lattice constant, C11, C12, C44]
     del reader
     additional_cost_functions.append(lm_opt.ElasticPropertiesFromLAMMPS(lmp, lammps_elastic_input_script, truth_values=elastic_truth_vals, existing_output_path=False))

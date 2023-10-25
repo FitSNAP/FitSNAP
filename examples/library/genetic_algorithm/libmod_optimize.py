@@ -4,7 +4,7 @@ from copy import deepcopy
 from fitsnap3lib.fitsnap import FitSnap
 from mpi4py import MPI
 from psutil import virtual_memory
-
+import subprocess  ## LOGAN NOTE: this is just for the janky additional cost functions, can be removed once changed to using lammps python library calls 
 
 class CostObject:
     def __init__(self):
@@ -48,10 +48,13 @@ class CostObject:
 
 class ElasticPropertiesFromLAMMPS:
     def __init__(self, lammps_executable_path, lammps_script_filename, truth_values=False, existing_output_path=False):
+        self.calculated_values = False
         if existing_output_path:
-            with open("existing_output_path") as truth_file:
+            with open(existing_output_path) as truth_file:
                 self.lammps_output = truth_file.readlines()
                 self.output = True
+        else:
+            self.output = False
         self.lmp = lammps_executable_path
         self.script = lammps_script_filename
         if truth_values:
@@ -67,13 +70,16 @@ class ElasticPropertiesFromLAMMPS:
         ## should replace this with in-python calls to lammps library eventually, probably
         ## currently this needs written output files of the snap fits (don't try to use in parallel)
         ## make sure the main script is writing the output in the fit and cost before it calls this class
-        self.lammps_output = subprocess.run([self.lmp, '-in', self.script], capture_output=True, text=True)
+        subprocess_output = subprocess.run([self.lmp, '-in', self.script], capture_output=True, text=True)
+        self.lammps_output = subprocess_output.stdout.split('\n')
+        print(self.lammps_output) ## debugging
+        print(subprocess_output.stderr) ##debugging
         self.output=True
         
     def read_lammps_output(self):
         if not self.output:
-            self.run(lammps)
-        for line in lammps_output.stdout.split('\n'):
+            self.run_lammps()
+        for line in self.lammps_output:
             if "Elastic Constant C11all = " in line:
                 C11=float(line.split()[4])
             elif "Elastic Constant C22all = " in line:
@@ -129,13 +135,13 @@ class ElasticPropertiesFromLAMMPS:
         self.C12_ave = (C12+C13+C23)/3.0
         self.C44_ave = (C44+C55+C66)/3.0
         self.lattice_constant = (x_lattice+y_lattice+z_lattice)/3.0
-        if any([abs(val-C11_ave)>1e-6 for val in [C11, C22, C33]]):
+        if any([abs(val-self.C11_ave)>1e-6 for val in [C11, C22, C33]]):
             print("Warning, large discrepancy in C11 values!")
-        if any([abs(val-C12_ave)>1e-6 for val in [C12, C13, C23]]):
+        if any([abs(val-self.C12_ave)>1e-6 for val in [C12, C13, C23]]):
             print("Warning, large discrepancy in C12 values!")
-        if any([abs(val-C44_ave)>1e-6 for val in [C44, C55, C66]]):
+        if any([abs(val-self.C44_ave)>1e-6 for val in [C44, C55, C66]]):
             print("Warning, large discrepancy in C11 values!")
-        if any([abs(val-lattice_constant)>1e-6 for val in [x_lattice, y_lattice, z_lattice]]):
+        if any([abs(val-self.lattice_constant)>1e-6 for val in [x_lattice, y_lattice, z_lattice]]):
             print("Warning, large discrepancy in lattice constant values!")
         self.calculated_values = True
 
@@ -144,7 +150,7 @@ class ElasticPropertiesFromLAMMPS:
             self.read_lammps_output()
         return [self.lattice_constant, self.C11_ave, self.C12_ave, self.C44_ave]
             
-    def output_error(self):
+    def output_errors(self):
         if not self.calculated_values:
             self.read_lammps_output()
         if not self.truth_known:
@@ -1178,7 +1184,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     ##LOGAN NOTE | TODO: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
     if rank == 0:
         best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
-        costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight]\
+        costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight], \
                                  additional_cost_functions=additional_cost_functions, additional_cost_weights=additional_cost_weights)
 
         fs.pt.single_print('\n------------ Final results ------------')

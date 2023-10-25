@@ -467,6 +467,10 @@ def fit_and_cost(fs, fitobjects, costweights, additional_cost_functions=[],addit
     CO.add_contribution(rmse_fattst,ftot_weight)
     CO.add_contribution(rmse_sattst,stot_weight)
 
+    ## LOGAN NOTE: TO BE REMOVED WHEN CODE IS BETTER! (currently needed for the additional cost functions, which read files rather than get passed the fitted model)
+    if len(additional_cost_functions) > 0:
+        fs.write_output()
+    
     # add additional costs from the additional_cost_functions
     for j, cost_function in enumerate(additional_cost_functions):
         additional_costs = cost_function.output_errors()

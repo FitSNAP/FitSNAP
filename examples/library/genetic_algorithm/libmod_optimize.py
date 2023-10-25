@@ -65,6 +65,8 @@ class ElasticPropertiesFromLAMMPS:
                 
     def run_lammps(self):
         ## should replace this with in-python calls to lammps library eventually, probably
+        ## currently this needs written output files of the snap fits (don't try to use in parallel)
+        ## make sure the main script is writing the output in the fit and cost before it calls this class
         self.lammps_output = subprocess.run([self.lmp, '-in', self.script], capture_output=True, text=True)
         self.output=True
         
@@ -427,7 +429,7 @@ def ediff_cost(fs, fit, g1, g2, target, grouptype, rowtype):
 
 # NOTE from James: fit_and_cost will likely need to be modified to print current fit if
 # other objective functions are to be added. 
-def fit_and_cost(fs, fitobjects, costweights):
+def fit_and_cost(fs, fitobjects, costweights, additional_cost_functions=[],additional_cost_weights = []):
     """
     Perform FitSNAP fit and evaluate errors (cost or score).
 
@@ -465,6 +467,12 @@ def fit_and_cost(fs, fitobjects, costweights):
     CO.add_contribution(rmse_fattst,ftot_weight)
     CO.add_contribution(rmse_sattst,stot_weight)
 
+    # add additional costs from the additional_cost_functions
+    for j, cost_function in enumerate(additional_cost_functions):
+        additional_costs = cost_function.output_errors()
+        for k, add_cost in enumerate(additional_costs): ## make sure output_errors is always a list or tuple, even if len 1, or this will break
+            CO.add_contribution(add_cost, additional_cost_weights[j][k])
+    
     # NOTE from James: commented examples on how to use energy differences in the objective function
     # a SINGLE structure is added to two new fitsnap groups, the corresponding energy
     # difference between group 1 and group 2 is given as the target (in eV) (NOT eV/atom)
@@ -796,7 +804,7 @@ def prep_fitsnap_input(fs, smartweights_override=False):
 # begin the primary optimzation functions
 #-----------------------------------------------------------------------
 # @fs.pt.rank_zero
-def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, stot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], stress_delta_keywords=[], write_to_json=False, my_es_ratios=[], use_initial_weights_flag=False, parallel_population=True ):
+def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, stot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], stress_delta_keywords=[], write_to_json=False, my_es_ratios=[], use_initial_weights_flag=False, parallel_population=True, additional_cost_functions=[], additional_cost_weights=[] ):
     """
     Function to perform optimization of FitSNAP group weights.
 
@@ -813,6 +821,8 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         write_to_json: whether to write the final best fit to a new FitSNAP settings dictionary to a JSON file
         use_initial_weights_flag: whether to bias fitting with initial_weights 
         parallel_population: whether to use MPI*/split communicator when ncores > 1
+        additional_cost_functions = classes with an output_error function that are passed to the cost object to add in to your total cost object
+        additional_cost_weights = weights for the above cost functions. Needs to be the same number of weights as the values returned by their output_error function.
 
     Returns:
         (none, prints best group weights to stdout and/or a JSON file)
@@ -1043,7 +1053,8 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
             new_w = update_weights(par_fs, creature_ew, creature_ffac, creature_sfac, gtks, size_b, grouptype,initial_weights=initial_weights)
 
-            costi = fit_and_cost(par_fs, [a, b, new_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
+            costi = fit_and_cost(par_fs, [a, b, new_w, fs_dict], [etot_weight,ftot_weight,stot_weight], \
+                                 additional_cost_functions=additional_cost_functions, additional_cost_weights=additional_cost_weights)
 
             per_rank_scores[i] = costi
 
@@ -1163,7 +1174,8 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     ##LOGAN NOTE | TODO: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
     if rank == 0:
         best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
-        costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
+        costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight]\
+                                 additional_cost_functions=additional_cost_functions, additional_cost_weights=additional_cost_weights)
 
         fs.pt.single_print('\n------------ Final results ------------')
 

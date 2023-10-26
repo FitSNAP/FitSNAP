@@ -43,6 +43,8 @@ def main():
     optimization_style = args.optimization_style
     perform_initial_fit = args.perform_initial_fit
 
+    # verbose flag prints out much more info per tested fit
+    verbose = True
     #---------------------------------------------------------------------------
     # Genetic algorithm parameters
     
@@ -157,7 +159,8 @@ def main():
                                 write_to_json=write_to_json,
                                 use_initial_weights_flag=use_initial_weights,
                                 additional_cost_functions = additional_cost_functions,
-                                additional_cost_weights = additional_cost_weights)
+                                additional_cost_weights = additional_cost_weights,
+                                verbose=verbose)
    
     # TODO implement other SNAP optimizations
     # elif optimization_style == 'simulated_annealing':

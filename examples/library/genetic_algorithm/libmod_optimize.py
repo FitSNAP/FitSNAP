@@ -7,21 +7,27 @@ from psutil import virtual_memory
 import subprocess  ## LOGAN NOTE: this is just for the janky additional cost functions, can be removed once changed to using lammps python library calls 
 
 class CostObject:
-    def __init__(self):
+    def __init__(self, verbose = False):
+        self.verbose = verbose
         self.conts = None
         self.cost = 999999999.9999
         self.unweighted = np.array([])
         self.weights = np.array([])
+        self.names = []
 
-    def cost_contributions(self,cost_conts,weights):
+    def cost_contributions(self,cost_conts,weights, names=[]):
         cost_conts = np.array(cost_conts) 
         weights = np.array(weights)
         wc_conts = weights*cost_conts
         self.unweighted = cost_conts
         self.weights = weights
         self.conts = wc_conts
+        if len(names) == len(self.conts):
+            self.names = names
+        else:
+            self.names = [""]*len(self.conts)
 
-    def add_contribution(self,costi,weighti=1.0):
+    def add_contribution(self,costi,weighti=1.0, name=""):
         try:
             if self.conts == None:
                 cond = True
@@ -36,21 +42,28 @@ class CostObject:
             self.conts = wc_conts
             self.weights = np.append(self.weights, weighti)
             self.unweighted = np.append(self.unweighted, costi)
+            self.names.append(name)
         else:
             self.conts = np.append(self.conts,costi*weighti)
             self.weights = np.append(self.weights,weighti)
             self.unweighted = np.append(self.unweighted,costi)
+            self.names.append(name)
 
     def evaluate_cost(self):
+        if self.verbose:
+            for i in range(len(self.conts)):
+                print("cost term", self.names[i], ": has total value", self.conts[i], "consisting of value", self.unweighted[i], "and weight", self.weights[i])
         costi = np.sum(self.conts)
         self.cost = costi
         return costi
 
 class ElasticPropertiesFromLAMMPS:
     def __init__(self, lammps_executable_path, lammps_script_filename, truth_values=False, existing_output_path=False):
+        self.names = ["abs_error_lattice_parameter", "abs_error_C11", "abs_error_C12", "abs_error_C44"]  ##labels for what this class outputs as a cost function
         self.calculated_values = False
-        if existing_output_path:
-            with open(existing_output_path) as truth_file:
+        self.existing_output_path = existing_output_path
+        if self.existing_output_path:
+            with open(self.existing_output_path) as truth_file:
                 self.lammps_output = truth_file.readlines()
                 self.output = True
         else:
@@ -65,15 +78,24 @@ class ElasticPropertiesFromLAMMPS:
                 self.truth_known=False
                 print("Provide 4 floats in a list to truth_values of ElasticPropertiesFromLAMMPS class ordered as lattice_constant, C11, C12, C44!")
                 print("Continuing as if no truth values provided.")
-                
+
+    def reset(self):
+        self.calculated_values = False
+        if self.existing_output_path:
+            with open(self.existing_output_path) as truth_file:
+                self.lammps_output = truth_file.readlines()
+                self.output = True
+        else:
+            self.output = False
+
     def run_lammps(self):
         ## should replace this with in-python calls to lammps library eventually, probably
         ## currently this needs written output files of the snap fits (don't try to use in parallel)
         ## make sure the main script is writing the output in the fit and cost before it calls this class
         subprocess_output = subprocess.run([self.lmp, '-in', self.script], capture_output=True, text=True)
         self.lammps_output = subprocess_output.stdout.split('\n')
-        print(self.lammps_output) ## debugging
-        print(subprocess_output.stderr) ##debugging
+        #print(self.lammps_output) ## debugging
+        #print(subprocess_output.stderr) ##debugging
         self.output=True
         
     def read_lammps_output(self):
@@ -435,7 +457,7 @@ def ediff_cost(fs, fit, g1, g2, target, grouptype, rowtype):
 
 # NOTE from James: fit_and_cost will likely need to be modified to print current fit if
 # other objective functions are to be added. 
-def fit_and_cost(fs, fitobjects, costweights, additional_cost_functions=[],additional_cost_weights = []):
+def fit_and_cost(fs, fitobjects, costweights, additional_cost_functions=[],additional_cost_weights = [], verbose = False):
     """
     Perform FitSNAP fit and evaluate errors (cost or score).
 
@@ -468,10 +490,10 @@ def fit_and_cost(fs, fitobjects, costweights, additional_cost_functions=[],addit
     rmse_eattst, rmse_fattst, rmse_sattst = rmse_tst[0:3]
 
     # calculate score 
-    CO = CostObject()
-    CO.add_contribution(rmse_eattst,etot_weight)
-    CO.add_contribution(rmse_fattst,ftot_weight)
-    CO.add_contribution(rmse_sattst,stot_weight)
+    CO = CostObject(verbose=verbose)
+    CO.add_contribution(rmse_eattst,etot_weight, name='rmse_E')
+    CO.add_contribution(rmse_fattst,ftot_weight, name='rmse_F')
+    CO.add_contribution(rmse_sattst,stot_weight, name='rmse_S')
 
     ## LOGAN NOTE: TO BE REMOVED WHEN CODE IS BETTER! (currently needed for the additional cost functions, which read files rather than get passed the fitted model)
     if len(additional_cost_functions) > 0:
@@ -480,8 +502,10 @@ def fit_and_cost(fs, fitobjects, costweights, additional_cost_functions=[],addit
     # add additional costs from the additional_cost_functions
     for j, cost_function in enumerate(additional_cost_functions):
         additional_costs = cost_function.output_errors()
+        additional_costs_labels = cost_function.names
         for k, add_cost in enumerate(additional_costs): ## make sure output_errors is always a list or tuple, even if len 1, or this will break
-            CO.add_contribution(add_cost, additional_cost_weights[j][k])
+            CO.add_contribution(add_cost, additional_cost_weights[j][k], name=additional_costs_labels[k])
+        cost_function.reset() ##clear output from this fit, saving settings for next fitted potential to test
     
     # NOTE from James: commented examples on how to use energy differences in the objective function
     # a SINGLE structure is added to two new fitsnap groups, the corresponding energy
@@ -814,7 +838,7 @@ def prep_fitsnap_input(fs, smartweights_override=False):
 # begin the primary optimzation functions
 #-----------------------------------------------------------------------
 # @fs.pt.rank_zero
-def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, stot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], stress_delta_keywords=[], write_to_json=False, my_es_ratios=[], use_initial_weights_flag=False, parallel_population=True, additional_cost_functions=[], additional_cost_weights=[] ):
+def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, stot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], stress_delta_keywords=[], write_to_json=False, my_es_ratios=[], use_initial_weights_flag=False, parallel_population=True, additional_cost_functions=[], additional_cost_weights=[],verbose=False ):
     """
     Function to perform optimization of FitSNAP group weights.
 
@@ -1063,7 +1087,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
             new_w = update_weights(par_fs, creature_ew, creature_ffac, creature_sfac, gtks, size_b, grouptype,initial_weights=initial_weights)
 
-            costi = fit_and_cost(par_fs, [a, b, new_w, fs_dict], [etot_weight,ftot_weight,stot_weight], \
+            costi = fit_and_cost(par_fs, [a, b, new_w, fs_dict], [etot_weight,ftot_weight,stot_weight], verbose=verbose, \
                                  additional_cost_functions=additional_cost_functions, additional_cost_weights=additional_cost_weights)
 
             per_rank_scores[i] = costi
@@ -1184,7 +1208,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     ##LOGAN NOTE | TODO: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
     if rank == 0:
         best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
-        costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight], \
+        costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight], verbose=verbose, \
                                  additional_cost_functions=additional_cost_functions, additional_cost_weights=additional_cost_weights)
 
         fs.pt.single_print('\n------------ Final results ------------')

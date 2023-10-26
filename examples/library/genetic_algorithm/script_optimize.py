@@ -124,7 +124,7 @@ def main():
     additional_cost_weights = []
     
     # optional section for extra cost functions
-    lmp = "/usr/workspace/wsb/logwill/code/mylammps/build_v6_see_list/lmp"
+    lmp = "/usr/workspace/wsb/logwill/code/james_lammps_branch/lammps_compute_PACE/build_v6_see_list/lmp"
     lammps_elastic_input_script = "./in.elastic"
     ## this bit reads in an output of a lammps calculation with a different model form as the truth. normally you would just set these values to exp or DFT data.
     elastic_truth_output_filepath = "./truth_output"

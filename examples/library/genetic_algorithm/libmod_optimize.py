@@ -58,6 +58,7 @@ class CostObject:
         return costi
 
 class ElasticPropertiesFromLAMMPS:
+    ## This is NOT set up to be usable in parallel yet! 
     def __init__(self, lammps_executable_path, lammps_script_filename, truth_values=False, existing_output_path=False):
         self.names = ["abs_error_lattice_parameter", "abs_error_C11", "abs_error_C12", "abs_error_C44"]  ##labels for what this class outputs as a cost function
         self.calculated_values = False

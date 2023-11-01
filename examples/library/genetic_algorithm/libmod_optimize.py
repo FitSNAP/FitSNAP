@@ -333,6 +333,9 @@ def fit_and_cost(fs, fitobjects, costweights):
     etot_weight, ftot_weight, stot_weight = tuple(costweights)
     a, b, w, fs_dict = tuple(fitobjects)
 
+    # check if user is fitting stresses
+    calc_stress = fs.config.sections["CALCULATOR"].stress
+
     #clear old fit and solve test fit
     fs.solver.fit = None
     
@@ -347,15 +350,15 @@ def fit_and_cost(fs, fitobjects, costweights):
     # collect rmse errors for score
     # TODO: eventually refactor for different cost calculation methods, for now keep RMSE
     rmse_tst = errstst.iloc[:,2].to_numpy()
-    rmse_eattst, rmse_fattst, rmse_sattst = rmse_tst[0:3]
+    rmse_eattst, rmse_fattst = rmse_tst[:2]
+    if calc_stress:
+        rmse_sattst = rmse_tst[2]
 
     # calculate score 
     CO = CostObject()
     CO.add_contribution(rmse_eattst,etot_weight)
     CO.add_contribution(rmse_fattst,ftot_weight)
     # CO.add_contribution(rmse_sattst,stot_weight)
-
-    calc_stress = fs.config.sections["CALCULATOR"].stress
     if calc_stress:
         CO.add_contribution(rmse_sattst,stot_weight)
 

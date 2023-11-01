@@ -354,7 +354,7 @@ def fit_and_cost(fs, fitobjects, costweights):
     CO.add_contribution(rmse_eattst,etot_weight)
     CO.add_contribution(rmse_fattst,ftot_weight)
     # CO.add_contribution(rmse_sattst,stot_weight)
-    
+
     calc_stress = fs.config.sections["CALCULATOR"].stress
     if calc_stress:
         CO.add_contribution(rmse_sattst,stot_weight)
@@ -888,6 +888,9 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     fs_dict = fs.pt.fitsnap_dict
     grouptype = fs_dict["Groups"]
     
+    # initiate generation loop with 0th generation of creature-children
+    children = population0
+
     # begin evolution
     while generation <= ngenerations and best_score > conv_thr and not conv_flag:
         # toggle variable used to assign FitSNAP communicator (comm) type based on MPI state
@@ -971,10 +974,10 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         for i in range(population_size):
             if scores[i] < lowest_score_in_gen:
                 lowest_score_in_gen = scores[i]  
-                lowest_weight_in_gen = population0[i]
+                lowest_weight_in_gen = children[i]
                 lowest_creature_idx = i        
             if scores[i] < best_score:
-                best, best_score, best_gen = tuple(population0[i]), scores[i], generation
+                best, best_score, best_gen = tuple(children[i]), scores[i], generation
         
         best_weights.append(best)
         best_gens.append(best_gen)
@@ -1006,7 +1009,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
         # Choose/rank candidates for next generation
         slct = Selector(selection_style = selection_method)
-        selected = [slct.selection(population0, scores) for creature_idx in range(population_size)]
+        selected = [slct.selection(children, scores) for creature_idx in range(population_size)]
         del slct
 
         # new generation

@@ -353,7 +353,11 @@ def fit_and_cost(fs, fitobjects, costweights):
     CO = CostObject()
     CO.add_contribution(rmse_eattst,etot_weight)
     CO.add_contribution(rmse_fattst,ftot_weight)
-    CO.add_contribution(rmse_sattst,stot_weight)
+    # CO.add_contribution(rmse_sattst,stot_weight)
+    
+    calc_stress = fs.config.sections["CALCULATOR"].stress
+    if calc_stress:
+        CO.add_contribution(rmse_sattst,stot_weight)
 
     # NOTE from James: commented examples on how to use energy differences in the objective function
     # a SINGLE structure is added to two new fitsnap groups, the corresponding energy

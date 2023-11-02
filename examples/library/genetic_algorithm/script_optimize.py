@@ -124,7 +124,8 @@ def main():
     additional_cost_weights = []
     
     ##### optional section for extra cost functions
-    if False:
+    if False: #Switch this to true to add lattice constant and elastic constants (BCC crystal structure) to your objective function
+        ## WARNING! This feature will not work properly in parallel runs yet!
         ## This will need to be set to wherever your lammps executable is to run lammps calculations
         lmp = "/usr/workspace/wsb/logwill/code/james_lammps_branch/lammps_compute_PACE/build_v6_see_list/lmp"
         lammps_elastic_input_script = "./in.elastic"

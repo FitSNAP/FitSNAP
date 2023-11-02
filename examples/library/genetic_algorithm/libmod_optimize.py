@@ -498,7 +498,7 @@ def fit_and_cost(fs, fitobjects, costweights, additional_cost_functions=[],addit
     # calculate score 
     CO = CostObject(verbose=verbose)
     CO.add_contribution(rmse_eattst,etot_weight, name='rmse_E')
-    CO.add_contribution(rmse_fattst,ftot_weight, name='rmse_E')
+    CO.add_contribution(rmse_fattst,ftot_weight, name='rmse_F')
     if calc_stress:
         CO.add_contribution(rmse_sattst,stot_weight, name='rmse_S')
 
@@ -627,7 +627,7 @@ def mutation(current_w_combo, current_ef_rat, current_es_rat, my_w_ranges, my_ef
         return test_w_combo,test_ef_rat,test_es_rat
 
 
-def print_final(fs, gtks, ew_frcrat_final, best_gen, best_score, write_to_json=False):
+def print_final(fs, gtks, ew_frcrat_final, best_gen, best_score, initial_weights, write_to_json=False):
     ew_final, frcrat_final, srcrat_final = ew_frcrat_final
 
     calc_stress = fs.config.sections["CALCULATOR"].stress
@@ -643,10 +643,16 @@ def print_final(fs, gtks, ew_frcrat_final, best_gen, best_score, write_to_json=F
     collect_lines = []
     fs.pt.single_print(f'\n---> Best group weights (from generation {best_gen}, score {best_score}):')
     for idi, dat in enumerate(gtks):
-        en_weight = ew_final[idi]
-        frc_weight = ew_final[idi]*frcrat_final[idi]
-        if print_stress:
-            src_weight = ew_final[idi]*srcrat_final[idi]
+        if initial_weights:
+            en_weight = initial_weights[dat][0]*ew_final[idi]  
+            frc_weight = initial_weights[dat][1]*ew_final[idi]*frcrat_final[idi]
+            if print_stress:
+                src_weight = initial_weights[dat][2]*ew_final[idi]*srcrat_final[idi]
+        else:
+            en_weight = ew_final[idi]
+            frc_weight = ew_final[idi]*frcrat_final[idi]
+            if print_stress:
+                src_weight = ew_final[idi]*srcrat_final[idi]
 
         ntrain = loc_gt[dat]['training_size']
         ntest = loc_gt[dat]['testing_size']
@@ -942,6 +948,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
             initial_weights[key] = [fs.config.sections["GROUPS"].group_table[key]['eweight'], fs.config.sections["GROUPS"].group_table[key]['fweight'], \
                                     fs.config.sections["GROUPS"].group_table[key]['vweight']]
 
+
     size_b = np.shape(fs.pt.fitsnap_dict['Row_Type'])[0]
     grouptype = fs.pt.fitsnap_dict['Groups'].copy()
     rowtype = fs.pt.fitsnap_dict['Row_Type'].copy()
@@ -1163,7 +1170,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         
         fs.pt.single_print(f"------------ GENERATION {generation} ------------")
         fs.pt.single_print(f'Lowest score:', lowest_score_in_gen)
-        print_final(fs, gtks, printbest, best_gens[-1], best_scores[-1])
+        print_final(fs, gtks, printbest, best_gens[-1], best_scores[-1], initial_weights)
 
         # Choose/rank candidates for next generation
         slct = Selector(selection_style = selection_method)
@@ -1224,7 +1231,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         fs.pt.single_print('\n------------ Final results ------------')
 
         # Print out final best fit
-        print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), best_gens[-1],best_scores[-1], write_to_json=write_to_json)
+        print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), best_gens[-1],best_scores[-1], initial_weights, write_to_json=write_to_json)
 
         fs.pt.single_print('Writing final output')
         fs.write_output()

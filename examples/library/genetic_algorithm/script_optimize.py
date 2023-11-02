@@ -85,7 +85,7 @@ def main():
     write_to_json = False 
     
     # use_initial_weights reads from current file, default is False
-    ### TODO test this!
+    # If True, these are multiplied by the exploration ranges
     use_initial_weights = False 
     
     # End genetic algorithm parameters

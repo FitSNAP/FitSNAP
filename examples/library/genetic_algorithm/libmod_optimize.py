@@ -252,7 +252,7 @@ class HyperparameterStruct:
         f_factors =  np.random.rand(self.nf) * np.array([np.random.choice(self.ffactors[ihf]) for ihf in range(self.nf)])
         self.fweights = self.eweights * f_factors
         s_factors =  np.random.rand(self.ns) * np.array([np.random.choice(self.sfactors[ihs]) for ihs in range(self.ns)])
-        self.fweights = self.eweights * s_factors
+        self.sweights = self.eweights * s_factors
         return np.concatenate((self.eweights,self.fweights, self.sweights))
 
     def lhs_params(self, num_samples, inputseed=None):

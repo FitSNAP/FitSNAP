@@ -44,7 +44,7 @@ def main():
     perform_initial_fit = args.perform_initial_fit
 
     # verbose flag prints out much more info per tested fit
-    verbose = True
+    verbose = False
     #---------------------------------------------------------------------------
     # Genetic algorithm parameters
     
@@ -123,20 +123,22 @@ def main():
     additional_cost_functions = []
     additional_cost_weights = []
     
-    # optional section for extra cost functions
-    lmp = "/usr/workspace/wsb/logwill/code/james_lammps_branch/lammps_compute_PACE/build_v6_see_list/lmp"
-    lammps_elastic_input_script = "./in.elastic"
-    ## this bit reads in an output of a lammps calculation with a different model form as the truth. normally you would just set these values to exp or DFT data.
-    elastic_truth_output_filepath = "./truth_output"
-    reader = lm_opt.ElasticPropertiesFromLAMMPS(lmp, lammps_elastic_input_script, truth_values=False, existing_output_path=elastic_truth_output_filepath)
-    elastic_truth_vals = reader.output_vals()  ##this is where you would normally just set the vals. format: [lattice constant, C11, C12, C44]
-    del reader
-    additional_cost_functions.append(lm_opt.ElasticPropertiesFromLAMMPS(lmp, lammps_elastic_input_script, truth_values=elastic_truth_vals, existing_output_path=False))
-    lattice_weight = 1.0
-    C11_weight = 1.0
-    C12_weight = 100.0
-    C44_weight = 100.0
-    additional_cost_weights.append([lattice_weight, C11_weight, C12_weight, C44_weight])
+    ##### optional section for extra cost functions
+    if False:
+        ## This will need to be set to wherever your lammps executable is to run lammps calculations
+        lmp = "/usr/workspace/wsb/logwill/code/james_lammps_branch/lammps_compute_PACE/build_v6_see_list/lmp"
+        lammps_elastic_input_script = "./in.elastic"
+        ## this bit reads in an output of a lammps calculation with a different model form as the truth. normally you would just set these values to exp or DFT data.
+        elastic_truth_output_filepath = "./truth_output"
+        reader = lm_opt.ElasticPropertiesFromLAMMPS(lmp, lammps_elastic_input_script, truth_values=False, existing_output_path=elastic_truth_output_filepath)
+        elastic_truth_vals = reader.output_vals()  ##this is where you would normally just set the vals. format: [lattice constant, C11, C12, C44]
+        del reader
+        additional_cost_functions.append(lm_opt.ElasticPropertiesFromLAMMPS(lmp, lammps_elastic_input_script, truth_values=elastic_truth_vals, existing_output_path=False))
+        lattice_weight = 1.0
+        C11_weight = 1.0
+        C12_weight = 100.0
+        C44_weight = 100.0
+        additional_cost_weights.append([lattice_weight, C11_weight, C12_weight, C44_weight])
 
     # perform optimization algorithms 
     snap.pt.single_print("FitSNAP optimization algorithm: ",optimization_style)

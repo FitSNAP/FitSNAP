@@ -172,7 +172,7 @@ info in `PyTorch Models <Pytorch.html>`__
 
 .. _lammpssnap: https://docs.lammps.org/compute_sna_atom.html 
 .. _quadsnappaper: https://aip.scitation.org/doi/full/10.1063/1.5017641 
-.. _chemsnappaper: https://www.sciencedirect.com/science/article/pii/S0021999114008353
+.. _chemsnappaper: https://doi.org/10.1021/acs.jpca.0c02450
 
 [CALCULATOR]
 ^^^^^^^^^^^^

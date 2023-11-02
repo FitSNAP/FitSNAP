@@ -474,6 +474,9 @@ def fit_and_cost(fs, fitobjects, costweights, additional_cost_functions=[],addit
     etot_weight, ftot_weight, stot_weight = tuple(costweights)
     a, b, w, fs_dict = tuple(fitobjects)
 
+    # check if user is fitting stresses
+    calc_stress = fs.config.sections["CALCULATOR"].stress
+
     #clear old fit and solve test fit
     fs.solver.fit = None
     
@@ -488,13 +491,16 @@ def fit_and_cost(fs, fitobjects, costweights, additional_cost_functions=[],addit
     # collect rmse errors for score
     # TODO: eventually refactor for different cost calculation methods, for now keep RMSE
     rmse_tst = errstst.iloc[:,2].to_numpy()
-    rmse_eattst, rmse_fattst, rmse_sattst = rmse_tst[0:3]
+    rmse_eattst, rmse_fattst = rmse_tst[:2]
+    if calc_stress:
+        rmse_sattst = rmse_tst[2]
 
     # calculate score 
     CO = CostObject(verbose=verbose)
     CO.add_contribution(rmse_eattst,etot_weight, name='rmse_E')
-    CO.add_contribution(rmse_fattst,ftot_weight, name='rmse_F')
-    CO.add_contribution(rmse_sattst,stot_weight, name='rmse_S')
+    CO.add_contribution(rmse_fattst,ftot_weight, name='rmse_E')
+    if calc_stress:
+        CO.add_contribution(rmse_sattst,stot_weight, name='rmse_S')
 
     ## LOGAN NOTE: TO BE REMOVED WHEN CODE IS BETTER! (currently needed for the additional cost functions, which read files rather than get passed the fitted model)
     if len(additional_cost_functions) > 0:
@@ -1039,6 +1045,9 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     fs_dict = fs.pt.fitsnap_dict
     grouptype = fs_dict["Groups"]
     
+    # initiate generation loop with 0th generation of creature-children
+    children = population0
+
     # begin evolution
     while generation <= ngenerations and best_score > conv_thr and not conv_flag:
         # toggle variable used to assign FitSNAP communicator (comm) type based on MPI state
@@ -1123,10 +1132,10 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         for i in range(population_size):
             if scores[i] < lowest_score_in_gen:
                 lowest_score_in_gen = scores[i]  
-                lowest_weight_in_gen = population0[i]
+                lowest_weight_in_gen = children[i]
                 lowest_creature_idx = i        
             if scores[i] < best_score:
-                best, best_score, best_gen = tuple(population0[i]), scores[i], generation
+                best, best_score, best_gen = tuple(children[i]), scores[i], generation
         
         best_weights.append(best)
         best_gens.append(best_gen)
@@ -1158,7 +1167,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
         # Choose/rank candidates for next generation
         slct = Selector(selection_style = selection_method)
-        selected = [slct.selection(population0, scores) for creature_idx in range(population_size)]
+        selected = [slct.selection(children, scores) for creature_idx in range(population_size)]
         del slct
 
         # new generation

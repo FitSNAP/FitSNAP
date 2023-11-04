@@ -6,8 +6,10 @@ from fitsnap3lib.io.sections.sections import Section
 
 try:
 
-    from fitsnap3lib.lib.sym_ACE.rpi_lib import *
+    from fitsnap3lib.lib.sym_ACE.pa_gen import *
     from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import  *
+    from fitsnap3lib.lib.sym_ACE.wigner_couple import *
+    from fitsnap3lib.lib.sym_ACE.clebsch_couple import *
 
     class Ace(Section):
 
@@ -16,7 +18,7 @@ try:
             
             allowedkeys = ['numTypes', 'ranks', 'lmax', 'nmax', 'mumax', 'nmaxbase', 'rcutfac', 'lambda', 
                           'type', 'bzeroflag', 'erefs', 'rcinner', 'drcinner', 'RPI_heuristic', 'lmin', 
-                          'bikflag', 'dgradflag']
+                          'bikflag', 'dgradflag','wigner_flag','b_basis','manuallabs']
             for value_name in config['ACE']:
                 if value_name in allowedkeys: continue
                 else:
@@ -26,17 +28,20 @@ try:
             self.lmin = self.get_value("ACE", "lmin", "0").split() 
             self.lmax = self.get_value("ACE", "lmax", "2").split()
             self.nmax = self.get_value("ACE", "nmax", "2").split() 
-            self.mumax = self.get_value("ACE","mumax", "1")
+            #self.mumax = self.get_value("ACE","mumax", "1")
             self.nmaxbase = self.get_value("ACE", "nmaxbase", "16","int")
             self.rcutfac = self.get_value("ACE", "rcutfac", "4.5").split()
             self.lmbda = self.get_value("ACE","lambda",'1.35').split()
             self.rcinner = self.get_value("ACE","rcinner",'0.0').split()
             self.drcinner = self.get_value("ACE","drcinner",'0.01').split()
             self.types = self.get_value("ACE", "type", "H").split()
-            self.erefs = self.get_value("ACE", "erefs", "0.0").split() 
+            self.mumax = len(self.types)
+            #self.erefs = self.get_value("ACE", "erefs", "0.0").split() 
+            self.erefs = [0.0] * len(self.types)
             self.bikflag = self.get_value("ACE", "bikflag", "0", "bool")
             self.dgradflag = self.get_value("ACE", "dgradflag", "0", "bool")
-            self.RPI_heuristic = self.get_value("ACE" , "RPI_heuristic" , 'root_SO3_span')
+            self.b_basis = self.get_value("ACE" , "b_basis" , "pa_tabulated") 
+            self.manuallabs = self.get_value("ACE", "manuallabs", 'None')
             self.type_mapping = {}
             for i, atom_type in enumerate(self.types):
                 self.type_mapping[atom_type] = i+1
@@ -47,8 +52,8 @@ try:
             #if self.bikflag:
             #    self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
             self.lmax_dct = {int(rnk):int(lmx) for rnk,lmx in zip(self.ranks,self.lmax)}
-            if self.RPI_heuristic != 'root_SO3_span':
-                self.pt.single_print('WARNING: do not change RPI flags unless you know what you are doing!')
+            if self.b_basis != 'pa_tabulated':
+                self.pt.single_print('WARNING: Only change ACE basis flags if you know what you are doing!')
             self._generate_b_list()
             self._write_couple()
             Section.num_desc = len(self.blist)
@@ -56,24 +61,37 @@ try:
 
         def _generate_b_list(self):
             self.blist = []
+            self.nus = []
             self.blank2J = []
             prefac = 1.0
             i = 0
 
-            if self.RPI_heuristic == 'lexicographic':
-                ranked_chem_nus = [generate_nl(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax)) for ind,rnk in enumerate(self.ranks)]
-            else:
+            if self.manuallabs != 'None':
+                with open(self.manuallabs,'r') as readjson:
+                    labdata = json.load(readjson)
+                ranked_chem_nus = [list(ik) for ik in list(labdata.values())]
+            elif self.manuallabs == 'None' and self.b_basis == 'minsub':
+                from fitsnap3lib.lib.sym_ACE.rpi_lib import descriptor_labels_YSG
                 if type(self.lmin) == list:
                     if len(self.lmin) == 1:
                         self.lmin = self.lmin * len(self.ranks)
                     ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin[ind]) ) for ind,rnk in enumerate(self.ranks)]
                 else:
                     ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin) ) for ind,rnk in enumerate(self.ranks)]
-
-            highranks = [int(r) for r in self.ranks if int(r) >= 4]
-            warnflag = any([ self.lmax_dct[rank] >= 3 for ind,rank in enumerate(highranks)])
+            elif self.manuallabs == 'None' and self.b_basis == 'pa_tabulated':
+                ranked_chem_nus = []
+                if len(self.lmin) == 1:
+                    self.lmin = self.lmin * len(self.ranks)
+                for ind,rank in enumerate(self.ranks):
+                    rank = int(rank)
+                    PA_lammps, not_compat = pa_labels_raw(rank,int(self.nmax[ind]),int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin[ind]) )
+                    ranked_chem_nus.append(PA_lammps)
+                    if len(not_compat) > 0:
+                        self.pt.single_print('Functions incompatible with lammps for rank %d : '% rank, not_compat)
+            highranks = [int(r) for r in self.ranks if int(r) >= 5]
+            warnflag = any([ self.lmax_dct[rank] >= 5 and self.lmin[ind] > 1 for ind,rank in enumerate(highranks)])
             if warnflag:
-                self.pt.single_print('WARNING: lmax of %d will generate descriptors that cannot be entered into LAMMPS_PACE - try a lower lmax for ranks >= 4' % warnflag[0])
+                self.pt.single_print('WARNING: lmax and lmin for your current max rank will generate descriptors that cannot be entered into LAMMPS_PACE - try a lower lmax for ranks >= 4' % warnflag[0])
             nus_unsort = [item for sublist in ranked_chem_nus for item in sublist]
             nus = nus_unsort.copy()
             mu0s = []
@@ -93,17 +111,18 @@ try:
             nus.sort(key = lambda x : len(x),reverse = False)
             nus.sort(key = lambda x : mu0s[nus_unsort.index(x)],reverse = False)
             byattyp = srt_by_attyp(nus)
-
+            #config.nus = [item for sublist in list(byattyp.values()) for item in sublist]
             for atype in range(self.numtypes):
                 nus = byattyp[str(atype)]
                 for nu in nus:
                     i += 1
                     mu0,mu,n,l,L = get_mu_n_l(nu,return_L=True)
                     if L != None:
-                        flat_nu = [mu0] + mu + n + l + L
+                        flat_nu = [mu0] + mu + n + l + list(L)
                     else:
                         flat_nu = [mu0] + mu + n + l
                     self.blist.append([i] + flat_nu)
+                    self.nus.append(nu)
                     self.blank2J.append([prefac])
             self.ncoeff = int(len(self.blist)/self.numtypes)
             if not self.bzeroflag:
@@ -135,9 +154,34 @@ try:
                 rcvals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcutfac)}
                 rcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcinner)}
                 drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
-                    
 
-            apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.RPI_heuristic)
+            ldict = {int(rank):int(lmax) for rank,lmax in zip(self.ranks,self.lmax)}
+            L_R = 0 
+            M_R = 0
+            rankstrlst = ['%s']*len(self.ranks)
+            rankstr = ''.join(rankstrlst) % tuple(self.ranks)
+            lstrlst = ['%s']*len(self.ranks)
+            lstr = ''.join(lstrlst) % tuple(self.lmax)
+            if not self.wigner_flag:
+                try:
+                    with open('cg_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
+                        ccs = pickle.load(handle)
+                except FileNotFoundError:
+                    ccs = get_cg_coupling(ldict,L_R=L_R)
+                    #print (ccs)
+                    #store them for later so they don't need to be recalculated
+                    store_generalized(ccs, coupling_type='cg',L_R=L_R)
+            else:
+                try:
+                    with open('wig_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
+                        ccs = pickle.load(handle)
+                except FileNotFoundError:
+                    ccs = get_wig_coupling(ldict,L_R)
+                    #print (ccs)
+                    #store them for later so they don't need to be recalculated
+                    store_generalized(ccs, coupling_type='wig',L_R=L_R)
+
+            apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.b_basis, **{'ccs':ccs[M_R]})
             apot.write_pot('coupling_coefficients')
 
 except ModuleNotFoundError:

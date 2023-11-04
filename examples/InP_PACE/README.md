@@ -1,15 +1,11 @@
 ## FitSnap3 Indium Phosphide example with ACE
 
 ## Important Notes
-As with other ACE fits, regularization is highly 
-recommended. For this reason, and for adaptability to
-training data, the Bayesian ARD method is recommended
-specifically. ARD is used in all of these examples.
-To see more examples of ARD, see the Ta example as well as
-the sklearn website: <a>https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ARDRegression.html</a>
-These InP potentials are minimally tested and are here for 
-demonstration purposes. Stress training with ACE models is
-new and may require updates.
+Multi-element ACE fit with reference energies (bzeroflag=1).
+The 'erefs' variable in the ACE section may be used to set 
+the intercept manually in the .yace potential file, but by
+default, the intercept for bzeroflag=1 should be 0.0 for all
+elements.
 
 ### Energy and forces only
 Input file and expected output in 30Mar23_Standard.

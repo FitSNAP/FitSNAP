@@ -1,6 +1,6 @@
 import itertools
 from fitsnap3lib.lib.sym_ACE.wigner_couple import *
-from fitsnap3lib.lib.sym_ACE.rpi_lib import *
+from fitsnap3lib.lib.sym_ACE.pa_gen import *
 from fitsnap3lib.lib.sym_ACE.yamlpace_tools.acecoeff_tools import *
 import json
 
@@ -18,12 +18,18 @@ class AcePot():
             rcutinner=0.0,
             drcutinner=0.01,
             lmin = 1,
-            RPI_heuristic='root_SO3_span',
+            b_basis='pa_tabulated',#'pa_tabulated', 'minsub', 'ysg_x_so3'
+            manuallabs = None,
             **kwargs):
+        self.ccs = None
         if kwargs != None:
             self.__dict__.update(kwargs)
-      
-        self.global_ccs = generate_ccs()
+     
+        if self.ccs == None:
+            self.global_ccs = generate_ccs()
+        else:
+            self.global_ccs = self.ccs
+            self.global_ccs[1] = { '0' : {tuple([]): {'0':1.0} }} 
         self.E0 = reference_ens
         self.ranks =ranks
         self.elements = elements
@@ -38,6 +44,7 @@ class AcePot():
         self.radbasetype = 'ChebExpCos'
         self.global_nmax=nmax
         self.global_lmax=lmax
+        self.b_basis = b_basis
         assert len(nmax) == len(lmax),'nmax and lmax arrays must be same size'
         self.global_nradbase=nradbase
         if type(rcut) != dict and type(rcut) != list:
@@ -52,7 +59,7 @@ class AcePot():
             self.rcutinner = rcutinner
             self.drcutinner = drcutinner
             self.lmin = lmin
-        self.RPI_heuristic = RPI_heuristic
+        self.manuallabs = manuallabs
         self.set_embeddings()
         self.set_bonds()
         self.set_bond_base()
@@ -64,10 +71,21 @@ class AcePot():
             lmin_dict = {rank:lv for rank,lv in zip(self.ranks,self.global_lmin*len(self.ranks))}
         nradmax_dict = {rank:nv for rank,nv in zip(self.ranks,self.global_nmax)}
         mumax_dict={rank:len(self.elements) for rank in self.ranks}
-        if self.RPI_heuristic == 'lexicographic':
-            nulst_1 = [generate_nl(rank,nradmax_dict[rank],lmax_dict[rank],mumax_dict[rank]) for rank in self.ranks]
-        else:
+        if self.manuallabs != None:
+            with open(self.manuallabs,'r') as readjson:
+                labdata = json.load(readjson)
+            nulst_1 = [list(ik) for ik in list(labdata.values())]
+        elif self.manuallabs == None and self.b_basis == 'minsub':
+            from fitsnap3lib.lib.sym_ACE.rpi_lib import descriptor_labels_YSG
             nulst_1 = [descriptor_labels_YSG(rank,nradmax_dict[rank],lmax_dict[rank],mumax_dict[rank],lmin_dict[rank]) for rank in self.ranks]
+        elif self.manuallabs == None and self.b_basis == 'ysg_x_so3':
+            #TODO until all are tabulated
+            nulst_1 = []
+        else:
+            nulst_1 = []
+            for rank in self.ranks:
+                PA_lammps, not_compat = pa_labels_raw(rank,nradmax_dict[rank],lmax_dict[rank],mumax_dict[rank],lmin_dict[rank])
+                nulst_1.append(PA_lammps)
         nus_unsort = [item for sublist in nulst_1 for item in sublist]
         nus = nus_unsort.copy()
         mu0s = []
@@ -187,7 +205,6 @@ class AcePot():
             else:
                 raise AttributeError("No list of descriptors found/specified")
           
-        muflg = True
         permu0 = {b:[] for b in range(len(self.elements))}
         permunu = {b:[] for b in range(len(self.elements))}
         if self.betas != None:
@@ -201,7 +218,7 @@ class AcePot():
         for nu in nulst:
             mu0,mu,n,l,L = get_mu_n_l(nu,return_L=True)
             rank = get_mu_nu_rank(nu)
-
+            bkeys = list(betas[mu0].keys())
             llst = ['%d']*rank
             #print (nu,l,oldfmt,muflg)
             lstr = ','.join(b for b in llst) % tuple(l)

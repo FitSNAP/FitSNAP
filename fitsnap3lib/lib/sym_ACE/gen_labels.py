@@ -1,12 +1,219 @@
 import itertools
 import numpy as np
 import math
-from fitsnap3lib.lib.sym_ACE.sym_ACE_settings import *
+from sympy.combinatorics import Permutation 
 from collections import Counter
 
 # library of useful functions for generating labels
 # (including lexicographical label generation)
 # the bulk of this file is manual construction of l_vectors and intermediates
+
+def filled_perm(tups,rank):
+    allinds = list(range(rank))
+    try:
+        remainders = [ i for i in allinds if i not in flatten(tups)]
+        alltups = tups + tuple([tuple([k]) for k in remainders])
+    except TypeError:
+        remainders = [ i for i in allinds if i not in flatten(flatten(tups))]
+        alltups = tups + tuple([tuple([k]) for k in remainders])
+    return(Permutation(alltups))
+
+def lammps_remap(PA_labels,rank,allowed_mus=[0]):
+    #transforms_all ={ 4: [((0,1),(2,),(3,)), ((0,),(1,),(2,3)), ((0,1),(2,3)), ((0,2),(1,3)),((0,3,1,2)),((0,2,1,3)),((0,3),(1,2))]}
+    transforms_all ={ 4: [((0,1),(2,),(3,)), ((0,),(1,),(2,3)), ((0,1),(2,3)), ((0,2),(1,3)),((3,2,0,1),),((2,3,1,0),),((0,3),(1,2))],
+                      5: [((0,1),(2,),(3,)), ((0,),(1,),(2,3)), ((0,1),(2,3)), ((0,2),(1,3)),((3,2,0,1),),((2,3,1,0),),((0,3),(1,2))] } # correct for left vs right cycles in sympy
+    leaf_to_internal_map = { 4: {
+                                ((0,1),(2,),(3,)) : ((0,),(1,)),
+                                ((0,),(1,),(2,3)) : ((0,),(1,)),
+                                ((0,1),(2,3)) : ((0,),(1,)),
+                                ((0,2),(1,3)) : ((0,1),),
+                                ((3,2,0,1),) : ((0,1),),
+                                ((2,3,1,0),) : ((0,1),),
+                                ((0,3),(1,2)) : ((0,1),),
+                                },
+                            5 : {
+                                ((0,1),(2,),(3,)) : ((0,),(1,)),
+                                ((0,),(1,),(2,3)) : ((0,),(1,)),
+                                ((0,1),(2,3)) : ((0,),(1,)),
+                                ((0,2),(1,3)) : ((0,1),),
+                                ((3,2,0,1),) : ((0,1),),
+                                ((2,3,1,0),) : ((0,1),),
+                                ((0,3),(1,2)) : ((0,1),),
+                                }
+        }
+    transforms = transforms_all[rank]
+    as_perms = [Permutation(p) for p in transforms]
+
+    Lveclst = ['%d']*(rank-2)
+    vecstrlst = ['%d']*rank
+
+    all_nl = {mu0:[] for mu0 in allowed_mus}
+    fs_labs = []
+    not_compatible = []
+    for lab in PA_labels:
+        mu0,mu,n,l,Lraw = get_mu_n_l(lab,return_L=True)
+        nl = (tuple(mu),tuple(n),tuple(l))
+        nl_tup = tuple([(mui,ni,li) for mui,ni,li in zip(mu,n,l)])
+        if nl in all_nl[mu0]:
+            nlperms = [P(nl_tup) for P in as_perms]
+            perm_source = {(tuple([nli[0] for nli in nlp]),tuple([nli[1] for nli in nlp]), tuple([nli[2] for nli in nlp]) ):transform for nlp,transform in zip(nlperms,transforms)}
+            notins = [(tuple([nli[0] for nli in nlp]),tuple([nli[1] for nli in nlp]), tuple([nli[2] for nli in nlp]) ) not in all_nl[mu0] for nlp in nlperms]
+            if not any(notins):
+                print('no other possible labels for LAMMPS',lab)
+            added_count = 0
+            nlpermsitr = iter(nlperms)
+            nlp = next(nlpermsitr)
+            try:
+                while added_count < 1:
+                #for nlp in nlperms:
+                    nlnew = (tuple([nli[0] for nli in nlp]),tuple([nli[1] for nli in nlp]), tuple([nli[2] for nli in nlp]))
+                    if nlnew not in all_nl[mu0]:
+                        permtup = leaf_to_internal_map[rank][perm_source[nlnew]]
+                        perm_L = Permutation(filled_perm(permtup,rank-2))(Lraw)
+                        L = tuple(perm_L)
+                        mustr = ','.join(vecstrlst) % nlnew[0]
+                        nstr = ','.join(vecstrlst) % nlnew[1]
+                        lstr = ','.join(vecstrlst) % nlnew[2]
+                        Lstr = '-'.join(Lveclst) % L
+                        nustr = '%d_%s,%s,%s_%s' % (mu0,mustr,nstr,lstr,Lstr)
+                        all_nl[mu0].append(nlnew)
+                        fs_labs.append(nustr)
+                        added_count += 1
+                    else:
+                        nlp = next(nlpermsitr)
+                        #print ('already used new nl')
+                        #break
+                        #print ('already used nl label for:',lab)
+            except StopIteration:
+                if not any(notins):
+                    not_compatible.append(lab)
+                else:
+                    fs_labs.append(lab)
+                all_nl[mu0].append(nl)
+        else:
+            fs_labs.append(lab)
+            all_nl[mu0].append(nl)
+    #lammps_munl = flatten(list(all_nl.values()))
+    return fs_labs, not_compatible
+
+def from_tabulated(mu,n,l,allowed_mus = [0],tabulated_all=None):
+    rank = len(l)
+    Lveclst = ['%d']*(rank-2)
+    vecstrlst = ['%d']*rank
+    unique_mun, mun_tupped = muvec_nvec_combined(mu,n)
+    all_labels = []
+    for mun_tup in mun_tupped:
+        mappedn,mappedl,mprev_n,mprev = get_mapped(mun_tup,l)
+        this_key = (tuple(mappedn),tuple(l))
+        this_key_str = ','.join(vecstrlst) % mappedn + '_' + ','.join(vecstrlst) % tuple(l)
+        these_labels = tabulated_all['labels'][this_key_str]
+        mapped_labels = []
+        #print (mappedn,this_key_str)
+        for label in these_labels:
+            radstr,lstr,Lstr = label.split('_')
+            radvec = tuple([int(v) for v in radstr.split(',')])
+            lvec = tuple([int(v) for v in lstr.split(',')])
+            Lvec = tuple([int(v) for v in Lstr.split(',')])
+            Lstr_std = '-'.join(Lveclst) % Lvec
+            remapped_radvec = [mprev_n[rdv] for rdv in radvec]
+            mulab = [ rdv[1] for rdv in remapped_radvec ]
+            nlab = [ rdv[0] for rdv in remapped_radvec ]
+            mulab = tuple(mulab)
+            nlab = tuple(nlab)
+            nu =  ','.join(vecstrlst) % mulab + ',' + ','.join(vecstrlst) % nlab + ',' + ','.join(vecstrlst) % lvec + '_' + Lstr_std
+            #print (nu)
+            mapped_labels.append(nu)
+        all_labels.extend(mapped_labels)
+
+    chem_labels = []
+    for mu0 in allowed_mus:
+        mu0_prefix = '%d_' % mu0
+        for label in all_labels:
+            chemlabel = mu0_prefix + label
+            chem_labels.append(chemlabel)
+
+    return chem_labels
+
+def muvec_nvec_combined(mu,n):
+    mu = sorted(mu)
+    #n = sorted(n)
+    umus = sorted(list(set(itertools.permutations(mu))))
+    uns = sorted(list(set(itertools.permutations(n))))
+    combos = [cmb for cmb in itertools.product(umus,uns)]
+    tupped = [ tuple([(ni,mui) for mui,ni in zip(*cmb)]) for cmb in combos]
+    tupped = [ tuple(sorted([(ni,mui) for mui,ni in zip(*cmb)])) for cmb in combos]
+    tupped = list(set(tupped))
+    uniques = []
+    for tupi in tupped:
+        nil = []
+        muil = []
+        for tupii in tupi:
+            muil.append(tupii[1])
+            nil.append(tupii[0])
+        uniques.append(tuple([tuple(muil),tuple(nil)]))
+    return uniques,tupped
+
+def get_mapped_subset(ns):
+    mapped_ns = []
+    mapped_n_per_n = {}
+    n_per_mapped_n = {}
+    for n in ns:
+        n = list(n)
+        unique_ns =  list(set(n))
+        tmpn = n.copy()
+        tmpn.sort(key=Counter(n).get,reverse=True)
+        unique_ns.sort()
+        unique_ns.sort(key=Counter(n).get,reverse=True)
+        count_unique_ns =[n.count(u) for u in unique_ns]
+        mp_n = {unique_ns[i]:i for i in range(len(unique_ns))}
+        mprev_n = {i:unique_ns[i] for i in range(len(unique_ns))}
+        mappedn = [mp_n[t] for t in tmpn]
+        mappedn = tuple(mappedn)
+        mapped_n_per_n[tuple(n)] = mappedn
+        try:
+            n_per_mapped_n[mappedn].append(n)
+        except KeyError:
+            n_per_mapped_n[mappedn] = []
+            n_per_mapped_n[mappedn].append(n)
+    reduced_ns = []
+    for mappedn in sorted(n_per_mapped_n.keys()):
+        reduced_ns.append(tuple(n_per_mapped_n[mappedn][0]))
+    return reduced_ns
+
+#def muvec_nvec_combined(mu,n):
+#    mu = sorted(mu)
+#    n = sorted(n)
+#    umus = sorted(list(set(itertools.permutations(mu))))
+#    uns = sorted(list(set(itertools.permutations(n))))
+#    combos = [cmb for cmb in itertools.product(umus,uns)]
+#    tupped = [ tuple([(mui,ni) for mui,ni in zip(*cmb)]) for cmb in combos]
+#    tupped = list(set(tupped))
+#    return tupped
+
+def get_mapped(nin,lin):
+    N = len(lin)
+    uniques = list(set(lin))
+    tmp = list(lin).copy()
+    tmp.sort(key=Counter(lin).get,reverse=True)
+    uniques.sort()
+    uniques.sort(key=Counter(tmp).get,reverse=True)
+    count_uniques =[lin.count(u) for u in uniques]
+    mp = {uniques[i]:i for i in range(len(uniques))}
+    mprev = {i:uniques[i] for i in range(len(uniques))}
+    mappedl = [mp[t] for t in tmp]
+
+    unique_ns =  list(set(nin))
+    tmpn = list(nin).copy()
+    tmpn.sort(key=Counter(nin).get,reverse=True)
+    unique_ns.sort()
+    unique_ns.sort(key=Counter(nin).get,reverse=True)
+    count_unique_ns =[nin.count(u) for u in unique_ns]
+    mp_n = {unique_ns[i]:i for i in range(len(unique_ns))}
+    mprev_n = {i:unique_ns[i] for i in range(len(unique_ns))}
+    mappedn = [mp_n[t] for t in tmpn]
+    mappedn = tuple(mappedn)
+    mappedl = tuple(mappedl)
+    return mappedn,mappedl,mprev_n,mprev
 
 def group_vec_by_orbits(vec,part):
     ind_range = np.sum(part)
@@ -41,53 +248,6 @@ def flatten(lstoflsts):
     except TypeError:
         return lstoflsts
 
-def sort_pair(l):
-    uniques = sorted(list(set(l)))
-    per_unique = {u:[] for u in uniques}
-    for li in l:
-        per_unique[li].append(li)
-    unsorted_tups = []
-    for lu in uniques:
-        countu = l.count(lu)
-        if countu %2 ==0:
-            nd = int(countu/2)
-            resid = 0
-        elif countu %2 !=0:
-            nd = math.floor(countu/2)
-            resid = 1
-        pairls = [tuple([lu]*2)]*nd
-        residls = [tuple([lu])]*resid
-        unsorted_tups.append(pairls)
-        unsorted_tups.append(residls)
-    tups = sorted(flatten(unsorted_tups))
-    tups.sort(key = lambda x : len(x),reverse = True)
-    resorted = flatten(tups)
-    return resorted
-
-def srt_by_attyp(nulst):
-    mu0s = []
-    for nu in nulst:
-        mu0 = nu.split('_')[0]
-        if mu0 not in mu0s:
-            mu0s.append(mu0)
-    mu0s = sorted(mu0s)
-    byattyp = {mu0:[] for mu0 in mu0s}
-    for nu in nulst:
-        mu0 = nu.split('_')[0]
-        byattyp[mu0].append(nu)
-    return byattyp
-
-def get_mu_nu_rank(nu_in):
-    if len(nu_in.split('_')) > 1:
-        assert len(nu_in.split('_')) <= 3, "make sure your descriptor label is in proper format: mu0_mu1,mu2,mu3,n1,n2,n3,l1,l2,l3_L1" 
-        nu = nu_in.split('_')[1]
-        nu_splt = nu.split(',')
-        return int(len(nu_splt)/3)
-    else:
-        nu = nu_in
-        nu_splt = nu.split(',')
-        return int(len(nu_splt)/2)
-
 def get_mu_n_l(nu_in, return_L = False, **kwargs):
     rank = get_mu_nu_rank(nu_in)
     if len(nu_in.split('_')) > 1:
@@ -103,7 +263,7 @@ def get_mu_n_l(nu_in, return_L = False, **kwargs):
         n = nusplt[rank:2*rank]
         l = nusplt[2*rank:]
         if len(Lstr) >= 1:
-            L = [int(k) for k in Lstr.split('-')]
+            L = tuple([int(k) for k in Lstr.split('-')])
         else:
             L = None
         if return_L:
@@ -120,26 +280,58 @@ def get_mu_n_l(nu_in, return_L = False, **kwargs):
         l = nusplt[rank:2*rank]
         return mu0,mu,n,l
 
-def ind_vec(lrng , size):
-    uniques = []
-    combs = itertools.combinations_with_replacement(lrng,size)
-    for comb in combs:
-        perms = itertools.permutations(comb)
-        for p in perms:
-            pstr = ','.join(str(k) for k in p)
-            if pstr not in uniques:
-                uniques.append(pstr)
-    return uniques
+def get_mu_nu_rank(nu_in):
+    if len(nu_in.split('_')) > 1:
+        assert len(nu_in.split('_')) <= 3, "make sure your descriptor label is in proper format: mu0_mu1,mu2,mu3,n1,n2,n3,l1,l2,l3_L1"
+        nu = nu_in.split('_')[1]
+        nu_splt = nu.split(',')
+        return int(len(nu_splt)/3)
+    else:
+        nu = nu_in
+        nu_splt = nu.split(',')
+        return int(len(nu_splt)/2)
 
-def get_nu_rank(nu):
-    nu_splt = [int(k) for k in nu.split(',')]
-    if len(nu_splt) == 3:
-        if nu_splt[1] == 0 and nu_splt[2] == 0:
-            return 1
-        elif nu_splt[1] != 0 or nu_splt[2] != 0:
-            return 2
-    elif len(nu_splt) > 3:
-        return int(len(nu_splt) / 2)
+def sort_pair(l):
+    uniques = sorted(list(set(l))) 
+    ltmp = l.copy()
+    ltmp.sort(key = lambda x : ltmp.count(x),reverse = True)
+    uniques.sort(key = lambda x : ltmp.index(x), reverse=False)
+    unique_inds = [i for i in range(len(uniques))]
+    mp = {u:ind for ind,u in enumerate(uniques)}
+    revmp = {ind:u for ind,u in enumerate(uniques)}
+    per_unique = {u:[] for u in unique_inds}
+    mapped_l = [mp[li] for li in l]
+    for li in mapped_l:
+        per_unique[li].append(li)
+    unsorted_tups = []
+    for lui in unique_inds:
+        countu = mapped_l.count(lui)
+        if countu %2 ==0:
+            nd = int(countu/2)
+            resid = 0
+        elif countu %2 !=0:
+            nd = math.floor(countu/2)
+            resid = 1
+        pairls = [tuple([lui]*2)]*nd
+        residls = [tuple([lui])]*resid
+        unsorted_tups.append(pairls)
+        unsorted_tups.append(residls)
+    tups = sorted(flatten(unsorted_tups))
+    tups.sort(key = lambda x : len(x),reverse = True)
+    resorted = flatten(tups)
+    resorted_return = [revmp[k] for k in resorted]
+    return resorted_return
+
+def ind_vec(lrng , size):
+     uniques = []
+     combs = itertools.combinations_with_replacement(lrng,size)
+     for comb in combs:
+         perms = itertools.permutations(comb)
+         for p in perms:
+             pstr = ','.join(str(k) for k in p)
+             if pstr not in uniques:
+                 uniques.append(pstr)
+     return uniques
 
 def check_triangle(l1,l2,l3):
     #checks triangle condition between |l1+l2| and l3
@@ -189,14 +381,15 @@ def tree(l):
     return tuple(tup),remainder
 
 
+#groups a vector of l quantum numbers pairwise
 def vec_nodes(vec,nodes,remainder=None):
     vec_by_tups = [tuple([vec[node[0]],vec[node[1]]]) for node in nodes]
     if remainder != None:
         vec_by_tups = vec_by_tups 
     return vec_by_tups
 
+#assuming a pairwise coupling structure, build the "intermediate" angular momenta
 def tree_l_inters(l,L_R=0,M_R=0):
-    # this function calculates the intermediates for l vectors of certain lengths
     nodes,remainder = tree(l)
     rank = len(l)
     if rank >=3:
@@ -276,13 +469,14 @@ def tree_l_inters(l,L_R=0,M_R=0):
 
     return full_inter_tuples
 
-def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0):
+def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0, use_permutations=True):
 
-
-    if M_R==0:
-        even_flag = True
-    elif M_R !=0:
-        even_flag = False
+    if L_R % 2 ==0:
+        # symmetric w.r.t. inversion
+        inv_parity = True
+    if L_R % 2 != 0:
+        # odd spherical harmonics are antisymmetric w.r.t. inversion
+        inv_parity = False
     lmax = max(lrng)
     ls = []
 
@@ -293,10 +487,19 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0):
         ls.append('%d' % L_R)
 
     elif rank >1:
-        all_ls = [b for b in itertools.product(lrng , repeat = rank)]
+        all_l_perms = [b for b in itertools.product(lrng , repeat = rank)]
+        if use_permutations:
+            all_ls = all_l_perms.copy()
+        elif not use_permutations:
+            # eliminate redundant couplings by only considering lexicographically ordered l_i
+            all_ls = [ ltup for ltup in all_l_perms if ltup == tuple(sorted(ltup)) ]
         if rank == 2:
             for ltup in all_ls:
-                flag = check_triangle(ltup[0] , ltup[1] , L_R) and np.sum(ltup + (L_R , )) % 2 ==0
+                if inv_parity:
+                    parity_flag = np.sum(ltup + (L_R , )) % 2 == 0
+                elif not inv_parity:
+                    parity_flag = np.sum(ltup + (L_R , )) % 2 != 0
+                flag = check_triangle(ltup[0] , ltup[1] , L_R) and parity_flag
                 if flag:
                     ls.append(lstr % ltup)
         elif rank == 3:
@@ -307,9 +510,11 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0):
                 for inters_i in inters:
                     li_flags = [check_triangle(node[0] , node[1] , inter) for node,inter in zip(by_node,inters_i)]
                     inter_flags = [check_triangle(inters_i[0] , ltup[remainder] , L_R)]
-                    parity_leaf_flag = np.sum([inters_i[0] , ltup[remainder] , L_R]) % 2 ==0
                     flags = li_flags + inter_flags
-                    parity_all = np.sum(ltup) % 2 ==0
+                    if inv_parity:
+                        parity_all = np.sum(ltup) % 2 == 0
+                    elif not inv_parity:
+                        parity_all = np.sum(ltup) % 2 != 0
                     if all (flags) and parity_all:
                         lsub = lstr % ltup
                         if lsub not in ls:
@@ -323,7 +528,10 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0):
                     li_flags = [check_triangle(node[0] , node[1] , inter) for node , inter in zip(by_node , inters_i)]
                     inter_flags = [check_triangle(inters_i[0] , inters_i[1] , L_R)]
                     flags = li_flags + inter_flags
-                    parity_all = np.sum(ltup) % 2 ==0
+                    if inv_parity:
+                        parity_all = np.sum(ltup) % 2 == 0
+                    elif not inv_parity:
+                        parity_all = np.sum(ltup) % 2 != 0
                     if all (flags) and parity_all:
                         lsub = lstr % ltup
                         if lsub not in ls:
@@ -338,7 +546,11 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0):
                     li_flags = [check_triangle(node[0] , node[1] , inter) for node , inter in zip(by_node,inters_i)]
                     inter_flags = [check_triangle(inters_i[0] , inters_i[1] , inters_i[2]) , check_triangle(inters_i[2],ltup[remainder], L_R ) ]
                     flags = li_flags + inter_flags
-                    if all (flags) and np.sum(ltup) % 2 == 0:
+                    if inv_parity:
+                        parity_all = np.sum(ltup) % 2 == 0
+                    elif not inv_parity:
+                        parity_all = np.sum(ltup) % 2 != 0
+                    if all (flags) and parity_all:
                         lsub = lstr % ltup
                         if lsub not in ls:
                             ls.append(lsub)
@@ -352,7 +564,11 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0):
                     li_flags = [check_triangle(node[0],node[1],inter) for node,inter in zip(by_node,inters_i)]
                     inter_flags = [check_triangle(inters_i[0],inters_i[1],inters_i[3]), check_triangle(inters_i[2],inters_i[3], L_R ) ]
                     flags = li_flags + inter_flags
-                    if all (flags) and np.sum(ltup) % 2 ==0:
+                    if inv_parity:
+                        parity_all = np.sum(ltup) % 2 == 0
+                    elif not inv_parity:
+                        parity_all = np.sum(ltup) % 2 != 0
+                    if all (flags) and parity_all:
                         lsub = lstr % ltup
                         if lsub not in ls:
                             ls.append(lsub)
@@ -366,7 +582,11 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0):
                     li_flags = [check_triangle(node[0],node[1],inter) for node,inter in zip(by_node,inters_i)]
                     inter_flags = [check_triangle(inters_i[0],inters_i[1],inters_i[3]), check_triangle(inters_i[2],ltup[remainder], inters_i[4] ), check_triangle(inters[3],inters[4],L_R) ]
                     flags = li_flags + inter_flags
-                    if all (flags) and np.sum(ltup) % 2 ==0:
+                    if inv_parity:
+                        parity_all = np.sum(ltup) % 2 == 0
+                    elif not inv_parity:
+                        parity_all = np.sum(ltup) % 2 != 0
+                    if all (flags) and parity_all:
                         lsub = lstr % ltup
                         if lsub not in ls:
                             ls.append(lsub)
@@ -380,34 +600,23 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0):
                     li_flags = [check_triangle(node[0],node[1],inter) for node,inter in zip(by_node,inters_i)]
                     inter_flags = [check_triangle(inters_i[0],inters_i[1],inters_i[4]), check_triangle(inters_i[2], inters_i[3], inters_i[5] ), check_triangle(inters[4],inters[5],L_R) ]
                     flags = li_flags + inter_flags
-                    if all (flags) and np.sum(ltup) % 2 ==0:
+                    if inv_parity:
+                        parity_all = np.sum(ltup) % 2 == 0
+                    elif not inv_parity:
+                        parity_all = np.sum(ltup) % 2 != 0
+                    if all (flags) and parity_all:
                         lsub = lstr % ltup
                         if lsub not in ls:
                             ls.append(lsub)
                             
     return ls
 
-        
-def Reverse(lst):
-    lst.reverse()
-    return lst
-
-def collect_by_l(nls):
-    per_ltup = {}
-    for nl in nls:
-        mu0,mu,n,l = get_mu_n_l(nl)
-        try:
-            per_ltup[tuple([tuple(sorted(n)),tuple(sorted(l))])].append(nl)
-        except KeyError:
-            per_ltup[tuple([tuple(sorted(n)),tuple(sorted(l))])] = [nl]
-    return flatten( list(per_ltup.values())), per_ltup
-
 def generate_nl(rank,nmax,lmax,mumax=1,lmin=0,L_R=0,M_R=0,all_perms=False):
     # rank: int  - basis function rank to evaluate nl combinations for
     # nmax: int  - maximum value of the n quantum numbers in the nl vectors
     # lmax: int  - maximum value of the l quantum numbers in the nl vectors
     # mumax: int  - maximum value of the chemical variable in the munl vectors (default is none for single component system)
-    # RETURN: list of munl vectors in string format mu0_mu1,mu2,...muk,n1,n2,..n_k,l1,l2,..l_k_L1-L2...-LK 
+    # RETURN: list of munl vectors in string format mu0_mu1,mu2,...muk,n1,n2,..n_k,l1,l2,..l_k_L1-L2...-LK
     # NOTE: All valid intermediates L are generated
 
     munl=[]
@@ -421,14 +630,14 @@ def generate_nl(rank,nmax,lmax,mumax=1,lmin=0,L_R=0,M_R=0,all_perms=False):
     ls = generate_l_LR(lrng,rank,L_R)
 
     linters_per_l = {l: tree_l_inters([int(b) for b in l.split(',')] , L_R = 0) for l in ls }
-    
+
 
     munllst = ['%d']*int(rank*3)
     munlstr = ','.join(b for b in munllst)
     for mu0 in murng:
         for cmbo in itertools.product(mus,ns,ls):
             mu,n,l = cmbo
-                
+
             linters = linters_per_l[l]
             musplt = [int(k) for k in mu.split(',')]
             nsplt = [int(k) for k in n.split(',')]
@@ -450,46 +659,16 @@ def generate_nl(rank,nmax,lmax,mumax=1,lmin=0,L_R=0,M_R=0,all_perms=False):
     munl = list(set(munl))
     return munl
 
-def generate_nl_noL(rank,nmax,lmax,mumax=1,L_R=0,M_R=0):
-    # rank: int  - basis function rank to evaluate nl combinations for
-    # nmax: int  - maximum value of the n quantum numbers in the nl vectors
-    # lmax: int  - maximum value of the l quantum numbers in the nl vectors
-    # mumax: int  - maximum value of the chemical variable in the munl vectors (default is none for single component system)
-    # RETURN: list of munl vectors in string format mu0_mu1,mu2,...muk,n1,n2,..n_k,l1,l2,..l_k
-    # NOTE: Intermediates L are not generated
+def srt_by_attyp(nulst):
+    mu0s = []
+    for nu in nulst:
+        mu0 = nu.split('_')[0]
+        if mu0 not in mu0s:
+            mu0s.append(mu0)
+    mu0s = sorted(mu0s)
+    byattyp = {mu0:[] for mu0 in mu0s}
+    for nu in nulst:
+        mu0 = nu.split('_')[0]
+        byattyp[mu0].append(nu)
+    return byattyp
 
-    munl=[]
-
-    murng = range(mumax)
-    nrng = range(1,nmax+1)
-    lrng = range(lmax+1)
-
-    mus = ind_vec(murng,rank)
-    ns = ind_vec(nrng,rank)
-    lsi = generate_l_LR(lrng,rank,L_R)
-    ls = []
-    for lstr in lsi:
-        li=[int(b) for b in lstr.split(',')]
-        li=sorted(li)
-        ls.append(li)
-    ls = sorted(list(set(ls)))
-    linters_per_l = {l: tree_l_inters(l , L_R = 0) for l in ls }
-    
-
-    munllst = ['%d']*int(rank*3)
-    munlstr = ','.join(b for b in munllst)
-    for mu0 in murng:
-        for cmbo in itertools.product(mus,ns,ls):
-            mu,n,l = cmbo
-                
-            linters = linters_per_l[l]
-            musplt = [int(k) for k in mu.split(',')]
-            nsplt = [int(k) for k in n.split(',')]
-            lsplt = [int(k) for k in l.split(',')]
-            x = [(musplt[i],lsplt[i],nsplt[i]) for i in range(rank)]
-            srt = sorted(x)
-            if x == srt:
-                stmp = '%d_' % mu0 +  munlstr  % tuple( musplt+nsplt+lsplt)
-                if stmp not in munl:
-                    munl.append(stmp)
-    return munl

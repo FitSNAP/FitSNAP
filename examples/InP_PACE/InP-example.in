@@ -9,9 +9,10 @@ lmax =  1 2 2 1
 nmax =  22 3 2 1
 mumax = 2
 lmin = 0 0 1 1
+erefs = 0 0
 nmaxbase = 22
 type = In P
-bzeroflag = 0
+bzeroflag = 1
 
 [CALCULATOR]
 calculator = LAMMPSPACE
@@ -24,14 +25,12 @@ In = -1.65967588701534
 P = 4.38159549501534
 
 [SOLVER]
-solver = ARD
+solver = RIDGE
 compute_testerrs = 1
 detailed_errors = 1
 
-[ARD]
-scap = 1.E-3
-scai = 1.E-3
-logcut = 0.3
+[RIDGE]
+alpha=1.E-5
 
 [SCRAPER]
 scraper = JSON

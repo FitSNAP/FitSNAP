@@ -99,7 +99,7 @@ def permutation_adapted_lL(l,semistandardflag=True):
         L_lp = tree_l_inters(vsl)
         nodes,remainder = tree(vsl)
         lnodes_lp = group_vec_by_node(vsl,nodes,remainder)
-        L_lp_filtered = parity_filter(lnodes_lp,L_lp)
+        L_lp_filtered = old_parity_filter(lnodes_lp,L_lp)
         L_per_varsigma[ vsl]=L_lp_filtered
 
     reps_per_varsigma = {}

@@ -1,13 +1,15 @@
 from scipy import special
+from fitsnap3lib.lib.sym_ACE.sym_ACE_settings import *
 import pickle
 import numpy as np
-from fitsnap3lib.lib.sym_ACE.sym_ACE_settings import *
+import os
 
+
+#lib_path = os.getcwd()
 
 def Clebsch_gordan(j1,m1,j2,m2,j3,m3):
     # Clebsch-gordan coefficient calculator based on eqs. 4-5 of:
     # https://hal.inria.fr/hal-01851097/document
-    # and christoph ortner's julia code ACE.jl
 
     #VERIFIED: test non-zero indices in Wolfram using format ClebschGordan[{j1,m1},{j2,m2},{j3,m3}]
     #rules:
@@ -54,17 +56,17 @@ def Clebsch_gordan(j1,m1,j2,m2,j3,m3):
             G += np.longdouble(G1*G2*G3*G4)
         Nsqrt = np.longdouble(0)
         Nsqrt += np.sqrt(N)
-        return np.float32(Nsqrt*G)
+        return float(Nsqrt*G)
 
     else:
         return 0.
 
 def clebsch_gordan(l1,m1,l2,m2,l3,m3):
     # try to load c library for calculating cg coefficients
-    if cglib:
-        return lib.Clebsch_Gordan(l1,m1,l2,m2,l3,m3)
-    else:
-        return Clebsch_gordan(l1,m1,l2,m2,l3,m3)
+    #if cglib:
+    #    return Clebsch_Gordan(l1,m1,l2,m2,l3,m3)
+    #else:
+    return Clebsch_gordan(l1,m1,l2,m2,l3,m3)
 
 def wigner_3j(j1,m1,j2,m2,j3,m3):
     # uses relation between Clebsch-Gordann coefficients and W-3j symbols to evaluate W-3j
@@ -74,7 +76,7 @@ def wigner_3j(j1,m1,j2,m2,j3,m3):
     num = np.longdouble((-1)**(j1-j2-m3))
     denom = np.longdouble(((2*j3) +1)**(1/2))
 
-    return np.float32(cg*np.longdouble(num/denom))
+    return cg* float(num/denom)
 
 
 def init_clebsch_gordan(lmax):
@@ -104,26 +106,45 @@ def init_wigner_3j(lmax):
                             cg[key] = wigner_3j(l1,m1,l2,m2,l3,m3)
     return cg
 
+def store_generalized(coupling_dct,coupling_type,L_R):
+    M_Rs = list(coupling_dct.keys())
+    ranks = tuple(list(coupling_dct[M_Rs[0]].keys()))
+    lmax_per_rank = []
+    for rank in ranks:
+        max_l = 0
+        for lstr in coupling_dct[M_Rs[0]][rank]:
+            listr = lstr.split('_')[0]
+            lis = [int(k) for k in listr.split(',')]
+            maxli = max(lis)
+            if maxli > max_l:
+                max_l = maxli
+        lmax_per_rank.append(max_l)
+    lmax_per_rank = tuple(lmax_per_rank)
+    ranks_str_lst = ['%d'] *  len(ranks)
+    lmax_str_lst = ['%d'] *  len(ranks)
+    ranks_str = ''.join(b for b in ranks_str_lst) % tuple(ranks)
+    lmax_str = ''.join(b for b in lmax_str_lst) % tuple(lmax_per_rank)
+    #coupling_type = 'cg' or 'wig'
+    file_name = '%s_LR_%d_r%s_lmax%s.pickle' % (coupling_type,L_R,ranks_str,lmax_str)
+    with open(file_name, 'wb') as handle:
+        pickle.dump(coupling_dct, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-def get_w3j_and_cg():
-    # store a large dictionary of clebsch gordan coefficients
-    if cglib:
-        try:
-            with open('%s/Clebsch_Gordan.pickle' %lib_path, 'rb') as handle:
-                Clebsch_Gordan = pickle.load(handle)
-        except FileNotFoundError:
-            print ("Generating your first pickled library of CG coefficients. This will take a few moments...")
-            Clebsch_Gordan = init_clebsch_gordan(10)
-            with open('%s/Clebsch_Gordan.pickle' %lib_path, 'wb') as handle:
-                pickle.dump(Clebsch_Gordan, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    # do the same thing for the traditional wigner_3j symbols
-    try:
-        with open('%s/Wigner_3j.pickle' % lib_path, 'rb') as handle:
-            Wigner_3j = pickle.load(handle)
-    except FileNotFoundError:
-        print ("Generating your first pickled library of Wigner 3j coefficients. This will take a few moments...")
-        Wigner_3j = init_wigner_3j(lmax_traditional)
-        with open('%s/Wigner_3j.pickle' % lib_path, 'wb') as handle:
-            pickle.dump(Wigner_3j, handle, protocol=pickle.HIGHEST_PROTOCOL)
+# store a large dictionary of clebsch gordan coefficients
+try:
+    with open('%s/Clebsch_Gordan.pickle' %lib_path, 'rb') as handle:
+        Clebsch_Gordan = pickle.load(handle)
+except FileNotFoundError:
+    print ("Generating your first pickled library of CG coefficients. This will take a few moments...")
+    Clebsch_Gordan = init_clebsch_gordan(lmax_traditional)
+    with open('%s/Clebsch_Gordan.pickle' %lib_path, 'wb') as handle:
+        pickle.dump(Clebsch_Gordan, handle, protocol=pickle.HIGHEST_PROTOCOL)
+# do the same thing for the traditional wigner_3j symbols
+try:
+    with open('%s/Wigner_3j.pickle' % lib_path, 'rb') as handle:
+        Wigner_3j = pickle.load(handle)
+except FileNotFoundError:
+    print ("Generating your first pickled library of Wigner 3j coefficients. This will take a few moments...")
+    Wigner_3j = init_wigner_3j(lmax_traditional)
+    with open('%s/Wigner_3j.pickle' % lib_path, 'wb') as handle:
+        pickle.dump(Wigner_3j, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    return Wigner_3j

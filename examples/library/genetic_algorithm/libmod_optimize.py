@@ -63,12 +63,15 @@ class ElasticPropertiesFromLAMMPS:
         ##############: Now, the workflow using lammps does at one point write a restart file and then loads it twice
         ##############: Lammps does not seem to accept anything other than filenames for input/output, so I don't think I can keep everything in memory like I hoped.
         ##############: So I will need to have the write/read restart files be labeled by mpi rank to keep them separate
+        ##############: I will also actually need to create and use the .snapparam and .snapcoeff files
+        ##############: the snap pair style requires reading of these files and does not allow for direct input of the data through .command() interface
 
         ##############: Regarding SNAP, I will now need to pass the snap object into the class to access its .config and .solver.fit attributes
         ##############: I can either do the reset style function currently implemented at the start of each fit_and_cost and load up the new fit,
         ##############: or I could set it up to initialize a new class with the original settings but the new SNAP object each fit_and_cost
 
         ##############: For making the strings that compose the SNAP output files (_pot.mod, _pot.snapparam, _pot.snapcoeffs)
+                     # edit: only .mod useful, others need to be written, see above
         ##############: There are hidden _to_coeffs_string, etc functions in the output/outputs/snap.py and similar ones for output/outputs/pace.py
         ##############: I was poking around at these some, but haven't yet found a good way to expose them in the snap.output object for easy and consistent access
         ##############: currently I just hard import the SNAP ones and use them manually

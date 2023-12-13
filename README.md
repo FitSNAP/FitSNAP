@@ -26,8 +26,6 @@ you're good to go!
 the Python package `mpi4py`. If installing mpi4py with a Python package manager, we recommend using 
 pip over conda as pip will auto-configure your package to your system's defaut MPI version 
 (usually what you used to build LAMMPS).
-* [Optional] For atomic cluster expansion (ACE) capabilities, build LAMMPS with the ML-PACE package, 
-along with the `compute_pace` files from [https://github.com/jmgoff/lammps-user-pace](https://github.com/jmgoff/lammps-user-pace)
 
 #### Quick install (minimal working environment) using Conda:
 

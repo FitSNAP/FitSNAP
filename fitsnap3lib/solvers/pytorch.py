@@ -42,7 +42,7 @@ try:
 
             self.global_fraction_bool = self.config.sections['PYTORCH'].global_fraction_bool
             self.training_fraction = self.config.sections['PYTORCH'].training_fraction
-
+            self.single_flag = 0
             self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
             if (self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP"):
                 self.num_elements = self.config.sections["BISPECTRUM"].numtypes
@@ -78,7 +78,9 @@ try:
                                       self.force_bool,
                                       self.num_elements,
                                       self.multi_element_option,
+                                      self.single_flag,
                                       self.dtype)
+                                      
             elif (self.pt.fitsnap_dict['per_atom_scalar']):
                 self.model = FitTorchPAS(self.networks,
                                          self.num_desc_per_element,
@@ -795,10 +797,10 @@ try:
 
                         #unique_i = dbdrindx[:,0]
                         #unique_j = dbdrindx[:,1]
-
+                        single_flag = 1
                         (e_model,f_model) = self.model(descriptors, dgrad, indices, num_atoms, 
                                                       atom_types, dbdrindx, unique_j, unique_i, 
-                                                      eval_device, dtype)
+                                                      eval_device, single_flag, dtype)
                         energies.append(e_model)
                         forces.append(f_model)
 

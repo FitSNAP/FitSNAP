@@ -503,7 +503,7 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0, use_permutations=True):
                 if flag:
                     ls.append(lstr % ltup)
         elif rank == 3:
-            nodes,remainder = tree(list(all_ls[0]))
+            nodes,remainder = tree(list(range(rank)))
             for ltup in all_ls:
                 inters = tree_l_inters(list(ltup) , L_R = L_R)
                 by_node = vec_nodes(ltup , nodes , remainder)
@@ -520,7 +520,7 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0, use_permutations=True):
                         if lsub not in ls:
                             ls.append(lsub)
         elif rank == 4:
-            nodes,remainder = tree(list(all_ls[0]))
+            nodes,remainder = tree(list(range(rank)))
             for ltup in all_ls:
                 inters = tree_l_inters(list(ltup),L_R=L_R)
                 by_node = vec_nodes(ltup,nodes,remainder)
@@ -538,7 +538,7 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0, use_permutations=True):
                             ls.append(lsub)
 
         elif rank == 5:
-            nodes,remainder = tree(list(all_ls[0]))
+            nodes,remainder = tree(list(range(rank)))
             for ltup in all_ls:
                 inters = tree_l_inters(list(ltup) , L_R = L_R)
                 by_node = vec_nodes(ltup,nodes,remainder)
@@ -556,7 +556,7 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0, use_permutations=True):
                             ls.append(lsub)
 
         elif rank == 6:
-            nodes,remainder = tree(list(all_ls[0]))
+            nodes,remainder = tree(list(range(rank)))
             for ltup in all_ls:
                 inters = tree_l_inters(list(ltup) , L_R = L_R)
                 by_node = vec_nodes(ltup , nodes , remainder)
@@ -574,7 +574,7 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0, use_permutations=True):
                             ls.append(lsub)
 
         elif rank == 7:
-            nodes,remainder = tree(list(all_ls[0]))
+            nodes,remainder = tree(list(range(rank)))
             for ltup in all_ls:
                 inters = tree_l_inters(list(ltup) , L_R = L_R)
                 by_node = vec_nodes(ltup , nodes , remainder)
@@ -592,7 +592,7 @@ def generate_l_LR(lrng , rank , L_R = 0 , M_R = 0, use_permutations=True):
                             ls.append(lsub)
 
         elif rank == 8:
-            nodes,remainder = tree(list(all_ls[0]))
+            nodes,remainder = tree(list(range(rank)))
             for ltup in all_ls:
                 inters = tree_l_inters(list(ltup) , L_R = L_R)
                 by_node = vec_nodes(ltup , nodes , remainder)

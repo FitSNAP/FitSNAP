@@ -61,7 +61,7 @@ class FitTorch(torch.nn.Module):
         multi_element_option (int): Option for which multi-element network model to use.
     """
 
-    def __init__(self, networks, descriptor_count, force_bool, n_elements=1, multi_element_option=1, dtype=torch.float32):
+    def __init__(self, networks, descriptor_count, force_bool, n_elements=1, multi_element_option=1, single_flag=0, dtype=torch.float32):
         super().__init__()
 
         # pytorch does a nifty thing where each attribute here makes a unique key in state_dict
@@ -85,10 +85,11 @@ class FitTorch(torch.nn.Module):
         self.n_elem = n_elements
         self.multi_element_option = multi_element_option
 
+        #self.single_flag = False
         self.energy_bool = True
         self.force_bool = force_bool
 
-    def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, unique_i, device, dtype=torch.float32):
+    def forward(self, x, xd, indices, atoms_per_structure, types, xd_indx, unique_j, unique_i, device, single_flag=0, dtype=torch.float32):
         """
         Forward pass through the PyTorch network model, calculating both energies and forces.
 
@@ -135,7 +136,7 @@ class FitTorch(torch.nn.Module):
         if (self.energy_bool):
             predicted_energy_total = torch.zeros(atoms_per_structure.size(), dtype=dtype).to(device)
             # Force 1D tensor even if have single element; necessary for index_add function.
-            if predicted_energy_total.size().numel() == 1:
+            if predicted_energy_total.size().numel() == 1 and single_flag:
                 predicted_energy_total = predicted_energy_total.unsqueeze(dim=0)
             predicted_energy_total.index_add_(0, indices, per_atom_energies.squeeze())
         else:

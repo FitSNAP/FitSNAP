@@ -135,8 +135,9 @@ class FitTorch(torch.nn.Module):
         if (self.energy_bool):
             predicted_energy_total = torch.zeros(atoms_per_structure.size(), dtype=dtype).to(device)
             # Force 1D tensor even if have single element; necessary for index_add function.
-            if predicted_energy_total.size().numel() == 1:
-                predicted_energy_total = predicted_energy_total.unsqueeze(dim=0)
+            #NOTE commented out to eliminate dimension mismatch errors
+            #if predicted_energy_total.size().numel() == 1:
+            #    predicted_energy_total = predicted_energy_total.unsqueeze(dim=0)
             predicted_energy_total.index_add_(0, indices, per_atom_energies.squeeze())
         else:
             predicted_energy_total = None

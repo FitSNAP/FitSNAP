@@ -226,8 +226,8 @@ class Solver:
                     energies_model = energies_model.squeeze() # # Evaluating single config still returns 1D tensor; squeeze for scalar.
                     e_pred = energies_model.detach().numpy()/c.natoms # Model per-atom energy.
                     # Custom networks need a further index.
-                    if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
-                        e_pred = e_pred[0]
+                    #if (self.config.sections["CALCULATOR"].calculator == "LAMMPSCUSTOM"):
+                    #    e_pred = e_pred[0]
 
                     ae = abs(c.energy - e_pred)
                     se = (c.energy - e_pred)**2

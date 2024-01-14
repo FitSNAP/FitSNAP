@@ -734,10 +734,10 @@ try:
 
                     #unique_i = dbdrindx[:,0]
                     #unique_j = dbdrindx[:,1]
-
+                    single_flag=1
                     (energies,forces) = self.model(descriptors, dgrad, indices, num_atoms, 
                                                   atom_types, dbdrindx, unique_j, unique_i, 
-                                                  eval_device, dtype)
+                                                  eval_device, single_flag, dtype)
 
                 else:
                     

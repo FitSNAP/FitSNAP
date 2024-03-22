@@ -4,24 +4,30 @@ from copy import deepcopy
 from fitsnap3lib.fitsnap import FitSnap
 from mpi4py import MPI
 from psutil import virtual_memory
-
+import subprocess  ## LOGAN NOTE: this is just for the janky additional cost functions, can be removed once changed to using lammps python library calls 
 
 class CostObject:
-    def __init__(self):
+    def __init__(self, verbose = False):
+        self.verbose = verbose
         self.conts = None
         self.cost = 999999999.9999
         self.unweighted = np.array([])
         self.weights = np.array([])
+        self.names = []
 
-    def cost_contributions(self,cost_conts,weights):
+    def cost_contributions(self,cost_conts,weights, names=[]):
         cost_conts = np.array(cost_conts) 
         weights = np.array(weights)
         wc_conts = weights*cost_conts
         self.unweighted = cost_conts
         self.weights = weights
         self.conts = wc_conts
+        if len(names) == len(self.conts):
+            self.names = names
+        else:
+            self.names = [""]*len(self.conts)
 
-    def add_contribution(self,costi,weighti=1.0):
+    def add_contribution(self,costi,weighti=1.0, name=""):
         try:
             if self.conts == None:
                 cond = True
@@ -36,16 +42,151 @@ class CostObject:
             self.conts = wc_conts
             self.weights = np.append(self.weights, weighti)
             self.unweighted = np.append(self.unweighted, costi)
+            self.names.append(name)
         else:
             self.conts = np.append(self.conts,costi*weighti)
             self.weights = np.append(self.weights,weighti)
             self.unweighted = np.append(self.unweighted,costi)
+            self.names.append(name)
 
     def evaluate_cost(self):
+        if self.verbose:
+            for i in range(len(self.conts)):
+                print("cost term", self.names[i], ": has total value", self.conts[i], "consisting of value", self.unweighted[i], "and weight", self.weights[i])
         costi = np.sum(self.conts)
         self.cost = costi
         return costi
 
+class ElasticPropertiesFromLAMMPS:
+    ## This is NOT set up to be usable in parallel yet! 
+    def __init__(self, lammps_executable_path, lammps_script_filename, truth_values=False, existing_output_path=False):
+        self.names = ["abs_error_lattice_parameter", "abs_error_C11", "abs_error_C12", "abs_error_C44"]  ##labels for what this class outputs as a cost function
+        self.calculated_values = False
+        self.existing_output_path = existing_output_path
+        if self.existing_output_path:
+            with open(self.existing_output_path) as truth_file:
+                self.lammps_output = truth_file.readlines()
+                self.output = True
+        else:
+            self.output = False
+        self.lmp = lammps_executable_path
+        self.script = lammps_script_filename
+        if truth_values:
+            try:
+                self.true_lattice_constant, self.true_C11, self.true_C12, self.true_C44 = truth_values
+                self.truth_known = True
+            except:
+                self.truth_known=False
+                print("Provide 4 floats in a list to truth_values of ElasticPropertiesFromLAMMPS class ordered as lattice_constant, C11, C12, C44!")
+                print("Continuing as if no truth values provided.")
+
+    def reset(self):
+        self.calculated_values = False
+        if self.existing_output_path:
+            with open(self.existing_output_path) as truth_file:
+                self.lammps_output = truth_file.readlines()
+                self.output = True
+        else:
+            self.output = False
+
+    def run_lammps(self):
+        ## should replace this with in-python calls to lammps library eventually, probably
+        ## currently this needs written output files of the snap fits (don't try to use in parallel)
+        ## make sure the main script is writing the output in the fit and cost before it calls this class
+        subprocess_output = subprocess.run([self.lmp, '-in', self.script], capture_output=True, text=True)
+        self.lammps_output = subprocess_output.stdout.split('\n')
+        #print(self.lammps_output) ## debugging
+        #print(subprocess_output.stderr) ##debugging
+        self.output=True
+        
+    def read_lammps_output(self):
+        if not self.output:
+            self.run_lammps()
+        for line in self.lammps_output:
+            if "Elastic Constant C11all = " in line:
+                C11=float(line.split()[4])
+            elif "Elastic Constant C22all = " in line:
+                C22=float(line.split()[4])
+            elif "Elastic Constant C33all = " in line:
+                C33=float(line.split()[4])
+            elif "Elastic Constant C12all = " in line:
+                C12=float(line.split()[4])
+            elif "Elastic Constant C13all = " in line:
+                C13=float(line.split()[4])
+            elif "Elastic Constant C23all = " in line:
+                C23=float(line.split()[4])
+            elif "Elastic Constant C44all = " in line:
+                C44=float(line.split()[4])
+            elif "Elastic Constant C55all = " in line:
+                C55=float(line.split()[4])
+            elif "Elastic Constant C66all = " in line:
+                C66=float(line.split()[4])
+            elif "Elastic Constant C14all = " in line:
+                C14=float(line.split()[4])
+            elif "Elastic Constant C15all = " in line:
+                C15=float(line.split()[4])
+            elif "Elastic Constant C16all = " in line:
+                C16=float(line.split()[4])
+            elif "Elastic Constant C24all = " in line:
+                C24=float(line.split()[4])
+            elif "Elastic Constant C25all = " in line:
+                C25=float(line.split()[4])
+            elif "Elastic Constant C26all = " in line:
+                C26=float(line.split()[4])
+            elif "Elastic Constant C34all = " in line:
+                C34=float(line.split()[4])
+            elif "Elastic Constant C35all = " in line:
+                C35=float(line.split()[4])
+            elif "Elastic Constant C36all = " in line:
+                C36=float(line.split()[4])
+            elif "Elastic Constant C45all = " in line:
+                C45=float(line.split()[4])
+            elif "Elastic Constant C46all = " in line:
+                C46=float(line.split()[4])
+            elif "Elastic Constant C56all = " in line:
+                C56=float(line.split()[4])
+            elif "x lattice constant = " in line:
+                x_lattice=float(line.split()[4])
+            elif "y lattice constant = " in line:
+                y_lattice=float(line.split()[4])
+            elif "z lattice constant = " in line:
+                z_lattice=float(line.split()[4])
+
+        if any([val>1e-8 for val in [C14,C15,C16,C24,C25,C26,C34,C35,C36,C45,C46,C56]]):
+            print("Warning! large elastic constants that should be zero!")
+        self.C11_ave = (C11+C22+C33)/3.0
+        self.C12_ave = (C12+C13+C23)/3.0
+        self.C44_ave = (C44+C55+C66)/3.0
+        self.lattice_constant = (x_lattice+y_lattice+z_lattice)/3.0
+        if any([abs(val-self.C11_ave)>1e-6 for val in [C11, C22, C33]]):
+            print("Warning, large discrepancy in C11 values!")
+        if any([abs(val-self.C12_ave)>1e-6 for val in [C12, C13, C23]]):
+            print("Warning, large discrepancy in C12 values!")
+        if any([abs(val-self.C44_ave)>1e-6 for val in [C44, C55, C66]]):
+            print("Warning, large discrepancy in C11 values!")
+        if any([abs(val-self.lattice_constant)>1e-6 for val in [x_lattice, y_lattice, z_lattice]]):
+            print("Warning, large discrepancy in lattice constant values!")
+        self.calculated_values = True
+
+    def output_vals(self):
+        if not self.calculated_values:
+            self.read_lammps_output()
+        return [self.lattice_constant, self.C11_ave, self.C12_ave, self.C44_ave]
+            
+    def output_errors(self):
+        if not self.calculated_values:
+            self.read_lammps_output()
+        if not self.truth_known:
+            print("Warning, truth values not known, returning calculated vals instead of errors!!")
+            return output_vals
+        else:
+            ## read in the values for the proxy somewhere at the start and pass them into this function
+            ## get absolute value of error for C11, C12, C44, and lattice and add to function
+            lattice_error = abs(self.lattice_constant-self.true_lattice_constant)
+            C11_error = abs(self.C11_ave-self.true_C11)
+            C12_error = abs(self.C12_ave-self.true_C12)
+            C44_error = abs(self.C44_ave-self.true_C44)
+            return [lattice_error, C11_error, C12_error, C44_error]
 
 class HyperparameterStruct:
     """
@@ -111,7 +252,7 @@ class HyperparameterStruct:
         f_factors =  np.random.rand(self.nf) * np.array([np.random.choice(self.ffactors[ihf]) for ihf in range(self.nf)])
         self.fweights = self.eweights * f_factors
         s_factors =  np.random.rand(self.ns) * np.array([np.random.choice(self.sfactors[ihs]) for ihs in range(self.ns)])
-        self.fweights = self.eweights * s_factors
+        self.sweights = self.eweights * s_factors
         return np.concatenate((self.eweights,self.fweights, self.sweights))
 
     def lhs_params(self, num_samples, inputseed=None):
@@ -317,7 +458,7 @@ def ediff_cost(fs, fit, g1, g2, target, grouptype, rowtype):
 
 # NOTE from James: fit_and_cost will likely need to be modified to print current fit if
 # other objective functions are to be added. 
-def fit_and_cost(fs, fitobjects, costweights):
+def fit_and_cost(fs, fitobjects, costweights, additional_cost_functions=[],additional_cost_weights = [], verbose = False):
     """
     Perform FitSNAP fit and evaluate errors (cost or score).
 
@@ -355,13 +496,24 @@ def fit_and_cost(fs, fitobjects, costweights):
         rmse_sattst = rmse_tst[2]
 
     # calculate score 
-    CO = CostObject()
-    CO.add_contribution(rmse_eattst,etot_weight)
-    CO.add_contribution(rmse_fattst,ftot_weight)
-    # CO.add_contribution(rmse_sattst,stot_weight)
+    CO = CostObject(verbose=verbose)
+    CO.add_contribution(rmse_eattst,etot_weight, name='rmse_E')
+    CO.add_contribution(rmse_fattst,ftot_weight, name='rmse_F')
     if calc_stress:
-        CO.add_contribution(rmse_sattst,stot_weight)
+        CO.add_contribution(rmse_sattst,stot_weight, name='rmse_S')
 
+    ## LOGAN NOTE: TO BE REMOVED WHEN CODE IS BETTER! (currently needed for the additional cost functions, which read files rather than get passed the fitted model)
+    if len(additional_cost_functions) > 0:
+        fs.write_output()
+    
+    # add additional costs from the additional_cost_functions
+    for j, cost_function in enumerate(additional_cost_functions):
+        additional_costs = cost_function.output_errors()
+        additional_costs_labels = cost_function.names
+        for k, add_cost in enumerate(additional_costs): ## make sure output_errors is always a list or tuple, even if len 1, or this will break
+            CO.add_contribution(add_cost, additional_cost_weights[j][k], name=additional_costs_labels[k])
+        cost_function.reset() ##clear output from this fit, saving settings for next fitted potential to test
+    
     # NOTE from James: commented examples on how to use energy differences in the objective function
     # a SINGLE structure is added to two new fitsnap groups, the corresponding energy
     # difference between group 1 and group 2 is given as the target (in eV) (NOT eV/atom)
@@ -475,7 +627,7 @@ def mutation(current_w_combo, current_ef_rat, current_es_rat, my_w_ranges, my_ef
         return test_w_combo,test_ef_rat,test_es_rat
 
 
-def print_final(fs, gtks, ew_frcrat_final, best_gen, best_score, write_to_json=False):
+def print_final(fs, gtks, ew_frcrat_final, best_gen, best_score, initial_weights, write_to_json=False):
     ew_final, frcrat_final, srcrat_final = ew_frcrat_final
 
     calc_stress = fs.config.sections["CALCULATOR"].stress
@@ -491,10 +643,16 @@ def print_final(fs, gtks, ew_frcrat_final, best_gen, best_score, write_to_json=F
     collect_lines = []
     fs.pt.single_print(f'\n---> Best group weights (from generation {best_gen}, score {best_score}):')
     for idi, dat in enumerate(gtks):
-        en_weight = ew_final[idi]
-        frc_weight = ew_final[idi]*frcrat_final[idi]
-        if print_stress:
-            src_weight = ew_final[idi]*srcrat_final[idi]
+        if initial_weights:
+            en_weight = initial_weights[dat][0]*ew_final[idi]  
+            frc_weight = initial_weights[dat][1]*ew_final[idi]*frcrat_final[idi]
+            if print_stress:
+                src_weight = initial_weights[dat][2]*ew_final[idi]*srcrat_final[idi]
+        else:
+            en_weight = ew_final[idi]
+            frc_weight = ew_final[idi]*frcrat_final[idi]
+            if print_stress:
+                src_weight = ew_final[idi]*srcrat_final[idi]
 
         ntrain = loc_gt[dat]['training_size']
         ntest = loc_gt[dat]['testing_size']
@@ -693,7 +851,7 @@ def prep_fitsnap_input(fs, smartweights_override=False):
 # begin the primary optimzation functions
 #-----------------------------------------------------------------------
 # @fs.pt.rank_zero
-def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, stot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], stress_delta_keywords=[], write_to_json=False, my_es_ratios=[], use_initial_weights_flag=False, parallel_population=True ):
+def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e-4,1.e-3,1.e-2,1.e-1,1,1.e1,1.e2,1.e3,1.e4], my_ef_ratios=[0.001,0.01,0.1,1,10,100,1000], etot_weight=1.0, ftot_weight=1.0, stot_weight=1.0, r_cross=0.9, r_mut=0.1, conv_thr = 1.E-10, conv_check = 2., force_delta_keywords=[], stress_delta_keywords=[], write_to_json=False, my_es_ratios=[], use_initial_weights_flag=False, parallel_population=True, additional_cost_functions=[], additional_cost_weights=[],verbose=False ):
     """
     Function to perform optimization of FitSNAP group weights.
 
@@ -710,6 +868,8 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         write_to_json: whether to write the final best fit to a new FitSNAP settings dictionary to a JSON file
         use_initial_weights_flag: whether to bias fitting with initial_weights 
         parallel_population: whether to use MPI*/split communicator when ncores > 1
+        additional_cost_functions = classes with an output_error function that are passed to the cost object to add in to your total cost object
+        additional_cost_weights = weights for the above cost functions. Needs to be the same number of weights as the values returned by their output_error function.
 
     Returns:
         (none, prints best group weights to stdout and/or a JSON file)
@@ -787,6 +947,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         for key in gtks:
             initial_weights[key] = [fs.config.sections["GROUPS"].group_table[key]['eweight'], fs.config.sections["GROUPS"].group_table[key]['fweight'], \
                                     fs.config.sections["GROUPS"].group_table[key]['vweight']]
+
 
     size_b = np.shape(fs.pt.fitsnap_dict['Row_Type'])[0]
     grouptype = fs.pt.fitsnap_dict['Groups'].copy()
@@ -943,7 +1104,8 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
 
             new_w = update_weights(par_fs, creature_ew, creature_ffac, creature_sfac, gtks, size_b, grouptype,initial_weights=initial_weights)
 
-            costi = fit_and_cost(par_fs, [a, b, new_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
+            costi = fit_and_cost(par_fs, [a, b, new_w, fs_dict], [etot_weight,ftot_weight,stot_weight], verbose=verbose, \
+                                 additional_cost_functions=additional_cost_functions, additional_cost_weights=additional_cost_weights)
 
             per_rank_scores[i] = costi
 
@@ -1008,7 +1170,7 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
         
         fs.pt.single_print(f"------------ GENERATION {generation} ------------")
         fs.pt.single_print(f'Lowest score:', lowest_score_in_gen)
-        print_final(fs, gtks, printbest, best_gens[-1], best_scores[-1])
+        print_final(fs, gtks, printbest, best_gens[-1], best_scores[-1], initial_weights)
 
         # Choose/rank candidates for next generation
         slct = Selector(selection_style = selection_method)
@@ -1063,12 +1225,13 @@ def genetic_algorithm(fs, population_size=50, ngenerations=100, my_w_ranges=[1.e
     ##LOGAN NOTE | TODO: should confirm this is working as expected (always multiplying factor by initial weight and not a previous generation product by initial weight)
     if rank == 0:
         best_w = update_weights(fs, best_ew, best_ffac, best_sfac, gtks, size_b, grouptype, initial_weights=initial_weights)
-        costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight])
+        costi = fit_and_cost(fs, [a, b, best_w, fs_dict], [etot_weight,ftot_weight,stot_weight], verbose=verbose, \
+                                 additional_cost_functions=additional_cost_functions, additional_cost_weights=additional_cost_weights)
 
         fs.pt.single_print('\n------------ Final results ------------')
 
         # Print out final best fit
-        print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), best_gens[-1],best_scores[-1], write_to_json=write_to_json)
+        print_final(fs, gtks, tuple([best_ew,best_ffac,best_sfac]), best_gens[-1],best_scores[-1], initial_weights, write_to_json=write_to_json)
 
         fs.pt.single_print('Writing final output')
         fs.write_output()

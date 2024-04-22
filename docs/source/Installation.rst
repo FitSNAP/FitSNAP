@@ -18,8 +18,6 @@ Since LAMMPS is the backbone of FitSNAP, we begin with instructions on how to in
 specifically for using FitSNAP. The following few sections cover basics of installing LAMMPS with 
 Python library support. 
 
-- If you want to fit ACE potentials, see `LAMMPS PACE install`_
-
 MPI for LAMMPS and FitSNAP
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -72,8 +70,6 @@ And see the output of running :code:`test.py` in parallel::
 LAMMPS for FitSNAP
 ^^^^^^^^^^^^^^^^^^
 
-- If you want to fit ACE potentials, see `LAMMPS PACE install`_
-
 First clone the LAMMPS repo::
 
     git clone https://github.com/lammps/lammps
@@ -119,74 +115,9 @@ which should produce no errors.
 After completing this LAMMPS installation, please see `Install FitSNAP with latest LAMMPS`_ to use 
 FitSNAP.
 
-.. _LAMMPS PACE install:
-
-LAMMPS PACE install
-^^^^^^^^^^^^^^^^^^^
-
-Computes for ACE descriptors are currently in our modified LAMMPS repo (https://github.com/jmgoff/lammps_compute_PACE), 
-so the installation instructions are a little different if you want to use ACE. 
-
-#. Clone our modified LAMMPS repo and set up a typical LAMMPS build::
-
-        git clone -b compute-pace https://github.com/jmgoff/lammps_compute_PACE
-        cd lammps_compute_PACE
-        mkdir build && cd build
-
-#. Set up a typical LAMMPS build the ML-PACE library enabled::
-
-        cmake ../cmake -DLAMMPS_EXCEPTIONS=yes \
-                       -DBUILD_SHARED_LIBS=yes \
-                       -DMLIAP_ENABLE_PYTHON=yes \
-                       -DPKG_PYTHON=yes \
-                       -DPKG_ML-SNAP=yes \
-                       -DPKG_ML-IAP=yes \
-                       -DPKG_ML-PACE=yes \
-                       -DPKG_SPIN=yes \
-                       -DPYTHON_EXECUTABLE:FILEPATH=`which python`
-
-#. Download the modified lammps-user-pace code that contains extra arrays for breaking out descriptor contributions::
-
-        git clone https://github.com/jmgoff/lammps-user-pace-1
-        cp lammps-user-pace-1/ML-PACE/ace-evaluator/ace_evaluator.* ./lammps-user-pace-v.2022.10.15/ML-PACE/ace-evaluator/
-        make -j
-        make install-python
-
-
-#. Now, set up paths::
-
-        # Use DYLD_LIBRARY_PATH if using MacOS, on Linux use LD_LIBRARY_PATH:
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/lammps_compute_PACE/build
-
-#. Now we can get and use FitSNAP::
-
-        cd /path/to/where/you/want/FitSNAP
-        git clone https://github.com/FitSNAP/FitSNAP
-        # Set python path so you can run FitSNAP as executable:
-        export PYTHONPATH=$PYTHONPATH:/path/to/where/you/want/FitSNAP
-
-Note for infrequent installation issues: For some versions of OMP, the 
-LAMMPS/PYTHON interface may produce errors when running, leading to a
-LAMMPS exception that kills FitSNAP jobs. If your install completes
-successfully and you have problems with the execution of examples in
-the example folder, try recompiling lammps with these alternative
-D flags.
-
-#. Alternative D flags for python/omp errors::
-
-            cmake ../cmake -D LAMMPS_EXCEPTIONS=on \
-                           -D PKG_PYTHON=on \
-                           -D BUILD_SHARED_LIBS=on \
-                           -D CMAKE_BUILD_TYPE=Debug \
-                           -D PKG_ML-IAP=on \
-                           -D PKG_ML-PACE=on \
-                           -D PKG_ML-SNAP=on \
-                           -D BUILD_MPI=on \
-                           -D BUILD_OMP=off \
-                           -D CMAKE_INSTALL_PREFIX=<$HOME>/.local \
-                           -D PKG_MOLECULE=on
-
-With key changes coming from turning off omp.
+**NOTE:** There is no longer a need to use modified versions of LAMMPS or PACE libraries for ACE
+model fitting. The :code:`compute pace` used by FitSNAP to calculate ACE descriptors is available 
+in the default branch of the public LAMMPS repository (https://github.com/lammps/lammps).
 
 For a summary/review of all these steps, see see `Quick Installation <Quick.html>`__. 
 

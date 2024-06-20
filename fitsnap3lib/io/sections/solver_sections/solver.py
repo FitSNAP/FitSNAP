@@ -22,7 +22,10 @@ class Solver(Section):
         self.normratio = self.get_value("SOLVER", "normratio", "0.5", "float")
         self.compute_testerrs = self.get_value("SOLVER", "compute_testerrs", "0", "bool")
         self.detailed_errors = self.get_value("SOLVER", "detailed_errors", "0", "bool")
-        self.nsam = self.get_value("SOLVER", "nsam", "0", "int")
+        if self.solver == "MCMC":
+            self.nsam = self.get_value("SOLVER", "nsam", "133", "int")
+        else:
+            self.nsam = self.get_value("SOLVER", "nsam", "0", "int")
         self.cov_nugget = self.get_value("SOLVER", "cov_nugget", "0.0", "float")
         self.mcmc_num = self.get_value("SOLVER", "mcmc_num", "10000", "int")
         self.mcmc_gamma = self.get_value("SOLVER", "mcmc_gamma", "0.01", "float")

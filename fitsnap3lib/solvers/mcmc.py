@@ -1,6 +1,9 @@
 from fitsnap3lib.solvers.solver import Solver
+from fitsnap3lib.parallel_tools import ParallelTools
+from fitsnap3lib.io.input import Config
 import numpy as np
 from scipy.linalg import lstsq
+from sys import float_info as fi
 
 #pt = ParallelTools()
 #config = Config()
@@ -81,45 +84,47 @@ class MCMC(Solver):
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
 
-    def perform_fit(self):
-        @self.pt.sub_rank_zero
-        def decorated_perform_fit():
-            pt = self.pt
-            config = self.config
-            if pt.shared_arrays['configs_per_group'].testing_elements != 0:
-                testing = -1*pt.shared_arrays['configs_per_group'].testing_elements
+    def perform_fit(self, a=None, b=None, w=None, fs_dict=None, trainall=False):
+        pt = self.pt
+        # Only fit on rank 0 to prevent unnecessary memory and work.  
+        if pt._rank == 0:
+            
+            if fs_dict is not None:
+                training = [not elem for elem in fs_dict['Testing']]
+            elif trainall:
+                training = [True]*np.shape(a)[0]
             else:
-                testing = len(pt.shared_arrays['w'].array)
-            w = pt.shared_arrays['w'].array[:testing]
-            aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[:testing], w * pt.shared_arrays['b'].array[:testing]
-            #        Transpose method does not work with Quadratic SNAP (why?)
-            #        We need to revisit this preconditioning of the linear problem, we can make this a bit more elegant.
-            #        Since this breaks some examples this will stay as a 'secret' feature.
-            #        Need to chat with some mathy people on how we can profile A and find good preconditioners.
-            #        Will help when we want to try gradient based linear solvers as well.
-            if config.sections['EXTRAS'].apply_transpose:
-                bw = aw.T@bw
-                aw = aw.T@aw
+                training = [not elem for elem in pt.fitsnap_dict['Testing']]
 
+            if a is None and b is None and w is None:
+                w = pt.shared_arrays['w'].array[training]
+                aw, bw = w[:, np.newaxis] * pt.shared_arrays['a'].array[training], w * pt.shared_arrays['b'].array[training]
+            else:
+                aw, bw = w[:, np.newaxis] * a[training], w * b[training]
+
+            if 'EXTRAS' in self.config.sections and self.config.sections['EXTRAS'].apply_transpose:
+                if np.linalg.cond(aw)**2 < 1 / fi.epsilon:
+                    bw = aw[:, :].T @ bw
+                    aw = aw[:, :].T @ aw
+                else:
+                    print("The Matrix is ill-conditioned for the transpose trick")
 
             #MCMC parameters
             #param_ini = np.random.randn(aw.shape[1], )
             param_ini, residues, rank, s = lstsq(aw, bw, 1.0e-13)
             covini = np.zeros((aw.shape[1], aw.shape[1]))
-            nmcmc = config.sections["SOLVER"].mcmc_num
-            gamma = config.sections["SOLVER"].mcmc_gamma
+            nmcmc = self.config.sections["SOLVER"].mcmc_num
+            gamma = self.config.sections["SOLVER"].mcmc_gamma
             t0 = 100
             tadapt = 100
             samples, cmode, pmode, acc_rate, acc_rate_all, pmode_all = amcmc([nmcmc, param_ini, gamma, t0, tadapt, covini], logpost, aw, bw)
             self.fit = cmode
-            nsam = config.sections["SOLVER"].nsam
+            nsam = self.config.sections["SOLVER"].nsam
             nevery = (nmcmc//2)//nsam
             self.fit_sam = samples[nmcmc//2:nmcmc:nevery, :][-nsam:, :]
             np.savetxt('chn.txt', samples)
             np.savetxt('chn_sam.txt', self.fit_sam)
             np.save('mean.npy', self.fit)
-
-        decorated_perform_fit()
 
 
     def _dump_a(self):

@@ -192,10 +192,11 @@ def _to_coeff_string(coeffs, config):
     desc_str = "ACE"
     coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))
     blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
-    #if config.sections[desc_str].bzeroflag:
-    #    blank2Js = np.insert(blank2Js, 0, [1.0], axis=1)
+    if config.sections[desc_str].bzeroflag:
+        coeff_names = config.sections[desc_str].blist
+    else:
+        coeff_names = [[0]]+config.sections[desc_str].blist
     coeffs = np.multiply(coeffs, blank2Js)
-    coeff_names = [[0]]+config.sections[desc_str].blist
     type_names = config.sections[desc_str].types
     out = f"# FitSNAP generated on {datetime.now()} with Hash: {config.hash}\n\n"
     out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/config.sections[desc_str].numtypes)))

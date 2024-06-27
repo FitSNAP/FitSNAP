@@ -74,15 +74,28 @@ def get_default_settings(elems,nshell=1.0,return_range=True,apply_shift=False,me
     # metal_max (logical): flag to use ionic/crystal radii rather than a hybrid bond length for estimation of radial cutoff (default is true)
     # inner_fraction (float): factor to reduce smallest bond length by to get inner cutoff radius. 
 
-    def reference_printer(bonds,inners, rc):
+    def reference_printer(bonds,inners, outers):
+        rc = max(outers)
         # default inner = 0.25 * ionic bond length
         # default outer = 0.25/0.8 * ionic bond length
         elemsi = sorted(list(set(np.array(bonds).flatten().tolist())))
         print (elemsi)
         elem_inds = {e:ii + 1 for ii,e in enumerate(elemsi)}
         ubonds = [bond for bond in bonds if tuple(sorted(bond)) == bond]
-        inner_per_u = {b:i for b,i in zip(bonds,inners)}
-        outer_per_u = {b:(i*4*(1.)) for b,i in zip(bonds,inners)}
+        def reasonable_inner_zbl(val,inner_val):
+            frac = val*0.3
+            res = (val - frac)
+            while res < inner_val:
+                res += val*0.01
+            return res
+        def reasonable_outer_zbl(val):
+            frac = val*0.2
+            res = val -frac
+            return res
+            
+        inner_per_u = {b:reasonable_inner_zbl(i,inners[bonds.index(b)]) for b,i in zip(bonds,outers)}
+        outer_per_u = {b:reasonable_outer_zbl(i) for b,i in zip(bonds,outers)}
+        #outer_per_u = {b:(i*4*(1.)) for b,i in zip(bonds,inners)}
         zbl_str_i = 'zbl %f %f'
         zbl_lst = []
         for ubond in ubonds:
@@ -133,7 +146,7 @@ def get_default_settings(elems,nshell=1.0,return_range=True,apply_shift=False,me
             else:
                 rc_def[bond] = rc_def[bond]#*nshell
     #print (rc_def)
-    default_lmbs = [i*0.3 for i in list(rc_def.values())]
+    default_lmbs = [i*0.05 for i in list(rc_def.values())]
     rc_def_lst = ['%1.3f']* len(bonds)
     rc_def_str = 'rcutfac = ' + '  '.join(b for b in rc_def_lst) % tuple(list(rc_def.values()))
     lmb_def_lst = ['%1.3f']* len(bonds)
@@ -141,17 +154,15 @@ def get_default_settings(elems,nshell=1.0,return_range=True,apply_shift=False,me
     rcin_def_lst = ['%1.3f']* len(bonds)
     rcin_def_str = 'rcinner = ' + '  '.join(b for b in rcin_def_lst) % tuple(list(rin_def.values()))
     print (rc_range)
-    reference_printer(bonds,list(rin_def.values()), max(list(rc_def.values())))
+    reference_printer(bonds,list(rin_def.values()), list(rc_def.values()))
     return rc_range,rc_def_str,lmb_def_str,rcin_def_str
 
 
 #uncomment for different examples
-
-#elems = ['Ta']
-#elems = ['H','W']
-elems = ['H','O']
-#elems = ['W','Zr','C']
-elems = sorted(elems) # sort element types alphabetically
+#NOTE for best results, sort elements alphabetically
+#elems = ['H','N','W']
+elems = ['N','W']
+#elems = sorted(elems) # sort element types alphabetically
 rc_range,rc_default,lmb_default,rcin_default = get_default_settings(elems,nshell=2.2,return_range=True,apply_shift=False)
 print ('recommended starting hyperparameters\n')
 print (rc_default)

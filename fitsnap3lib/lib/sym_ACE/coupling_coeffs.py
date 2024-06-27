@@ -4,9 +4,14 @@ import pickle
 import numpy as np
 import os
 
+from mpi4py import MPI
 
-#lib_path = os.getcwd()
+comm = MPI.COMM_WORLD
 
+from fitsnap3lib.parallel_tools import ParallelTools
+pt = ParallelTools(comm = comm)
+
+@pt.rank_zero
 def Clebsch_gordan(j1,m1,j2,m2,j3,m3):
     # Clebsch-gordan coefficient calculator based on eqs. 4-5 of:
     # https://hal.inria.fr/hal-01851097/document
@@ -61,6 +66,7 @@ def Clebsch_gordan(j1,m1,j2,m2,j3,m3):
     else:
         return 0.
 
+@pt.rank_zero
 def clebsch_gordan(l1,m1,l2,m2,l3,m3):
     # try to load c library for calculating cg coefficients
     #if cglib:
@@ -68,6 +74,7 @@ def clebsch_gordan(l1,m1,l2,m2,l3,m3):
     #else:
     return Clebsch_gordan(l1,m1,l2,m2,l3,m3)
 
+@pt.rank_zero
 def wigner_3j(j1,m1,j2,m2,j3,m3):
     # uses relation between Clebsch-Gordann coefficients and W-3j symbols to evaluate W-3j
     #VERIFIED - wolframalpha.com
@@ -79,6 +86,7 @@ def wigner_3j(j1,m1,j2,m2,j3,m3):
     return cg* float(num/denom)
 
 
+@pt.rank_zero
 def init_clebsch_gordan(lmax):
     #returns dictionary of all cg coefficients to be used at a given value of lmax
     cg = {}
@@ -93,6 +101,7 @@ def init_clebsch_gordan(lmax):
     return cg
 
 
+@pt.rank_zero
 def init_wigner_3j(lmax):
     #returns dictionary of all cg coefficients to be used at a given value of lmax
     cg = {}
@@ -106,6 +115,7 @@ def init_wigner_3j(lmax):
                             cg[key] = wigner_3j(l1,m1,l2,m2,l3,m3)
     return cg
 
+@pt.rank_zero
 def store_generalized(coupling_dct,coupling_type,L_R):
     M_Rs = list(coupling_dct.keys())
     ranks = tuple(list(coupling_dct[M_Rs[0]].keys()))
@@ -129,22 +139,27 @@ def store_generalized(coupling_dct,coupling_type,L_R):
     with open(file_name, 'wb') as handle:
         pickle.dump(coupling_dct, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-# store a large dictionary of clebsch gordan coefficients
-try:
-    with open('%s/Clebsch_Gordan.pickle' %lib_path, 'rb') as handle:
-        Clebsch_Gordan = pickle.load(handle)
-except FileNotFoundError:
-    print ("Generating your first pickled library of CG coefficients. This will take a few moments...")
-    Clebsch_Gordan = init_clebsch_gordan(lmax_traditional)
-    with open('%s/Clebsch_Gordan.pickle' %lib_path, 'wb') as handle:
-        pickle.dump(Clebsch_Gordan, handle, protocol=pickle.HIGHEST_PROTOCOL)
-# do the same thing for the traditional wigner_3j symbols
-try:
-    with open('%s/Wigner_3j.pickle' % lib_path, 'rb') as handle:
-        Wigner_3j = pickle.load(handle)
-except FileNotFoundError:
-    print ("Generating your first pickled library of Wigner 3j coefficients. This will take a few moments...")
-    Wigner_3j = init_wigner_3j(lmax_traditional)
-    with open('%s/Wigner_3j.pickle' % lib_path, 'wb') as handle:
-        pickle.dump(Wigner_3j, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+# Only build cg pickle on rank 0 and only load on rank 0 to save memory
+if pt.get_rank() == 0:
+    # store a large dictionary of clebsch gordan coefficients
+    try:
+        with open('%s/Clebsch_Gordan.pickle' %lib_path, 'rb') as handle:
+            Clebsch_Gordan = pickle.load(handle)
+    except FileNotFoundError:
+        print ("Generating your first pickled library of CG coefficients. This will take a few moments...")
+        Clebsch_Gordan = init_clebsch_gordan(lmax_traditional)
+        with open('%s/Clebsch_Gordan.pickle' %lib_path, 'wb') as handle:
+            pickle.dump(Clebsch_Gordan, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    # do the same thing for the traditional wigner_3j symbols
+    try:
+        with open('%s/Wigner_3j.pickle' % lib_path, 'rb') as handle:
+            Wigner_3j = pickle.load(handle)
+    except FileNotFoundError:
+        print ("Generating your first pickled library of Wigner 3j coefficients. This will take a few moments...")
+        Wigner_3j = init_wigner_3j(lmax_traditional)
+        with open('%s/Wigner_3j.pickle' % lib_path, 'wb') as handle:
+            pickle.dump(Wigner_3j, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+# get rid of local ParallelTools object.
+del pt

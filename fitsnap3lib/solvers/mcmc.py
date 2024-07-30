@@ -23,6 +23,8 @@ def amcmc(inferpar, logpostFcn, aw, bw):
     pmode = p1  # record MCMC 'mode', which is the current MAP value (maximum posterior)
     cmode = samples[0]  # MAP sample, new parameters
     acc_rate = 0.0  # Initial acceptance rate
+    sample_change_steps = [0]
+    unique_samples = samples[0].reshape((1,-1,))
 
     acc_rate_all=[]
     pmode_all=[]
@@ -53,6 +55,8 @@ def amcmc(inferpar, logpostFcn, aw, bw):
         if np.random.random_sample() <= pr:
             samples[k + 1] = u
             na = na + 1  # Acceptance counter
+            sample_change_steps.append(k+1)
+            unique_samples = np.concatenate((unique_samples,u.reshape((1,-1,))))
             p1 = p2
             if p1 <= pmode:
                 pmode = p1
@@ -66,7 +70,11 @@ def amcmc(inferpar, logpostFcn, aw, bw):
         acc_rate_all.append(acc_rate)
         if((k + 2) % (nmcmc / 10) == 0) or k == nmcmc - 2:
             print('%d / %d completed, acceptance rate %lg' % (k + 2, nmcmc, acc_rate))
-    return samples, cmode, pmode, acc_rate, acc_rate_all, pmode_all
+        steps_plus_end = np.concatenate((sample_change_steps, [nmcmc]))
+        sample_weights = np.zeros(len(sample_change_steps))
+        for i in range(len(steps_plus_end)-1):
+            sample_weights[i] = steps_plus_end[i+1]-steps_plus_end[i]
+    return samples, cmode, pmode, acc_rate, acc_rate_all, pmode_all, sample_weights, unique_samples
 
 def log_norm_pdf(x, mu, sigma):
         s2 = sigma * sigma
@@ -117,7 +125,7 @@ class MCMC(Solver):
             gamma = self.config.sections["SOLVER"].mcmc_gamma
             t0 = 100
             tadapt = 100
-            samples, cmode, pmode, acc_rate, acc_rate_all, pmode_all = amcmc([nmcmc, param_ini, gamma, t0, tadapt, covini], logpost, aw, bw)
+            samples, cmode, pmode, acc_rate, acc_rate_all, pmode_all, sample_weights, unique_samples = amcmc([nmcmc, param_ini, gamma, t0, tadapt, covini], logpost, aw, bw)
             self.fit = cmode
             nsam = self.config.sections["SOLVER"].nsam
             nevery = (nmcmc//2)//nsam
@@ -125,6 +133,8 @@ class MCMC(Solver):
             np.savetxt('chn.txt', samples)
             np.savetxt('chn_sam.txt', self.fit_sam)
             np.save('mean.npy', self.fit)
+            np.save('unique_chn.npy', unique_samples)
+            np.save('unique_chn_weights.npy', sample_weights)
 
 
     def _dump_a(self):

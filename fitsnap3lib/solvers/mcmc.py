@@ -11,7 +11,7 @@ from sys import float_info as fi
 
 # Adaptive Markov chain Monte Carlo
 def amcmc(inferpar, logpostFcn, aw, bw):
-    nmcmc, cini, gamma, t0, tadapt, covini = inferpar  # inference parameters
+    nmcmc, cini, gamma, t0, tadapt, covini, sigma = inferpar  # inference parameters
     cdim = cini.shape[0]            # chain dimensionality
     print('chain dimensionality:', cdim)
     cov = np.zeros((cdim, cdim))   # covariance matrix
@@ -19,7 +19,7 @@ def amcmc(inferpar, logpostFcn, aw, bw):
     na = 0                        # counter for accepted steps
     sigcv = gamma * 2.4**2 / cdim
     samples[0] = cini                  # first step
-    p1 = -logpostFcn(samples[0], aw, bw)  # NEGATIVE logposterior
+    p1 = -logpostFcn(samples[0], aw, bw, sigma)  # NEGATIVE logposterior
     pmode = p1  # record MCMC 'mode', which is the current MAP value (maximum posterior)
     cmode = samples[0]  # MAP sample, new parameters
     acc_rate = 0.0  # Initial acceptance rate
@@ -48,7 +48,7 @@ def amcmc(inferpar, logpostFcn, aw, bw):
 
         # Generate proposal candidate
         u = np.random.multivariate_normal(samples[k], propcov)
-        p2 = -logpostFcn(u, aw, bw)
+        p2 = -logpostFcn(u, aw, bw, sigma)
         #posterior ratio (target_PDF(proposed)/target_PDF(current))
         pr = np.exp(p1 - p2)
         # Accept...
@@ -82,8 +82,8 @@ def log_norm_pdf(x, mu, sigma):
         norm_const = -0.5 * np.log(2 * np.pi * s2)
         return (norm_const - 0.5 * x_mu * x_mu / s2)
 
-def logpost(x, aw, bw):
-    lpostm = log_norm_pdf(aw@x,bw,sigma=0.1)
+def logpost(x, aw, bw, sigma):
+    lpostm = log_norm_pdf(aw@x,bw,sigma)
     return np.sum(lpostm)
 
 
@@ -123,9 +123,10 @@ class MCMC(Solver):
             covini = np.zeros((aw.shape[1], aw.shape[1]))
             nmcmc = self.config.sections["SOLVER"].mcmc_num
             gamma = self.config.sections["SOLVER"].mcmc_gamma
+            sigma = self.config.sections["SOLVER"].mcmc_sigma
             t0 = 100
             tadapt = 100
-            samples, cmode, pmode, acc_rate, acc_rate_all, pmode_all, sample_weights, unique_samples = amcmc([nmcmc, param_ini, gamma, t0, tadapt, covini], logpost, aw, bw)
+            samples, cmode, pmode, acc_rate, acc_rate_all, pmode_all, sample_weights, unique_samples = amcmc([nmcmc, param_ini, gamma, t0, tadapt, covini, sigma], logpost, aw, bw)
             self.fit = cmode
             nsam = self.config.sections["SOLVER"].nsam
             nevery = (nmcmc//2)//nsam

@@ -233,7 +233,7 @@ class AcePot():
             mslsts = [[int(k) for k in m.split(',')] for m in ms]
             msflat= [item for sublist in mslsts for item in sublist]
             if print_0s or betas[mu0][nu] != 0.:
-                ccoeffs =  list ( np.array(list(ccs.values())) * betas[mu0][nu] )
+                ccoeffs =  list ( np.array(list(ccs.values()), dtype=np.float64) * betas[mu0][nu] )
                 permu0[mu0].append({'mu0':mu0,
                                     'rank':rank,
                                     'ndensity':self.global_ndensity,

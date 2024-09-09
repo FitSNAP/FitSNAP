@@ -104,7 +104,7 @@ class Solver:
 
 
     def _checks(self):
-        assert not (self.config.sections['CALCULATOR'].linear and self.config.sections['CALCULATOR'].per_atom_energy and self.config.args.perform_fit)
+        assert not (self.config.sections['CALCULATOR'].linear and self.config.sections['CALCULATOR'].per_atom_energy and self.config.args.perform_fit), "Can only output per_atom_energy for non-linear fits (e.g., Pytorch). Either change to a non-linear fit, or set per_atom_energy = 0."
 
     def _ncount_mae_rmse_rsq_unweighted_and_weighted(self, g):
         """

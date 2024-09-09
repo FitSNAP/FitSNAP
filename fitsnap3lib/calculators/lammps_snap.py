@@ -306,7 +306,7 @@ class LammpsSnap(LammpsBase):
                         b000sum0 *= num_types*num_types*num_types
                 b000sum = sum(b_sum_temp[0, ::nstride])
                 if abs(b000sum - b000sum0) < EPS:
-                    print("WARNING: Configuration has no SNAP neighbors")
+                    print("! WARNING: Configuration has no SNAP neighbors \nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"]))
 
             if not self.config.sections["BISPECTRUM"].bzeroflag:
                 if self.config.sections['BISPECTRUM'].bikflag:
@@ -446,7 +446,7 @@ class LammpsSnap(LammpsBase):
                         b000sum0 *= num_types*num_types*num_types
                 b000sum = sum(b_sum_temp[0, ::nstride])
                 if abs(b000sum - b000sum0) < EPS:
-                    print("WARNING: Configuration has no SNAP neighbors")
+                    print("! WARNING: Configuration has no SNAP neighbors \nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"]))
 
             if not self.config.sections["BISPECTRUM"].bzeroflag:
                 if self.config.sections['BISPECTRUM'].bikflag:

@@ -46,7 +46,7 @@ class Json(Scraper):
                     self.data['Group'] = group_name
                     
                     assert all(k not in self.data for k in self.data["Data"][0].keys()), \
-                        "Duplicate keys in dataset and data. \nFile name: {file_name}"
+                        f"Duplicate keys in dataset and data. \nFile name: {file_name}"
 
                     # Move data up one level
                     self.data.update(self.data.pop('Data')[0])  

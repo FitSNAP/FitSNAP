@@ -16,7 +16,8 @@ UNPROCESSED_KEYS = ['uid']
 PROPERTY_NAME_MAP = {'positions': 'pos',
                      'numbers': 'Z',
                      'charges': 'charge',
-                     'symbols': 'species'}
+                     'symbols': 'species',
+                     'forces': 'force'}
 
 REV_PROPERTY_NAME_MAP = dict(zip(PROPERTY_NAME_MAP.values(), PROPERTY_NAME_MAP.keys()))
 

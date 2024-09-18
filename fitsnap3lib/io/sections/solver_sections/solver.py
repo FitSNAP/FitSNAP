@@ -8,7 +8,7 @@ class Solver(Section):
         self.allowedkeys = ['solver', 'normalweight', 'normratio', \
                             'compute_testerrs', 'detailed_errors', \
                             'nsam', 'cov_nugget', \
-                            'mcmc_num', 'mcmc_gamma', \
+                            'mcmc_num', 'mcmc_gamma', 'mcmc_sigma', \
                             'merr_mult', 'merr_method', "merr_cfs"]
         self._check_section()
 
@@ -29,6 +29,7 @@ class Solver(Section):
         self.cov_nugget = self.get_value("SOLVER", "cov_nugget", "0.0", "float")
         self.mcmc_num = self.get_value("SOLVER", "mcmc_num", "10000", "int")
         self.mcmc_gamma = self.get_value("SOLVER", "mcmc_gamma", "0.01", "float")
+        self.mcmc_sigma = self.get_value("SOLVER", "mcmc_sigma", "0.1", "float")
         self.merr_mult = self.get_value("SOLVER", "merr_mult", "0", "bool")
         self.merr_method = self.get_value("SOLVER", "merr_method", "abc", "str")
         self.merr_cfs = self.get_value("SOLVER", "merr_cfs", "all", "str")

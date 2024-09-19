@@ -82,16 +82,12 @@ class LammpsPace(LammpsBase):
         energy = self._data["Energy"]
         filename = self._data["File"]
 
-        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        lmp_atom_ids  = self._extract_atom_ids(num_atoms)
+        lmp_pos  = self._extract_atom_positions(num_atoms)
+        lmp_types  = self._extract_atom_types(num_atoms)
+
         assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
-
-        # extract positions
-
-        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
-
-        # extract types
-
-        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
+            
         lmp_volume = self._lmp.get_thermo("vol")
 
         # extract pace data, including reference potential data
@@ -199,13 +195,12 @@ class LammpsPace(LammpsBase):
         n_coeff = self.config.sections['ACE'].ncoeff
         energy = self._data["Energy"]
 
-        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        lmp_atom_ids  = self._extract_atom_ids(num_atoms)
+        lmp_pos  = self._extract_atom_positions(num_atoms)
+        lmp_types  = self._extract_atom_types(num_atoms)
+
         assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
-        # Extract positions
-        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
-        # Extract types
-        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
         lmp_volume = self._lmp.get_thermo("vol")
 
         # Extract pace data, including reference potential data
@@ -367,19 +362,17 @@ class LammpsPace(LammpsBase):
         
 
     def _collect_lammps(self):
-
         num_atoms = self._data["NumAtoms"]
         num_types = self.config.sections['ACE'].numtypes
         n_coeff = self.config.sections['ACE'].ncoeff
         energy = self._data["Energy"]
 
-        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        lmp_atom_ids  = self._extract_atom_ids(num_atoms)
+        lmp_pos  = self._extract_atom_positions(num_atoms)
+        lmp_types  = self._extract_atom_types(num_atoms)
+            
         assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms \nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
 
-        # Extract positions
-        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
-        # Extract types
-        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
         lmp_volume = self._lmp.get_thermo("vol")
 
         # Extract pace data, including reference potential data
@@ -516,16 +509,12 @@ class LammpsPace(LammpsBase):
         n_coeff = self.config.sections['ACE'].ncoeff
         energy = self._data["Energy"]
 
-        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        lmp_atom_ids  = self._extract_atom_ids(num_atoms)
+        lmp_pos  = self._extract_atom_positions(num_atoms)
+        lmp_types  = self._extract_atom_types(num_atoms)
+
         assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"], self._data["File"])
 
-        # extract positions
-
-        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
-
-        # extract types
-
-        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
         lmp_volume = self._lmp.get_thermo("vol")
 
         # extract pace data, including reference potential data

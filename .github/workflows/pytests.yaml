@@ -118,8 +118,8 @@ jobs:
         pytest test_examples.py::test_stubs
     - name: Get mpi4py
       run: |
-        python -m pip install mpi4py==3.1.6
-        #python -m pip install --upgrade mpi4py
+        #python -m pip install mpi4py==3.1.6
+        python -m pip install --upgrade mpi4py
         #Problems with mpi4pi versions >=4, defaulting to 3.1.6 above
         # can also install mpi4py manually, but very buggy with conda:
         #cd $CONDA/lib/python*/site-packages/

@@ -103,17 +103,12 @@ class LammpsSnap(LammpsBase):
         n_coeff = self.config.sections['BISPECTRUM'].ncoeff
         energy = self._data["Energy"]
 
-        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        lmp_atom_ids  = self._extract_atom_ids(num_atoms)
+        lmp_pos  = self._extract_atom_positions(num_atoms)
+        lmp_types  = self._extract_atom_types(num_atoms)
+        
         assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"], self._data["File"])
-
-        # extract positions
-
-        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
-        #print(lmp_pos[0,0])
-
-        # extract types
-
-        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
+        
         lmp_volume = self._lmp.get_thermo("vol")
 
         # extract SNAP data, including reference potential data
@@ -221,13 +216,11 @@ class LammpsSnap(LammpsBase):
         n_coeff = self.config.sections['BISPECTRUM'].ncoeff
         energy = self._data["Energy"]
 
-        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
-        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"], self._data["File"])
+        lmp_atom_ids  = self._extract_atom_ids(num_atoms)
+        lmp_pos  = self._extract_atom_positions(num_atoms)
+        lmp_types  = self._extract_atom_types(num_atoms)
 
-        # Extract positions
-        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
-        # Extract types
-        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"], self._data["File"])
         lmp_volume = self._lmp.get_thermo("vol")
 
         # Extract SNAP data, including reference potential data
@@ -306,7 +299,7 @@ class LammpsSnap(LammpsBase):
                         b000sum0 *= num_types*num_types*num_types
                 b000sum = sum(b_sum_temp[0, ::nstride])
                 if abs(b000sum - b000sum0) < EPS:
-                    print("WARNING: Configuration has no SNAP neighbors")
+                    print("! WARNING: Configuration has no SNAP neighbors \nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"]))
 
             if not self.config.sections["BISPECTRUM"].bzeroflag:
                 if self.config.sections['BISPECTRUM'].bikflag:
@@ -390,13 +383,12 @@ class LammpsSnap(LammpsBase):
         n_coeff = self.config.sections['BISPECTRUM'].ncoeff
         energy = self._data["Energy"]
 
-        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        lmp_atom_ids  = self._extract_atom_ids(num_atoms)
+        lmp_pos  = self._extract_atom_positions(num_atoms)
+        lmp_types  = self._extract_atom_types(num_atoms)
+
         assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"], self._data["File"])
 
-        # Extract positions
-        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
-        # Extract types
-        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
         lmp_volume = self._lmp.get_thermo("vol")
 
         # Extract SNAP data, including reference potential data
@@ -446,7 +438,7 @@ class LammpsSnap(LammpsBase):
                         b000sum0 *= num_types*num_types*num_types
                 b000sum = sum(b_sum_temp[0, ::nstride])
                 if abs(b000sum - b000sum0) < EPS:
-                    print("WARNING: Configuration has no SNAP neighbors")
+                    print("! WARNING: Configuration has no SNAP neighbors \nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"]))
 
             if not self.config.sections["BISPECTRUM"].bzeroflag:
                 if self.config.sections['BISPECTRUM'].bikflag:
@@ -557,16 +549,11 @@ class LammpsSnap(LammpsBase):
         n_coeff = self.config.sections['BISPECTRUM'].ncoeff
         energy = self._data["Energy"]
 
-        lmp_atom_ids = self._lmp.numpy.extract_atom_iarray("id", num_atoms).ravel()
+        lmp_atom_ids  = self._extract_atom_ids(num_atoms)
+        lmp_pos  = self._extract_atom_positions(num_atoms)
+        lmp_types  = self._extract_atom_types(num_atoms)
+
         assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms\nGroup and configuration: {} {}".format(self._data["Group"], self._data["File"])
-
-        # extract positions
-
-        lmp_pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
-
-        # extract types
-
-        lmp_types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
         lmp_volume = self._lmp.get_thermo("vol")
 
         # extract SNAP data, including reference potential data

@@ -215,6 +215,31 @@ class LammpsBase(Calculator):
     def _run_lammps(self):
         self._lmp.command("run 0")
 
+    def _extract_atom_ids(self, num_atoms):
+        # helper function to account for change in LAMMPS numpy_wrapper method name
+        try:
+            ids = self._lmp.numpy.extract_atom(name="id", nelem=num_atoms).ravel()
+        except:
+            ids = self._lmp.numpy.extract_atom_iarray(name="id", nelem=num_atoms).ravel()
+        return ids
+
+    def _extract_atom_positions(self, num_atoms):
+        # helper function to account for change in LAMMPS numpy_wrapper method name
+        try:
+            pos = self._lmp.numpy.extract_atom(name="x", nelem=num_atoms, dim=3)
+        except:
+            pos = self._lmp.numpy.extract_atom_darray(name="x", nelem=num_atoms, dim=3)
+        return pos
+
+    def _extract_atom_types(self, num_atoms):
+        # helper function to account for change in LAMMPS numpy_wrapper method name
+        try:
+            types = self._lmp.numpy.extract_atom(name="type", nelem=num_atoms).ravel()
+        except:
+            types = self._lmp.numpy.extract_atom_iarray(name="type", nelem=num_atoms).ravel()
+        return types
+
+
 
 # this is super clean when there is only one value per key, needs reworking
 def _lammps_variables(bispec_options):
@@ -263,3 +288,4 @@ def _extract_compute_np(lmp, name, compute_style, result_type, array_shape=None)
 
 def _extract_commands(string):
     return [x for x in string.splitlines() if x.strip() != '']
+

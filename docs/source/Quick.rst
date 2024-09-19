@@ -16,7 +16,7 @@ Create & activate conda environment with dependencies::
     conda create --name fitsnap python=3.10
     conda activate fitsnap
     python -m pip install numpy scipy scikit-learn virtualenv psutil pandas tabulate mpi4py Cython
-    # For nonlinear fitting:
+    # For nonlinear (neural network) fitting:
     python -m pip install torch
     # For fitting ACE:
     python -m pip install sympy pyyaml
@@ -24,21 +24,17 @@ Create & activate conda environment with dependencies::
     python -m pip install sphinx sphinx_rtd_theme sphinxcontrib-napoleon
 
 Now we need to install LAMMPS.
-
-**NOTE:** If you want to use ACE, please see `LAMMPS PACE install <Installation.html#lammps-pace-install>`__
-
 Set the following environment variables::
 
     LAMMPS_DIR=/path/to/where/you/want/lammps # LAMMPS code will be in $LAMMPS_DIR
-    FITSNAP_DIR=/path/to/where/you/want/FitSNAP # FitSNAP code will be in $FitSNAP_DIR
+    FITSNAP_DIR=/path/to/where/you/want/FitSNAP # FitSNAP code will be in $FITSNAP_DIR
 
 Get & build LAMMPS with Python library::
 
     git clone https://github.com/lammps/lammps $LAMMPS_DIR
     mkdir $LAMMPS_DIR/build-fitsnap
     cd $LAMMPS_DIR/build-fitsnap
-    cmake ../cmake -DLAMMPS_EXCEPTIONS=yes \
-                   -DBUILD_SHARED_LIBS=yes \
+    cmake ../cmake -DBUILD_SHARED_LIBS=yes \
                    -DMLIAP_ENABLE_PYTHON=yes \
                    -DPKG_PYTHON=yes \
                    -DPKG_ML-SNAP=yes \
@@ -65,3 +61,6 @@ Run high-performance MD with this neural network potential::
     export PYTHONPATH=${SITE_PACKAGES_DIR}:$PYTHONPATH # So that ML-IAP package can find torch for MD
     cd MD
     mpirun -np 4 ${LAMMPS_DIR}/fitsnap-build/lmp < in.run
+
+
+For more details, or if you encounter errors, see `Installation <Installation.html>`__. 

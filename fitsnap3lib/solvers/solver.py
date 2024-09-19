@@ -104,8 +104,7 @@ class Solver:
 
 
     def _checks(self):
-        assert not (self.config.sections['CALCULATOR'].linear and self.config.sections['CALCULATOR'].per_atom_energy and self.config.args.perform_fit)
-
+        assert not (self.config.sections['CALCULATOR'].linear and self.config.sections['CALCULATOR'].per_atom_energy and self.config.args.perform_fit), "Can only output per_atom_energy for non-linear fits (e.g., Pytorch) or with the '--nofit' flag. Either change to a non-linear fit, use the flag '--nofit', or set per_atom_energy = 0."
     def _ncount_mae_rmse_rsq_unweighted_and_weighted(self, g):
         """
         Calculate errors given a dataframe. The name of this function denotes the quantities it 

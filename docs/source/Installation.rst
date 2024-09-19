@@ -45,7 +45,7 @@ creating your virtual environment, **make sure it is activated for all future st
 Now install the necessary pre-requisites to build Python-LAMMPS using pip or conda::
 
     python -m pip install numpy scipy scikit-learn virtualenv psutil pandas tabulate mpi4py Cython
-    # For nonlinear fitting:
+    # For nonlinear (neural network) fitting:
     python -m pip install torch
     # For fitting ACE:
     python -m pip install sympy pyyaml
@@ -80,8 +80,7 @@ This creates a :code:`lammps` directory, where we will build LAMMPS using `cmake
     mkdir build-fitsnap
     cd build-fitsnap
     # Use cmake to build the Makefile
-    cmake ../cmake -DLAMMPS_EXCEPTIONS=yes \
-                  -DBUILD_SHARED_LIBS=yes \
+    cmake ../cmake -DBUILD_SHARED_LIBS=yes \
                   -DMLIAP_ENABLE_PYTHON=yes \
                   -DPKG_PYTHON=yes \
                   -DPKG_ML-SNAP=yes \
@@ -89,6 +88,7 @@ This creates a :code:`lammps` directory, where we will build LAMMPS using `cmake
                   -DPKG_ML-PACE=yes \
                   -DPKG_SPIN=yes \
                   -DPYTHON_EXECUTABLE:FILEPATH=`which python`
+                  
     # Build a LAMMPS executable and shared library
     make
     # Install Python-LAMMPS interface
@@ -115,9 +115,10 @@ which should produce no errors.
 After completing this LAMMPS installation, please see `Install FitSNAP with latest LAMMPS`_ to use 
 FitSNAP.
 
-**NOTE:** There is no longer a need to use modified versions of LAMMPS or PACE libraries for ACE
-model fitting. The :code:`compute pace` used by FitSNAP to calculate ACE descriptors is available 
-in the default branch of the public LAMMPS repository (https://github.com/lammps/lammps).
+**NOTE ON ACE FITS:** There is no longer a need to use modified versions of LAMMPS or PACE libraries for ACE
+model fitting. The :code:`compute pace` used by FitSNAP to calculate ACE descriptors has been fully integrated into
+the ML-PACE package as of the August 29, 2024 LAMMPS stable release (https://github.com/lammps/lammps/tree/stable). 
+The most recent development version can be found in the default branch of the public LAMMPS repository (https://github.com/lammps/lammps). 
 
 For a summary/review of all these steps, see see `Quick Installation <Quick.html>`__. 
 

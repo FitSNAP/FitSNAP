@@ -1,0 +1,70 @@
+units metal
+dimension 3
+boundary p p p
+atom_style spin
+atom_modify map array
+
+variable stemperature equal 300 # temperature in kelvin
+variable alattice equal 2.830277 #3.316 # lattice constant (unit A)
+variable myseed equal 12345 # the value seed for the velocity
+variable xmax equal 18 # size in the x-direction
+variable ymax equal 18 # size in the y-direction
+variable zmax equal 18 # size in the z-direction
+variable time_step equal 0.0001 # time step in pico seconds
+variable time_eq equal 100 # time steps for the equilibration part
+variable time_shock equal 500000 # time steps for the piston
+variable vpiston equal 1.5 # piston speed in (km/s) multiply by ten to obtain (A/ps)
+variable Nevery equal 1 # use input values every this many timesteps
+variable Nrepeat equal 1 # number of times to use input values for calculating
+variable Nfreq equal 1 # calculate averages every this many timesteps
+variable deltaz equal 5 # thickness of spatial bins in dim (distance units)
+variable deltaz0 equal 10 # thickness of spatial bins in dim (distance units)
+variable deltaz1 equal 2 # thickness of spatial bins in dim (distance units)
+variable atomrate equal 100 # the rate in timestep that atoms are dump as CFG
+variable tdamp equal "v_time_step*100"
+variable pdamp equal "v_time_step*1000" 
+
+variable Up equal "-10*v_vpiston"
+timestep ${time_step}
+
+lattice         bcc ${alattice} #origin 0.0 0.0 0.0 orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
+region          sim_box block 0 ${xmax} 0 ${ymax} 0 ${zmax} # units for region are lattice (default)
+create_box      1 sim_box
+region          atom_box block 0 ${xmax} 0 ${ymax} 0 ${zmax}
+create_atoms    1 region atom_box
+set             type 1 spin 2.2 0.0 0.0 1.0
+mass 1          55.845
+
+group 		bulk type 1
+include 	pot1.mod 
+
+compute         ptm all ptm/atom fcc-hcp-bcc 1.5 all
+compute         voro all voronoi/atom
+compute         mystress all stress/atom NULL
+fix             phases all ptmmN ptm voro mystress 1 5 no 29.6 19.5 1041
+
+compute         compute_spin all spin
+variable        magnetic_energy equal etotal
+variable 	mag_x           equal c_compute_spin[1]
+variable 	mag_y           equal c_compute_spin[2]
+variable 	mag_z           equal c_compute_spin[3]
+variable 	mag_norm        equal c_compute_spin[4]
+variable 	mag_eng         equal c_compute_spin[5]
+variable 	temp_mag        equal c_compute_spin[6]
+variable 	Temperature     equal 300
+variable 	s1_a            equal 300
+
+fix             1 all nve/spin lattice moving
+fix             3a all langevin ${Temperature} ${Temperature} 0.1 1041 tally yes
+fix             2a all langevin/spin ${s1_a} 0.01 109
+change_box      all boundary p p p
+reset_timestep  0
+
+compute         outsp all property/atom spx spy spz sp fmx fmy fmz
+dump            200 all custom 100 dump_iron_lammpstrj.* id type x y z fx fy fz c_outsp[1] c_outsp[2] c_outsp[3] c_outsp[4] c_outsp[5] c_outsp[6] c_outsp[7] c_voro[1] c_voro[2] c_ptm[1] c_mystress[1] c_mystress[2] c_mystress[3]
+
+thermo 		100
+thermo_style    custom step pxx pyy pzz lx ly lz temp etotal press v_mag_norm v_temp_mag v_mag_eng
+
+run             100000
+write_restart   restart.rst

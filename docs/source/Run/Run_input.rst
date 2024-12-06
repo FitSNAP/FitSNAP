@@ -104,7 +104,7 @@ We explain the sections and their keys in more detail below.
 [BISPECTRUM]
 ^^^^^^^^^^^^
 
-This section contains settings for the SNAP bispectrum descriptors from `Thompson et. al. <snappaper_>`_
+This section contains settings for the SNAP bispectrum descriptors from `Thompson et al. (2015) <snappaper_>`_
 
 .. _snappaper: https://www.sciencedirect.com/science/article/pii/S0021999114008353
 
@@ -126,7 +126,7 @@ in our examples, which are often well behaved for other systems.**
   using a :code:`twojmax` of 4, 6, or 8. This corresponds to 14, 30, and 55 bispectrum components, 
   respectively. Default value is 6. 
 
-- :code:`rcutfac` is a cutoff radius parameter. One value is used for all element types. We recommend 
+- :code:`rcutfac` is a cutoff radius parameter. One value is used for all element types. We recommend
   a cutoff between 4 and 5 Angstroms for most systems. Default value is 4.67 Angstroms. 
 
 - :code:`rfac0` is a parameter used in distance to angle conversion, between 0 and 1. Default value 
@@ -173,6 +173,43 @@ info in `PyTorch Models <Pytorch.html>`__
 .. _lammpssnap: https://docs.lammps.org/compute_sna_atom.html 
 .. _quadsnappaper: https://aip.scitation.org/doi/full/10.1063/1.5017641 
 .. _chemsnappaper: https://doi.org/10.1021/acs.jpca.0c02450
+
+[ACE]
+^^^^^
+
+This section contains settings for the Atomic Cluster Expansion (ACE) descriptors from `Drautz (2019) <acepaper_>`_ available as `pair_style pace <acelammps_>`_ in LAMMPS.
+
+.. _acepaper: https://doi.org/10.1103/PhysRevB.99.014104
+.. _acelammps: https://docs.lammps.org/pair_pace.html
+
+- :code:`numTypes` number of atom types in your set of configurations located in `the [PATH] section <Run.html#path>`__
+
+- :code:`type` contains a list of element type symbols, one for each type. Make sure these are 
+  ordered correctly, e.g. if you have a LAMMPS type 1 atom that is :code:`Ga`, and LAMMPS type 2 
+  atoms are :code:`N`, list this as :code:`Ga N`.
+
+The remaining keywords are hyperparameters that *could* be optimized for your specific system, but this is not a requirement. You may also use the default values, or values used in our examples, which are often well behaved for other systems.
+
+- :code:`ranks` **??? FIXME ???**
+
+- :code:`lmax` is the maximum angular momentum per radial function.
+
+- :code:`nmax` is the number of radial functions.
+
+- :code:`nmaxbase` **??? FIXME ???**
+
+- :code:`rcutfac` *(same as in [BISPECTRUM])* is a cutoff radius parameter. One value is used for all element types. We recommend a cutoff between 4 and 5 Angstroms for most systems. Default value is 4.67 Angstroms.
+
+- :code:`lambda` **??? FIXME ???**
+
+- :code:`lmin` is the minimum angular momentum per radial function.
+
+- :code:`bzeroflag` *(same as in [BISPECTRUM])* is 0 or 1, determining whether or not B0, the bispectrum components of an atom with no neighbors, are subtracted from the calculated bispectrum components.
+
+- :code:`b_basis` ACE basis flags with possible values `pa_tabulated`, `minsub`, `ysg_x_so3`.
+
+.. WARNING:: Only change ACE basis flags if you know what you are doing!
+
 
 [CALCULATOR]
 ^^^^^^^^^^^^

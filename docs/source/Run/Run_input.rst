@@ -177,10 +177,12 @@ info in `PyTorch Models <Pytorch.html>`__
 [ACE]
 ^^^^^
 
-This section contains settings for the Atomic Cluster Expansion (ACE) descriptors from `Drautz (2019) <acepaper_>`_ available as `pair_style pace <acelammps_>`_ in LAMMPS.
+This section contains settings for the Atomic Cluster Expansion (ACE) descriptors from `Drautz (2019) <drautz2019_>`_ available as `pair_style pace <acelammps_>`_ in LAMMPS. ACE descriptor calculations are explained in `Goff, Sievers, Wood, Thompson (2024) <goff2024_>`_.
 
-.. _acepaper: https://doi.org/10.1103/PhysRevB.99.014104
+
+.. _drautz2019: https://doi.org/10.1103/PhysRevB.99.014104
 .. _acelammps: https://docs.lammps.org/pair_pace.html
+.. _goff2024: https://doi.org/10.1016/j.jcp.2024.113073
 
 - :code:`numTypes` number of atom types in your set of configurations located in `the [PATH] section <Run.html#path>`__
 
@@ -188,13 +190,11 @@ This section contains settings for the Atomic Cluster Expansion (ACE) descriptor
   ordered correctly, e.g. if you have a LAMMPS type 1 atom that is :code:`Ga`, and LAMMPS type 2 
   atoms are :code:`N`, list this as :code:`Ga N`.
 
-The remaining keywords are hyperparameters that *could* be optimized for your specific system, but this is not a requirement. You may also use the default values, or values used in our examples, which are often well behaved for other systems.
+- :code:`ranks` The number of bonds in an ACE cluster (analogous to the number of vertices in a fixed-lattice cluster).
 
-- :code:`ranks` **??? FIXME ???**
+- :code:`lmax` are the maximum angular momentum quantum numbers for each the atomic basis functions.
 
-- :code:`lmax` is the maximum angular momentum per radial function.
-
-- :code:`nmax` is the number of radial functions.
+- :code:`nmax` is the number of atomic basis functions.
 
 - :code:`nmaxbase` **??? FIXME ???**
 

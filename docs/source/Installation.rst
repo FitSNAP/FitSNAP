@@ -44,13 +44,15 @@ creating your virtual environment, **make sure it is activated for all future st
 
 Now install the necessary pre-requisites to build Python-LAMMPS using pip or conda::
 
-    python -m pip install numpy scipy scikit-learn virtualenv psutil pandas tabulate mpi4py Cython
+    python -m pip install numpy scipy scikit-learn virtualenv psutil pandas tabulate mpi4py Cython setuptools
     # For nonlinear (neural network) fitting:
     python -m pip install torch
     # For fitting ACE:
     python -m pip install sympy pyyaml
     # For contributing to docs:
     python -m pip install sphinx sphinx_rtd_theme sphinxcontrib-napoleon
+
+.. NOTE:: distutils package is removed in python version 3.12, workaround is to pip install `setuptools` https://stackoverflow.com/questions/69919970/no-module-named-distutils-util-but-distutils-installed
 
 To make sure MPI is working, make a Python script called :code:`test.py` with the following::
 
@@ -190,6 +192,6 @@ After installing Anaconda:
         FITSNAP_DIR=\path\to\FitSNAP
         export PYTHONPATH=$FITSNAP_DIR:$LAMMPS_DIR/python:$PYTHONPATH
 
-- **TIP:** Periodically use the command :code:`git pull` in the cloned directory for updates 
+.. TIP:: Periodically use the command :code:`git pull` in the cloned directory for updates
 
 

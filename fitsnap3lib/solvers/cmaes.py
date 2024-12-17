@@ -5,5 +5,5 @@ import cma
 
 class CMAES(Solver):
 
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self, name, pt, config):
+        super().__init__(name, pt, config)

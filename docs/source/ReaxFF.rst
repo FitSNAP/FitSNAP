@@ -16,8 +16,8 @@ by pre-calculating descriptors in LAMMPS which are then fed into the network, as
 
 
 
-Fitting Neural Network Potentials
----------------------------------
+Fitting ReaxFF parameters
+-------------------------
 
 The Covariance Matrix Adaptation Evolution Strategy (CMA-ES) is a stochastic derivative-free numerical optimization algorithm for difficult (non-convex, ill-conditioned, multi-modal, rugged, noisy) optimization problems in continuous search spaces. http://cma-es.github.io/
 
@@ -29,9 +29,7 @@ Similarly to how we fit linear models, we can input descriptors into nonlinear m
     population_size =  36
     sigma = 0.3
 
-We must also add a :code:`nonlinear = 1` key in the :code:`CALCULATOR` section, and set 
-:code:`solver = CMAES` in the :code:`SOLVER` section. Now the input script is ready to fit a 
-neural network potential.
+We must also set :code:`solver = CMAES` in the :code:`SOLVER` section. Now the input script is ready to fit a ReaxFF parameter set.
 
 The :code:`CMAES` section keys are explained in more detail below.
 

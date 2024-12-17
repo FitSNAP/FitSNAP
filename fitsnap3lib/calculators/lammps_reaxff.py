@@ -12,84 +12,35 @@ class LammpsReaxff(LammpsBase):
         self._row_index = 0
         self.pt.check_lammps()
 
+    # a array is for per-atom quantities in all configs (eg charge, ...)
+    # b array is for per-config quantities like energy
+    # c matrix is for per-atom 3-vectors like position and velocity.
+
     def get_width(self):
-        if (self.config.sections["CALCULATOR"].nonlinear):
-            a_width = self.config.sections["REAXFF"].ncoeff #+ 3
-        else:
-            num_types = self.config.sections["BISPECTRUM"].numtypes
-            a_width = self.config.sections["BISPECTRUM"].ncoeff * num_types
-            if not self.config.sections["BISPECTRUM"].bzeroflag:
-                a_width += num_types
+        a_width = self.config.sections["REAXFF"].ncoeff #+ 3
         return a_width
     
     def _prepare_lammps(self):
         self._set_structure()
-        # this is super clean when there is only one value per key, needs reworking
-        #        self._set_variables(**_lammps_variables(config.sections["BISPECTRUM"].__dict__))
 
         # needs reworking when lammps will accept variable 2J
-        self._lmp.command(f"variable twojmax equal {max(self.config.sections['BISPECTRUM'].twojmax)}")
-        self._lmp.command(f"variable rcutfac equal {self.config.sections['BISPECTRUM'].rcutfac}")
-        self._lmp.command(f"variable rfac0 equal {self.config.sections['BISPECTRUM'].rfac0}")
-        #        self._lmp.command(f"variable rmin0 equal {config.sections['BISPECTRUM'].rmin0}")
-
-        for i, j in enumerate(self.config.sections["BISPECTRUM"].wj):
-            self._lmp.command(f"variable wj{i + 1} equal {j}")
-
-        for i, j in enumerate(self.config.sections["BISPECTRUM"].radelem):
-            self._lmp.command(f"variable radelem{i + 1} equal {j}")
-
-        for line in self.config.sections["REFERENCE"].lmp_pairdecl:
-            self._lmp.command(line.lower())
+        #self._lmp.command(f"variable twojmax equal {max(self.config.sections['BISPECTRUM'].twojmax)}")
 
         self._set_computes()
         self._set_neighbor_list()
 
     def _set_box(self):
-        self._set_box_helper(numtypes=self.config.sections['REAXFF'].numtypes)
+        self._lmp.command("boundary p p p")
+        ((ax, bx, cx),(ay, by, cy),(az, bz, cz)) = self._data["Lattice"]
+        self._lmp.command(f'region box block -{ax:20.20g} {ax:20.20g} -{by:20.20g} {by:20.20g} -{cz:20.20g} {cz:20.20g}')
+        numtypes=self.config.sections['REAXFF'].numtypes)
+        self._lmp.command(f"create_box {numtypes} box")
 
     def _create_atoms(self):
         self._create_atoms_helper(type_mapping=self.config.sections["REAXFF"].type_mapping)
 
     def _set_computes(self):
         numtypes = self.config.sections['REAXFF'].numtypes
-        radelem = " ".join([f"${{radelem{i}}}" for i in range(1, numtypes + 1)])
-        wj = " ".join([f"${{wj{i}}}" for i in range(1, numtypes + 1)])
-
-        kw_options = {
-            k: self.config.sections["BISPECTRUM"].__dict__[v]
-            for k, v in
-            {
-                "rmin0": "rmin0",
-                "bzeroflag": "bzeroflag",
-                "quadraticflag": "quadraticflag",
-                "switchflag": "switchflag",
-                "chem": "chemflag",
-                "bnormflag": "bnormflag",
-                "wselfallflag": "wselfallflag",
-                "bikflag": "bikflag",
-                "switchinnerflag": "switchinnerflag",
-                "switchflag": "switchflag",
-                "sinner": "sinner",
-                "dinner": "dinner",
-                "dgradflag": "dgradflag",
-            }.items()
-            if v in self.config.sections["BISPECTRUM"].__dict__
-        }
-
-        # remove input dictionary keywords if they are not used, to avoid version problems
-
-        if kw_options["chem"] == 0:
-            kw_options.pop("chem")
-        if kw_options["bikflag"] == 0:
-            kw_options.pop("bikflag")
-        if kw_options["switchinnerflag"] == 0:
-            kw_options.pop("switchinnerflag")
-        if kw_options["dgradflag"] == 0:
-            kw_options.pop("dgradflag")
-        kw_options["rmin0"] = self.config.sections["BISPECTRUM"].rmin0
-        kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
-        kwargs = " ".join(kw_substrings)
 
         # everything is handled by LAMMPS compute snap
 
@@ -100,7 +51,6 @@ class LammpsReaxff(LammpsBase):
     def _collect_lammps_nonlinear(self):
         num_atoms = self._data["NumAtoms"]
         num_types = self.config.sections['REAXFF'].numtypes
-        n_coeff = self.config.sections['REAXFF'].ncoeff
         energy = self._data["Energy"]
 
         lmp_atom_ids  = self._extract_atom_ids(num_atoms)
@@ -121,27 +71,6 @@ class LammpsReaxff(LammpsBase):
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, None)
         ncols_bispectrum = n_coeff
 
-        # number of columns in the snap array, add 3 to include indices and Cartesian components.
-
-        ncols_snap = n_coeff + 3
-        ncols_reference = 0
-        nrows_dgrad = np.shape(lmp_snap)[0]-nrows_energy-1
-        nrows_snap = nrows_energy + nrows_dgrad + 1
-        assert nrows_snap == np.shape(lmp_snap)[0]
-        """
-        Shared index tells where to start in the shared arrays on this proc.
-        Currently this is an index for the 'a' array (natoms*nconfigs rows).
-        This is also an index for the 't' array of types (natoms*nconfigs rows).
-        Also made indices for:
-        - the 'b' array (3*natoms+1)*nconfigs rows.
-        - the 'dgrad' array (natoms+1)*nneigh*3*nconfigs rows.
-        - the 'dgrad_indices' array which has same number of rows as 'dgrad'
-        """
-        index = self.shared_index
-        dindex = self.distributed_index
-        index_b = self.shared_index_b
-        index_c = self.shared_index_c
-        index_dgrad = self.shared_index_dgrad
 
         # extract the useful parts of the snap array
 
@@ -152,62 +81,11 @@ class LammpsReaxff(LammpsBase):
         dgrad_indices = lmp_snap[bik_rows:(bik_rows+nrows_dgrad), 0:3].astype(np.int32)
         ref_energy = lmp_snap[-1, 0]
 
-        # strip zero dgrad components (equivalent to pruning neighborlist)
-         
-        nonzero_rows = lmp_snap[bik_rows:(bik_rows+nrows_dgrad),3:(n_coeff+3)] != 0.0
-        nonzero_rows = np.any(nonzero_rows, axis=1)
-        dgrad = dgrad[nonzero_rows, :]
-        nrows_dgrad = np.shape(dgrad)[0]
-        nrows_snap = np.shape(dgrad)[0] + nrows_energy + 1
-        dgrad_indices = dgrad_indices[nonzero_rows, :]
-
-        # populate the bispectrum array 'a'
-
-        self.pt.shared_arrays['a'].array[index:index+bik_rows] = bispectrum_components
-        self.pt.shared_arrays['t'].array[index:index+bik_rows] = lmp_types
-        index += num_atoms
-
-        # populate the truth array 'b' and weight array 'w'
-
-        self.pt.shared_arrays['b'].array[index_b] = (energy - ref_energy)/num_atoms
-        self.pt.shared_arrays['w'].array[index_b,0] = self._data["eweight"]
-        self.pt.shared_arrays['w'].array[index_b,1] = self._data["fweight"]
-        index_b += 1
-
         if (self.config.sections['CALCULATOR'].force):
             # populate the force truth array 'c'
 
             self.pt.shared_arrays['c'].array[index_c:(index_c + (3*num_atoms))] = self._data["Forces"].ravel() - ref_forces
             index_c += 3*num_atoms
-
-            # populate the dgrad arrays 'dgrad' and 'dbdrindx'
-
-            self.pt.shared_arrays['dgrad'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad
-            self.pt.shared_arrays['dbdrindx'].array[index_dgrad:(index_dgrad+nrows_dgrad)] = dgrad_indices
-            index_dgrad += nrows_dgrad
-
-        # populate the fitsnap dicts
-        # these are distributed lists and therefore have different size per proc, but will get 
-        # gathered later onto the root proc in calculator.collect_distributed_lists
-        # we use fitsnap dicts for NumAtoms and NumDgradRows here because they are organized differently 
-        # than the corresponding shared arrays. 
-
-        dindex = dindex+1
-        self.pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = ['{}'.format(self._data['Group'])]
-        self.pt.fitsnap_dict['Configs'][self.distributed_index:dindex] = ['{}'.format(self._data['File'])]
-        self.pt.fitsnap_dict['NumAtoms'][self.distributed_index:dindex] = ['{}'.format(self._data['NumAtoms'])]
-        self.pt.fitsnap_dict['Testing'][self.distributed_index:dindex] = [bool(self._data['test_bool'])]
-        
-        if (self.config.sections['CALCULATOR'].force):
-            self.pt.fitsnap_dict['NumDgradRows'][self.distributed_index:dindex] = ['{}'.format(nrows_dgrad)]
-
-        # reset indices since we are stacking data in the shared arrays
-
-        self.shared_index = index
-        self.distributed_index = dindex
-        self.shared_index_b = index_b
-        self.shared_index_c = index_c
-        self.shared_index_dgrad = index_dgrad
 
     def _collect_lammps_single(self):
 
@@ -224,46 +102,16 @@ class LammpsReaxff(LammpsBase):
         lmp_volume = self._lmp.get_thermo("vol")
 
         # Extract SNAP data, including reference potential data
-
-        bik_rows = 1
-        if self.config.sections['BISPECTRUM'].bikflag:
-            bik_rows = num_atoms
-        nrows_energy = bik_rows
-        ndim_force = 3
-        nrows_force = ndim_force * num_atoms
-        ndim_virial = 6
-        nrows_virial = ndim_virial
-        nrows_snap = nrows_energy + nrows_force + nrows_virial
-        ncols_bispectrum = n_coeff * num_types
-        ncols_reference = 1
-        ncols_snap = ncols_bispectrum + ncols_reference
-        # index = pt.fitsnap_dict['a_indices'][self._i]
-        index = 0
-        dindex = self.distributed_index
-
         lmp_snap = _extract_compute_np(self._lmp, "snap", 0, 2, (nrows_snap, ncols_snap))
 
         # Get individual A matrices for this configuration.
 
-        # If doing per-atom descriptors, we want a different shape (one less column).
-        if self.config.sections['BISPECTRUM'].bikflag:
-            nrows = 0
-            if self.config.sections['CALCULATOR'].energy:
-                nrows += num_atoms
-            if self.config.sections['CALCULATOR'].force:
-                nrows += 3*num_atoms
-            if self.config.sections['CALCULATOR'].stress:
-                nrows += 6
-            nd = np.shape(lmp_snap)[1]-1
-            na = nrows
-        else:
-            nd = self.get_width()
-            na = np.shape(lmp_snap)[0]
-            if not self.config.sections["CALCULATOR"].stress:
-                na -= 6
-
-        #if self.config.sections['BISPECTRUM'].bzeroflag and not self.config.sections['BISPECTRUM'].bikflag:
-        #    nd -= 1
+        if self.config.sections['CALCULATOR'].energy:
+            nrows += num_atoms
+        if self.config.sections['CALCULATOR'].force:
+            nrows += 3*num_atoms
+        if self.config.sections['CALCULATOR'].stress:
+            pass # FIXME
 
         a = np.zeros((na, nd))
         b = np.zeros(na)

@@ -114,7 +114,17 @@ interpreter::
 
 which should produce no errors.
 
-After completing this LAMMPS installation, please see `Install FitSNAP with latest LAMMPS`_ to use 
+.. WARNING::
+
+  OpenMPI 5.0.x has issues with default TMPDIR on MacOS::
+
+  [macmini.local:52739] shmem: mmap: an error occurred while determining whether or not /var/folders/w6/v73x419x183g9_q5md_kgprh0000gn/T//ompi.macmini.501/jf.0/2157248512/sm_segment.macmini.501.80950000.0 could be created.
+
+  Workaround::
+
+    export TMPDIR=$HOME/tmp
+
+After completing this LAMMPS installation, please see `Install FitSNAP with latest LAMMPS`_ to use
 FitSNAP.
 
 **NOTE ON ACE FITS:** There is no longer a need to use modified versions of LAMMPS or PACE libraries for ACE

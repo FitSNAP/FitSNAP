@@ -1,5 +1,6 @@
 from fitsnap3lib.io.sections.sections import Section
 
+import cma
 
 class CMAES(Section):
 
@@ -12,3 +13,6 @@ class CMAES(Section):
         self.sigma = self.get_value("CMAES", "sigma", "0.1", "float")
 
         self.delete()
+
+
+

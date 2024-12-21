@@ -13,6 +13,8 @@ class Eshift(Section):
             self.types = self.get_value("ACE", "type", "H").split()
         elif config.has_section("CUSTOM"):
             self.types = self.get_value("CUSTOM", "type", "H").split()
+        elif config.has_section("REAXFF"):
+            self.types = self.get_value("REAXFF", "type", "H").split()
             
         if config.has_section("ESHIFT"):
             self.eshift = {}

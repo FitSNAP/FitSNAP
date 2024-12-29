@@ -82,9 +82,10 @@ class Calculator:
         self.number_of_files_per_node = len(self.pt.shared_arrays["number_of_atoms"].array)
         # self.nconfigs is the number of configs on this proc, assigned in lammps_base
 
-        # create data matrices for nonlinear pytorch solver
-
         if (self.config.sections["SOLVER"].solver == "PYTORCH"):
+
+            # create data matrices for nonlinear pytorch solver
+
             a_len = 0
             b_len = 0 # number reference energies for all configs
             c_len = 0 # number of reference forces for all configs
@@ -168,9 +169,9 @@ class Calculator:
             self.pt.add_2_fitsnap("NumDgradRows", DistributedList(self.nconfigs))
             self.pt.add_2_fitsnap("Testing", DistributedList(self.nconfigs))
 
-        # get data arrays for network solvers
-
         elif (self.config.sections["SOLVER"].solver == "NETWORK"):
+
+            # get data arrays for network solvers
 
             a_len = 0 # per-atom quantities (types, numneighs) for all configs
             b_len = 0 # number reference energies for all configs
@@ -187,10 +188,12 @@ class Calculator:
             if self.config.sections["CALCULATOR"].force:
                 c_len += 3*self.number_of_atoms
 
-#            # stress fitting not supported yet.
-#            if config.sections["CALCULATOR"].stress:
-#                a_len += self.number_of_files_per_node * 6
-#                b_len += self.number_of_files_per_node * 6
+            # FIXME: stress fitting not supported yet for NETWORK
+            if self.config.sections["CALCULATOR"].stress:
+                # a_len += self.number_of_files_per_node * 6
+                # b_len += self.number_of_files_per_node * 6
+                raise NotImplementedError("Stress fitting not supported yet for NETWORK solver.")
+
 
             a_width = 2 # types and numneighs
             neighlist_width = self.get_width()
@@ -256,9 +259,29 @@ class Calculator:
             self.pt.add_2_fitsnap("NumNeighs", DistributedList(self.nconfigs))
             self.pt.add_2_fitsnap("Testing", DistributedList(self.nconfigs))
 
-        # get data arrays for linear solvers
+        elif (self.config.sections["SOLVER"].solver == "CMAES"):
+
+            # create data arrays for REAXFF/CMAES
+
+            a_len = 0
+            b_len = 0 # number reference energies for all configs
+            c_len = 0 # number of reference forces for all configs
+
+            if self.config.sections["CALCULATOR"].energy:
+                b_len += self.number_of_files_per_node # total number of configs
+                self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
+
+            if self.config.sections["CALCULATOR"].force:
+                c_len += 3*self.number_of_atoms
+                self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
+
+            # FIXME: stress fitting not supported yet for CMAES
+            if self.config.sections["CALCULATOR"].stress:
+                raise NotImplementedError("Stress fitting not supported yet for CMAES solver.")
 
         else:
+
+            # get data arrays for linear solvers
 
             a_len = 0
             if self.config.sections["CALCULATOR"].energy:

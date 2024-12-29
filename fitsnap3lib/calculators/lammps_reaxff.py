@@ -124,8 +124,10 @@ class LammpsReaxff(LammpsBase):
 
     def _set_box(self):
         self._lmp.command("boundary p p p")
-        ((ax, bx, cx),(ay, by, cy),(az, bz, cz)) = self._data["Lattice"]
-        self._lmp.command(f'region box block {-ax} {ax} {-by} {by} {-cz} {cz}')
+        xlo, ylo, zlo = np.min(self._data["Positions"],axis=0)-10.0
+        xhi, yhi, zhi = np.max(self._data["Positions"],axis=0)+10.0
+        #print(xlo, ylo, zlo, xhi, yhi, zhi)
+        self._lmp.command(f'region box block {xlo} {xhi} {ylo} {yhi} {zlo} {zhi}')
         numtypes=self.config.sections['REAXFF'].numtypes
         self._lmp.command(f"create_box {numtypes} box")
 

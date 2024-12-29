@@ -55,7 +55,7 @@ class CMAES(Solver):
         """
 
         self._data = sorted(data, key=lambda d: d['File'])
-        self._energies = np.array([d['Energy'] for d in self._data])/ 0.0433641 # FIXME
+        self._energies = np.array([d['Energy'] for d in self._data])
         self._weights = np.array([d['Weight'] for d in self._data])
         self._reference_index  = 3
         self.calculator = calculator

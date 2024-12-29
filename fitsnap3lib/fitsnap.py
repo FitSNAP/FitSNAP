@@ -197,10 +197,12 @@ class FitSnap:
             elif self.fit is None:
                 if self.solver.linear:
                     self.solver.perform_fit()
+                elif (self.config.sections["CALCULATOR"].calculator == "LAMMPSREAXFF"):
+                    # Perform reaxff fitting on 1 proc only.
+                    if(self.pt._rank==0): self.solver.perform_fit(self.calculator,self.data)
                 else:
                     # Perform nonlinear fitting on 1 proc only.
-                    if(self.pt._rank==0):
-                        self.solver.perform_fit()
+                    if(self.pt._rank==0): self.solver.perform_fit()
             else:
                 self.solver.fit = self.fit
                 

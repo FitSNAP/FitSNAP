@@ -8,10 +8,9 @@ class LammpsReaxff(LammpsBase):
 
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
-        self._data = {'Charges': [0.0, 0.0, 0.0]}
+        self._data = {'Charges': [0.0, 0.0, 0.0]} # FIXME
         self._i = 0
         self._lmp = None
-        self._row_index = 0
         self.pt.check_lammps()
 
         with open(self.config.sections['REAXFF'].force_field, 'r') as file:
@@ -22,27 +21,79 @@ class LammpsReaxff(LammpsBase):
         number_of_elements = int(lines[line_index-4].split()[0])
         self.elements = [lines[i].split()[0] for i in range(line_index, line_index+4*number_of_elements, 4)]
         self.masses = [float(lines[i].split()[3]) for i in range(line_index, line_index+4*number_of_elements, 4)]
-        #print(self.elements)
-        #print(self.force_field_string)
         self.parameters = self.config.sections['REAXFF'].parameters
-        #pprint(self.parameters,width=150)
 
 
     def change_parameter(self, block, atoms, name, value):
 
-        bnd_parameters = ['De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1',
-                  'p_be2','p_bo3','p_bo4','','p_bo1','p_bo2','ovc','']
+        if( block == 'ATM' ):
+            num_atoms = 1
+            parameters_list = [
+                'r_s', 'valency', 'mass', 'r_vdw', 'epsilon', 'gamma', 'r_pi', 'valency_e',
+                'alpha', 'gamma_w', 'valency_boc', 'p_ovun5', '', 'chi', 'eta', 'p_hbond', 
+                'r_pi_pi', 'p_lp2', '', 'b_o_131', 'b_o_132', 'b_o_133', 'bcut_acks2', '', 
+                'p_ovun2', 'p_val3', '', 'valency_val', 'p_val5', 'rcore2', 'ecore2', 'acore2']
 
-        parameter_index = bnd_parameters.index(name)
-        pattern = r'^  1  2(?:\s+\-?[0-9]+\.[0-9]+){16}'
-        match = re.search(pattern, self.force_field_string, flags=re.MULTILINE|re.DOTALL)
+        elif( block == 'BND' ):
+            num_atoms = 2
+            parameters_list = [
+                'De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1', 
+                'p_be2','p_bo3','p_bo4','','p_bo1','p_bo2','ovc','']
+
+        elif( block == 'OFD' ):
+            num_atoms = 2
+            parameters_list = [
+                'D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']
+
+        elif( block == 'ANG' ):
+            num_atoms = 3
+            parameters_list = [
+                'theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']
+
+        elif( block == 'TOR' ):
+            num_atoms = 4
+            parameters_list = [
+                'V1', 'V2', 'V3', 'p_tor1', 'p_cot1', '', '']
+
+        elif( block == 'HBD' ):
+            num_atoms = 3
+            parameters_list = [
+                'r0_hb', 'p_hb1', 'p_hb2', 'p_hb3']
+
+        else:
+            raise Exception(f"Block {block} not recognized, possible values are ATM, BND, OFD, ANG, TOR, HBD.")
+
+        if( num_atoms != len(atoms) ): 
+            raise Exception(f"Block {block} expected {num_atoms} atoms, but {atoms} has {len(atoms)}.")
+        
+        # Raises a ValueError if name not found
+        parameter_index = parameters_list.index(name)
+
+        if( block == 'ATM' ):
+            atoms_string = ''.join([' {:2}'.format(atoms[0]) for a in atoms])
+            extra_indent = '\n   '
+        else:
+            atoms_string = ''.join([' {:2d}'.format(self.elements.index(a)+1) for a in atoms])
+            extra_indent = '\n      '
+            
+        pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+\.[0-9]+){{{len(parameters_list)}}}\n'
+
+
+        if( not (match := re.search(pattern, self.force_field_string, flags=re.MULTILINE|re.DOTALL)) ):
+            print("pattern...", pattern)
+            print("self.force_field_string...", self.force_field_string)
+            raise Exception("Unable to match text to replace")
+
         tokens = match.group(0).split()
-        tokens[parameter_index+2] = value
-    
-        replacement = ' {:2d} {:2d} {:8.4f} {:8.4f} {:8.4f} {:8.4f} {:8.4f} {:8.4f} {:8.4f} {:8.4f}\n       {:8.4f} {:8.4f} {:8.4f} {:8.4f} {:8.4f} {:8.4f} {:8.4f} {:8.4f}'.format(*map(int,tokens[0:2]), *map(float,tokens[2:]))
+        tokens[num_atoms+parameter_index] = value
+        tokens_formatted = [' {:8.4f}'.format(float(t)) for t in tokens[num_atoms:]]
 
+        if( len(parameters_list)>8 ): tokens_formatted.insert(8, extra_indent)
+        if( len(parameters_list)>16 ): tokens_formatted.insert(17, extra_indent)
+        if( len(parameters_list)>24 ): tokens_formatted.insert(26, extra_indent)
+        replacement = atoms_string + ''.join(tokens_formatted) + '\n'
+        #print(replacement)
         self.force_field_string = self.force_field_string.replace(match.group(0),replacement)
-
 
     def change_parameters(self, x):
 

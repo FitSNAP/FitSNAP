@@ -11,6 +11,7 @@ class CMAES(Solver):
 
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config, linear=False)
+        self.popsize = self.config.sections['CMAES'].popsize
         self.sigma = self.config.sections['CMAES'].sigma
         self.parameters = self.config.sections["REAXFF"].parameters
         
@@ -65,7 +66,7 @@ class CMAES(Solver):
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
-          'popsize': 10, #'maxiter': 1,
+          'popsize': self.popsize, #'maxiter': 1,
           'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
           }
 

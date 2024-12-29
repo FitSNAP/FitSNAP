@@ -55,18 +55,13 @@ class CMAES(Solver):
         """
 
         self._data = sorted(data, key=lambda d: d['File'])
-        #pprint(self._data)
-        self._energies = np.array([d['Energy'] for d in self._data])/ 0.0433641
+        self._energies = np.array([d['Energy'] for d in self._data])/ 0.0433641 # FIXME
         self._weights = np.array([d['Weight'] for d in self._data])
         self._reference_index  = 3
-        print(self._reference_index)
-
-        #pprint(self.pt.fitsnap_dict)
         self.calculator = calculator
         self.calculator.allocate_per_config(self._data)
         self.calculator.create_a()
         x0 = [p['value'] for p in self.parameters]
-        #print(x0)
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
@@ -74,14 +69,17 @@ class CMAES(Solver):
           'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
           }
 
-        cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
-        #cfun = self.loss_function
-        x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)
+        cfun = self.loss_function
+        x, es = cma.fmin2( cfun, x0, self.sigma, options=options)
+
+        #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
+        #x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)
+
         print(es)
-        c = es.countiter
-        x = cfun.find_feasible(es)
-        print("find_feasible took {} iterations".format(es.countiter - c))
-        print(x,self.cmaes_constraints(x))
+        #c = es.countiter
+        #x = cfun.find_feasible(es)
+        #print("find_feasible took {} iterations".format(es.countiter - c))
+        #print(x,self.cmaes_constraints(x))
         print(self.pt.shared_arrays['b'].array)
 
     def error_analysis(self):

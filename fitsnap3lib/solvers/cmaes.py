@@ -71,7 +71,9 @@ class CMAES(Solver):
           }
 
         cfun = self.loss_function
-        x, es = cma.fmin2( cfun, x0, self.sigma, options=options)
+        x_best, es = cma.fmin2( cfun, x0, self.sigma, options=options)
+        LammpsReaxff.change_parameters(self.calculator,x_best)
+        self.fit = self.calculator.force_field_string
 
         #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
         #x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)

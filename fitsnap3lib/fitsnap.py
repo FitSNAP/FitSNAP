@@ -126,7 +126,12 @@ class FitSnap:
         def scrape_configs():
             self.scraper.scrape_groups()
             self.scraper.divvy_up_configs()
-            self.data = self.scraper.scrape_configs()
+
+            if (self.config.sections["CALCULATOR"].calculator == "LAMMPSREAXFF"):
+              self.data = self.scraper.scrape_configs_reaxff()
+            else:
+              self.data = self.scraper.scrape_configs()
+
             if delete_scraper:
                 del self.scraper
         scrape_configs()
@@ -198,8 +203,7 @@ class FitSnap:
                 if self.solver.linear:
                     self.solver.perform_fit()
                 elif (self.config.sections["CALCULATOR"].calculator == "LAMMPSREAXFF"):
-                    # Perform reaxff fitting on 1 proc only.
-                    if(self.pt._rank==0): self.solver.perform_fit(self.calculator,self.data)
+                    self.solver.perform_fit(self)
                 else:
                     # Perform nonlinear fitting on 1 proc only.
                     if(self.pt._rank==0): self.solver.perform_fit()

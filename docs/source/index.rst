@@ -36,6 +36,7 @@ Indices and tables
    Run/index.rst
    Linear
    Pytorch
+   ReaxFF
 
 .. _programmer_documentation:
 .. toctree::

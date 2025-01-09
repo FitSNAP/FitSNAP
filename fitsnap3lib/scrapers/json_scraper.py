@@ -66,7 +66,7 @@ class Json(Scraper):
                     self.data["QMLattice"] = (self.data["Lattice"] * self.conversions["Lattice"]).T
 
                     # Populate with LAMMPS-normalized lattice
-                    del self.data["Lattice"]
+                    del self.data["Lattice"]  
 
                     # TODO Check whether "Label" container useful to keep around
                     if "Label" in self.data:
@@ -80,23 +80,65 @@ class Json(Scraper):
                         if not isinstance(self.data["Chis"], float):
                             self.data["Chis"] = self.data["Chis"]
 
-                    if (self.config.sections["CALCULATOR"].calculator != "LAMMPSREAXFF"):
-
-                        # ESHIFT section ignored for REAXFF
-                        # FIXME (BUG): ENERGIES CONVERTED TO EV EVEN WHEN UNITS = REAL IN REAXFF
-                        # WORKAROUND: skip this code section for reaxff
-
-                        # Currently, ESHIFT should be in units of your training data (note there is no conversion)
-                        if hasattr(self.config.sections["ESHIFT"], 'eshift'):
-                            for atom in self.data["AtomTypes"]:
-                                self.data["Energy"] += self.config.sections["ESHIFT"].eshift[atom]
-
-                        self.data["Energy"] *= self.conversions["Energy"]
-                        self._rotate_coords()
-                        self._translate_coords()
-                        self._weighting(natoms)
+                    # Currently, ESHIFT should be in units of your training data (note there is no conversion)
+                    if hasattr(self.config.sections["ESHIFT"], 'eshift'):
+                        for atom in self.data["AtomTypes"]:
+                            self.data["Energy"] += self.config.sections["ESHIFT"].eshift[atom]
 
                     self.data["test_bool"] = self.test_bool[i]
+
+                    self.data["Energy"] *= self.conversions["Energy"]
+
+                    self._rotate_coords()
+                    self._translate_coords()
+
+                    self._weighting(natoms)
+
+                    self.all_data.append(self.data)
+            else:
+                self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)    
+
+        return self.all_data
+
+    def scrape_configs_reaxff(self):
+        """
+        Loop file files in parallel and populate the data dictionary on this proc.
+        Note that `self.configs` at this point includes all filenames on this proc.
+        """
+        self.all_data = [] # Reset to empty list in case running scraper twice.
+        self.files = self.configs
+        self.conversions = copy(self.default_conversions)
+        data_path = self.config.sections["PATH"].datapath
+        for i, file_name in enumerate(self.files):
+            if file_name.endswith('.json'):
+                with open(file_name) as file:
+                    if file.readline()[0]=="{":
+                        file.seek(0)
+                    try:
+                        self.data = loads(file.read(), parse_constant=True)
+                    except Exception as e:
+                        self.pt.single_print(f"Trouble parsing training data: {file_name}")
+                        self.pt.single_print(f"{e}")
+
+                    assert len(self.data) == 1, f"More than one object (dataset) is in this file. \nFile name: {file_name}"
+
+                    self.data = self.data['Dataset']
+
+                    training_file = file_name.split("/")[-1]
+                    self.data['File'] = training_file
+                    group_name = file_name.replace(data_path,'').replace(training_file,'').replace("/","") 
+                    self.data['Group'] = group_name
+
+                    for d in self.data["Data"]:
+
+                      assert all(k not in self.data for k in d.keys()), \
+                          f"Duplicate keys in dataset and data. \nFile name: {file_name}"
+
+                      if not isinstance(d["Energy"], float):
+                          d["Energy"] = float(d["Energy"])
+
+                    self.data["test_bool"] = self.test_bool[i]
+
                     self.all_data.append(self.data)
             else:
                 self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)    

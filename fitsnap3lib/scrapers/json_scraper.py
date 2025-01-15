@@ -137,9 +137,11 @@ class Json(Scraper):
                       if not isinstance(d["Energy"], float):
                           d["Energy"] = float(d["Energy"])
 
-                    self.data["test_bool"] = self.test_bool[i]
+                      self.all_data.append(d)
 
-                    self.all_data.append(self.data)
+
+                    #self.data["test_bool"] = self.test_bool[i]
+
             else:
                 self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)    
 

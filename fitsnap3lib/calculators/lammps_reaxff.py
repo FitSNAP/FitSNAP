@@ -21,7 +21,13 @@ class LammpsReaxff(LammpsBase):
         number_of_elements = int(lines[line_index-4].split()[0])
         self.elements = [lines[i].split()[0] for i in range(line_index, line_index+4*number_of_elements, 4)]
         self.masses = [float(lines[i].split()[3]) for i in range(line_index, line_index+4*number_of_elements, 4)]
+        self.type_mapping = {e: self.elements.index(e)+1 for e in self.elements}
         self.parameters = self.config.sections['REAXFF'].parameters
+
+        print(f"line_index={line_index} number_of_elements={number_of_elements} self.elements={self.elements}")
+        print(f"self.masses={self.masses}")
+        print(f"self.type_mapping={self.type_mapping}")
+        print(f"self.parameters={self.parameters}")
 
 
     def change_parameter(self, block, atoms, name, value):
@@ -128,13 +134,12 @@ class LammpsReaxff(LammpsBase):
         xhi, yhi, zhi = np.max(self._data["Positions"],axis=0)+10.0
         #print(xlo, ylo, zlo, xhi, yhi, zhi)
         self._lmp.command(f'region box block {xlo} {xhi} {ylo} {yhi} {zlo} {zhi}')
-        numtypes=self.config.sections['REAXFF'].numtypes
-        self._lmp.command(f"create_box {numtypes} box")
+        self._lmp.command(f"create_box {len(self.elements)} box")
 
 
     def _create_atoms(self):
         self._lmp.commands_list([f'mass {i+1} {self.masses[i]}' for i in range(len(self.masses))])
-        self._create_atoms_helper(type_mapping=self.config.sections["REAXFF"].type_mapping)
+        self._create_atoms_helper(type_mapping=self.type_mapping)
 
 
     def _set_computes(self):
@@ -172,7 +177,9 @@ class LammpsReaxff(LammpsBase):
             data: List of data dictionaries.
         """
 
-        print(self.pt.get_rank(), len(data))
+        print(f"self.pt.get_rank()={self.pt.get_rank()}, len(data)={len(data)}")
+
+        #pprint(data)
 
         ncpn = self.pt.get_ncpn(len(data))
         self.pt.create_shared_array('number_of_atoms', ncpn, dtype='i')

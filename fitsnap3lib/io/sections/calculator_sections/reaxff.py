@@ -11,10 +11,4 @@ class Reaxff(Section):
         self.allowedkeys = ['force_field', 'parameters']
         self.force_field = self.get_value("REAXFF", "force_field", "None", "str")
         self.parameters = eval(self.get_value("REAXFF", "parameters", "None", "str"))
-        self.numtypes = 3
-        self.type_mapping = {}
-        self.type_mapping['H'] = 1
-        self.type_mapping['O'] = 2
-        self.type_mapping['X'] = 3
-
         self.delete()

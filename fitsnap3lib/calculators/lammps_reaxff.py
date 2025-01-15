@@ -164,3 +164,50 @@ class LammpsReaxff(LammpsBase):
             self.pt.shared_arrays['b'].array[self._i] = config_energy
             #print("_collect_lammps(self)...", self._i, self._data["Energy"], config_energy)
 
+    def allocate_per_config(self, data: list):
+        """
+        Allocate shared arrays for REAXFF fitting
+
+        Args:
+            data: List of data dictionaries.
+        """
+
+        print(self.pt.get_rank(), len(data))
+
+        ncpn = self.pt.get_ncpn(len(data))
+        self.pt.create_shared_array('number_of_atoms', ncpn, dtype='i')
+        self.pt.slice_array('number_of_atoms')
+
+        # total number of atoms in all configs, summed
+        #self.number_of_atoms = self.pt.shared_arrays["number_of_atoms"].array.sum()
+        # total number of configs on all procs in a node
+        self.number_of_files_per_node = len(self.pt.shared_arrays["number_of_atoms"].array)
+        # self.nconfigs is the number of configs on this proc, assigned in lammps_base
+
+        # Loop through data and set sliced number of atoms.
+        for i, configuration in enumerate(data):
+
+            #print(self.pt._rank, i, configuration)
+
+            #natoms = np.shape(configuration["Positions"])[0]
+            #self.pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
+
+            # create data arrays for REAXFF/CMAES
+
+            #a_len = 0
+            b_len = 0 # number reference energies for all configs
+            #c_len = 0 # number of reference forces for all configs
+
+            if self.config.sections["CALCULATOR"].energy:
+                b_len += self.number_of_files_per_node # total number of configs
+                self.pt.create_shared_array('b', b_len)
+
+            #if self.config.sections["CALCULATOR"].force:
+            #    c_len += 3*self.number_of_atoms
+            #    self.pt.create_shared_array('c', c_len)
+
+            # FIXME: stress fitting not supported yet for CMAES
+            #if self.config.sections["CALCULATOR"].stress:
+            #    raise NotImplementedError("Stress fitting not supported yet for CMAES solver.")
+
+

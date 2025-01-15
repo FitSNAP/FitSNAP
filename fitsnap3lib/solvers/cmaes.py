@@ -31,7 +31,7 @@ class CMAES(Solver):
 
         #sse = np.sum(self._weights*(np.square((self.pt.shared_arrays['b'].array - self._energies)/1.255018947555075)))
         
-        sse = 99
+        sse = 99999
         return sse
 
 
@@ -58,8 +58,8 @@ class CMAES(Solver):
         Base class function for performing a fit.
         """
 
-        if( self.popsize % self.pt.get_size() == 0 ):
-            self.pt.single_print(f"! WARNING: For optimal performance, please choose a population size which is multiple of MPI ranks.")
+        #if( self.popsize % self.pt.get_size() == 0 ):
+        #    self.pt.single_print(f"! WARNING: For optimal performance, please choose a population size which is multiple of MPI ranks.")
 
         self.fs = fs
         x0 = [p['value'] for p in self.parameters]
@@ -82,12 +82,13 @@ class CMAES(Solver):
         #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
         #x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)
 
-        print(es)
+        #print("======== es ========")
+        #pprint(vars(es))
+        #print("======== es ========")
         #c = es.countiter
         #x = cfun.find_feasible(es)
         #print("find_feasible took {} iterations".format(es.countiter - c))
         #print(x,self.cmaes_constraints(x))
-        print(self.pt.shared_arrays['b'].array)
 
     def error_analysis(self):
         pass

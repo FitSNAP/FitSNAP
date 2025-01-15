@@ -40,7 +40,7 @@ class Config():
         self.sections = {}
         self.parse_config()
 
-        self.view_state()
+        #self.view_state()
 
         # Generate random 128 bit hash to identify this fit on rank 0.
         if self.pt._rank == 0:

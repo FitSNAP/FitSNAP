@@ -303,7 +303,7 @@ class XYZ(Scraper):
         self.group_table = self.config.sections["GROUPS"].group_table
         size_type = None
         testing_size_type = None
-        folder_files = listdir(self.config.sections["PATH"].datapath)
+        folder_files = listdir(self.config.sections["PATH"].dataPath)
 
         for key in self.group_table:
             bc_bool = False
@@ -325,14 +325,14 @@ class XYZ(Scraper):
             if training_size is None:
                 raise ValueError("Please set training size for {}".format(key))
 
-            file_base = path.join(self.config.sections["PATH"].datapath, key)
+            file_base = path.join(self.config.sections["PATH"].dataPath, key)
 
             if file_base.split('/')[-1] + ".extxyz" in folder_files:
                 file_name = file_base + ".extxyz"
             elif file_base.split('/')[-1] + ".xyz" in folder_files:
                 file_name = file_base + ".xyz"
             else:
-                raise FileNotFoundError("{}.xyz not found in {}".format(file_base, self.config.sections["PATH"].datapath))
+                raise FileNotFoundError("{}.xyz not found in {}".format(file_base, self.config.sections["PATH"].dataPath))
 
             if file_base + '.xyz' not in self.files or file_base + '.extxyz':
                 self.files[file_base] = []

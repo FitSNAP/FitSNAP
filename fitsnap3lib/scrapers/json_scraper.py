@@ -22,7 +22,7 @@ class Json(Scraper):
         self.all_data = [] # Reset to empty list in case running scraper twice.
         self.files = self.configs
         self.conversions = copy(self.default_conversions)
-        data_path = self.config.sections["PATH"].datapath
+        data_path = self.config.sections["PATH"].dataPath
         for i, file_name in enumerate(self.files):
             if file_name.endswith('.json'):
                 with open(file_name) as file:
@@ -108,7 +108,7 @@ class Json(Scraper):
         self.all_data = [] # Reset to empty list in case running scraper twice.
         self.files = self.configs
         self.conversions = copy(self.default_conversions)
-        data_path = self.config.sections["PATH"].datapath
+        data_path = self.config.sections["PATH"].dataPath
         for i, file_name in enumerate(self.files):
             if file_name.endswith('.json'):
                 with open(file_name) as file:

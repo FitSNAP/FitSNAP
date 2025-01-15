@@ -41,8 +41,8 @@ class LammpsTools():
         self.pt = ParallelTools()
         self.pt.check_fitsnap_exist = False
         self.config = Config(arguments_lst = [input_script, "--overwrite"])
-        self.config.sections["PATH"].datapath = test_dir
-        keylist = os.listdir(self.config.sections["PATH"].datapath)
+        self.config.sections["PATH"].dataPath = test_dir
+        keylist = os.listdir(self.config.sections["PATH"].dataPath)
         test_dict = {}
         for key in keylist:
             # need to set train_size to 1.0 else FitSNAP will not actually store these configs

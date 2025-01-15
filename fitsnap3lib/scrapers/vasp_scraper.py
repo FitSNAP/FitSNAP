@@ -24,7 +24,7 @@ class Vasp(Scraper):
         self.all_config_dicts = []
         self.bc_bool = False
         self.infile = config.args.infile
-        self.vasp_path = config.sections['PATH'].datapath
+        self.vasp_path = config.sections['PATH'].dataPath
         self.use_TOTEN = config.sections["GROUPS"].vasp_use_TOTEN
         self.group_table = config.sections["GROUPS"].group_table
         self.jsonpath = config.sections['GROUPS'].vasp_json_pathname
@@ -40,7 +40,7 @@ class Vasp(Scraper):
 
 
     def scrape_groups(self):
-        # Locate all OUTCARs in datapath
+        # Locate all OUTCARs in dataPath
         glob_asterisks = '/**/*'
         outcars_base = os.path.join(self.vasp_path, *glob_asterisks.split('/'))
 
@@ -87,7 +87,7 @@ class Vasp(Scraper):
                     f'\n!!\tMissing group data root: {group_vasp_path}'
                     '\n')
 
-            file_base = os.path.join(config.sections['PATH'].datapath, group)
+            file_base = os.path.join(config.sections['PATH'].dataPath, group)
             self.files[file_base] = group_outcars
             self.configs[group] = []  
 

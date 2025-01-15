@@ -18,20 +18,25 @@ class CMAES(Solver):
 
     def loss_function(self, x):
 
-        #print(f'x={x}')
-        #print(f'len(self.configs)={len(self.configs)}')
-
-        LammpsReaxff.change_parameters(self.calculator,x)
-        LammpsReaxff.process_all_configs(self.calculator, self._data)
+        LammpsReaxff.change_parameters(self.fs.calculator,x)
+        #LammpsReaxff.process_all_configs(self.fs.calculator, self.fs.data)
+        LammpsReaxff.process_all_configs(self.fs.calculator, self.fs.data)
 
         # Good practice after a large parallel operation is to impose a barrier.
         self.pt.all_barrier()
 
-        self.pt.shared_arrays['b'].array -= self.pt.shared_arrays['b'].array[self._reference_index]
+        #for d in self.data:
 
-        sse = np.sum(self._weights*(np.square((self.pt.shared_arrays['b'].array - self._energies)/1.255018947555075)))
-        #exit()
+        #self.pt.shared_arrays['b'].array -= self.pt.shared_arrays['b'].array[self._reference_index]
+
+        #sse = np.sum(self._weights*(np.square((self.pt.shared_arrays['b'].array - self._energies)/1.255018947555075)))
+        
+        sse = 99
         return sse
+
+
+    def parallel_loss_function(self, x_list):
+        return [self.loss_function(x) for x in self.pt.split_by_node(x_list)]
 
 
     def cmaes_constraints(self, x):
@@ -46,34 +51,34 @@ class CMAES(Solver):
 
         return constraints
 
-    #def cmaes_update(self, es):
-    #    self._stddev = es.stds
 
-
-    def perform_fit(self, calculator, data):
+    #def perform_fit(self, calculator, data):
+    def perform_fit(self, fs):
         """
         Base class function for performing a fit.
         """
 
-        self._data = sorted(data, key=lambda d: d['File'])
-        self._energies = np.array([d['Energy'] for d in self._data])
-        self._weights = np.array([d['Weight'] for d in self._data])
-        self._reference_index  = 3
-        self.calculator = calculator
-        self.calculator.allocate_per_config(self._data)
-        self.calculator.create_a()
+        if( self.popsize % self.pt.get_size() == 0 ):
+            self.pt.single_print(f"! WARNING: For optimal performance, please choose a population size which is multiple of MPI ranks.")
+
+        self.fs = fs
+        self.fs.calculator.allocate_per_config(self.fs.data)
         x0 = [p['value'] for p in self.parameters]
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
-          'popsize': self.popsize, #'maxiter': 1,
+          'popsize': self.popsize, 'maxiter': 10,
           'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
           }
 
         cfun = self.loss_function
-        x_best, es = cma.fmin2( cfun, x0, self.sigma, options=options)
+        # x_best, es = cma.fmin2( cfun, x0, self.sigma, options=options)
+        x_best, es = cma.fmin2( None, x0, self.sigma,
+          parallel_objective=self.parallel_loss_function, options=options)
+
         LammpsReaxff.change_parameters(self.calculator,x_best)
-        self.fit = self.calculator.force_field_string
+        self.fit = self.fs.calculator.force_field_string
+        self.errors = es.pop_sorted
 
         #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
         #x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)
@@ -90,32 +95,3 @@ class CMAES(Solver):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def parallel_loss_function(parameter_arrays, self):
-
-        # parallel_objective
-        # an objective function that accepts a list of numpy.ndarray as input and returns a list, which is mostly used instead of objective_function, but for the initial (also initial elitist) and the final evaluations unless not callable(objective_function). If parallel_objective is given, the objective_function (first argument) may be None.
-
-        print(f'parameter_arrays={parameter_arrays}')
-        #print(f'args={args}')
-
-        return [0.0 for p in parameter_arrays]

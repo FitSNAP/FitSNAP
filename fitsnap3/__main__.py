@@ -48,7 +48,7 @@ def main():
     try:
         fs = FitSnap(comm=comm)
         fs.scrape_configs(delete_scraper=True)
-        fs.process_configs(delete_data=True)
+        if not "REAXFF" in fs.config.sections: fs.process_configs(delete_data=True) 
         # Good practice after a large parallel operation is to impose a barrier.
         fs.pt.all_barrier()
         fs.perform_fit()

@@ -107,6 +107,9 @@ class Json(Scraper):
         """
         self.all_data = [] # Reset to empty list in case running scraper twice.
         self.files = self.configs
+
+        print(f"self.configs={self.configs}")
+
         self.conversions = copy(self.default_conversions)
         data_path = self.config.sections["PATH"].dataPath
         for i, file_name in enumerate(self.files):
@@ -131,6 +134,10 @@ class Json(Scraper):
 
                     for d in self.data["Data"]:
 
+                      for key in self.config.sections["SCRAPER"].properties:
+                          if key in d:
+                              d[key] = np.asarray(d[key])
+
                       assert all(k not in self.data for k in d.keys()), \
                           f"Duplicate keys in dataset and data. \nFile name: {file_name}"
 
@@ -139,8 +146,6 @@ class Json(Scraper):
 
                       self.all_data.append(d)
 
-
-                    #self.data["test_bool"] = self.test_bool[i]
 
             else:
                 self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)    

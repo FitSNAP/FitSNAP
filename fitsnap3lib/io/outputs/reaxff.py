@@ -10,7 +10,7 @@ class Reaxff(Output):
     # You must override this method
     def output(self, coeffs, errors):
 
-        print( errors )
+        #print( errors )
 
         @self.pt.rank_zero
         def write_ff():

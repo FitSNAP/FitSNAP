@@ -62,7 +62,6 @@ class CMAES(Solver):
             self.pt.single_print(f"! WARNING: For optimal performance, please choose a population size which is multiple of MPI ranks.")
 
         self.fs = fs
-        self.fs.calculator.allocate_per_config(self.fs.data)
         x0 = [p['value'] for p in self.parameters]
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}

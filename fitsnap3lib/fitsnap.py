@@ -54,7 +54,7 @@ class FitSnap:
         pt (:obj:`class` ParallelTools): Instance of the ParallelTools class for helping MPI 
                                          communication and shared arrays.
         config (:obj:`class` Config): Instance of the Config class for initializing settings, 
-                                      initialized with a ParallelTools instance.
+                                      initialized with a Config instance.
         scraper (:obj:`class` Scraper): Instance of the Scraper class for gathering configs.
         data (:obj:`list`): List of dictionaries, where each configuration of atoms has its own 
             dictionary.
@@ -203,7 +203,8 @@ class FitSnap:
                 if self.solver.linear:
                     self.solver.perform_fit()
                 elif (self.config.sections["CALCULATOR"].calculator == "LAMMPSREAXFF"):
-                    self.solver.perform_fit(self)
+                    self.calculator.allocate_per_config(data)
+                    if(self.pt._rank==0): self.solver.perform_fit(self)
                 else:
                     # Perform nonlinear fitting on 1 proc only.
                     if(self.pt._rank==0): self.solver.perform_fit()

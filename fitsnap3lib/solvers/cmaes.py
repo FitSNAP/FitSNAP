@@ -75,7 +75,7 @@ class CMAES(Solver):
         x_best, es = cma.fmin2( None, x0, self.sigma,
           parallel_objective=self.parallel_loss_function, options=options)
 
-        LammpsReaxff.change_parameters(self.calculator,x_best)
+        LammpsReaxff.change_parameters(self.fs.calculator,x_best)
         self.fit = self.fs.calculator.force_field_string
         self.errors = es.pop_sorted
 

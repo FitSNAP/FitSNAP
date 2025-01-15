@@ -40,6 +40,8 @@ class Config():
         self.sections = {}
         self.parse_config()
 
+        self.view_state()
+
         # Generate random 128 bit hash to identify this fit on rank 0.
         if self.pt._rank == 0:
             self.hash = f"{random.getrandbits(128):032x}"
@@ -202,10 +204,10 @@ class Config():
         self.pt.single_print("----> View of FitSNAP settings")
         for sname in chosen_sections:
             if sname not in all_sections:
-                self.pt.single_print(f"    {sname}")
+                self.pt.single_print(f"    [{sname}]")
                 self.pt.single_print("\tERROR: Section not found! Continuing\n")
                 continue
-            self.pt.single_print(f"    {sname}")
+            self.pt.single_print(f"    [{sname}]")
             if original_input:
                 # this preserves the original, raw input as a dictionary (no added sections or altered variables)
                 vars_dict = state_dict[sname]

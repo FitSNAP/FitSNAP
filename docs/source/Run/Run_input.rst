@@ -194,13 +194,13 @@ This section contains settings for the Atomic Cluster Expansion (ACE) descriptor
 
 - :code:`lmax` are the maximum angular momentum quantum numbers for each the atomic basis functions.
 
-- :code:`nmax` is the number of atomic basis functions.
+- :code:`nmax` is the number of radial atomic basis functions.
 
-- :code:`nmaxbase` **??? FIXME ???**
+- :code:`nmaxbase` Maximum value of nmax
 
 - :code:`rcutfac` *(same as in [BISPECTRUM])* is a cutoff radius parameter. One value is used for all element types. We recommend a cutoff between 4 and 5 Angstroms for most systems. Default value is 4.67 Angstroms.
 
-- :code:`lambda` **??? FIXME ???**
+- :code:`lambda` Scale factor applied to radial basis functions, see <goff2024_>.
 
 - :code:`lmin` is the minimum angular momentum per radial function.
 

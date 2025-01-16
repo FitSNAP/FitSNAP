@@ -19,7 +19,6 @@ class CMAES(Solver):
     def loss_function(self, x):
 
         LammpsReaxff.change_parameters(self.fs.calculator,x)
-        #LammpsReaxff.process_all_configs(self.fs.calculator, self.fs.data)
         LammpsReaxff.process_all_configs(self.fs.calculator, self.fs.data)
 
         # Good practice after a large parallel operation is to impose a barrier.
@@ -52,7 +51,6 @@ class CMAES(Solver):
         return constraints
 
 
-    #def perform_fit(self, calculator, data):
     def perform_fit(self, fs):
         """
         Base class function for performing a fit.
@@ -70,8 +68,6 @@ class CMAES(Solver):
           'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
           }
 
-        cfun = self.loss_function
-        # x_best, es = cma.fmin2( cfun, x0, self.sigma, options=options)
         x_best, es = cma.fmin2( None, x0, self.sigma,
           parallel_objective=self.parallel_loss_function, options=options)
 

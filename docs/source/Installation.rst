@@ -44,7 +44,7 @@ creating your virtual environment, **make sure it is activated for all future st
 
 Now install the necessary pre-requisites to build Python-LAMMPS using pip or conda::
 
-    python -m pip install numpy scipy scikit-learn virtualenv psutil pandas tabulate mpi4py Cython
+    python -m pip install numpy scipy scikit-learn virtualenv psutil pandas tabulate mpi4py Cython setuptools
     # For nonlinear (neural network) fitting:
     python -m pip install torch
     # For fitting ACE:

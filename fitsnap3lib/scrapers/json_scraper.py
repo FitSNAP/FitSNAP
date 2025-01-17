@@ -100,6 +100,7 @@ class Json(Scraper):
 
         return self.all_data
 
+
     def scrape_configs_reaxff(self):
         """
         Loop file files in parallel and populate the data dictionary on this proc.
@@ -108,7 +109,7 @@ class Json(Scraper):
         self.all_data = [] # Reset to empty list in case running scraper twice.
         self.files = self.configs
 
-        print(f"self.configs={self.configs}")
+        #print(f"self.configs={self.configs}")
 
         self.conversions = copy(self.default_conversions)
         data_path = self.config.sections["PATH"].dataPath
@@ -132,22 +133,35 @@ class Json(Scraper):
                     group_name = file_name.replace(data_path,'').replace(training_file,'').replace("/","") 
                     self.data['Group'] = group_name
 
-                    for d in self.data["Data"]:
+                    json_data = []
+                    ground_energy = float('infinity')
+                    ground_energy_index = 0
 
-                      for key in self.config.sections["SCRAPER"].properties:
-                          if key in d:
-                              d[key] = np.asarray(d[key])
+                    for i, d in enumerate(self.data["Data"]):
 
-                      assert all(k not in self.data for k in d.keys()), \
-                          f"Duplicate keys in dataset and data. \nFile name: {file_name}"
+                        for key in self.config.sections["SCRAPER"].properties:
+                            if key in d:
+                                d[key] = np.asarray(d[key])
 
-                      if not isinstance(d["Energy"], float):
-                          d["Energy"] = float(d["Energy"])
+                        assert all(k not in self.data for k in d.keys()), \
+                            f"Duplicate keys in dataset and data. \nFile name: {file_name}"
 
-                      self.all_data.append(d)
+                        if not isinstance(d["Energy"], float):
+                            d["Energy"] = float(d["Energy"])
 
+                        if ground_energy > d["Energy"]:
+                            ground_energy = d["Energy"]
+                            ground_energy_index = i
+
+                        json_data.append(d)
+
+                    for i, d in enumerate(json_data):
+                        d["ground_energy_relative_index"] = ground_energy_index - i
+
+                self.all_data.extend(json_data)
 
             else:
                 self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)    
 
         return self.all_data
+

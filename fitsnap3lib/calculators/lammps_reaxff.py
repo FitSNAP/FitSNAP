@@ -66,14 +66,6 @@ class LammpsReaxff(LammpsBase):
         # Pre-process LAMMPS data by collecting data needed to allocate shared arrays.
         print("_collect_lammps_preprocess(self)")
 
-    def process_all_configs(self,data):
-
-        #pprint(data)
-
-        for i, c in enumerate(data):
-            self.process_configs(c, i)
-
-
     def _collect_lammps(self):
 
         if self.config.sections["CALCULATOR"].energy:
@@ -97,10 +89,15 @@ class LammpsReaxff(LammpsBase):
         self.pt.all_barrier()
         self.pt.gather_fitsnap("Data")
         all_data = self.pt.fitsnap_dict["Data"]
+
+        #pprint(all_data)
+
+        for i, d in enumerate(all_data):
+            d["shared_index"] = i
+
         self.total_configs = len(all_data)
         self.total_atoms = reduce(lambda x, y: x + y, [len(d['Positions']) for d in all_data])
 
-        #sizeof(data)={sys.getsizeof(data)}
         print(f"self.pt.get_rank()={self.pt.get_rank()} total_configs={self.total_configs} total_atoms={self.total_atoms}")
 
         if self.config.sections["CALCULATOR"].energy:

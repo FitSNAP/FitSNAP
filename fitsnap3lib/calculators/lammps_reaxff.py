@@ -1,14 +1,15 @@
 from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np
+from fitsnap3lib.parallel_tools import DistributedList
 
-import json, re
+import json, re, sys
 import numpy as np
+from functools import reduce
 from pprint import pprint
 
 class LammpsReaxff(LammpsBase):
 
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
-        self._data = {'Charges': [0.0, 0.0, 0.0]} # FIXME
         self._i = 0
         self._lmp = None
         self.pt.check_lammps()
@@ -23,12 +24,95 @@ class LammpsReaxff(LammpsBase):
         self.masses = [float(lines[i].split()[3]) for i in range(line_index, line_index+4*number_of_elements, 4)]
         self.type_mapping = {e: self.elements.index(e)+1 for e in self.elements}
         self.parameters = self.config.sections['REAXFF'].parameters
+        
 
-        print(f"line_index={line_index} number_of_elements={number_of_elements} self.elements={self.elements}")
-        print(f"self.masses={self.masses}")
-        print(f"self.type_mapping={self.type_mapping}")
-        print(f"self.parameters={self.parameters}")
+    def _prepare_lammps(self):
+        self._set_structure()
+        #self._lmp.command("thermo 1")
+        #self._lmp.command("thermo_style custom step temp pe ke etotal press")
+        self._lmp.command("pair_style reaxff NULL")
 
+        try:
+            self._lmp.pair_coeff_reaxff(self.force_field_string, self.elements)
+        except:
+            print('ff=',self.force_field_string)
+
+        self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff") # maxiter 400
+
+
+    def _set_box(self):
+        self._lmp.command("boundary p p p")
+        xlo, ylo, zlo = np.min(self._data["Positions"],axis=0)-10.0
+        xhi, yhi, zhi = np.max(self._data["Positions"],axis=0)+10.0
+        #print(xlo, ylo, zlo, xhi, yhi, zhi)
+        self._lmp.command(f'region box block {xlo} {xhi} {ylo} {yhi} {zlo} {zhi}')
+        self._lmp.command(f"create_box {len(self.elements)} box")
+
+
+    def _create_atoms(self):
+        self._lmp.commands_list([f'mass {i+1} {self.masses[i]}' for i in range(len(self.masses))])
+        self._create_atoms_helper(type_mapping=self.type_mapping)
+
+
+    def _set_computes(self):
+        pass
+
+
+    def _create_charge(self):
+        pass
+
+
+    def _collect_lammps_preprocess(self):
+        # Pre-process LAMMPS data by collecting data needed to allocate shared arrays.
+        print("_collect_lammps_preprocess(self)")
+
+    def process_all_configs(self,data):
+
+        #pprint(data)
+
+        for i, c in enumerate(data):
+            self.process_configs(c, i)
+
+
+    def _collect_lammps(self):
+
+        if self.config.sections["CALCULATOR"].energy:
+            config_energy = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
+            self.pt.shared_arrays['energy'].array[self._i] = config_energy
+            #print("_collect_lammps(self)...", self._i, self._data["Energy"], config_energy)
+
+    def allocate_per_config(self, data: list):
+        """
+        Allocate shared arrays for REAXFF fitting
+
+        Args:
+            data: List of data dictionaries.
+        """
+
+        self.pt.add_2_fitsnap("Data", DistributedList(len(data)))
+
+        for i, d in enumerate(data):
+            self.pt.fitsnap_dict["Data"][i] = d
+
+        self.pt.all_barrier()
+        self.pt.gather_fitsnap("Data")
+        all_data = self.pt.fitsnap_dict["Data"]
+        self.total_configs = len(all_data)
+        self.total_atoms = reduce(lambda x, y: x + y, [len(d['Positions']) for d in all_data])
+
+        #sizeof(data)={sys.getsizeof(data)}
+        print(f"self.pt.get_rank()={self.pt.get_rank()} total_configs={self.total_configs} total_atoms={self.total_atoms}")
+
+        if self.config.sections["CALCULATOR"].energy:
+            self.pt.create_shared_array('energy', self.total_configs, 1)
+
+        if self.config.sections["CALCULATOR"].force:
+            self.pt.create_shared_array('forces', self.total_atoms, 3)
+
+        # FIXME: stress fitting not supported yet
+        if self.config.sections["CALCULATOR"].stress:
+            raise NotImplementedError("Stress fitting not supported yet for FitSNAP-ReaxFF.")
+                
 
     def change_parameter(self, block, atoms, name, value):
 
@@ -106,115 +190,5 @@ class LammpsReaxff(LammpsBase):
         for i in range(len(x)):
             p = self.parameters[i]
             self.change_parameter(p['block'], p['atoms'], p['name'], x[i])
-
-    # a array is for per-atom quantities in all configs (eg charge, ...)
-    # b array is for per-config quantities like energy
-    # c matrix is for per-atom 3-vectors like position and velocity.
-
-    def _prepare_lammps(self):
-        self._set_structure()
-        #self._set_computes()
-        #self._set_neighbor_list()
-        #self._lmp.command("dump 1 all custom 1 lammps.dump id x y z q")
-        self._lmp.command("thermo 1")
-        self._lmp.command("thermo_style custom step temp pe ke etotal press")
-        self._lmp.command("pair_style reaxff NULL")
-
-        try:
-            self._lmp.pair_coeff_reaxff(self.force_field_string, self.elements)
-        except:
-            print('ff=',self.force_field_string)
-
-        self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff") # maxiter 400
-
-
-    def _set_box(self):
-        self._lmp.command("boundary p p p")
-        xlo, ylo, zlo = np.min(self._data["Positions"],axis=0)-10.0
-        xhi, yhi, zhi = np.max(self._data["Positions"],axis=0)+10.0
-        #print(xlo, ylo, zlo, xhi, yhi, zhi)
-        self._lmp.command(f'region box block {xlo} {xhi} {ylo} {yhi} {zlo} {zhi}')
-        self._lmp.command(f"create_box {len(self.elements)} box")
-
-
-    def _create_atoms(self):
-        self._lmp.commands_list([f'mass {i+1} {self.masses[i]}' for i in range(len(self.masses))])
-        self._create_atoms_helper(type_mapping=self.type_mapping)
-
-
-    def _set_computes(self):
-        pass
-
-
-    def _create_charge(self):
-        pass
-
-
-    def _collect_lammps_preprocess(self):
-        # Pre-process LAMMPS data by collecting data needed to allocate shared arrays.
-        print("_collect_lammps_preprocess(self)")
-
-    def process_all_configs(self,data):
-
-        #pprint(data)
-
-        for i, c in enumerate(data):
-            self.process_configs(c, i)
-
-
-    def _collect_lammps(self):
-
-        if self.config.sections["CALCULATOR"].energy:
-            config_energy = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
-            self.pt.shared_arrays['b'].array[self._i] = config_energy
-            #print("_collect_lammps(self)...", self._i, self._data["Energy"], config_energy)
-
-    def allocate_per_config(self, data: list):
-        """
-        Allocate shared arrays for REAXFF fitting
-
-        Args:
-            data: List of data dictionaries.
-        """
-
-        print(f"self.pt.get_rank()={self.pt.get_rank()}, len(data)={len(data)}")
-
-        #pprint(data)
-
-        ncpn = self.pt.get_ncpn(len(data))
-        self.pt.create_shared_array('number_of_atoms', ncpn, dtype='i')
-        self.pt.slice_array('number_of_atoms')
-
-        # total number of atoms in all configs, summed
-        #self.number_of_atoms = self.pt.shared_arrays["number_of_atoms"].array.sum()
-        # total number of configs on all procs in a node
-        self.number_of_files_per_node = len(self.pt.shared_arrays["number_of_atoms"].array)
-        # self.nconfigs is the number of configs on this proc, assigned in lammps_base
-
-        # Loop through data and set sliced number of atoms.
-        for i, configuration in enumerate(data):
-
-            #print(self.pt._rank, i, configuration)
-
-            #natoms = np.shape(configuration["Positions"])[0]
-            #self.pt.shared_arrays["number_of_atoms"].sliced_array[i] = natoms
-
-            # create data arrays for REAXFF/CMAES
-
-            #a_len = 0
-            b_len = 0 # number reference energies for all configs
-            #c_len = 0 # number of reference forces for all configs
-
-            if self.config.sections["CALCULATOR"].energy:
-                b_len += self.number_of_files_per_node # total number of configs
-                self.pt.create_shared_array('b', b_len)
-
-            #if self.config.sections["CALCULATOR"].force:
-            #    c_len += 3*self.number_of_atoms
-            #    self.pt.create_shared_array('c', c_len)
-
-            # FIXME: stress fitting not supported yet for CMAES
-            #if self.config.sections["CALCULATOR"].stress:
-            #    raise NotImplementedError("Stress fitting not supported yet for CMAES solver.")
 
 

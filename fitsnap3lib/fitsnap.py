@@ -128,9 +128,9 @@ class FitSnap:
             self.scraper.divvy_up_configs()
 
             if "REAXFF" in self.config.sections:
-              self.data = self.scraper.scrape_configs_reaxff()
+                self.data = self.scraper.scrape_configs_reaxff()
             else:
-              self.data = self.scraper.scrape_configs()
+                self.data = self.scraper.scrape_configs()
 
             if delete_scraper:
                 del self.scraper

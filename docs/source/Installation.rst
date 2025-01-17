@@ -52,8 +52,6 @@ Now install the necessary pre-requisites to build Python-LAMMPS using pip or con
     # For contributing to docs:
     python -m pip install sphinx sphinx_rtd_theme sphinxcontrib-napoleon
 
-.. NOTE:: distutils package is removed in python version 3.12, workaround is to pip install `setuptools` https://stackoverflow.com/questions/69919970/no-module-named-distutils-util-but-distutils-installed
-
 To make sure MPI is working, make a Python script called :code:`test.py` with the following::
 
     from mpi4py import MPI
@@ -62,7 +60,7 @@ To make sure MPI is working, make a Python script called :code:`test.py` with th
 
 And see the output of running :code:`test.py` in parallel::
 
-    # NOTE: the line order is not deterministic
+.. NOTE:: the line order is not deterministic
     $ mpirun -np 4 python test.py
     Proc 0 out of 4 procs
     Proc 1 out of 4 procs
@@ -114,20 +112,10 @@ interpreter::
 
 which should produce no errors.
 
-.. WARNING::
-
-  OpenMPI 5.0.x has issues with default TMPDIR on MacOS::
-
-  [macmini.local:52739] shmem: mmap: an error occurred while determining whether or not /var/folders/w6/v73x419x183g9_q5md_kgprh0000gn/T//ompi.macmini.501/jf.0/2157248512/sm_segment.macmini.501.80950000.0 could be created.
-
-  Workaround::
-
-    export TMPDIR=$HOME/tmp
-
-After completing this LAMMPS installation, please see `Install FitSNAP with latest LAMMPS`_ to use
+After completing this LAMMPS installation, please see `Install FitSNAP with latest LAMMPS`_ to use 
 FitSNAP.
 
-**NOTE ON ACE FITS:** There is no longer a need to use modified versions of LAMMPS or PACE libraries for ACE
+.. NOTE:: There is no longer a need to use modified versions of LAMMPS or PACE libraries for ACE
 model fitting. The :code:`compute pace` used by FitSNAP to calculate ACE descriptors has been fully integrated into
 the ML-PACE package as of the August 29, 2024 LAMMPS stable release (https://github.com/lammps/lammps/tree/stable). 
 The most recent development version can be found in the default branch of the public LAMMPS repository (https://github.com/lammps/lammps). 
@@ -170,8 +158,8 @@ both, we recommend building and configuring your favored flavor of MPI before co
 Minimal conda install
 ^^^^^^^^^^^^^^^^^^^^^
 
-- **WARNING:** Conda lammps installation does NOT include ACE descriptor set, SPIN package, or new 
-  LAMMPS settings needed for fitting neural networks. If you want to use these newer settings, 
+.. WARNING:: Conda lammps installation does NOT include ACE descriptor set, SPIN package, or new
+  LAMMPS settings needed for fitting neural networks. If you want to use these newer settings,
   please build LAMMPS from source as explained in the `LAMMPS Installation`_ docs.
 
 A minimal working environment can be set up using the Python distribution package Anaconda (https://www.anaconda.com).
@@ -202,6 +190,6 @@ After installing Anaconda:
         FITSNAP_DIR=\path\to\FitSNAP
         export PYTHONPATH=$FITSNAP_DIR:$LAMMPS_DIR/python:$PYTHONPATH
 
-.. TIP:: Periodically use the command :code:`git pull` in the cloned directory for updates
+.. TIP:: Periodically use the command :code:`git pull` in the cloned directory for updates 
 
 

@@ -1,6 +1,7 @@
 from fitsnap3lib.solvers.solver import Solver
 from fitsnap3lib.calculators.lammps_reaxff import LammpsReaxff
-import cma
+
+import cma, itertools, functools
 import numpy as np
 from pprint import pprint
 from sys import exit
@@ -16,26 +17,44 @@ class CMAES(Solver):
         self.parameters = self.config.sections["REAXFF"].parameters
         
 
-    def loss_function(self, x):
+    def loss_function(self, x, d):
 
+        shared_index = d["shared_index"]
         LammpsReaxff.change_parameters(self.fs.calculator,x)
-        LammpsReaxff.process_all_configs(self.fs.calculator, self.fs.data)
-
-        # Good practice after a large parallel operation is to impose a barrier.
-        self.pt.all_barrier()
-
-        #for d in self.data:
-
-        #self.pt.shared_arrays['b'].array -= self.pt.shared_arrays['b'].array[self._reference_index]
-
-        #sse = np.sum(self._weights*(np.square((self.pt.shared_arrays['b'].array - self._energies)/1.255018947555075)))
-        
-        sse = 99999
-        return sse
+        LammpsReaxff.process_configs(self.fs.calculator, d, shared_index)
+        computed_energy = float(self.pt.shared_arrays['energy'].array[shared_index])
+        return {**{k: d[k] for k in ['Energy','relative_energy_index']},**{"computed_energy": computed_energy}}
 
 
-    def parallel_loss_function(self, x_list):
-        return [self.loss_function(x) for x in self.pt.split_by_node(x_list)]
+    def parallel_loss_function(self, x_arrays):
+
+        # list.index() doesnt work with numpy arrays, convert them to lists
+        x_list = [list(a) for a in x_arrays]
+        #pprint(x_list)
+        x_data_pairs = self.pt.split_by_node(list(itertools.product(x_list, self.pt.fitsnap_dict["Data"])))
+        tmp = list([(x_list.index(x),self.loss_function(x, d)) for x, d in x_data_pairs])
+        #pprint(tmp)
+        #self.pt.all_barrier()
+
+        answer = []
+
+        for k, g in itertools.groupby(tmp, key=lambda t: t[0]):
+          #print("k=",k)
+
+          # k= 0
+          # 0 (0, {'Energy': 14.72554246214304, 'relative_energy_index': 3, 'computed_energy': -246.83747238283183})
+          # 1 (0, {'Energy': 5.628891278123319, 'relative_energy_index': 2, 'computed_energy': -251.02248371565693})
+          # 2 (0, {'Energy': 1.1565879346369456, 'relative_energy_index': 1, 'computed_energy': -252.26329117497153})
+
+          g_list = list(g)
+
+          pred = np.array([t['computed_energy']-tmp[i+t['relative_energy_index']][1]['computed_energy'] for i, (_,t) in enumerate(g_list)])
+
+          reference = np.array([t['Energy'] for (_,t) in g_list])
+          answer.append(float(np.sum((pred - reference)**2)))
+
+        #pprint(answer)
+        return answer
 
 
     def cmaes_constraints(self, x):

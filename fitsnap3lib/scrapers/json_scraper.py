@@ -156,7 +156,8 @@ class Json(Scraper):
                         json_data.append(d)
 
                     for i, d in enumerate(json_data):
-                        d["ground_energy_relative_index"] = ground_energy_index - i
+                        d["relative_energy_index"] = ground_energy_index - i
+                        d["Energy"] -= ground_energy
 
                 self.all_data.extend(json_data)
 

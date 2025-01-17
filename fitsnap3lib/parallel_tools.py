@@ -169,7 +169,7 @@ class ParallelTools():
             self._comm = comm
             self._rank = self._comm.Get_rank()
             self._size = self._comm.Get_size()
-            #print(f">>> Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
+            print(f">>> Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
             # Set this to False if want to avoid shared arrays. This is helpful when using the library 
             # to loop over functions that create shared arrays, to avoid mem leaks.
             self.create_shared_bool = True
@@ -438,7 +438,7 @@ class ParallelTools():
             #       the fitsnap dict on all procs.
             # NOTE: When number of procs is large, allgather could quickly consume all memory.
             #self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
-            self.fitsnap_dict[name] = self._sub_comm.allgather(self.fitsnap_dict[name])
+            self.fitsnap_dict[name] = list(chain.from_iterable(self._sub_comm.allgather(self.fitsnap_dict[name])))
 
     #@stub_check
     @_sub_rank_zero
@@ -919,7 +919,6 @@ class DistributedList:
     def __setitem__(self, key, value):
         """ Set list element """
         if isinstance(key, int):
-            assert len(value) == 1
             assert key <= self.__len__()
         elif isinstance(key, slice):
             # value must be list
@@ -929,7 +928,7 @@ class DistributedList:
             # slice ending must not exceed Distributed list bound
             assert key.stop <= self.__len__()
         else:
-            raise NotImplementedError("Indexing type {} for Distributed list is not impelemented".format(type(key)))
+            raise NotImplementedError("Indexing type {} for Distributed list is not implemented".format(type(key)))
         self._list.__setitem__(key, value)
 
     def __repr__(self):
@@ -948,6 +947,7 @@ class SharedArray:
     Args:
         size1 (int): First dimension of the array.
         size2 (int): Optional second dimension of the array, defaults to 1.
+        size3 (int): Optional third dimension of the array, defaults to 1.
         dtype (str): Optional data type, defaults to `d` for double.
         multinode (int): Optional multinode flag used for scalapack purposes.
         comms (MPI.Comm): MPI communicator.
@@ -956,8 +956,8 @@ class SharedArray:
         array (np.ndarray): Array of numbers that share memory across processes in the communicator.
     """
 
-    def __init__(self, size1, size2=1, dtype='d', multinode=0, comms=None, MPI=None):
-        
+    def __init__(self, size1, size2=1, size3=1, dtype='d', multinode=0, comms=None, MPI=None):
+
         self.MPI = MPI
 
         # total array for all procs
@@ -974,6 +974,7 @@ class SharedArray:
         self._total_length = self._length
         self._node_length = None
         self._width = size2
+        self._depth = size3
 
         # These are sub comm and sub rank
         # Comm, sub_com, head_node_comm
@@ -990,7 +991,7 @@ class SharedArray:
         else:
             raise TypeError("dtype {} has not been implemented yet".format(dtype))
         if self._comms[1][1] == 0:
-            self._nbytes = self._length * self._width * item_size
+            self._nbytes = self._length * self._width * self._depth * item_size
         else:
             self._nbytes = 0
 
@@ -1003,10 +1004,12 @@ class SharedArray:
             assert item_size == self.MPI.DOUBLE.Get_size()
         elif dtype == 'i':
             assert item_size == self.MPI.INT32_T.Get_size()
-        if self._width == 1:
+        if self._width == 1 and self._depth == 1:
             self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, ))
-        else:
+        elif self._depth == 1:
             self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, self._width))
+        else:
+            self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, self._width, self._depth))
 
     def get_memory(self):
         return self._nbytes
@@ -1052,13 +1055,14 @@ class StubsArray:
     Args:
         size1 (int): First dimension of the array.
         size2 (int): Optional second dimension of the array, defaults to 1.
+        size3 (int): Optional third dimension of the array, defaults to 1.
         dtype (str): Optional data type, defaults to `d` for double.
 
     Attributes:
         array (np.ndarray): Array of numbers that share memory across processes in the communicator.
     """
 
-    def __init__(self, size1, size2=1, dtype='d'):
+    def __init__(self, size1, size2=1, size3=1, dtype='d'):
         # total array for all procs
         self.array = None
         # sub array for this proc
@@ -1068,10 +1072,12 @@ class StubsArray:
         self.forces_index = None
         self.strain_index = None
 
-        if size2 == 1:
+        if size2 == 1 and size3 == 1:
             self.array = np.ndarray(shape=(size1, ), dtype=dtype)
-        else:
+        elif size3 == 1:
             self.array = np.ndarray(shape=(size1, size2), dtype=dtype)
+        else:
+            self.array = np.ndarray(shape=(size1, size2, size3), dtype=dtype)
 
     def get_memory(self):
         return self.array.nbytes

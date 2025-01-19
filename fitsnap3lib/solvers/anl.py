@@ -1,5 +1,4 @@
 from fitsnap3lib.io.outputs.outputs import optional_open
-from fitsnap3lib.io.outputs.snap import _to_coeff_string
 from fitsnap3lib.solvers.solver import Solver
 import numpy as np
 from sys import float_info as fi

@@ -6,9 +6,6 @@ import numpy as np
 from pprint import pprint
 from sys import exit
 
-from mpi4py import MPI
-from mpi4py.futures import MPICommExecutor
-
 # MPICommExecutor Legacy MPI-1 implementations (as well as some vendor MPI-2 implementations) do not support the dynamic process management features introduced in the MPI-2 standard. Additionally, job schedulers and batch systems in supercomputing facilities may pose additional complications to applications using the MPI_Comm_spawn() routine. [https://mpi4py.readthedocs.io/en/stable/mpi4py.futures.html#mpicommexecutor]
 
 
@@ -23,7 +20,6 @@ def loss_function_tuple(i_x_j):
 
   shared_index = i_x_j[2]
   d = reaxff_calculator.pt.fitsnap_dict["Data"][shared_index]
-  #LammpsReaxff.change_parameters(reaxff_calculator,i_x_j[1])
   reaxff_calculator.force_field_string = i_x_j[1]
   LammpsReaxff.process_reaxff_config(reaxff_calculator, d, shared_index)
   computed_energy = float(reaxff_calculator.pt.shared_arrays['energy'].array[shared_index])
@@ -88,41 +84,33 @@ class CMAES(Solver):
         Base class function for performing a fit.
         """
 
-        #self.fs = fs
-
         global reaxff_calculator
         reaxff_calculator = fs.calculator
 
+        x0 = [p['value'] for p in self.parameters]
 
-        #with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
-        #  if self.executor is not None:
-        #    future = self.executor.submit(abs, -42)
-        #    print( future.result() )
-        #    answer = set(self.executor.map(abs, [-42, 42]))
-        #    print(answer)
+        #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
+        options={
+          'popsize': self.popsize, 'seed': 12345,
+          'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
+        }
 
-        #if(self.pt._rank==0):
+        if self.pt.stubs == 0:
+            from mpi4py import MPI
+            from mpi4py.futures import MPICommExecutor
 
-        # self.pt._comm
+            with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
+                if self.executor is not None:
+                    x_best, es = cma.fmin2( None, x0, self.sigma,
+                        parallel_objective=self.parallel_loss_function, options=options)
 
-
-        with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
-          if self.executor is not None:
-
-            x0 = [p['value'] for p in self.parameters]
-
-            #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
-            options={
-              'popsize': self.popsize, 'seed': 12345,
-              'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
-            }
-
+        if self.pt.stubs == 1:
             x_best, es = cma.fmin2( None, x0, self.sigma,
-              parallel_objective=self.parallel_loss_function, options=options)
+                parallel_objective=self.parallel_loss_function, options=options)
 
-            LammpsReaxff.change_parameters(reaxff_calculator,x_best)
-            self.fit = reaxff_calculator.force_field_string
-            self.errors = es.pop_sorted
+        LammpsReaxff.change_parameters(reaxff_calculator,x_best)
+        self.fit = reaxff_calculator.force_field_string
+        self.errors = es.pop_sorted
 
         #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
         #x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)

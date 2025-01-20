@@ -147,9 +147,10 @@ class LammpsBase(Calculator):
         self._lmp.command("units " + self.config.sections["REFERENCE"].units)
         self._lmp.command("atom_style " + self.config.sections["REFERENCE"].atom_style)
 
+        # "box tilt large" is deprecated in LAMMPS
         lmp_setup = _extract_commands("""
                         atom_modify map array sort 0 2.0
-                        box tilt large""")
+                        """)
         for line in lmp_setup:
             self._lmp.command(line)
 

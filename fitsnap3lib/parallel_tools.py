@@ -430,23 +430,6 @@ class ParallelTools():
             allgather: If true then we allgather. When number of procs is large this will use more memory.
         """
 
-        # surprisingly flatten is not trivial in python...
-        # list(chain.from_iterable()) only works if all elements are lists
-        # https://realpython.com/python-flatten-list/
-        # https://www.geeksforgeeks.org/how-to-check-if-an-object-is-iterable-in-python/
-        # i really need this for FitSNAP-ReaxFF to allgather config data to all mpi ranks
-        # so i tried to have a method as least disruptive as possible
-        # TEST CASES:
-        # a=[1, 2, 3]
-        # b=[[1,2],[3],[]]
-        # c=[[1,2],3]
-
-        def flatten(iterable):
-          output = []
-          for item in iterable:
-            output.extend(item) if hasattr(item,'__iter__') else output.append(item)
-          return output
-
         if self.stubs == 0:
             if name not in self.fitsnap_dict:
                 raise NameError("Dictionary element not yet in fitsnap_dictionary")
@@ -458,9 +441,9 @@ class ParallelTools():
             # NOTE: When number of procs is large, allgather could quickly consume all memory.
 
             if allgather:
-                self.fitsnap_dict[name] = flatten(self._sub_comm.allgather(self.fitsnap_dict[name]))
+                self.fitsnap_dict[name] = self._sub_comm.allgather(self.fitsnap_dict[name])
             else:
-                self.fitsnap_dict[name] = flatten(self._sub_comm.gather(self.fitsnap_dict[name], root=0))
+                self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
 
 
     #@stub_check
@@ -930,10 +913,6 @@ class DistributedList:
     def __init__(self, proc_length):
         self._len = proc_length
         self._list = list(" ") * self._len
-
-    def __iter__(self):
-        """ Return iterator of list """
-        return self._list.__iter__()
 
     def __getitem__(self, item):
         """ Return list element """

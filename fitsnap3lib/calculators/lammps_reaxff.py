@@ -24,7 +24,25 @@ class LammpsReaxff(LammpsBase):
         self.masses = [float(lines[i].split()[3]) for i in range(line_index, line_index+4*number_of_elements, 4)]
         self.type_mapping = {e: self.elements.index(e)+1 for e in self.elements}
         self.parameters = self.config.sections['REAXFF'].parameters
-        
+        self._initialize_lammps()
+
+
+    def __del__(self):
+        self._lmp = self.pt.close_lammps()
+        del self
+
+
+    def process_reaxff_config(self, data, i):
+
+        try:
+            self._data = data
+            self._i = i
+            self._prepare_lammps()
+            self._run_lammps()
+            self._collect_lammps()
+        except Exception as e:
+            raise e
+
 
     def _prepare_lammps(self):
         self._set_structure()
@@ -158,13 +176,13 @@ class LammpsReaxff(LammpsBase):
 
         if( block == 'ATM' ):
             atoms_string = ''.join([' {:2}'.format(atoms[0]) for a in atoms])
-            extra_indent = '\n   '
+            #extra_indent = '\n   '
         else:
-            atoms_string = ''.join([' {:2d}'.format(self.elements.index(a)+1) for a in atoms])
+            #atoms_string = ''.join([' {:2d}'.format(self.elements.index(a)+1) for a in atoms])
+            atoms_string = ''.join(['  '+str(self.elements.index(a)+1) for a in atoms])
             extra_indent = '\n      '
-            
-        pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+\.[0-9]+){{{len(parameters_list)}}}\n'
 
+        pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+\.[0-9]+){{{len(parameters_list)}}}\n'
 
         if( not (match := re.search(pattern, self.force_field_string, flags=re.MULTILINE|re.DOTALL)) ):
             print("pattern...", pattern)
@@ -172,13 +190,16 @@ class LammpsReaxff(LammpsBase):
             raise Exception("Unable to match text to replace")
 
         tokens = match.group(0).split()
-        tokens[num_atoms+parameter_index] = value
-        tokens_formatted = [' {:8.4f}'.format(float(t)) for t in tokens[num_atoms:]]
+        #tokens[num_atoms+parameter_index] = value
+        tokens[num_atoms+parameter_index] = ' {:8.4f}'.format(value)
+        #tokens_formatted = [' {:8.4f}'.format(float(t)) for t in tokens[num_atoms:]]
+        tokens_formatted = tokens[num_atoms:]
 
         if( len(parameters_list)>8 ): tokens_formatted.insert(8, extra_indent)
         if( len(parameters_list)>16 ): tokens_formatted.insert(17, extra_indent)
         if( len(parameters_list)>24 ): tokens_formatted.insert(26, extra_indent)
-        replacement = atoms_string + ''.join(tokens_formatted) + '\n'
+        #replacement = atoms_string + ''.join(tokens_formatted) + '\n'
+        replacement = atoms_string + ' ' + ' '.join(tokens_formatted) + '\n'
         #print(replacement)
         self.force_field_string = self.force_field_string.replace(match.group(0),replacement)
 
@@ -187,5 +208,7 @@ class LammpsReaxff(LammpsBase):
         for i in range(len(x)):
             p = self.parameters[i]
             self.change_parameter(p['block'], p['atoms'], p['name'], x[i])
+
+        return self.force_field_string
 
 

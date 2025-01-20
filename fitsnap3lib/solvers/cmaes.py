@@ -6,7 +6,31 @@ import numpy as np
 from pprint import pprint
 from sys import exit
 
-"""Methods you may or must override in new solvers"""
+from mpi4py import MPI
+from mpi4py.futures import MPICommExecutor
+
+# MPICommExecutor Legacy MPI-1 implementations (as well as some vendor MPI-2 implementations) do not support the dynamic process management features introduced in the MPI-2 standard. Additionally, job schedulers and batch systems in supercomputing facilities may pose additional complications to applications using the MPI_Comm_spawn() routine. [https://mpi4py.readthedocs.io/en/stable/mpi4py.futures.html#mpicommexecutor]
+
+
+def force_field_string(x):
+
+    return LammpsReaxff.change_parameters(reaxff_calculator,x)
+
+
+def loss_function_tuple(i_x_j):
+
+  #print(f"reaxff_calculator.pt.get_rank()={reaxff_calculator.pt.get_rank()} index_x_data={index_x_data}")
+
+  shared_index = i_x_j[2]
+  d = reaxff_calculator.pt.fitsnap_dict["Data"][shared_index]
+  #LammpsReaxff.change_parameters(reaxff_calculator,i_x_j[1])
+  reaxff_calculator.force_field_string = i_x_j[1]
+  LammpsReaxff.process_reaxff_config(reaxff_calculator, d, shared_index)
+  computed_energy = float(reaxff_calculator.pt.shared_arrays['energy'].array[shared_index])
+  d['Weight'] = 1.0
+
+  return (i_x_j[0],d['Weight'],d['Energy'],d['relative_energy_index'],computed_energy)
+
 
 class CMAES(Solver):
 
@@ -15,43 +39,32 @@ class CMAES(Solver):
         self.popsize = self.config.sections['CMAES'].popsize
         self.sigma = self.config.sections['CMAES'].sigma
         self.parameters = self.config.sections["REAXFF"].parameters
-        
-
-    def loss_function(self, x, d):
-
-        shared_index = d["shared_index"]
-        LammpsReaxff.change_parameters(self.fs.calculator,x)
-        LammpsReaxff.process_configs(self.fs.calculator, d, shared_index)
-        computed_energy = float(self.pt.shared_arrays['energy'].array[shared_index])
-        return {**{k: d[k] for k in ['Energy','relative_energy_index']},**{"computed_energy": computed_energy}}
 
 
     def parallel_loss_function(self, x_arrays):
 
-        # list.index() doesnt work with numpy arrays, convert them to lists
-        x_list = [list(a) for a in x_arrays]
-        #pprint(x_list)
-        x_data_pairs = self.pt.split_by_node(list(itertools.product(x_list, self.pt.fitsnap_dict["Data"])))
-        tmp = list([(x_list.index(x),self.loss_function(x, d)) for x, d in x_data_pairs])
-        #pprint(tmp)
-        #self.pt.all_barrier()
+        ff_strings = list(self.executor.map(force_field_string, x_arrays))
+
+        x_data_pairs = itertools.product(range(len(x_arrays)), range(len(self.pt.fitsnap_dict["Data"])))
+        tuples = [(i,ff_strings[i],j) for i, j in x_data_pairs]
+        #print(tuples)
+        tmp = list(self.executor.map(loss_function_tuple, tuples, chunksize=7, unordered=True))
+
+        #print(f"self.pt.get_rank()={self.pt.get_rank()}")
 
         answer = []
 
         for k, g in itertools.groupby(tmp, key=lambda t: t[0]):
-          #print("k=",k)
 
-          # k= 0
-          # 0 (0, {'Energy': 14.72554246214304, 'relative_energy_index': 3, 'computed_energy': -246.83747238283183})
-          # 1 (0, {'Energy': 5.628891278123319, 'relative_energy_index': 2, 'computed_energy': -251.02248371565693})
-          # 2 (0, {'Energy': 1.1565879346369456, 'relative_energy_index': 1, 'computed_energy': -252.26329117497153})
+          # (index_x_data[0],d['Weight'],d['Energy'],d['relative_energy_index'],computed_energy)
 
           g_list = list(g)
 
-          pred = np.array([t['computed_energy']-tmp[i+t['relative_energy_index']][1]['computed_energy'] for i, (_,t) in enumerate(g_list)])
+          pred = np.array([t[4]-tmp[i+t[3]][4] for i, t in enumerate(g_list)])
 
-          reference = np.array([t['Energy'] for (_,t) in g_list])
-          answer.append(float(np.sum((pred - reference)**2)))
+          reference = np.array([t[2] for t in g_list])
+          weighted_residuals = [g_list[i][1]*((pred[i]-reference[i])/1.2550189475550748)**2 for i in range(len(g_list))]
+          answer.append(float(np.sum(weighted_residuals)))
 
         #pprint(answer)
         return answer
@@ -75,24 +88,41 @@ class CMAES(Solver):
         Base class function for performing a fit.
         """
 
-        #if( self.popsize % self.pt.get_size() == 0 ):
-        #    self.pt.single_print(f"! WARNING: For optimal performance, please choose a population size which is multiple of MPI ranks.")
+        #self.fs = fs
 
-        self.fs = fs
-        x0 = [p['value'] for p in self.parameters]
+        global reaxff_calculator
+        reaxff_calculator = fs.calculator
 
-        #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
-        options={
-          'popsize': self.popsize, 'maxiter': 10,
-          'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
-          }
 
-        x_best, es = cma.fmin2( None, x0, self.sigma,
-          parallel_objective=self.parallel_loss_function, options=options)
+        #with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
+        #  if self.executor is not None:
+        #    future = self.executor.submit(abs, -42)
+        #    print( future.result() )
+        #    answer = set(self.executor.map(abs, [-42, 42]))
+        #    print(answer)
 
-        LammpsReaxff.change_parameters(self.fs.calculator,x_best)
-        self.fit = self.fs.calculator.force_field_string
-        self.errors = es.pop_sorted
+        #if(self.pt._rank==0):
+
+        # self.pt._comm
+
+
+        with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
+          if self.executor is not None:
+
+            x0 = [p['value'] for p in self.parameters]
+
+            #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
+            options={
+              'popsize': self.popsize, 'seed': 12345,
+              'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
+            }
+
+            x_best, es = cma.fmin2( None, x0, self.sigma,
+              parallel_objective=self.parallel_loss_function, options=options)
+
+            LammpsReaxff.change_parameters(reaxff_calculator,x_best)
+            self.fit = reaxff_calculator.force_field_string
+            self.errors = es.pop_sorted
 
         #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
         #x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)

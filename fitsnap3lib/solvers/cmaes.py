@@ -6,26 +6,35 @@ import numpy as np
 from pprint import pprint
 from sys import exit
 
-# MPICommExecutor Legacy MPI-1 implementations (as well as some vendor MPI-2 implementations) do not support the dynamic process management features introduced in the MPI-2 standard. Additionally, job schedulers and batch systems in supercomputing facilities may pose additional complications to applications using the MPI_Comm_spawn() routine. [https://mpi4py.readthedocs.io/en/stable/mpi4py.futures.html#mpicommexecutor]
+from mpi4py import MPI
+from mpi4py.futures import wait, get_comm_workers
 
+global ff_strings
 
 def force_field_string(x):
-
     return LammpsReaxff.change_parameters(reaxff_calculator,x)
 
 
-def loss_function_tuple(i_x_j):
+def force_field_strings2():
+    print('ok 1a')
+    comm = get_comm_workers()
+    print('ok 1b')
+    comm.Barrier()
+    print('ok 1c')
+    ff_strings = comm.bcast(None)
+    print('ok 1d')
 
-  #print(f"reaxff_calculator.pt.get_rank()={reaxff_calculator.pt.get_rank()} index_x_data={index_x_data}")
 
-  shared_index = i_x_j[2]
-  d = reaxff_calculator.pt.fitsnap_dict["Data"][shared_index]
-  reaxff_calculator.force_field_string = i_x_j[1]
-  LammpsReaxff.process_reaxff_config(reaxff_calculator, d, shared_index)
-  computed_energy = float(reaxff_calculator.pt.shared_arrays['energy'].array[shared_index])
-  d['Weight'] = 1.0
+def force_field_strings(strings):
+    ff_strings = strings
 
-  return (i_x_j[0],d['Weight'],d['Energy'],d['relative_energy_index'],computed_energy)
+
+def loss_function_tuple(i_j):
+
+    d = reaxff_calculator.pt.fitsnap_dict["Data"][i_j[0]]
+    reaxff_calculator.force_field_string = ff_strings[i_j[1]]
+    LammpsReaxff.process_reaxff_config(reaxff_calculator, d)
+    return (d['ground_shared_index'], d['ground_relative_index'], i_j[0], i_j[1], d['predicted_energy'])
 
 
 class CMAES(Solver):
@@ -35,48 +44,44 @@ class CMAES(Solver):
         self.popsize = self.config.sections['CMAES'].popsize
         self.sigma = self.config.sections['CMAES'].sigma
         self.parameters = self.config.sections["REAXFF"].parameters
+        self.pt.add_2_fitsnap("ff_strings", [])
 
 
     def parallel_loss_function(self, x_arrays):
 
         ff_strings = list(self.executor.map(force_field_string, x_arrays))
+        fs = [self.executor.submit(force_field_strings, ff_strings) for _ in range(self.executor.num_workers)]
+        wait(fs)
 
-        x_data_pairs = itertools.product(range(len(x_arrays)), range(len(self.pt.fitsnap_dict["Data"])))
-        tuples = [(i,ff_strings[i],j) for i, j in x_data_pairs]
-        #print(tuples)
-        tmp = list(self.executor.map(loss_function_tuple, tuples, chunksize=7, unordered=True))
+        all_data = self.pt.fitsnap_dict["Data"]
+        x_data_pairs = itertools.product(range(len(x_arrays)),range(len(all_data)))
+        #tuples = [(j,i,ff_strings[i]) for i, j in x_data_pairs]
+        tuples = [(j,i) for i, j in x_data_pairs]
+
+        #for t in tuples: print(f"({t[0]}, {t[1]})")
+
+        parallel_results = self.executor.map(loss_function_tuple, tuples, unordered=False)
 
         #print(f"self.pt.get_rank()={self.pt.get_rank()}")
 
+        #answer = [0.0] * len(x_arrays)
         answer = []
 
-        for k, g in itertools.groupby(tmp, key=lambda t: t[0]):
+        for k, g in itertools.groupby(parallel_results, key=lambda t: (t[0],t[3])):
 
-          # (index_x_data[0],d['Weight'],d['Energy'],d['relative_energy_index'],computed_energy)
-
-          g_list = list(g)
-
-          pred = np.array([t[4]-tmp[i+t[3]][4] for i, t in enumerate(g_list)])
-
-          reference = np.array([t[2] for t in g_list])
-          weighted_residuals = [g_list[i][1]*((pred[i]-reference[i])/1.2550189475550748)**2 for i in range(len(g_list))]
-          answer.append(float(np.sum(weighted_residuals)))
+            # (ground_shared_index, ground_relative_index, shared_index, x_index, computed_energy)
+            group = list(g)
+            #print(f"\ngroup=")
+            #pprint(group)
+            predicted = np.array([t[4]-group[i+t[1]][4] for i, t in enumerate(group)])
+            reference = np.array([all_data[t[2]]["Energy"] for t in group])
+            weights = np.array([all_data[t[2]]["Weight"] for t in group])
+            weighted_residuals = weights * np.square((predicted - reference)/1.2550189475550748)
+            #answer[t[3]] += np.sum(weighted_residuals)
+            answer.append(np.sum(weighted_residuals))
 
         #pprint(answer)
         return answer
-
-
-    def cmaes_constraints(self, x):
-
-        #print("cmaes_constraints... self=" ,self)
-        #print(type(args))
-        #print(f'cmaes_constraints... {x}\nargs... {args}')
-
-        constraints = []
-        constraints.append(x[1]-x[0])
-        constraints.append(x[2]-x[1])
-
-        return constraints
 
 
     def perform_fit(self, fs):
@@ -84,6 +89,8 @@ class CMAES(Solver):
         Base class function for performing a fit.
         """
 
+        # "Avoid global variables that are declared outside class methods or attributes"
+        # no way around this sorry
         global reaxff_calculator
         reaxff_calculator = fs.calculator
 
@@ -91,13 +98,18 @@ class CMAES(Solver):
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
-          'popsize': self.popsize, 'seed': 12345,
+          #'popsize': self.popsize, 'seed': 12345,
+          'popsize': 7, 'seed': 12345, 'maxiter': 999,
           'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
         }
 
         if self.pt.stubs == 0:
             from mpi4py import MPI
             from mpi4py.futures import MPICommExecutor
+
+            # SAFER TO USE *MPICommExecutor* INSTEAD OF *MPIPoolExecutor*
+            # "Legacy MPI-1 implementations (as well as some vendor MPI-2 implementations) do not support the dynamic process management features introduced in the MPI-2 standard. Additionally, job schedulers and batch systems in supercomputing facilities may pose additional complications to applications using the MPI_Comm_spawn() routine.
+            # [https://mpi4py.readthedocs.io/en/stable/mpi4py.futures.html#mpicommexecutor]
 
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
                 if self.executor is not None:
@@ -108,9 +120,9 @@ class CMAES(Solver):
             x_best, es = cma.fmin2( None, x0, self.sigma,
                 parallel_objective=self.parallel_loss_function, options=options)
 
-        LammpsReaxff.change_parameters(reaxff_calculator,x_best)
-        self.fit = reaxff_calculator.force_field_string
-        self.errors = es.pop_sorted
+        if self.pt._rank == 0:
+            self.fit = LammpsReaxff.change_parameters(reaxff_calculator,x_best)
+            self.errors = es.pop_sorted
 
         #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
         #x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)
@@ -125,6 +137,19 @@ class CMAES(Solver):
 
     def error_analysis(self):
         pass
+
+
+    def cmaes_constraints(self, x):
+
+        #print("cmaes_constraints... self=" ,self)
+        #print(type(args))
+        #print(f'cmaes_constraints... {x}\nargs... {args}')
+
+        constraints = []
+        constraints.append(x[1]-x[0])
+        constraints.append(x[2]-x[1])
+
+        return constraints
 
 
 

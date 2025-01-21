@@ -46,8 +46,6 @@ class LammpsReaxff(LammpsBase):
 
     def _prepare_lammps(self):
         self._set_structure()
-        #self._lmp.command("thermo 1")
-        #self._lmp.command("thermo_style custom step temp pe ke etotal press")
         self._lmp.command("pair_style reaxff NULL")
 
         try:
@@ -84,9 +82,8 @@ class LammpsReaxff(LammpsBase):
 
         if self.config.sections["CALCULATOR"].energy:
             self._data['predicted_energy'] = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
-            #config_energy = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
-            #self.pt.shared_arrays['energy'].array[self._i] = config_energy
             #print("_collect_lammps(self)...", self._i, self._data["Energy"], config_energy)
+
 
     def allocate_per_config(self, data: list):
         """
@@ -111,23 +108,6 @@ class LammpsReaxff(LammpsBase):
 
         for i, d in enumerate(all_data):
             d["ground_shared_index"] = i + d["ground_relative_index"]
-
-        #if(self.pt._rank==0): pprint(all_data)
-
-        #self.total_configs = len(all_data)
-        #self.total_atoms = reduce(lambda x, y: x + y, [len(d['Positions']) for d in all_data])
-
-        #print(f"self.pt.get_rank()={self.pt.get_rank()} total_configs={self.total_configs} total_atoms={self.total_atoms}")
-
-        #if self.config.sections["CALCULATOR"].energy:
-        #    self.pt.create_shared_array('energy', self.total_configs, 1)
-
-        #if self.config.sections["CALCULATOR"].force:
-        #    self.pt.create_shared_array('forces', self.total_atoms, 3)
-
-        # FIXME: stress fitting not supported yet
-        #if self.config.sections["CALCULATOR"].stress:
-        #    raise NotImplementedError("Stress fitting not supported yet for FitSNAP-ReaxFF.")
 
 
     def change_parameter(self, block, atoms, name, value):

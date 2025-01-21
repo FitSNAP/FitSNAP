@@ -134,7 +134,7 @@ class Json(Scraper):
                     self.data['Group'] = group_name
 
                     json_data = []
-                    ground_energy = float('infinity')
+                    ground_energy = 999999.99
                     ground_energy_index = 0
 
                     for i, d in enumerate(self.data["Data"]):
@@ -153,6 +153,7 @@ class Json(Scraper):
                             ground_energy = d["Energy"]
                             ground_energy_index = i
 
+                        if "Weight" not in d: d["Weight"] = 1.0
                         json_data.append(d)
 
                     for i, d in enumerate(json_data):

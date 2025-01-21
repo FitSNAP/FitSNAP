@@ -4,6 +4,7 @@ from fitsnap3lib.parallel_tools import DistributedList
 import json, re, sys
 import numpy as np
 from functools import reduce
+from itertools import chain
 from pprint import pprint
 
 class LammpsReaxff(LammpsBase):
@@ -32,11 +33,10 @@ class LammpsReaxff(LammpsBase):
         del self
 
 
-    def process_reaxff_config(self, data, i):
+    def process_reaxff_config(self, data):
 
         try:
             self._data = data
-            self._i = i
             self._prepare_lammps()
             self._run_lammps()
             self._collect_lammps()
@@ -80,15 +80,12 @@ class LammpsReaxff(LammpsBase):
         pass
 
 
-    def _collect_lammps_preprocess(self):
-        # Pre-process LAMMPS data by collecting data needed to allocate shared arrays.
-        print("_collect_lammps_preprocess(self)")
-
     def _collect_lammps(self):
 
         if self.config.sections["CALCULATOR"].energy:
-            config_energy = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
-            self.pt.shared_arrays['energy'].array[self._i] = config_energy
+            self._data['predicted_energy'] = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
+            #config_energy = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
+            #self.pt.shared_arrays['energy'].array[self._i] = config_energy
             #print("_collect_lammps(self)...", self._i, self._data["Energy"], config_energy)
 
     def allocate_per_config(self, data: list):
@@ -106,28 +103,32 @@ class LammpsReaxff(LammpsBase):
 
         self.pt.all_barrier()
         self.pt.gather_fitsnap("Data")
-        all_data = self.pt.fitsnap_dict["Data"]
 
-        #pprint(all_data)
+        #if(self.pt._rank==0): pprint(self.pt.fitsnap_dict["Data"])
+
+        all_data = self.pt.fitsnap_dict["Data"] = list(chain.from_iterable(self.pt.fitsnap_dict["Data"]))
+        print(f"self.pt.get_rank()={self.pt.get_rank()} len(all_data)={len(all_data)}")
 
         for i, d in enumerate(all_data):
-            d["shared_index"] = i
+            d["ground_shared_index"] = i + d["ground_relative_index"]
 
-        self.total_configs = len(all_data)
-        self.total_atoms = reduce(lambda x, y: x + y, [len(d['Positions']) for d in all_data])
+        #if(self.pt._rank==0): pprint(all_data)
 
-        print(f"self.pt.get_rank()={self.pt.get_rank()} total_configs={self.total_configs} total_atoms={self.total_atoms}")
+        #self.total_configs = len(all_data)
+        #self.total_atoms = reduce(lambda x, y: x + y, [len(d['Positions']) for d in all_data])
 
-        if self.config.sections["CALCULATOR"].energy:
-            self.pt.create_shared_array('energy', self.total_configs, 1)
+        #print(f"self.pt.get_rank()={self.pt.get_rank()} total_configs={self.total_configs} total_atoms={self.total_atoms}")
 
-        if self.config.sections["CALCULATOR"].force:
-            self.pt.create_shared_array('forces', self.total_atoms, 3)
+        #if self.config.sections["CALCULATOR"].energy:
+        #    self.pt.create_shared_array('energy', self.total_configs, 1)
+
+        #if self.config.sections["CALCULATOR"].force:
+        #    self.pt.create_shared_array('forces', self.total_atoms, 3)
 
         # FIXME: stress fitting not supported yet
-        if self.config.sections["CALCULATOR"].stress:
-            raise NotImplementedError("Stress fitting not supported yet for FitSNAP-ReaxFF.")
-                
+        #if self.config.sections["CALCULATOR"].stress:
+        #    raise NotImplementedError("Stress fitting not supported yet for FitSNAP-ReaxFF.")
+
 
     def change_parameter(self, block, atoms, name, value):
 
@@ -176,7 +177,7 @@ class LammpsReaxff(LammpsBase):
 
         if( block == 'ATM' ):
             atoms_string = ''.join([' {:2}'.format(atoms[0]) for a in atoms])
-            #extra_indent = '\n   '
+            extra_indent = '\n   '
         else:
             #atoms_string = ''.join([' {:2d}'.format(self.elements.index(a)+1) for a in atoms])
             atoms_string = ''.join(['  '+str(self.elements.index(a)+1) for a in atoms])

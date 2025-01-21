@@ -6,26 +6,13 @@ import numpy as np
 from pprint import pprint
 from sys import exit
 
-from mpi4py import MPI
-from mpi4py.futures import wait, get_comm_workers
-
-global ff_strings
 
 def force_field_string(x):
     return LammpsReaxff.change_parameters(reaxff_calculator,x)
 
 
-def force_field_strings2():
-    print('ok 1a')
-    comm = get_comm_workers()
-    print('ok 1b')
-    comm.Barrier()
-    print('ok 1c')
-    ff_strings = comm.bcast(None)
-    print('ok 1d')
-
-
 def force_field_strings(strings):
+    global ff_strings
     ff_strings = strings
 
 
@@ -44,14 +31,13 @@ class CMAES(Solver):
         self.popsize = self.config.sections['CMAES'].popsize
         self.sigma = self.config.sections['CMAES'].sigma
         self.parameters = self.config.sections["REAXFF"].parameters
-        self.pt.add_2_fitsnap("ff_strings", [])
 
 
     def parallel_loss_function(self, x_arrays):
 
         ff_strings = list(self.executor.map(force_field_string, x_arrays))
         fs = [self.executor.submit(force_field_strings, ff_strings) for _ in range(self.executor.num_workers)]
-        wait(fs)
+        #wait(fs)
 
         all_data = self.pt.fitsnap_dict["Data"]
         x_data_pairs = itertools.product(range(len(x_arrays)),range(len(all_data)))
@@ -99,13 +85,13 @@ class CMAES(Solver):
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
           #'popsize': self.popsize, 'seed': 12345,
-          'popsize': 7, 'seed': 12345, 'maxiter': 999,
+          'popsize': 7, 'seed': 12345, 'maxiter': 5,
           'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
         }
 
         if self.pt.stubs == 0:
             from mpi4py import MPI
-            from mpi4py.futures import MPICommExecutor
+            from mpi4py.futures import MPICommExecutor, wait
 
             # SAFER TO USE *MPICommExecutor* INSTEAD OF *MPIPoolExecutor*
             # "Legacy MPI-1 implementations (as well as some vendor MPI-2 implementations) do not support the dynamic process management features introduced in the MPI-2 standard. Additionally, job schedulers and batch systems in supercomputing facilities may pose additional complications to applications using the MPI_Comm_spawn() routine.

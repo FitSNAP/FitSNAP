@@ -156,8 +156,11 @@ class Json(Scraper):
                         json_data.append(d)
 
                     for i, d in enumerate(json_data):
-                        d["relative_energy_index"] = ground_energy_index - i
+                        d["ground_relative_index"] = ground_energy_index - i
                         d["Energy"] -= ground_energy
+
+                    #tmp2 = np.square(np.max(qm_y)-np.array(qm_y)+1)
+#auto_weights2 = tmp2/np.sum(tmp2)
 
                 self.all_data.extend(json_data)
 

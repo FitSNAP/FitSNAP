@@ -25,12 +25,34 @@ class LammpsReaxff(LammpsBase):
         self.masses = [float(lines[i].split()[3]) for i in range(line_index, line_index+4*number_of_elements, 4)]
         self.type_mapping = {e: self.elements.index(e)+1 for e in self.elements}
         self.parameters = self.config.sections['REAXFF'].parameters
+
+        for p in self.parameters:
+            p['types'] = [self.type_mapping[a] for a in p['atoms']]
+
         self._initialize_lammps()
 
 
     def __del__(self):
         self._lmp = self.pt.close_lammps()
         del self
+
+
+    def _initialize_lammps(self, printlammps=0):
+        super()._initialize_lammps(printlammps)
+        self._lmp.command("boundary p p p")
+        self._lmp.command("units " + self.config.sections["REFERENCE"].units)
+        self._lmp.command("atom_style " + self.config.sections["REFERENCE"].atom_style)
+        #self._lmp.command("atom_modify map array sort 0 2.0")
+        #xlo, ylo, zlo = np.min(self._data["Positions"],axis=0)-10.0
+        #xhi, yhi, zhi = np.max(self._data["Positions"],axis=0)+10.0
+        #print(xlo, ylo, zlo, xhi, yhi, zhi)
+        #self._lmp.command(f'region box block {xlo} {xhi} {ylo} {yhi} {zlo} {zhi}')
+        self._lmp.command(f"region box block -15 15 -15 15 -15 15")
+        self._lmp.command(f"create_box {len(self.elements)} box")
+        self._lmp.commands_list([f"mass {i+1} {self.masses[i]}" for i in range(len(self.masses))])
+        self._lmp.command("pair_style reaxff NULL")
+        self._lmp.pair_coeff_reaxff(self.force_field_string, self.elements)
+        self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff") # maxiter 400
 
 
     def process_reaxff_config(self, data):
@@ -45,37 +67,23 @@ class LammpsReaxff(LammpsBase):
 
 
     def _prepare_lammps(self):
-        self._set_structure()
-        self._lmp.command("pair_style reaxff NULL")
 
-        try:
-            self._lmp.pair_coeff_reaxff(self.force_field_string, self.elements)
-        except:
-            print('ff=',self.force_field_string)
+        #try:
+        #    self._lmp.pair_coeff_reaxff(self.force_field_string, self.elements)
+        #except:
+        #    print('ff=',self.force_field_string)
 
-        self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff") # maxiter 400
-
-
-    def _set_box(self):
-        self._lmp.command("boundary p p p")
-        xlo, ylo, zlo = np.min(self._data["Positions"],axis=0)-10.0
-        xhi, yhi, zhi = np.max(self._data["Positions"],axis=0)+10.0
-        #print(xlo, ylo, zlo, xhi, yhi, zhi)
-        self._lmp.command(f'region box block {xlo} {xhi} {ylo} {yhi} {zlo} {zhi}')
-        self._lmp.command(f"create_box {len(self.elements)} box")
-
-
-    def _create_atoms(self):
-        self._lmp.commands_list([f'mass {i+1} {self.masses[i]}' for i in range(len(self.masses))])
+        self._lmp.command("delete_atoms group all")
         self._create_atoms_helper(type_mapping=self.type_mapping)
 
 
-    def _set_computes(self):
-        pass
+    def change_parameters(self, x):
 
+        new_parameters = [
+            {'block': 'BND', 'types': p['types'], 'name': p['name'], 'value': x[i]}
+            for i, p in enumerate(self.parameters)]
 
-    def _create_charge(self):
-        pass
+        self._lmp.set_reaxff_parameters(new_parameters)
 
 
     def _collect_lammps(self):
@@ -110,7 +118,7 @@ class LammpsReaxff(LammpsBase):
             d["ground_shared_index"] = i + d["ground_relative_index"]
 
 
-    def change_parameter(self, block, atoms, name, value):
+    def change_parameter_string(self, block, atoms, name, value):
 
         if( block == 'ATM' ):
             num_atoms = 1
@@ -184,11 +192,11 @@ class LammpsReaxff(LammpsBase):
         #print(replacement)
         self.force_field_string = self.force_field_string.replace(match.group(0),replacement)
 
-    def change_parameters(self, x):
+    def change_parameters_string(self, x):
 
         for i in range(len(x)):
             p = self.parameters[i]
-            self.change_parameter(p['block'], p['atoms'], p['name'], x[i])
+            self.change_parameter_string(p['block'], p['atoms'], p['name'], x[i])
 
         return self.force_field_string
 

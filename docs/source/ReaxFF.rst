@@ -1,16 +1,45 @@
-ReaxFF Models
-=============
+Reactive Force Field (ReaxFF)
+=============================
 
-.. Interfacing with PyTorch allows us to conveniently fit neural network potentials using descriptors
-that exist in LAMMPS. We may then use these neural network models to run high-performance MD
-simulations in LAMMPS. When fitting atom-centered neural network potentials, we incorporate a 
-general and performant approach that allows any descriptor as input to the network. This is achieved 
-by pre-calculating descriptors in LAMMPS which are then fed into the network, as shown below.
+The `Reactive Force Field (ReaxFF) <https://doi.org/10.1038/npjcompumats.2015.11>`_ replaces fixed bond topologies of classical force fields with the concept of bond order to simulate bond breaking/formation of chemical reactions. Originally conceived for hydrocarbons in the gas phase :footcite:p:`vanduin2001`, ReaxFF has been extended to a wide range of applications :footcite:p:`senftle2016`. ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports both the QEq charge equilibration :footcite:p:`rappe1991,nakano1997` and atom-condensed Kohn-Sham DFT to second order (ACKS2) :footcite:p:`verstraelen2013,ohearn2020` methods to represent the dynamics of electron density while fixed partial charges in classical force fields (eg. CHARMM) do not.
 
-.. figure:: ../images/lammps_fitsnap_connection.png
-   :scale: 60 %
+----
 
-.. To calculate forces, we use the general chain rule expression above, where the descriptor derivatives are analytically extracted from LAMMPS. These capabilities are further explained below.
+ReaxFF Potential
+----------------
+
+The ReaxFF overall system energy is expressed as the sum:
+
+.. math::
+
+  E_{system} & = E_{bond} + E_{lp} + E_{over} + E_{under} + E_{val} + E_{pen} + E_{coa} + E_{C2}\\[.6em]
+  & \qquad + E_{triple} + E_{tors} + E_{conj} + E_{H-bond} + E_{vdWaals} + E_{Coulomb}
+
+Details for each term:
+
+- Bond Order and Bond Energy
+
+- Lone pair energy
+
+- Overcoordination
+
+- Undercoordination
+
+- Valence Angle Terms (Angle energy, Penalty energy, Three-body conjugation term)
+
+- Torsion angle terms (Torsion rotation barriers, Four body conjugation term)
+
+- Hydrogen bond interactions
+
+- Correction for C2
+
+- Triple bond energy correction
+
+- Nonbonded interactions (Taper correction, van der Waals interactions, Coulomb Interactions)
+
+are presented in the `Supporting Information <https://doi.org/10.1021/jp709896w>`_ of *A ReaxFF Reactive Force Field for Molecular Dynamics Simulations of Hydrocarbon Oxidation* by Chenoweth, van Duin, Goddard (2008).
+
+----
 
 
 
@@ -37,184 +66,6 @@ The :code:`CMAES` section keys are explained in more detail below.
 
 - :code:`sigma` 
 
-Loss Function
--------------
-
-When fitting neural network potentials we minimize the sum of weighted energy and force mean squared 
-errors:
-
-.. math::
-
-    \mathcal L = \frac{1}{M} \sum_{m}^{M} \frac{1}{N_m}\{w_m^E [\hat{E}_m(\theta) - E_m]^2 + \frac{w_m^F}{3} \sum_i^{3N_m} [\hat{F}_{mi}(\theta) - F_{mi}]^2 \}
-
-where
-
-- :math:`M` is the number of configurations in the training set.
-
-- :math:`m` indexes a particular configuration.
-
-- :math:`N_m` is the number of atoms for configuration :math:`m`
-
-- :math:`w_m^E` is the energy weight of configuration :math:`m`. These weights can be set by designating 
-  the particular weights in the `[GROUPS] section <Run.html#groups>`__, or by declaring a global 
-  weight in the :code:`[PYTORCH]` section, which will override the group weights. 
-
-- :math:`\theta` represents all the model fitting parameters (e.g. the trainable coefficients in a neural network).
-
-- :math:`\hat{E}_m(\theta)` is the model predicted energy of configuration :math:`m`
-
-- :math:`E_m` is the target *ab initio* energy of configuration :math:`m`, subtracted by the LAMMPS 
-  reference potential declared in the `[REFERENCE] section <Run.html#reference>`__.
-
-- :math:`i` indexes a Cartesian index of a single atom; we lump Cartesian indices and atom indices 
-  into a single index here. 
-
-- :math:`w_m^F` is the force weight of configuration :math:`m`. These weights can be set by designating 
-  the particular weights in the `[GROUPS] section <Run.html#groups>`__, or by declaring a global 
-  weight in the :code:`[PYTORCH]` section, which will override the group weights. 
-
-- :math:`\hat{F}_{mi}(\theta)` is a model predicted force component :math:`i` in configuration :math:`m`
-
-- :math:`F_{mi}` is a target *ab initio* force component :math:`i` in configuration :math:`m`, 
-  subtracted by the LAMMPS reference potential force declared in the 
-  `[REFERENCE] section <Run.html#reference>`__.
-
-This loss also gets evaluated for the validation set for each epoch, so that the screen output looks 
-something like::
-
-    ----- epoch: 0
-    Batch averaged train/val loss: 4.002996124327183 4.072216800280979
-    Epoch time 0.3022959232330322
-    ----- epoch: 1
-    Batch averaged train/val loss: 2.3298445120453835 1.1800143867731094
-    Epoch time 0.2888479232788086
-    ----- epoch: 2
-    Batch averaged train/val loss: 0.6962545616552234 0.8775447851845196
-    Epoch time 0.26888108253479004
-    ----- epoch: 3
-    Batch averaged train/val loss: 0.3671231440966949 0.6234593641545091
-    Epoch time 0.26917600631713867
-
-The first column is the weighted training set loss function, and the second column is the weighted 
-validation set loss function (which is not included in fitting). While the loss function units 
-themselves might not be meaningful for error analysis, we output model predictions and targets for 
-energies and forces in separate files after the fit, as explained below. 
-
-Outputs and Error Calculation
------------------------------
-
-Unlike linear models, PyTorch models do not output statistics in a dataframe. Instead we output 
-energy and force comparisons in separate files, along with PyTorch models that can be used to restart 
-a fit or even run MD simulations in LAMMPS.
-
-Error/Comparison files
-^^^^^^^^^^^^^^^^^^^^^^
-
-After training a potential, FitSNAP produces outputs that can be used to intrepret the quality of a 
-fit on the training and/or validation data. Basic error metrics for the total set and groups are 
-output in the metric file declared in the :code:`[OUTFILE]` section::
-
-    [OUTFILE]
-    metrics = Ta_metrics.dat # filename for Ta example
-
-In this example, we write error metrics to a :code:`Ta_metrics.dat` file.
-The first line of this file describes what the columns are::
-
-    Group  Train/Test   Property   Count   MAE    RMSE 
-    ...
-
-where :code:`Count` is the number of configurations used for energy error, or atoms used for force error.
-
-Fitting progress may be tracked in the :code:`loss_vs_epochs.dat` file, which tracks training and validation losses.
-
-More detailed fitting metrics are obtained if the following flags are declared true in the
-:code:`[EXTRAS]` section::
-
-    [EXTRAS]
-    dump_peratom = 1   # write per-atom fitting metrics
-    dump_perconfig = 1 # write per-config fitting metrics
-    dump_configs = 1   # write a pickled list of Configuration objects
-
-The following comparison files are written after a fit:
-
-- :code:`peratom.dat` : Fitting information for each atom, such as truth and predicted forces.
-
-The first line of this file describes what the columns are::
-
-    Filename Group AtomID Type Fx_Truth Fy_Truth Fz_Truth Fx_Pred Fy_Pred Fz_Pred Testing_Bool
-
-- :code:`perconfig.dat` : Fitting information for each configuration, such as truth and predicted energies.
-
-The first line of this file describes what the columns are::
-
-    Filename Group Natoms Energy_Truth Energy_Pred Testing_Bool
-
-- :code:`configs.pickle` : Structural, descriptor, and fitting info for each configuration.
-
-This is a pickled list of `Configuration <https://github.com/FitSNAP/FitSNAP/tree/master/fitsnap3lib/tools/configuration.py>`_ objects.
-Each item in the list contains all associated information of a configuration.
-
-PyTorch model files
-^^^^^^^^^^^^^^^^^^^
-
-FitSNAP outputs two PyTorch :code:`.pt` models file after fitting. One is used for restarting a fit
-based on an existing model, specifically the model name supplied by the user in the 
-:code:`save_state_output` keyword of the input script. In the `Ta_PyTorch_NN example <https://github.com/FitSNAP/FitSNAP/tree/master/examples/Ta_PyTorch_NN>`_
-we can see this keyword is :code:`Ta_Pytorch.pt`. This file will therefore be saved every epoch, and 
-it may be fed into FitSNAP via the :code:`save_state_input` keyword to restart another fit from that
-particular model.
-
-The other PyTorch model is used for running MD simulations in LAMMPS after a fit. This file has the 
-name :code:`FitTorch_Pytorch.pt`, and is used to run MD in LAMMPS via the ML-IAP package. An example 
-is given for tantalum here: https://github.com/FitSNAP/FitSNAP/tree/master/examples/Ta_PyTorch_NN/MD 
-
-Calculate errors on a test set
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Users may want to use models to calculate errors on a test set that was completely separate from the
-training/validation sets used in fitting. To do this, we change the input script to read an existing
-PyTorch model file, e.g. for Ta::
-
-    [PYTORCH]
-    layer_sizes =  num_desc 60 60 1
-    learning_rate = 1.5e-4 
-    num_epochs = 1 ##### Set to 1 for calculating test errors
-    batch_size = 4
-    save_state_input = Ta_Pytorch.pt ##### Load an existing model
-    energy_weight = 1e-2
-    force_weight = 1.0
-    training_fraction = 1.0
-    multi_element_option = 1
-    num_elements = 1
-
-Notice how we are now using :code:`save_state_input` instead of :code:`save_state_output`, and that 
-we set :code:`num_epochs = 1`. This will load the existing PyTorch model, and perform a single epoch
-which involves calculating the energy and force comparisons (mentioned above) for the current model, 
-on whatever user-defined groups of configs in the groups section.We can therefore use the energy and 
-force comparison files here to calculate mean absolute errors, e.g. with the script in 
-the `Ta_PyTorch_NN example <https://github.com/FitSNAP/FitSNAP/tree/master/examples/Ta_PyTorch_NN>`_
-
-Training Performance
---------------------
-
-As seen in the :code:`Ta_Pytorch_NN` example, fitting to ~300 configs (each with ~12 atoms) takes 
-about ~0.2 s/epoch. The number of epochs required, and therefore total time of your fit, will depend 
-on the size of your dataset *and* the :code:`batch_size`. For example, the :code:`Ta_Pytorch_NN` example
-might take ~200 epochs to fully converge (see :code:`loss_vs_epochs.dat`). In this example, however, 
-we used :code:`batch_size=4`, meaning that each epoch involved :code:`~300/4 = ~75` gradient descent 
-minimizations as we cycled through batches. For much larger datasets, the network will experience 
-more cycles through the batches with each epoch, and therefore may require less epochs to reach 
-the same convergence.
-
-For data sets of ~10,000 configs and ~50 atoms per config, training will take ~1 hour, or about 
-20 seconds per epoch. This can consume about ~20 GB of RAM.
-
-Computational scaling is roughly :code:`O(num_atoms*num_neighs)` where :code:`num_atoms` is the 
-total number of atoms in the training set, and :code:`num_neighs` is the average number of neighbors 
-per atom. 
-
-Mini-batch network training is embarassingly parallel up to the batch size, but currently FitSNAP 
-does not support parallelized NN training.
 
 GPU Acceleration
 ^^^^^^^^^^^^^^^^
@@ -225,4 +76,600 @@ a large benefit of GPUs using a small batch size unless you have a large NN mode
 parameters). If you have a small model, you will see a speedup on GPUs using a large enough batch 
 size.
 
+
+----
+
+ReaxFF Force Fields
+-------------------
+
+.. list-table:: Historical serial Fortran 77 force fields (no longer compatible and not available)
+   :widths: 10 10 10 70
+   :header-rows: 1
+   :align: center
+
+   * - Branch
+     - Atoms
+     - Filename
+     - Source
+   * - combustion
+     - C / H
+     - *n/a*
+     - :footcite:t:`vanduin2001`
+
+Combustion Branch
+^^^^^^^^^^^^^^^^^
+
+.. list-table:: Available COMBUSTION force fields in LAMMPS
+   :widths: 10 10 10 10 60
+   :header-rows: 1
+   :align: center
+
+   * - Branch
+     - Atoms
+     - Filename (LAMMPS)
+     - `Filename (SCM) <https://www.scm.com/doc/ReaxFF/Included_Forcefields.html>`_
+     - Source
+   * - combustion
+     - Au/S/C/H
+     - reaxff-jarvi2011.ff
+     - AuSCH_2011.ff
+     - :footcite:t:`jarvi2011`
+   * - combustion
+     - C
+     - reaxff-srinivasan2015.ff
+     - C.ff
+     - :footcite:t:`srinivasan2015`
+   * - combustion
+     - C/H
+     - reaxff-mao2017.ff
+     - CH_aromatics.ff
+     - :footcite:t:`mao2017`
+   * - combustion
+     - C/H/B/N
+     - reaxff-pai2016.ff
+     - CBN.ff
+     - :footcite:t:`pai2016`
+   * - combustion
+     - C/H/Na
+     - reaxff-hjertenaes2016.ff
+     - CHNa.ff
+     - :footcite:t:`hjertenaes2016`
+   * - combustion
+     - C/H/O
+     - reaxff-ashraf2017.ff
+     - CHO-2016.ff
+     - :footcite:t:`ashraf2017`
+   * - combustion
+     - C/H/O
+     - reaxff-chenoweth2008a.ff
+     - CHO.ff
+     - :footcite:t:`chenoweth2008a`
+   * - combustion
+     - C/H/O/Ba/Zr/Y
+     - reaxff-vanduin2008.ff
+     - BaYZrCHO.ff
+     - :footcite:t:`vanduin2008`
+   * - combustion
+     - C/H/O/N
+     - reaxff-strachan2003.ff
+     - *n/a*
+     - :footcite:t:`strachan2003`
+   * - FIXME
+     - C/H/O/N
+     - reaxff-budzien2009.ff
+     - *n/a*
+     - :footcite:t:`budzien2009`
+   * - FIXME
+     - C/H/O/N/S
+     - reaxff-mattsson2010.ff
+     - *n/a*
+     - :footcite:t:`mattsson2010`
+   * - FIXME
+     - C/H/O/N/S/F/Pt/Cl/Ni/X
+     - reaxff-singh2013.ff
+     - *n/a*
+     - :footcite:t:`singh2013`
+   * - combustion
+     - C/H/O/N/S/Si
+     - reaxff-liu2011.ff
+     - dispersion/CHONSSi-lg.ff
+     - :footcite:t:`liu2011`
+   * - combustion
+     - C/H/O/N/S/Si
+     - reaxff-zhang2009.ff
+     - HE2.ff
+     - :footcite:t:`zhang2009`
+   * - combustion
+     - C/H/O/N/S/Si/Ge
+     - reaxff-psofogiannakis2016.ff
+     - CHONSSiGe.ff
+     - :footcite:t:`psofogiannakis2016`
+   * - combustion
+     - C/H/O/N/S/Si/Na/P
+     - reaxff-zhang2014.ff
+     - CHONSSiNaP.ff
+     - :footcite:t:`zhang2014`
+   * - combustion
+     - C/H/O/N/S/Si/Pt/Zr/Ni/Cu/Co
+     - reaxff-nielson2005.ff
+     - CHONSSiPtZrNiCuCo.ff
+     - :footcite:t:`nielson2005`
+   * - combustion
+     - C/H/O/N/S/Si/Pt/Ni/Cu/Co/Zr/Y/Ba
+     - reaxff-merinov2014.ff
+     - CHONSSiPtNiCuCoZrYBa.ff
+     - :footcite:t:`merinov2014`
+   * - combustion
+     - | C/H/O/N/S/Si/Pt/Zr/Ni/
+       | Cu/Co/He/Ne/Ar/Kr/Xe
+     - reaxff-kamat2010.ff
+     - CHONSSiPtZrNiCuCoHeNeArKrXe.ff
+     - :footcite:t:`kamat2010`
+   * - combustion
+     - C/H/O/N/Si/S
+     - reaxff-kulkarni2013.ff
+     - SiONH.ff
+     - :footcite:t:`kulkarni2013`
+   * - combustion
+     - C/H/O/S
+     - reaxff-mueller2016.ff
+     - Mue2016.ff
+     - :footcite:t:`mueller2016`
+   * - combustion
+     - C/H/O/S
+     - reaxff-komissarov2021.ff
+     - *n/a*
+     - :footcite:t:`komissarov2021`
+   * - combustion
+     - C/H/O/S/F/Cl/N
+     - reaxff-wood2014.ff
+     - CHOSFClN.ff
+     - :footcite:t:`wood2014`
+   * - combustion
+     - C/H/Pt
+     - reaxff-sanz2008.ff
+     - PtCH.ff
+     - :footcite:t:`sanz2008`
+   * - combustion
+     - C/H/O/Si
+     - reaxff-chenoweth2005.ff
+     - PDMSDecomp.ff
+     - :footcite:t:`chenoweth2005`
+   * - FIXME
+     - H/O/Au
+     - reaxff-joshi2010.ff
+     - *n/a*
+     - :footcite:t:`joshi2010`
+   * - combustion
+     - Co
+     - reaxff-zhang2014b.ff
+     - Co.ff
+     - :footcite:t:`zhang2014b`
+   * - combustion
+     - H/O/N/B
+     - reaxff-weismiller2010.ff
+     - Ab.ff
+     - :footcite:t:`weismiller2010`
+   * - combustion
+     - Li/S
+     - reaxff-islam2015.ff
+     - LiS.ff
+     - :footcite:t:`islam2015`
+   * - combustion
+     - Ni/C/H
+     - reaxff-mueller2010.ff
+     - NiCH.ff
+     - :footcite:t:`mueller2010`
+   * - combustion
+     - O/Pt
+     - reaxff-fantauzzi2014.ff
+     - OPt.ff
+     - :footcite:t:`fantauzzi2014`
+   * - combustion
+     - Pd/H
+     - reaxff-senftle2014.ff
+     - PdH.ff
+     - :footcite:t:`senftle2014`
+   * - combustion
+     - Si/C/O/H/N/S
+     - reaxff-newsome2012.ff
+     - SiC.ff
+     - :footcite:t:`newsome2012`
+   * - combustion
+     - V/O/C/H
+     - reaxff-chenoweth2008b.ff
+     - VOCH.ff
+     - :footcite:t:`chenoweth2008b`
+
+
+
+Independent Branch
+^^^^^^^^^^^^^^^^^^
+
+.. list-table:: Available INDEPENDENT force fields in LAMMPS
+   :widths: 10 10 10 10 60
+   :header-rows: 1
+   :align: center
+
+   * - Branch
+     - Atoms
+     - Filename (LAMMPS)
+     - `Filename (SCM) <https://www.scm.com/doc/ReaxFF/Included_Forcefields.html>`_
+     - Source
+   * - independent
+     - C/H/Ar/He/Ne/Kr
+     - reaxff-yoon2016.ff
+     - CHArHeNeKr.ff
+     - :footcite:t:`yoon2016`
+   * - independent
+     - C/H/Fe
+     - reaxff-islam2016.ff
+     - CHFe.ff
+     - :footcite:t:`islam2016`
+   * - independent
+     - | C/H/Ga
+       | C/H/In
+     - | reaxff-rajabpour2021a.ff
+       | reaxff-rajabpour2021b.ff
+     - | GaCH-2020.ff
+       | InCH-2020.ff
+     - :footcite:t:`rajabpour2021`
+   * - independent
+     - C/H/O/Ge
+     - reaxff-nayir2018.ff
+     - CHOGe.ff
+     - :footcite:t:`nayir2018`
+   * - independent
+     - C/H/O/Li/Al/Ti/P
+     - reaxff-shin2018.ff
+     - CHOLiAlTiP.ff
+     - :footcite:t:`shin2018`
+   * - independent
+     - C/H/O/N/B/Al/Si/Cl
+     - reaxff-uene2024.ff
+     - CHONBAlSiCl.ff
+     - :footcite:t:`uene2024`
+   * - independent
+     - C/H/O/N/S/Mg/P/Na/Cu/Cl/Ti/X
+     - reaxff-hou2022.ff
+     - CHONSMgPNaCuClTi.ff
+     - :footcite:t:`hou2022`
+   * - independent
+     - C/H/O/N/S/Si
+     - reaxff-soria2018.ff
+     - CHONSSi.ff
+     - :footcite:t:`soria2018`
+   * - independent
+     - C/H/O/N/S/Si/Ge/Ga/Ag
+     - reaxff-niefind2024.ff
+     - CHONSSiGeGaAg.ff
+     - :footcite:t:`niefind2024`
+   * - independent
+     - C/H/O/N/S/Zr
+     - reaxff-dwivedi2020.ff
+     - CHONSZr.ff
+     - :footcite:t:`dwivedi2020`
+   * - independent
+     - C/H/O/N/Si
+     - reaxff-wang2020.ff
+     - CHONSi.ff
+     - :footcite:t:`wang2020`
+   * - independent
+     - C/H/O/S/Cu/Cl/X
+     - reaxff-yeon2018.ff
+     - CuSCH.ff
+     - :footcite:t:`yeon2018`
+   * - independent
+     - C/H/O/S/Mo/Ni/Au/Ti
+     - reaxff-mao2022.ff
+     - CHOSMoNiAuTi.ff
+     - :footcite:t:`mao2022`
+   * - independent
+     - Cu/Zr
+     - reaxff-huang2019.ff
+     - CuZr.ff
+     - :footcite:t:`huang2019`
+   * - independent
+     - H/O/N/Si/F
+     - reaxff-kim2021.ff
+     - HONSiF.ff
+     - :footcite:t:`kim2021`
+   * - independent
+     - H/O/Si/Al/Li
+     - reaxff-ostadhossein2016.ff
+     - HOSiAlLi.ff
+     - :footcite:t:`ostadhossein2016`
+   * - independent
+     - H/S/Mo
+     - reaxff-ostadhossein2017.ff
+     - HSMo.ff
+     - :footcite:t:`ostadhossein2017`
+   * - independent
+     - I/Br/Pb/Cs
+     - reaxff-pols2024.ff
+     - IBrPbCs.ff
+     - :footcite:t:`pols2024`
+   * - independent
+     - I/Pb/Cs/X
+     - reaxff-pols2021.ff
+     - CsPbI.ff
+     - :footcite:t:`pols2021`
+   * - independent
+     - Li/Si/C
+     - reaxff-olou2023.ff
+     - LiSiC.ff
+     - :footcite:t:`olou2023`
+   * - independent
+     - Mg/O
+     - reaxff-fiesinger2023.ff
+     - MgO.ff
+     - :footcite:t:`fiesinger2023`
+   * - independent
+     - Ni/Al
+     - reaxff-du2023.ff
+     - NiAl.ff
+     - :footcite:t:`du2023`
+   * - independent
+     - Ni/Cr
+     - reaxff-shin2021.ff
+     - NiCr.ff
+     - :footcite:t:`shin2021`
+   * - independent
+     - Ru/H
+     - reaxff-onwudinanti2022.ff
+     - RuH.ff
+     - :footcite:t:`onwudinanti2022`
+   * - independent
+     - Ru/N/H
+     - reaxff-kim2018.ff
+     - RuNH.ff
+     - :footcite:t:`kim2018`
+   * - independent
+     - Si/Al/Mg/O
+     - reaxff-yeon2021.ff
+     - SiAlMgO.ff
+     - :footcite:t:`yeon2021`
+   * - independent
+     - Si/O/H
+     - reaxff-nayir2019.ff
+     - SiOHv2.ff
+     - :footcite:t:`nayir2019`
+   * - independent
+     - W/S/H/Al/O
+     - reaxff-nayir2021.ff
+     - WSHAlO.ff
+     - :footcite:t:`nayir2021`
+   * - independent
+     - Zr/Y/O/H
+     - reaxff-mayernick2010.ff
+     - ZrYOHVac.ff
+     - :footcite:t:`mayernick2010`
+   * - independent
+     - Zr/Y/O/Ni/H
+     - reaxff-liu2019.ff
+     - ZrYONiH.ff
+     - :footcite:t:`liu2019`
+
+
+
+
+Water Branch
+^^^^^^^^^^^^
+
+.. list-table:: Available WATER force fields in LAMMPS
+   :widths: 10 10 10 10 60
+   :header-rows: 1
+   :align: center
+
+   * - Branch
+     - Atoms
+     - Filename (LAMMPS)
+     - `Filename (SCM) <https://www.scm.com/doc/ReaxFF/Included_Forcefields.html>`_
+     - Source
+   * - water
+     - Al/C/H/O
+     - reaxff-hong2016.ff
+     - AlCHO.ff
+     - :footcite:t:`hong2016`
+   * - water
+     - C/H/O/Al/Ge/X
+     - reaxff-zheng2017.ff
+     - CHOAlGeX.ff
+     - :footcite:t:`zheng2017`
+   * - water
+     - C/H/O/Ca/Si/X
+     - reaxff-manzano2012.ff
+     - CaSiOH.ff
+     - :footcite:t:`manzano2012`
+   * - water
+     - C/H/O/Cs/K/Na/Cl/I/F/Li
+     - reaxff-fedkin2019.ff
+     - CHOCsKNaClIFLi.ff
+     - :footcite:t:`fedkin2019`
+   * - water
+     - C/H/O/Fe
+     - reaxff-aryanpour2010.ff
+     - FeOCHCl.ff
+     - :footcite:t:`aryanpour2010`
+   * - water
+     - C/H/O/Fe/Al/Ni/Cu/S/Cr
+     - reaxff-shin2015.ff
+     - CHOFeAlNiCuSCr.ff
+     - :footcite:t:`shin2015`
+   * - water
+     - C/H/O/Fe/Al/Ni/Cu/S/Cr
+     - reaxff-tavazza2015.ff
+     - CHOFeAlNiCuSCr_v3.ff
+     - :footcite:t:`tavazza2015`
+   * - water
+     - C/H/O/N
+     - reaxff-rahaman2011.ff
+     - Glycine.ff
+     - :footcite:t:`rahaman2011`
+   * - water
+     - C/H/O/N
+     - reaxff-trnka2018.ff
+     - *n/a*
+     - :footcite:t:`trnka2018`
+   * - water
+     - C/H/O/N
+     - reaxff-kowalik2019.ff
+     - CHON-2019.ff
+     - :footcite:t:`kowalik2019`
+   * - water
+     - C/H/O/N/S/Fe
+     - reaxff-moerman2021.ff
+     - CHONSFe.ff
+     - :footcite:t:`moerman2021`
+   * - water
+     - C/H/O/N/S/Mg/P/Na/Cu
+     - reaxff-huang2013.ff
+     - CuBTC.ff
+     - :footcite:t:`huang2013`
+   * - water
+     - C/H/O/N/S/Mg/P/Na/Cu/Cl
+     - reaxff-monti2013a.ff
+     - CHONSMgPNaCuCl.ff
+     - :footcite:t:`monti2013a`
+   * - water
+     - C/H/O/N/S/Mg/P/Na/Cu/Cl
+     - reaxff-monti2013b.ff
+     - CHONSMgPNaCuCl_v2.ff
+     - :footcite:t:`monti2013b`
+   * - water
+     - C/H/O/N/S/Mg/P/Na/Cu/Cl/X
+     - reaxff-zhang2018.ff
+     - CHON2017_weak.ff
+     - :footcite:t:`zhang2018`
+   * - water
+     - C/H/O/N/S/Mg/P/Na/Ti/Cl/F
+     - reaxff-huygh2014.ff
+     - CHONSMgPNaTiClF.ff
+     - :footcite:t:`huygh2014`
+   * - water
+     - C/H/O/N/S/Mg/P/Na/Ti/Cl/F
+     - reaxff-kim2013a.ff
+     - TiOCHNCl.ff
+     - :footcite:t:`kim2013a`
+   * - water
+     - C/H/O/N/S/Mg/P/Na/Ti/Cl/F
+     - reaxff-kim2013b.ff
+     - TiClOH.ff
+     - :footcite:t:`kim2013b`
+   * - water
+     - C/H/O/N/S/Mg/P/Na/Ti/Cl/F/Au
+     - reaxff-monti2016.ff
+     - CHONSMgPNaTiClFAu.ff
+     - :footcite:t:`monti2016`
+   * - water
+     - C/H/O/N/S/Mg/P/Na/Ti/Cl/F/K/Li
+     - reaxff-ganeshan2020.ff
+     - CHONSMgPNaTiClFKLi.ff
+     - :footcite:t:`ganeshan2020`
+   * - water
+     - C/H/O/N/Si/Cu/Ag/Zn
+     - reaxff-lloyd2016.ff
+     - AgZnO.ff
+     - :footcite:t:`lloyd2016`
+   * - water
+     - C/H/O/N/S/Si/Ca/Cs/K/Sr/Na/Mg/Al/Cu
+     - reaxff-psofogiannakis2015.ff
+     - CHONSSiCaCsKSrNaMgAlCu.ff
+     - :footcite:t:`psofogiannakis2015`
+   * - water
+     - C/H/O/N/S/Si/Na/Al
+     - reaxff-bai2012.ff
+     - CHONSSiNaAl.ff
+     - :footcite:t:`bai2012`
+   * - water
+     - C/H/O/S/Mo/Ni/Li/B/F/P/N
+     - reaxff-liu2021.ff
+     - CHOSMoNiLiBFPN-2.ff
+     - :footcite:t:`liu2021`
+   * - water
+     - C/H/O/Si/Na
+     - reaxff-hahn2018.ff
+     - CHOSiNa.ff
+     - :footcite:t:`hahn2018`
+   * - water
+     - C/H/O/Zn
+     - reaxff-han2010.ff
+     - CHOZn.ff
+     - :footcite:t:`han2010`
+   * - water
+     - H/O/Si/Al/Li
+     - reaxff-narayanan2011.ff
+     - SiOAlLi.ff
+     - :footcite:t:`narayanan2011`
+   * - water
+     - H/O/X
+     - reaxff-zhang2017.ff
+     - Water2017.ff
+     - :footcite:t:`zhang2017`
+   * - water
+     - Zn/O/H
+     - reaxff-raymand2010.ff
+     - ZnOH.ff
+     - :footcite:t:`raymand2010`
+
+
+
+
+
+
+
+
+
+----
+
+
+FitSNAP-ReaxFF
+--------------
+
+If a parameter set is not available for your intented application, then you can fit a new parameter set with `FitSNAP <https://fitsnap.github.io/>`_ from DFT training data.
+
+.. table:: Parameters that can be optimized
+  :widths: auto
+  :align: center
+
+  ===== ========= ====================================
+  Block Parameter Description
+  ===== ========= ====================================
+  ATM   r_s       Sigma bond covalent radius
+  ATM   r_pi      Pi bond covalent radius
+  ATM   r_pi2     Double pi bond covalent radius
+  BND   p_bo1     Sigma bond order
+  BND   p_bo2     Sigma bond order
+  BND   p_bo3     Pi bond order parameter
+  BND   p_bo4     Pi bond order parameter
+  BND   p_bo5     Double pi bond order parameter
+  BND   p_bo6     Double pi bond order parameter
+  BND   p_be1     Bond energy parameter
+  BND   p_be2     Bond energy parameter
+  BND   De_s      Sigma-bond dissociation energy
+  BND   De_p      Pi-bond dissociation energy
+  BND   De_pp     Double pi-bond dissociation energy
+  BND   p_ovun1   Overcoordination penalty
+  OFD   r_s       Sigma bond length
+  OFD   r_pi      Pi bond length
+  OFD   r_pi2     PiPi bond length
+  ANG   theta_00  180o-(equilibrium angle)
+  ANG   p_val1    Valence angle parameter
+  ANG   p_val2    Valence angle parameter
+  TOR   V1        V1-torsion barrier
+  TOR   V2        V2-torsion barrier
+  TOR   V3        V3-torsion barrier
+  TOR   p_tor1    Torsion angle parameter
+  HBD   r0_hb     Hydrogen bond equilibrium distance
+  HBD   p_hb1     Hydrogen bond energy
+  ===== ========= ====================================
+
+----
+
+ReaxFF Bibliography
+-------------------
+
+  :download:`download reaxff.bib<reaxff.bib>`
+
+.. footbibliography::
 

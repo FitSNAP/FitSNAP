@@ -43,6 +43,7 @@ class LammpsReaxff(LammpsBase):
         self._lmp.command("boundary p p p")
         self._lmp.command("units " + self.config.sections["REFERENCE"].units)
         self._lmp.command("atom_style " + self.config.sections["REFERENCE"].atom_style)
+        self._lmp.command("atom_modify map array sort 0 2.0")
         #xlo, ylo, zlo = np.min(self._data["Positions"],axis=0)-10.0
         #xhi, yhi, zhi = np.max(self._data["Positions"],axis=0)+10.0
         #print(xlo, ylo, zlo, xhi, yhi, zhi)
@@ -51,12 +52,10 @@ class LammpsReaxff(LammpsBase):
         self._lmp.command(f"create_box {len(self.elements)} box")
         self._lmp.commands_list([f"mass {i+1} {self.masses[i]}" for i in range(len(self.masses))])
         self._lmp.command("pair_style reaxff NULL")
-        cmd = f"pair_coeff * * {self.force_field_path} {' '.join(self.elements)}"
-        print(cmd)
-        self._lmp.command(cmd)
+        self._lmp.command(f"pair_coeff * * {self.force_field_path} {' '.join(self.elements)}")
 
-        #self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff") # maxiter 400
-        self._lmp.command("fix 1 all acks2/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 500")
+        self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff") # maxiter 400
+        #self._lmp.command("fix 1 all acks2/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 500")
 
 
     def process_reaxff_config(self, data):
@@ -108,13 +107,13 @@ class LammpsReaxff(LammpsBase):
         self.pt.all_barrier()
         self.pt.gather_fitsnap("Data")
 
-        #if(self.pt._rank==0): pprint(self.pt.fitsnap_dict["Data"])
-
         all_data = self.pt.fitsnap_dict["Data"] = list(chain.from_iterable(self.pt.fitsnap_dict["Data"]))
         print(f"self.pt.get_rank()={self.pt.get_rank()} len(all_data)={len(all_data)}")
 
-        for i, d in enumerate(all_data):
-            d["ground_shared_index"] = i + d["ground_relative_index"]
+        #if(self.pt._rank==0): pprint(all_data)
+
+        #for i, d in enumerate(all_data):
+        #    d["ground_shared_index"] = i + d["ground_relative_index"]
 
 
     def change_parameter_string(self, block, atoms, name, value):

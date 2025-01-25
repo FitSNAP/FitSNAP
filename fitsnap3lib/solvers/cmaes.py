@@ -25,6 +25,20 @@ def loss_function_tuple(i_j_x):
     reaxff_calculator.process_reaxff_config(d)
     return (d['ground_shared_index'], d['ground_relative_index'], i_j_x[0], i_j_x[1], d['predicted_energy'])
 
+def loss_function_subgroup(i_x_j):
+
+    subgroup = reaxff_calculator.pt.fitsnap_dict["Data"][i_x_j[2]]
+    reaxff_calculator.change_parameters(i_x_j[1])
+    configs = subgroup['configs']
+
+    for c in configs:
+        reaxff_calculator.process_reaxff_config(c)
+
+    ground_predicted_energy = configs[subgroup['ground_index']]['predicted_energy']
+    predicted_energy = np.array([c['predicted_energy']-ground_predicted_energy for c in configs])
+    weighted_residuals = subgroup['weights'] * np.square((predicted_energy - subgroup['reference_energy']))
+    return (i_x_j[0], float(np.sum(weighted_residuals)))
+
 
 class CMAES(Solver):
 
@@ -33,6 +47,21 @@ class CMAES(Solver):
         self.popsize = self.config.sections['CMAES'].popsize
         self.sigma = self.config.sections['CMAES'].sigma
         self.parameters = self.config.sections["REAXFF"].parameters
+
+
+    def parallel_loss_subgroup(self, x_arrays):
+
+        all_data = self.pt.fitsnap_dict["Data"]
+        x_subgroup_pairs = itertools.product(range(len(x_arrays)),range(len(all_data)))
+        tuples = [(i,x_arrays[i],j) for i, j in x_subgroup_pairs]
+        parallel_results = self.executor.map(loss_function_subgroup, tuples, unordered=True)
+
+        answer = [0.0] * len(x_arrays)
+
+        for p in parallel_results:
+          answer[p[0]] += p[1]
+
+        return answer
 
 
     def parallel_loss_function(self, x_arrays):
@@ -82,7 +111,7 @@ class CMAES(Solver):
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
-          'popsize': self.popsize, 'seed': 12345, #'maxiter': 5,
+          'popsize': self.popsize, 'seed': 12345, 'maxiter': 5,
           'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
         }
 
@@ -99,7 +128,7 @@ class CMAES(Solver):
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
                 if self.executor is not None:
                     x_best, es = cma.fmin2( None, x0, self.sigma,
-                        parallel_objective=self.parallel_loss_function, options=options)
+                        parallel_objective=self.parallel_loss_subgroup, options=options)
 
         if self.pt.stubs == 1:
             x_best, es = cma.fmin2( None, x0, self.sigma,

@@ -133,9 +133,9 @@ class Json(Scraper):
                     group_name = file_name.replace(data_path,'').replace(training_file,'').replace("/","") 
                     self.data['Group'] = group_name
 
-                    json_data = []
-                    ground_energy = 999999.99
-                    ground_energy_index = 0
+                    configs = []
+                    ground_index = 0
+                    ground_reference_energy = 999999.99
 
                     for i, d in enumerate(self.data["Data"]):
 
@@ -149,21 +149,28 @@ class Json(Scraper):
                         if not isinstance(d["Energy"], float):
                             d["Energy"] = float(d["Energy"])
 
-                        if ground_energy > d["Energy"]:
-                            ground_energy = d["Energy"]
-                            ground_energy_index = i
+                        if ground_reference_energy > d["Energy"]:
+                            ground_index = i
+                            ground_reference_energy = d["Energy"]
 
                         if "Weight" not in d: d["Weight"] = 1.0
-                        json_data.append(d)
+                        configs.append(d)
 
-                    for i, d in enumerate(json_data):
-                        d["ground_relative_index"] = ground_energy_index - i
-                        d["Energy"] -= ground_energy
+                    for i, d in enumerate(configs):
+                        d["ground_relative_index"] = ground_index - i
+                        d["Energy"] -= ground_reference_energy
+
+                    subgroup = {
+                        'ground_index': ground_index,
+                        'reference_energy': np.array([c["Energy"] for c in configs]),
+                        'weights': np.array([c["Weight"] for c in configs]),
+                        'configs': configs
+                    }
 
                     #tmp2 = np.square(np.max(qm_y)-np.array(qm_y)+1)
-#auto_weights2 = tmp2/np.sum(tmp2)
+                    #auto_weights2 = tmp2/np.sum(tmp2)
 
-                self.all_data.extend(json_data)
+                    self.all_data.append(subgroup)
 
             else:
                 self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)    

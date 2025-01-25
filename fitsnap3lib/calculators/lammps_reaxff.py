@@ -14,8 +14,9 @@ class LammpsReaxff(LammpsBase):
         self._i = 0
         self._lmp = None
         self.pt.check_lammps()
+        self.force_field_path = self.config.sections['REAXFF'].force_field
 
-        with open(self.config.sections['REAXFF'].force_field, 'r') as file:
+        with open(self.force_field_path, 'r') as file:
             self.force_field_string = file.read()
 
         lines = self.force_field_string.splitlines()
@@ -42,7 +43,6 @@ class LammpsReaxff(LammpsBase):
         self._lmp.command("boundary p p p")
         self._lmp.command("units " + self.config.sections["REFERENCE"].units)
         self._lmp.command("atom_style " + self.config.sections["REFERENCE"].atom_style)
-        #self._lmp.command("atom_modify map array sort 0 2.0")
         #xlo, ylo, zlo = np.min(self._data["Positions"],axis=0)-10.0
         #xhi, yhi, zhi = np.max(self._data["Positions"],axis=0)+10.0
         #print(xlo, ylo, zlo, xhi, yhi, zhi)
@@ -51,8 +51,12 @@ class LammpsReaxff(LammpsBase):
         self._lmp.command(f"create_box {len(self.elements)} box")
         self._lmp.commands_list([f"mass {i+1} {self.masses[i]}" for i in range(len(self.masses))])
         self._lmp.command("pair_style reaxff NULL")
-        self._lmp.pair_coeff_reaxff(self.force_field_string, self.elements)
-        self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff") # maxiter 400
+        cmd = f"pair_coeff * * {self.force_field_path} {' '.join(self.elements)}"
+        print(cmd)
+        self._lmp.command(cmd)
+
+        #self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff") # maxiter 400
+        self._lmp.command("fix 1 all acks2/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 500")
 
 
     def process_reaxff_config(self, data):
@@ -67,11 +71,6 @@ class LammpsReaxff(LammpsBase):
 
 
     def _prepare_lammps(self):
-
-        #try:
-        #    self._lmp.pair_coeff_reaxff(self.force_field_string, self.elements)
-        #except:
-        #    print('ff=',self.force_field_string)
 
         self._lmp.command("delete_atoms group all")
         self._create_atoms_helper(type_mapping=self.type_mapping)

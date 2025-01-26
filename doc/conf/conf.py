@@ -47,6 +47,7 @@ html_static_path = ['../src/_static']
 html_theme_path = ['.']
 html_style = 'lammps.css'
 html_logo = '../images/FitSNAP.png'
+html_favicon = 'fs_favicon.ico'
 html_theme_options = {
     'logo_only': True,
     'display_version': False,

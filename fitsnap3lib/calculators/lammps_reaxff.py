@@ -15,6 +15,8 @@ class LammpsReaxff(LammpsBase):
         self._lmp = None
         self.pt.check_lammps()
         self.force_field_path = self.config.sections['REAXFF'].force_field
+        self.energy = self.config.sections["CALCULATOR"].energy
+        self.force = self.config.sections["CALCULATOR"].force
 
         with open(self.force_field_path, 'r') as file:
             self.force_field_string = file.read()
@@ -86,7 +88,7 @@ class LammpsReaxff(LammpsBase):
 
     def _collect_lammps(self):
 
-        if self.config.sections["CALCULATOR"].energy:
+        if self.energy:
             self._data['predicted_energy'] = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
             #print("_collect_lammps(self)...", self._i, self._data["Energy"], config_energy)
 
@@ -111,10 +113,6 @@ class LammpsReaxff(LammpsBase):
         print(f"self.pt.get_rank()={self.pt.get_rank()} len(all_data)={len(all_data)}")
 
         #if(self.pt._rank==0): pprint(all_data)
-
-        #for i, d in enumerate(all_data):
-        #    d["ground_shared_index"] = i + d["ground_relative_index"]
-
 
     def change_parameter_string(self, block, atoms, name, value):
 

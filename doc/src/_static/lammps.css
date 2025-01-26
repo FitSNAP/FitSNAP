@@ -1,0 +1,113 @@
+@import url("css/theme.css");
+
+cite {
+  font-family: monospace;
+  font-style: normal;
+  font-weight: bold;
+  border-radius: .25rem;
+  background-color: var(--gl-background-color-strong, var(--gl-color-neutral-50, #ececef));
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  color: var(--gl-text-color-strong, var(--gl-color-neutral-950, #18171d));
+}
+
+.wy-table-responsive table td{white-space:wrap}
+
+.math {
+        text-align: left;
+}
+
+.eqno {
+        float: right;
+}
+
+.wy-nav-content {
+    max-width: 100% !important;
+}
+
+.wy-breadcrumbs>li.wy-breadcrumbs-aside {
+    padding-top: 0px !important;
+    margin-top: -5px !important;
+}
+
+.lammps_version {
+    text-align: center;
+    display: block;
+    margin-bottom: 0.809em;
+}
+
+.lammps_release {
+    text-align: center;
+    font-size: 11px;
+    display: block;
+    margin-bottom: 0.405em;
+}
+
+.versionmodified {
+    font-weight: bold;
+}
+
+hr {
+     margin: 12px 0;
+}
+
+.rst-content {
+     margin-bottom: 12px !important;
+}
+
+/*
+#user-guide.section h2 {
+     display: none;
+}
+
+#programmer-guide.section h2 {
+     display: none;
+}
+
+#command-reference.section h2 {
+     display: none;
+}
+
+#userdoc.toctree-wrapper.compound p {
+     display: none;
+}
+
+#progdoc.toctree-wrapper.compound p {
+     display: none;
+}
+
+#reference.toctree-wrapper.compound p {
+     display: none;
+}
+*/
+
+.ui.tabular.menu .item {
+    padding-right: 1em;
+    padding-left: 1em;
+    padding-top: 0.1em;
+    padding-bottom: 0.1em;
+    border-radius: 6px;
+}
+
+.btn, .btn:active {
+    padding: 4px;
+    font-size: 80%;
+    border-radius: 4px;
+}
+
+.rst-breadcrumbs-buttons {
+    padding-top: 0px;
+    margin: 0;
+}
+
+.breadcrumb-item:before {
+   content: "»";
+   color: black;
+   font-size: 16px;
+}
+
+p {
+   margin-bottom: 12px;
+}

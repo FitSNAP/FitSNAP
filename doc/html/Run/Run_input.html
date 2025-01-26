@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3.2. Input files &mdash; FitSNAP  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/lammps.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9bcbadda"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="3.3. FitSNAP Outputs" href="Run_outputs.html" />
+    <link rel="prev" title="3.1. Command-line options" href="Run_options.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html">
+            
+              <img src="../_static/FitSNAP.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../Introduction.html">1. Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../Introduction.html#overview-of-fitsnap">1.1. Overview of FitSNAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Introduction.html#fitsnap-components">1.2. FitSNAP Components</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../Installation.html">2. Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../Installation.html#lammps-installation">2.1. LAMMPS Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Installation.html#mpi-for-lammps-and-fitsnap">2.1.1. MPI for LAMMPS and FitSNAP</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Installation.html#python-dependencies">2.1.2. Python dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Installation.html#lammps-for-fitsnap">2.1.3. LAMMPS for FitSNAP</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../Installation.html#fitsnap-installation">2.2. FitSNAP Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Installation.html#install-fitsnap-with-latest-lammps">2.2.1. Install FitSNAP with latest LAMMPS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Installation.html#minimal-conda-install">2.2.2. Minimal conda install</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">3. Run FitSNAP</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="Run_options.html">3.1. Command-line options</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">3.2. Input files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#bispectrum">3.2.1. [BISPECTRUM]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ace">3.2.2. [ACE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#calculator">3.2.3. [CALCULATOR]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#eshift">3.2.4. [ESHIFT]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#solver">3.2.5. [SOLVER]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scraper">3.2.6. [SCRAPER]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#path">3.2.7. [PATH]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#outfile">3.2.8. [OUTFILE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reference">3.2.9. [REFERENCE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#groups">3.2.10. [GROUPS]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#extras">3.2.11. [EXTRAS]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#memory">3.2.12. [MEMORY]</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Run_outputs.html">3.3. FitSNAP Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Run_library.html">3.4. Running as library</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../Linear.html">4. Linear Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../Linear.html#outputs">4.1. Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Linear.html#uncertainty-quantification-uq">4.2. Uncertainty Quantification (UQ)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Linear.html#in-development-uq-solvers">4.3. In development UQ solvers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Linear.html#opt">4.3.1. OPT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Linear.html#mcmc">4.3.2. MCMC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Linear.html#merr">4.3.3. MERR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Linear.html#bcs">4.3.4. BCS</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../Pytorch.html">5. PyTorch Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../Pytorch.html#fitting-neural-network-potentials">5.1. Fitting Neural Network Potentials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Pytorch.html#loss-function">5.2. Loss Function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Pytorch.html#outputs-and-error-calculation">5.3. Outputs and Error Calculation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Pytorch.html#error-comparison-files">5.3.1. Error/Comparison files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Pytorch.html#pytorch-model-files">5.3.2. PyTorch model files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Pytorch.html#calculate-errors-on-a-test-set">5.3.3. Calculate errors on a test set</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../Pytorch.html#training-performance">5.4. Training Performance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Pytorch.html#gpu-acceleration">5.4.1. GPU Acceleration</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../ReaxFF.html">6. ReaxFF Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../ReaxFF.html#introduction">6.1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ReaxFF.html#reaxff-potential">6.2. ReaxFF Potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ReaxFF.html#reaxff-lammps-commands">6.3. ReaxFF LAMMPS commands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ReaxFF.html#fitting-reaxff-parameters">6.4. Fitting ReaxFF parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ReaxFF.html#available-force-fields">6.5. Available Force Fields</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../ReaxFF.html#combustion-branch">6.5.1. Combustion Branch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ReaxFF.html#independent-branch">6.5.2. Independent Branch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ReaxFF.html#water-branch">6.5.3. Water Branch</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../ReaxFF.html#reaxff-bibliography">6.6. ReaxFF Bibliography</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Programmer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../Contributing.html">1. Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../Contributing.html#style-guide">1.1. Style Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Contributing.html#documenting">1.2. Documenting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../Executable.html">2. Executable</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../Executable.html#data-configuration-extraction">2.1. Data &amp; configuration extraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Executable.html#modifying-the-output-dataframe">2.2. Modifying the output dataframe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Executable.html#adding-new-input-file-keywords">2.3. Adding new input file keywords</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Executable.html#adding-your-own-calculator">2.4. Adding your own Calculator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../Executable.html#adding-your-own-model-solver">2.5. Adding your own Model/Solver</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../Lib/index.html">3. Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../Lib/Lib_fitsnap.html">3.1. FitSnap</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap"><code class="docutils literal notranslate"><span class="pre">FitSnap</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.pt"><code class="docutils literal notranslate"><span class="pre">FitSnap.pt</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.config"><code class="docutils literal notranslate"><span class="pre">FitSnap.config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.scraper"><code class="docutils literal notranslate"><span class="pre">FitSnap.scraper</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.data"><code class="docutils literal notranslate"><span class="pre">FitSnap.data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.calculator"><code class="docutils literal notranslate"><span class="pre">FitSnap.calculator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.solver"><code class="docutils literal notranslate"><span class="pre">FitSnap.solver</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.perform_fit"><code class="docutils literal notranslate"><span class="pre">FitSnap.perform_fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.process_configs"><code class="docutils literal notranslate"><span class="pre">FitSnap.process_configs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.scrape_configs"><code class="docutils literal notranslate"><span class="pre">FitSnap.scrape_configs()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_fitsnap.html#parallel-tools">3.1.1. Parallel Tools</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.DistributedList"><code class="docutils literal notranslate"><span class="pre">DistributedList</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.GracefulError"><code class="docutils literal notranslate"><span class="pre">GracefulError</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.ParallelTools"><code class="docutils literal notranslate"><span class="pre">ParallelTools</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.SharedArray"><code class="docutils literal notranslate"><span class="pre">SharedArray</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.StubsArray"><code class="docutils literal notranslate"><span class="pre">StubsArray</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_fitsnap.html#config">3.1.2. Config</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_fitsnap.html#fitsnap3lib.io.input.Config"><code class="docutils literal notranslate"><span class="pre">Config</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../Lib/Lib_scraper.html">3.2. Scraper</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_scraper.html#fitsnap3lib.scrapers.scrape.random"><code class="docutils literal notranslate"><span class="pre">random()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../Lib/Lib_calculator.html">3.3. Calculator</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator"><code class="docutils literal notranslate"><span class="pre">Calculator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.allocate_per_config"><code class="docutils literal notranslate"><span class="pre">Calculator.allocate_per_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.collect_distributed_lists"><code class="docutils literal notranslate"><span class="pre">Calculator.collect_distributed_lists()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.create_a"><code class="docutils literal notranslate"><span class="pre">Calculator.create_a()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.create_dicts"><code class="docutils literal notranslate"><span class="pre">Calculator.create_dicts()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_calculator.html#module-fitsnap3lib.calculators.lammps_base">3.3.1. LammpsBase</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_calculator.html#fitsnap3lib.calculators.lammps_base.LammpsBase"><code class="docutils literal notranslate"><span class="pre">LammpsBase</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../Lib/Lib_solver.html">3.4. Solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver"><code class="docutils literal notranslate"><span class="pre">Solver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.fit"><code class="docutils literal notranslate"><span class="pre">Solver.fit</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.error_analysis"><code class="docutils literal notranslate"><span class="pre">Solver.error_analysis()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.perform_fit"><code class="docutils literal notranslate"><span class="pre">Solver.perform_fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.prepare_data"><code class="docutils literal notranslate"><span class="pre">Solver.prepare_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_solver.html#svd">3.4.1. SVD</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_solver.html#fitsnap3lib.solvers.svd.SVD"><code class="docutils literal notranslate"><span class="pre">SVD</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_solver.html#ridge">3.4.2. RIDGE</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_solver.html#fitsnap3lib.solvers.ridge.RIDGE"><code class="docutils literal notranslate"><span class="pre">RIDGE</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_solver.html#pytorch">3.4.3. PYTORCH</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../Lib/Lib_solver.html#fitsnap3lib.solvers.pytorch.PYTORCH"><code class="docutils literal notranslate"><span class="pre">PYTORCH</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../Lib/Lib_lib.html">3.5. lib/</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_lib.html#atom-centered-networks">3.5.1. Atom-centered Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../Lib/Lib_lib.html#pairwise-networks">3.5.2. Pairwise Networks</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../Lib/Lib_tools.html">3.6. tools/</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../Tests.html">4. Tests</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">FitSNAP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html"><span class="section-number">3. </span>Run FitSNAP</a></li>
+      <li class="breadcrumb-item active"><span class="section-number">3.2. </span>Input files</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/Run/Run_input.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul><div class="rst-breadcrumbs-buttons" role="navigation" aria-label="Sequential page navigation">
+        <a href="Run_options.html" class="btn btn-neutral float-left" title="3.1. Command-line options" accesskey="p"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Run_outputs.html" class="btn btn-neutral float-right" title="3.3. FitSNAP Outputs" accesskey="n">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+  </div>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="input-files">
+<h1><span class="section-number">3.2. </span>Input files<a class="headerlink" href="#input-files" title="Link to this heading">¶</a></h1>
+<p>Input scripts contain settings that tell FitSNAP how to perform a fit. Our input scripts take the
+form of configuration files with a format explained by
+<a class="reference external" href="https://docs.python.org/3/library/configparser.html">Python’s native ConfigParser class</a>. These configuration files are composed of
+sections, each of which contains keys with values, e.g. like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">SECTION1</span><span class="p">]</span>
+<span class="n">key1</span> <span class="o">=</span> <span class="n">value1</span>
+<span class="n">key2</span> <span class="o">=</span> <span class="n">value2</span>
+
+<span class="p">[</span><span class="n">SECTION2</span><span class="p">]</span>
+<span class="n">key3</span> <span class="o">=</span> <span class="n">value3</span>
+<span class="n">key4</span> <span class="o">=</span> <span class="n">value4</span>
+<span class="n">key5</span> <span class="o">=</span> <span class="n">value5</span>
+</pre></div>
+</div>
+<p>In FitSNAP, each section declares a setting for a certain aspect of the machine learning problem.
+For example we have a <code class="code docutils literal notranslate"><span class="pre">BISPECTRUM</span></code> section whose keys determine settings for the bispectrum
+descriptors that describe interatomic geometry, a <code class="code docutils literal notranslate"><span class="pre">CALCULATOR</span></code> section whose keys determine
+which LAMMPS computes to use for calculating the descriptors, a <code class="code docutils literal notranslate"><span class="pre">SOLVER</span></code> section whose keys
+determine which numerical solver to use for performing the fit, and so forth.</p>
+<p>There are many examples on the GitHub repo, for example the linear SNAP tantalum example has the
+following input script:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">BISPECTRUM</span><span class="p">]</span>
+<span class="n">numTypes</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">twojmax</span> <span class="o">=</span> <span class="mi">6</span>
+<span class="n">rcutfac</span> <span class="o">=</span> <span class="mf">4.67637</span>
+<span class="n">rfac0</span> <span class="o">=</span> <span class="mf">0.99363</span>
+<span class="n">rmin0</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="n">wj</span> <span class="o">=</span> <span class="mf">1.0</span>
+<span class="n">radelem</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="nb">type</span> <span class="o">=</span> <span class="n">Ta</span>
+<span class="n">wselfallflag</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">chemflag</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">bzeroflag</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">quadraticflag</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="p">[</span><span class="n">CALCULATOR</span><span class="p">]</span>
+<span class="n">calculator</span> <span class="o">=</span> <span class="n">LAMMPSSNAP</span>
+<span class="n">energy</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">force</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">stress</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="p">[</span><span class="n">ESHIFT</span><span class="p">]</span>
+<span class="n">Ta</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<span class="p">[</span><span class="n">SOLVER</span><span class="p">]</span>
+<span class="n">solver</span> <span class="o">=</span> <span class="n">SVD</span>
+<span class="n">compute_testerrs</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">detailed_errors</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="p">[</span><span class="n">SCRAPER</span><span class="p">]</span>
+<span class="n">scraper</span> <span class="o">=</span> <span class="n">JSON</span>
+
+<span class="p">[</span><span class="n">PATH</span><span class="p">]</span>
+<span class="n">dataPath</span> <span class="o">=</span> <span class="n">JSON</span>
+
+<span class="p">[</span><span class="n">OUTFILE</span><span class="p">]</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="n">Ta_metrics</span><span class="o">.</span><span class="n">md</span>
+<span class="n">potential</span> <span class="o">=</span> <span class="n">Ta_pot</span>
+
+<span class="p">[</span><span class="n">REFERENCE</span><span class="p">]</span>
+<span class="n">units</span> <span class="o">=</span> <span class="n">metal</span>
+<span class="n">atom_style</span> <span class="o">=</span> <span class="n">atomic</span>
+<span class="n">pair_style</span> <span class="o">=</span> <span class="n">hybrid</span><span class="o">/</span><span class="n">overlay</span> <span class="n">zero</span> <span class="mf">10.0</span> <span class="n">zbl</span> <span class="mf">4.0</span> <span class="mf">4.8</span>
+<span class="n">pair_coeff1</span> <span class="o">=</span> <span class="o">*</span> <span class="o">*</span> <span class="n">zero</span>
+<span class="n">pair_coeff2</span> <span class="o">=</span> <span class="o">*</span> <span class="o">*</span> <span class="n">zbl</span> <span class="mi">73</span> <span class="mi">73</span>
+
+<span class="p">[</span><span class="n">GROUPS</span><span class="p">]</span>
+<span class="c1"># name size eweight fweight vweight</span>
+<span class="n">group_sections</span> <span class="o">=</span> <span class="n">name</span> <span class="n">training_size</span> <span class="n">testing_size</span> <span class="n">eweight</span> <span class="n">fweight</span> <span class="n">vweight</span>
+<span class="n">group_types</span> <span class="o">=</span> <span class="nb">str</span> <span class="nb">float</span> <span class="nb">float</span> <span class="nb">float</span> <span class="nb">float</span> <span class="nb">float</span>
+<span class="n">smartweights</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">random_sampling</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">Displaced_A15</span> <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>       <span class="mi">100</span>             <span class="mi">1</span>               <span class="mf">1.00E-08</span>
+<span class="n">Displaced_BCC</span> <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>       <span class="mi">100</span>             <span class="mi">1</span>               <span class="mf">1.00E-08</span>
+<span class="n">Displaced_FCC</span> <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>       <span class="mi">100</span>             <span class="mi">1</span>               <span class="mf">1.00E-08</span>
+<span class="n">Elastic_BCC</span>   <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>     <span class="mf">1.00E-08</span>        <span class="mf">1.00E-08</span>        <span class="mf">0.0001</span>
+<span class="n">Elastic_FCC</span>   <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>     <span class="mf">1.00E-09</span>        <span class="mf">1.00E-09</span>        <span class="mf">1.00E-09</span>
+<span class="n">GSF_110</span>       <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>      <span class="mi">100</span>             <span class="mi">1</span>               <span class="mf">1.00E-08</span>
+<span class="n">GSF_112</span>       <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>      <span class="mi">100</span>             <span class="mi">1</span>               <span class="mf">1.00E-08</span>
+<span class="n">Liquid</span>        <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>       <span class="mf">4.67E+02</span>        <span class="mi">1</span>               <span class="mf">1.00E-08</span>
+<span class="n">Surface</span>       <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>       <span class="mi">100</span>             <span class="mi">1</span>               <span class="mf">1.00E-08</span>
+<span class="n">Volume_A15</span>    <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>      <span class="mf">1.00E+00</span>        <span class="mf">1.00E-09</span>        <span class="mf">1.00E-09</span>
+<span class="n">Volume_BCC</span>    <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>      <span class="mf">1.00E+00</span>        <span class="mf">1.00E-09</span>        <span class="mf">1.00E-09</span>
+<span class="n">Volume_FCC</span>    <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>      <span class="mf">1.00E+00</span>        <span class="mf">1.00E-09</span>        <span class="mf">1.00E-09</span>
+
+<span class="p">[</span><span class="n">EXTRAS</span><span class="p">]</span>
+<span class="n">dump_descriptors</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">dump_truth</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">dump_weights</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">dump_dataframe</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="p">[</span><span class="n">MEMORY</span><span class="p">]</span>
+<span class="n">override</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>We explain the sections and their keys in more detail below.</p>
+<section id="bispectrum">
+<h2><span class="section-number">3.2.1. </span>[BISPECTRUM]<a class="headerlink" href="#bispectrum" title="Link to this heading">¶</a></h2>
+<p>This section contains settings for the SNAP bispectrum descriptors from <a class="reference external" href="https://www.sciencedirect.com/science/article/pii/S0021999114008353">Thompson et al. (2015)</a></p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">numTypes</span></code> number of atom types in your set of configurations located in <a class="reference external" href="Run.html#path">the [PATH] section</a></p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">type</span></code> contains a list of element type symbols, one for each type. Make sure these are
+ordered correctly, e.g. if you have a LAMMPS type 1 atom that is <code class="code docutils literal notranslate"><span class="pre">Ga</span></code>, and LAMMPS type 2
+atoms are <code class="code docutils literal notranslate"><span class="pre">N</span></code>, list this as <code class="code docutils literal notranslate"><span class="pre">Ga</span> <span class="pre">N</span></code>.</p></li>
+</ul>
+<p>The remaining keywords are thoroughly explained in the <a class="reference external" href="https://docs.lammps.org/compute_sna_atom.html">LAMMPS docs on computing SNAP descriptors</a>
+but we will give an overview here. <strong>These are hyperparameters that *could* be optimized for your
+specific system, but this is not a requirement. You may also use the default values, or values used
+in our examples, which are often well behaved for other systems.</strong></p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">twojmax</span></code> determines the number of bispectrum coefficients for each element type. Give an
+argument for each element type, e.g. for two element types we may use <code class="code docutils literal notranslate"><span class="pre">6</span> <span class="pre">6</span></code> declaring
+<code class="code docutils literal notranslate"><span class="pre">twojmax</span> <span class="pre">=</span> <span class="pre">6</span></code> for each type. Higher <code class="code docutils literal notranslate"><span class="pre">twojmax</span></code> increases the number of bispectrum
+components for each atom, thus potentially giving more accuracy at an increased cost. We recommend
+using a <code class="code docutils literal notranslate"><span class="pre">twojmax</span></code> of 4, 6, or 8. This corresponds to 14, 30, and 55 bispectrum components,
+respectively. Default value is 6.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">rcutfac</span></code> is a cutoff radius parameter. One value is used for all element types. We recommend
+a cutoff between 4 and 5 Angstroms for most systems. Default value is 4.67 Angstroms.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">rfac0</span></code> is a parameter used in distance to angle conversion, between 0 and 1. Default value
+is 0.99363.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">rmin0</span></code> another parameter used in distance to angle conversion, between 0 and 1. Default value
+is 0.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">wj</span></code> list of neighbor weights. Give one argument for each element types, e.g. for two element
+types we may use <code class="code docutils literal notranslate"><span class="pre">1.0</span> <span class="pre">0.5</span></code> declaring a weight of 1.0 for neighbors of type 1, and 0.5 for
+neighbors of type 2. We recommend taking values from the existing multi-element examples.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">radelem</span></code> list of cutoff radii, one for each element type. These values get multiplied by
+<code class="code docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">rcutfac</span></code> to determine the effective cutoff of a particular type. For each element, the
+effective cutoff radius is <code class="code docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">rcutfac</span> <span class="pre">*</span> <span class="pre">radelem</span></code>.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">wselfallflag</span></code> is 0 or 1, determining whether self-contribution is for elements of a central
+atom or for all elements, respectively.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">chemflag</span></code> is 0 or 1, determining whether to use explicit multi-element SNAP descriptors as
+explained in <a class="reference external" href="https://doi.org/10.1021/acs.jpca.0c02450">Cusentino et. al.</a>, and used in the InP example. This
+increases the number of SNAP descriptors to resolve multi-element environment descriptions, and
+therefore comes at an increase in cost but higher accuracy. This option is not required
+for multi-element systems; the default value is 0.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">bzeroflag</span></code> is 0 or 1, determining whether or not B0, the bispectrum components of an atom
+with no neighbors, are subtracted from the calculated bispectrum components.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">quadraticflag</span></code> is 0 or 1, determining whether or not to use quadratic descriptors in a
+linear model, as done by <a class="reference external" href="https://aip.scitation.org/doi/full/10.1063/1.5017641">Wood and Thompson</a>, and illusrated in the
+<code class="code docutils literal notranslate"><span class="pre">Ta_Quadratic</span></code> example.</p></li>
+</ul>
+<p>The following keywords are necessary for extracting per-atom descriptors and individual derivatives
+of bispectrum components with respect to neighbors, required for neural network potentials. See more
+info in <a class="reference external" href="Pytorch.html">PyTorch Models</a></p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">bikflag</span></code> is 0 or 1, determining whether to compute per-atom bispectrum descriptors instead
+of sums of components for each atom. We do the latter for linear fitting because of the nature of
+the linear problem, which saves memory, but per-atom descriptors are required for neural networks.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">dgradflag</span></code> is 0 or 1, determining whether to compute individual derivatives of descriptors
+with respect to neighboring atoms, which is required for neural networks.</p></li>
+</ul>
+</section>
+<section id="ace">
+<h2><span class="section-number">3.2.2. </span>[ACE]<a class="headerlink" href="#ace" title="Link to this heading">¶</a></h2>
+<p>This section contains settings for the Atomic Cluster Expansion (ACE) descriptors from <a class="reference external" href="https://doi.org/10.1103/PhysRevB.99.014104">Drautz (2019)</a> available as <a class="reference external" href="https://docs.lammps.org/pair_pace.html">pair_style pace</a> in LAMMPS. ACE descriptor calculations are explained in <a class="reference external" href="https://doi.org/10.1016/j.jcp.2024.113073">Goff, Sievers, Wood, Thompson (2024)</a>.</p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">numTypes</span></code> number of atom types in your set of configurations located in <a class="reference external" href="Run.html#path">the [PATH] section</a></p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">type</span></code> contains a list of element type symbols, one for each type. Make sure these are
+ordered correctly, e.g. if you have a LAMMPS type 1 atom that is <code class="code docutils literal notranslate"><span class="pre">Ga</span></code>, and LAMMPS type 2
+atoms are <code class="code docutils literal notranslate"><span class="pre">N</span></code>, list this as <code class="code docutils literal notranslate"><span class="pre">Ga</span> <span class="pre">N</span></code>.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">ranks</span></code> The number of bonds in an ACE cluster (analogous to the number of vertices in a fixed-lattice cluster).</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">lmax</span></code> are the maximum angular momentum quantum numbers for each the atomic basis functions.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">nmax</span></code> is the number of radial atomic basis functions.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">nmaxbase</span></code> Maximum value of nmax</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">rcutfac</span></code> <em>(same as in [BISPECTRUM])</em> is a cutoff radius parameter. One value is used for all element types. We recommend a cutoff between 4 and 5 Angstroms for most systems. Default value is 4.67 Angstroms.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">lambda</span></code> Scale factor applied to radial basis functions, see &lt;<a class="reference external" href="https://doi.org/10.1016/j.jcp.2024.113073">goff2024</a>&gt;.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">lmin</span></code> is the minimum angular momentum per radial function.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">bzeroflag</span></code> <em>(same as in [BISPECTRUM])</em> is 0 or 1, determining whether or not B0, the bispectrum components of an atom with no neighbors, are subtracted from the calculated bispectrum components.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">b_basis</span></code> ACE basis flags with possible values <cite>pa_tabulated</cite>, <cite>minsub</cite>, <cite>ysg_x_so3</cite>.</p></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Only change ACE basis flags if you know what you are doing!</p>
+</div>
+</section>
+<section id="calculator">
+<h2><span class="section-number">3.2.3. </span>[CALCULATOR]<a class="headerlink" href="#calculator" title="Link to this heading">¶</a></h2>
+<p>This section houses keywords determining which calculator to use, i.e. which descriptors to
+calculate.</p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">calculator</span></code> is the name of the LAMMPS connection for getting descriptors, e.g. for SNAP
+descriptors use <code class="code docutils literal notranslate"><span class="pre">LAMMPSSNAP</span></code>.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">energy</span></code> is 0 or 1, determining whether to calculate descriptors associated with
+energies.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">force</span></code> is 0 or 1, determining whether to calculate descriptor gradients
+associated with forces.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">stress</span></code> is 0 or 1, determining whether to calculate descriptors gradients associated with
+virial terms for calculating and fitting to stresses.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">per_atom_energy</span></code> is 0 or 1, determining whether to use per-atom energy descriptors in
+association with <code class="code docutils literal notranslate"><span class="pre">bikflag</span> <span class="pre">=</span> <span class="pre">1</span></code></p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">nonlinear</span></code> is 0 or 1, and should be 1 if using nonlinear solvers such as PyTorch models.</p></li>
+</ul>
+</section>
+<section id="eshift">
+<h2><span class="section-number">3.2.4. </span>[ESHIFT]<a class="headerlink" href="#eshift" title="Link to this heading">¶</a></h2>
+<p>This section declares an energy shift applied to each atom type. These values are free to choose however desired. For
+example these values could come from the per-atom energy predicted in a vacuum from <em>ab initio</em> calculations. These
+values may also be treated as hyperparameters.</p>
+</section>
+<section id="solver">
+<h2><span class="section-number">3.2.5. </span>[SOLVER]<a class="headerlink" href="#solver" title="Link to this heading">¶</a></h2>
+<p>This section contains keywords associated with specific machine learning solvers.</p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">solver</span></code> name of the solver. We recommend using <code class="code docutils literal notranslate"><span class="pre">SVD</span></code> for linear solvers and
+<code class="code docutils literal notranslate"><span class="pre">PYTORCH</span></code> for neural networks.</p></li>
+</ul>
+</section>
+<section id="scraper">
+<h2><span class="section-number">3.2.6. </span>[SCRAPER]<a class="headerlink" href="#scraper" title="Link to this heading">¶</a></h2>
+<p>This section declares which file scraper to use for gathering training data.</p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">scraper</span></code> is either <code class="code docutils literal notranslate"><span class="pre">JSON</span></code> or <code class="code docutils literal notranslate"><span class="pre">XYZ.</span></code></p></li>
+</ul>
+<p>If using the XYZ scraper, each <a class="reference external" href="Run.html#groups">Group</a> of configurations has its own XYZ file
+containing configurations of atoms concatenated together, in extended XYZ format. Follow the example
+in <code class="code docutils literal notranslate"><span class="pre">examples/Ta_XYZ</span></code>.</p>
+<p>If using the JSON scraper, each <a class="reference external" href="Run.html#groups">Group</a> may have its own directory containing
+separate JSON files for each configuration. Guarantee compatibility with FitSNAP by using our
+<code class="code docutils literal notranslate"><span class="pre">tools/VASP2JSON.py</span></code> conversion script; this requires that your DFT training data be in VASP
+OUTCAR format. Likewise for <code class="code docutils literal notranslate"><span class="pre">tools/VASPxml2JSON.py</span></code>.</p>
+<p>We are also working on a scraper that directly reads VASP output; more documentation on this coming
+soon.</p>
+</section>
+<section id="path">
+<h2><span class="section-number">3.2.7. </span>[PATH]<a class="headerlink" href="#path" title="Link to this heading">¶</a></h2>
+<p>This section contains a <code class="code docutils literal notranslate"><span class="pre">dataPath</span></code> keyword that locates the directory of the training data.
+For example if the training data is in a file called <code class="code docutils literal notranslate"><span class="pre">JSON</span></code> in the previous directory relative
+to where we run the FitSNAP executable, this section looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">PATH</span><span class="p">]</span>
+<span class="n">dataPath</span> <span class="o">=</span> <span class="o">../</span><span class="n">JSON</span>
+</pre></div>
+</div>
+</section>
+<section id="outfile">
+<h2><span class="section-number">3.2.8. </span>[OUTFILE]<a class="headerlink" href="#outfile" title="Link to this heading">¶</a></h2>
+<p>This section declares the names of output files.</p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">metrics</span></code> gives the name of the error metrics markdown file. If using LAMMPS metal units,
+energy mean absolute errors are in eV and force errors are in eV/Angstrom.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">potential</span></code> gives the prefix of the LAMMPS-ready potential files to dump.</p></li>
+</ul>
+</section>
+<section id="reference">
+<h2><span class="section-number">3.2.9. </span>[REFERENCE]<a class="headerlink" href="#reference" title="Link to this heading">¶</a></h2>
+<p>This section includes settings for an <em>optional</em> potential to overlay our machine learned potential
+with. We call this a “reference potential”, which is a pair style defined in LAMMPS. If you choose
+to use a reference potential, the energies and forces from the reference potential will be subtracted
+from the target <em>ab initio</em> training data. We also declare units in this section.</p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">units</span></code> declares units used by LAMMPS, see <a class="reference external" href="https://docs.lammps.org/units.html">LAMMPS units docs</a> for more
+info.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">atom_style</span></code> the atom style used by the LAMMPS pair style you wish to overlay, see
+<a class="reference external" href="https://docs.lammps.org/atom_style.html">LAMMPS atom style docs</a> for more info.</p></li>
+</ul>
+<p>The minimum working reference potential setup involves not using a reference potential at all, where
+the reference section would look like (using metal units):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">REFERENCE</span><span class="p">]</span>
+<span class="n">units</span> <span class="o">=</span> <span class="n">metal</span>
+<span class="n">pair_style</span> <span class="o">=</span> <span class="n">zero</span> <span class="mf">10.0</span>
+<span class="n">pair_coeff</span> <span class="o">=</span> <span class="o">*</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>The rest of the keywords are associated with the particular LAMMPS pair style you wish to use.</p>
+</section>
+<section id="groups">
+<h2><span class="section-number">3.2.10. </span>[GROUPS]<a class="headerlink" href="#groups" title="Link to this heading">¶</a></h2>
+<p>Each group should be its own sub-directory in the directory given by the <code class="code docutils literal notranslate"><span class="pre">dataPath/</span></code> keyword in
+<a class="reference external" href="Run.html#path">the [PATH] section</a>. There are a few different allowed syntaxes; subdirectory
+names in the first column is common to all options.</p>
+<p><code class="code docutils literal notranslate"><span class="pre">group_sections</span></code> declares which parameters you want to set for each group of configurations.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">group_sections</span> <span class="o">=</span> <span class="n">name</span> <span class="n">training_size</span> <span class="n">testing_size</span> <span class="n">eweight</span> <span class="n">fweight</span> <span class="n">vweight</span>
+</pre></div>
+</div>
+<p>means you will supply group names, training size as a decimal fraction, testing size as a decimal
+fraction, energy weight, force weight, and virial weight, respectively. We must also declare the
+data types associated with these variables, given by</p>
+<blockquote>
+<div><p>group_types = str float float float float float</p>
+</div></blockquote>
+<p>Then we may declare the group names and parameters associated with them. For a particular group
+called <code class="code docutils literal notranslate"><span class="pre">Liquid</span></code> for example, this looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Liquid</span>        <span class="o">=</span>  <span class="mf">1.0</span>    <span class="mf">0.0</span>       <span class="mf">4.67E+02</span>        <span class="mi">1</span>       <span class="mf">1.00E-08</span>
+</pre></div>
+</div>
+<p>where <code class="code docutils literal notranslate"><span class="pre">Liquid</span></code> is the name of the group, <code class="code docutils literal notranslate"><span class="pre">1.0</span></code> is the training fraction, <code class="code docutils literal notranslate"><span class="pre">0.0</span></code> is
+the testing fraction, <code class="code docutils literal notranslate"><span class="pre">6.47E+02</span></code> is the energy weight, <code class="code docutils literal notranslate"><span class="pre">1</span></code> is the force weight, and
+<code class="code docutils literal notranslate"><span class="pre">1.00E-8</span></code> is the virial weight.</p>
+<p>Other available keywords are</p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">random_sampling</span></code> is 0 or 1. If 1, configurations in the groups are randomly sampled between
+their training and testing fractions.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">smartweights`</span></code> is 0 or 1. If 1, we declare statistically distributed weights given your
+supplied weights.</p></li>
+</ul>
+<p>A few examples are found in the examples directory.</p>
+</section>
+<section id="extras">
+<h2><span class="section-number">3.2.11. </span>[EXTRAS]<a class="headerlink" href="#extras" title="Link to this heading">¶</a></h2>
+<p>This section contains keywords on optional info to dump. By default, linear models output error
+metric markdown files that should be sufficient in most cases. If more detailed errors are required,
+please see the output Pandas dataframe <code class="code docutils literal notranslate"><span class="pre">FitSNAP.df</span></code> used by linear models. Examples and
+library tools for analyzing  this dataframe are found in our
+<a class="reference external" href="https://colab.research.google.com/github/FitSNAP/FitSNAP/blob/master/tutorial.ipynb">Colab Python notebook tutorial</a>.</p>
+</section>
+<section id="memory">
+<h2><span class="section-number">3.2.12. </span>[MEMORY]<a class="headerlink" href="#memory" title="Link to this heading">¶</a></h2>
+<p>This section contains keywords for dealing with memory. We recommend using defaults.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Run_options.html" class="btn btn-neutral float-left" title="3.1. Command-line options" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Run_outputs.html" class="btn btn-neutral float-right" title="3.3. FitSNAP Outputs" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022-2025, Sandia Corporation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(false);
+      });
+  </script> 
+
+</body>
+</html>

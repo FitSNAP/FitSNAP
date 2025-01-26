@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2. Installation &mdash; FitSNAP  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/lammps.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9bcbadda"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="3. Run FitSNAP" href="Run/index.html" />
+    <link rel="prev" title="1. Introduction" href="Introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html">
+            
+              <img src="_static/FitSNAP.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">1. Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#overview-of-fitsnap">1.1. Overview of FitSNAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#fitsnap-components">1.2. FitSNAP Components</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">2. Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#lammps-installation">2.1. LAMMPS Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#mpi-for-lammps-and-fitsnap">2.1.1. MPI for LAMMPS and FitSNAP</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#python-dependencies">2.1.2. Python dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#lammps-for-fitsnap">2.1.3. LAMMPS for FitSNAP</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#fitsnap-installation">2.2. FitSNAP Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#install-fitsnap-with-latest-lammps">2.2.1. Install FitSNAP with latest LAMMPS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#minimal-conda-install">2.2.2. Minimal conda install</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Run/index.html">3. Run FitSNAP</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_options.html">3.1. Command-line options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_input.html">3.2. Input files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#bispectrum">3.2.1. [BISPECTRUM]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#ace">3.2.2. [ACE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#calculator">3.2.3. [CALCULATOR]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#eshift">3.2.4. [ESHIFT]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#solver">3.2.5. [SOLVER]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#scraper">3.2.6. [SCRAPER]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#path">3.2.7. [PATH]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#outfile">3.2.8. [OUTFILE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#reference">3.2.9. [REFERENCE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#groups">3.2.10. [GROUPS]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#extras">3.2.11. [EXTRAS]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#memory">3.2.12. [MEMORY]</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_outputs.html">3.3. FitSNAP Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_library.html">3.4. Running as library</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Linear.html">4. Linear Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Linear.html#outputs">4.1. Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Linear.html#uncertainty-quantification-uq">4.2. Uncertainty Quantification (UQ)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Linear.html#in-development-uq-solvers">4.3. In development UQ solvers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#opt">4.3.1. OPT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#mcmc">4.3.2. MCMC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#merr">4.3.3. MERR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#bcs">4.3.4. BCS</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Pytorch.html">5. PyTorch Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#fitting-neural-network-potentials">5.1. Fitting Neural Network Potentials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#loss-function">5.2. Loss Function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#outputs-and-error-calculation">5.3. Outputs and Error Calculation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#error-comparison-files">5.3.1. Error/Comparison files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#pytorch-model-files">5.3.2. PyTorch model files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#calculate-errors-on-a-test-set">5.3.3. Calculate errors on a test set</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#training-performance">5.4. Training Performance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#gpu-acceleration">5.4.1. GPU Acceleration</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ReaxFF.html">6. ReaxFF Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#introduction">6.1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#reaxff-potential">6.2. ReaxFF Potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#reaxff-lammps-commands">6.3. ReaxFF LAMMPS commands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#fitting-reaxff-parameters">6.4. Fitting ReaxFF parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#available-force-fields">6.5. Available Force Fields</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ReaxFF.html#combustion-branch">6.5.1. Combustion Branch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ReaxFF.html#independent-branch">6.5.2. Independent Branch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ReaxFF.html#water-branch">6.5.3. Water Branch</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#reaxff-bibliography">6.6. ReaxFF Bibliography</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Programmer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Contributing.html">1. Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Contributing.html#style-guide">1.1. Style Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Contributing.html#documenting">1.2. Documenting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Executable.html">2. Executable</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Executable.html#data-configuration-extraction">2.1. Data &amp; configuration extraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Executable.html#modifying-the-output-dataframe">2.2. Modifying the output dataframe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Executable.html#adding-new-input-file-keywords">2.3. Adding new input file keywords</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Executable.html#adding-your-own-calculator">2.4. Adding your own Calculator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Executable.html#adding-your-own-model-solver">2.5. Adding your own Model/Solver</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Lib/index.html">3. Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_fitsnap.html">3.1. FitSnap</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap"><code class="docutils literal notranslate"><span class="pre">FitSnap</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.pt"><code class="docutils literal notranslate"><span class="pre">FitSnap.pt</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.config"><code class="docutils literal notranslate"><span class="pre">FitSnap.config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.scraper"><code class="docutils literal notranslate"><span class="pre">FitSnap.scraper</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.data"><code class="docutils literal notranslate"><span class="pre">FitSnap.data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.calculator"><code class="docutils literal notranslate"><span class="pre">FitSnap.calculator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.solver"><code class="docutils literal notranslate"><span class="pre">FitSnap.solver</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.perform_fit"><code class="docutils literal notranslate"><span class="pre">FitSnap.perform_fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.process_configs"><code class="docutils literal notranslate"><span class="pre">FitSnap.process_configs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.scrape_configs"><code class="docutils literal notranslate"><span class="pre">FitSnap.scrape_configs()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_fitsnap.html#parallel-tools">3.1.1. Parallel Tools</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.DistributedList"><code class="docutils literal notranslate"><span class="pre">DistributedList</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.GracefulError"><code class="docutils literal notranslate"><span class="pre">GracefulError</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.ParallelTools"><code class="docutils literal notranslate"><span class="pre">ParallelTools</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.SharedArray"><code class="docutils literal notranslate"><span class="pre">SharedArray</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.StubsArray"><code class="docutils literal notranslate"><span class="pre">StubsArray</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_fitsnap.html#config">3.1.2. Config</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.io.input.Config"><code class="docutils literal notranslate"><span class="pre">Config</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_scraper.html">3.2. Scraper</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_scraper.html#fitsnap3lib.scrapers.scrape.random"><code class="docutils literal notranslate"><span class="pre">random()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_calculator.html">3.3. Calculator</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator"><code class="docutils literal notranslate"><span class="pre">Calculator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.allocate_per_config"><code class="docutils literal notranslate"><span class="pre">Calculator.allocate_per_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.collect_distributed_lists"><code class="docutils literal notranslate"><span class="pre">Calculator.collect_distributed_lists()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.create_a"><code class="docutils literal notranslate"><span class="pre">Calculator.create_a()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.create_dicts"><code class="docutils literal notranslate"><span class="pre">Calculator.create_dicts()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_calculator.html#module-fitsnap3lib.calculators.lammps_base">3.3.1. LammpsBase</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.lammps_base.LammpsBase"><code class="docutils literal notranslate"><span class="pre">LammpsBase</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_solver.html">3.4. Solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver"><code class="docutils literal notranslate"><span class="pre">Solver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.fit"><code class="docutils literal notranslate"><span class="pre">Solver.fit</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.error_analysis"><code class="docutils literal notranslate"><span class="pre">Solver.error_analysis()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.perform_fit"><code class="docutils literal notranslate"><span class="pre">Solver.perform_fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.prepare_data"><code class="docutils literal notranslate"><span class="pre">Solver.prepare_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#svd">3.4.1. SVD</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.svd.SVD"><code class="docutils literal notranslate"><span class="pre">SVD</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#ridge">3.4.2. RIDGE</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.ridge.RIDGE"><code class="docutils literal notranslate"><span class="pre">RIDGE</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#pytorch">3.4.3. PYTORCH</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.pytorch.PYTORCH"><code class="docutils literal notranslate"><span class="pre">PYTORCH</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_lib.html">3.5. lib/</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_lib.html#atom-centered-networks">3.5.1. Atom-centered Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_lib.html#pairwise-networks">3.5.2. Pairwise Networks</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_tools.html">3.6. tools/</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Tests.html">4. Tests</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FitSNAP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active"><span class="section-number">2. </span>Installation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/Installation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul><div class="rst-breadcrumbs-buttons" role="navigation" aria-label="Sequential page navigation">
+        <a href="Introduction.html" class="btn btn-neutral float-left" title="1. Introduction" accesskey="p"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Run/index.html" class="btn btn-neutral float-right" title="3. Run FitSNAP" accesskey="n">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+  </div>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="installation">
+<h1><span class="section-number">2. </span>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
+<p>This page documents how to properly install LAMMPS and FitSNAP. First we begin with how to install
+LAMMPS specifically for FitSNAP.</p>
+<ul class="simple">
+<li><p>If you do not want to manually install LAMMPS, please see <a class="reference internal" href="#minimal-conda-install">Minimal conda install</a>, but note this
+version of conda LAMMPS does not included recent features like neural networks or ACE descriptors.</p></li>
+<li><p>If you want a quick summary of installation instructions, see <a class="reference external" href="Quick.html">Quick Installation</a>.</p></li>
+</ul>
+<section id="lammps-installation">
+<span id="id1"></span><h2><span class="section-number">2.1. </span>LAMMPS Installation<a class="headerlink" href="#lammps-installation" title="Link to this heading">¶</a></h2>
+<p>Since LAMMPS is the backbone of FitSNAP, we begin with instructions on how to install LAMMPS
+specifically for using FitSNAP. The following few sections cover basics of installing LAMMPS with
+Python library support.</p>
+<section id="mpi-for-lammps-and-fitsnap">
+<h3><span class="section-number">2.1.1. </span>MPI for LAMMPS and FitSNAP<a class="headerlink" href="#mpi-for-lammps-and-fitsnap" title="Link to this heading">¶</a></h3>
+<p>Both LAMMPS and FitSNAP are parallelized for optimal performance.</p>
+<p>We build MPI from source using OpenMPI version 4.1.4 (<a class="reference external" href="https://www.open-mpi.org/">https://www.open-mpi.org/</a>)
+and the instructions at <a class="reference external" href="https://www.open-mpi.org/faq/?category=building#easy-build">https://www.open-mpi.org/faq/?category=building#easy-build</a>.</p>
+<p>After building, add your openmpi executable path to your <code class="code docutils literal notranslate"><span class="pre">PATH</span></code> variable as well so that
+LAMMPS can automatically find your MPI install, e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># in e.g., ~/.bashrc
+MPI_DIR=/usr/local/openmpi
+export PATH=$MPI_DIR/bin:$PATH
+</pre></div>
+</div>
+</section>
+<section id="python-dependencies">
+<h3><span class="section-number">2.1.2. </span>Python dependencies<a class="headerlink" href="#python-dependencies" title="Link to this heading">¶</a></h3>
+<p>We recommend creating a virtual environment with <code class="code docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">venv</span></code> or <code class="code docutils literal notranslate"><span class="pre">conda</span></code>. After
+creating your virtual environment, <strong>make sure it is activated for all future steps</strong>, e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">create</span> <span class="o">--</span><span class="n">name</span> <span class="n">fitsnap</span> <span class="n">python</span><span class="o">=</span><span class="mf">3.10</span>
+<span class="n">conda</span> <span class="n">activate</span> <span class="n">fitsnap</span>
+</pre></div>
+</div>
+<p>Now install the necessary pre-requisites to build Python-LAMMPS using pip or conda:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">numpy</span> <span class="n">scipy</span> <span class="n">scikit</span><span class="o">-</span><span class="n">learn</span> <span class="n">virtualenv</span> <span class="n">psutil</span> <span class="n">pandas</span> <span class="n">tabulate</span> <span class="n">mpi4py</span> <span class="n">Cython</span> <span class="n">setuptools</span>
+<span class="c1"># For nonlinear (neural network) fitting:</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">torch</span>
+<span class="c1"># For fitting ACE:</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">sympy</span> <span class="n">pyyaml</span>
+<span class="c1"># For contributing to docs:</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">sphinx</span> <span class="n">sphinx_rtd_theme</span> <span class="n">sphinxcontrib</span><span class="o">-</span><span class="n">napoleon</span>
+</pre></div>
+</div>
+<p>To make sure MPI is working, make a Python script called <code class="code docutils literal notranslate"><span class="pre">test.py</span></code> with the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Proc </span><span class="si">%d</span><span class="s2"> out of </span><span class="si">%d</span><span class="s2"> procs&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">(),</span><span class="n">comm</span><span class="o">.</span><span class="n">Get_size</span><span class="p">()))</span>
+</pre></div>
+</div>
+<p>And see the output of running <code class="code docutils literal notranslate"><span class="pre">test.py</span></code> in parallel:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">..</span> <span class="n">NOTE</span><span class="p">::</span> <span class="n">the</span> <span class="n">line</span> <span class="n">order</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">deterministic</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p>$ mpirun -np 4 python test.py
+Proc 0 out of 4 procs
+Proc 1 out of 4 procs
+Proc 2 out of 4 procs
+Proc 3 out of 4 procs</p>
+</div></blockquote>
+</section>
+<section id="lammps-for-fitsnap">
+<h3><span class="section-number">2.1.3. </span>LAMMPS for FitSNAP<a class="headerlink" href="#lammps-for-fitsnap" title="Link to this heading">¶</a></h3>
+<p>First clone the LAMMPS repo:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">lammps</span><span class="o">/</span><span class="n">lammps</span>
+</pre></div>
+</div>
+<p>This creates a <code class="code docutils literal notranslate"><span class="pre">lammps</span></code> directory, where we will build LAMMPS using <cite>cmake`</cite> and <cite>make</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>cd /path/to/lammps
+mkdir build-fitsnap
+cd build-fitsnap
+# Use cmake to build the Makefile
+cmake ../cmake -DBUILD_SHARED_LIBS=yes \
+              -DMLIAP_ENABLE_PYTHON=yes \
+              -DPKG_PYTHON=yes \
+              -DPKG_ML-SNAP=yes \
+              -DPKG_ML-IAP=yes \
+              -DPKG_ML-PACE=yes \
+              -DPKG_SPIN=yes \
+              -DPYTHON_EXECUTABLE:FILEPATH=`which python`
+
+# Build a LAMMPS executable and shared library
+make
+# Install Python-LAMMPS interface
+make install-python
+</pre></div>
+</div>
+<p>Do not be alarmed by runtime library warnings after <cite>cmake</cite>, or <cite>-Weffc++</cite> and <cite>-Wunused-result</cite>
+warnings during <cite>make</cite>.
+This will create a LAMMPS executable <code class="code docutils literal notranslate"><span class="pre">lmp</span></code>, which should be used to run MD using FitSNAP fits.
+This will also create a Python-LAMMPS interface located in your Python <code class="code docutils literal notranslate"><span class="pre">site-packages/lammps</span></code>
+directory. Set the following environment variables so that your Python can find the LAMMPS library:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>LAMMPS_DIR=/path/to/lammps
+# For MacOS, use DYLD_LIBRARY_PATH instead of LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$LAMMPS_DIR/build-fitsnap:$LD_LIBRARY_PATH
+</pre></div>
+</div>
+<p>Also make sure your Python-LAMMPS interface is working by doing the following in your Python
+interpreter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">lammps</span>
+<span class="n">lmp</span> <span class="o">=</span> <span class="n">lammps</span><span class="o">.</span><span class="n">lammps</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>which should produce no errors.</p>
+<p>After completing this LAMMPS installation, please see <a class="reference internal" href="#install-fitsnap-with-latest-lammps">Install FitSNAP with latest LAMMPS</a> to use
+FitSNAP.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>There is no longer a need to use modified versions of LAMMPS or PACE libraries for ACE</p>
+</div>
+<p>model fitting. The <code class="code docutils literal notranslate"><span class="pre">compute</span> <span class="pre">pace</span></code> used by FitSNAP to calculate ACE descriptors has been fully integrated into
+the ML-PACE package as of the August 29, 2024 LAMMPS stable release (<a class="reference external" href="https://github.com/lammps/lammps/tree/stable">https://github.com/lammps/lammps/tree/stable</a>).
+The most recent development version can be found in the default branch of the public LAMMPS repository (<a class="reference external" href="https://github.com/lammps/lammps">https://github.com/lammps/lammps</a>).</p>
+<p>For a summary/review of all these steps, see see <a class="reference external" href="Quick.html">Quick Installation</a>.</p>
+</section>
+</section>
+<section id="fitsnap-installation">
+<h2><span class="section-number">2.2. </span>FitSNAP Installation<a class="headerlink" href="#fitsnap-installation" title="Link to this heading">¶</a></h2>
+<p>There are two primary ways to get started with FitSNAP: (1) building LAMMPS manually, and (2) a
+simple conda environment using the packaged LAMMPS that ships with conda. The former option allows
+for more recent LAMMPS features.</p>
+<section id="install-fitsnap-with-latest-lammps">
+<span id="id2"></span><h3><span class="section-number">2.2.1. </span>Install FitSNAP with latest LAMMPS<a class="headerlink" href="#install-fitsnap-with-latest-lammps" title="Link to this heading">¶</a></h3>
+<p>Both FitSNAP and LAMMPS have been optimized to work with MPI. For optimal performance of
+both, we recommend building and configuring your favored flavor of MPI before continuing
+(see <a class="reference internal" href="#lammps-installation">LAMMPS Installation</a> docs).</p>
+<ol class="arabic">
+<li><p>Set up environment and build LAMMPS (see <a class="reference internal" href="#lammps-installation">LAMMPS Installation</a> docs)</p></li>
+<li><p>Clone the FitSNAP repository:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">FitSNAP</span><span class="o">/</span><span class="n">FitSNAP</span>
+</pre></div>
+</div>
+</li>
+<li><p>Add the cloned repository path to your PYTHONPATH environment variable:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>FITSNAP_DIR=\path\to\FitSNAP
+export PYTHONPATH=$FITSNAP_DIR:$PYTHONPATH
+</pre></div>
+</div>
+</li>
+<li><p>You should now be able to run the FitSNAP examples in <code class="code docutils literal notranslate"><span class="pre">FitSNAP/examples</span></code>.</p></li>
+<li><p>For a summary/review of all these steps, see see <a class="reference external" href="Quick.html">Quick Installation</a>.</p></li>
+</ol>
+</section>
+<section id="minimal-conda-install">
+<span id="id3"></span><h3><span class="section-number">2.2.2. </span>Minimal conda install<a class="headerlink" href="#minimal-conda-install" title="Link to this heading">¶</a></h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Conda lammps installation does NOT include ACE descriptor set, SPIN package, or new
+LAMMPS settings needed for fitting neural networks. If you want to use these newer settings,
+please build LAMMPS from source as explained in the <a class="reference internal" href="#lammps-installation">LAMMPS Installation</a> docs.</p>
+</div>
+<p>A minimal working environment can be set up using the Python distribution package Anaconda (<a class="reference external" href="https://www.anaconda.com">https://www.anaconda.com</a>).</p>
+<p>After installing Anaconda:</p>
+<ol class="arabic">
+<li><p>Add conda-forge to your Conda install, if not already added:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">config</span> <span class="o">--</span><span class="n">add</span> <span class="n">channels</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span>
+</pre></div>
+</div>
+</li>
+<li><p>Create a new Conda environment:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">create</span> <span class="o">-</span><span class="n">n</span> <span class="n">fitsnap</span> <span class="n">python</span><span class="o">=</span><span class="mf">3.10</span>
+<span class="n">conda</span> <span class="n">activate</span> <span class="n">fitsnap</span>
+</pre></div>
+</div>
+</li>
+<li><p>Install dependencies:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="n">lammps</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">numpy</span> <span class="n">scipy</span> <span class="n">scikit</span><span class="o">-</span><span class="n">learn</span> <span class="n">virtualenv</span> <span class="n">psutil</span> <span class="n">pandas</span> <span class="n">tabulate</span> <span class="n">mpi4py</span> <span class="n">Cython</span>
+</pre></div>
+</div>
+</li>
+<li><p>Clone the FitSNAP repository:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">FitSNAP</span><span class="o">/</span><span class="n">FitSNAP</span><span class="o">.</span><span class="n">git</span>
+</pre></div>
+</div>
+</li>
+<li><p>Add the cloned repository path to your PYTHONPATH environment variable, e.g. in <code class="code docutils literal notranslate"><span class="pre">~/.bashrc</span></code>
+or <code class="code docutils literal notranslate"><span class="pre">~/.bash_profile</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>FITSNAP_DIR=\path\to\FitSNAP
+export PYTHONPATH=$FITSNAP_DIR:$LAMMPS_DIR/python:$PYTHONPATH
+</pre></div>
+</div>
+</li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Periodically use the command <code class="code docutils literal notranslate"><span class="pre">git</span> <span class="pre">pull</span></code> in the cloned directory for updates</p>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Introduction.html" class="btn btn-neutral float-left" title="1. Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Run/index.html" class="btn btn-neutral float-right" title="3. Run FitSNAP" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022-2025, Sandia Corporation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(false);
+      });
+  </script> 
+
+</body>
+</html>

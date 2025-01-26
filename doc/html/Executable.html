@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2. Executable &mdash; FitSNAP  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/lammps.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9bcbadda"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="3. Library" href="Lib/index.html" />
+    <link rel="prev" title="1. Contributing" href="Contributing.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html">
+            
+              <img src="_static/FitSNAP.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">1. Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#overview-of-fitsnap">1.1. Overview of FitSNAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#fitsnap-components">1.2. FitSNAP Components</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">2. Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#lammps-installation">2.1. LAMMPS Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Installation.html#mpi-for-lammps-and-fitsnap">2.1.1. MPI for LAMMPS and FitSNAP</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Installation.html#python-dependencies">2.1.2. Python dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Installation.html#lammps-for-fitsnap">2.1.3. LAMMPS for FitSNAP</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#fitsnap-installation">2.2. FitSNAP Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Installation.html#install-fitsnap-with-latest-lammps">2.2.1. Install FitSNAP with latest LAMMPS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Installation.html#minimal-conda-install">2.2.2. Minimal conda install</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Run/index.html">3. Run FitSNAP</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_options.html">3.1. Command-line options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_input.html">3.2. Input files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#bispectrum">3.2.1. [BISPECTRUM]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#ace">3.2.2. [ACE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#calculator">3.2.3. [CALCULATOR]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#eshift">3.2.4. [ESHIFT]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#solver">3.2.5. [SOLVER]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#scraper">3.2.6. [SCRAPER]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#path">3.2.7. [PATH]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#outfile">3.2.8. [OUTFILE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#reference">3.2.9. [REFERENCE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#groups">3.2.10. [GROUPS]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#extras">3.2.11. [EXTRAS]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#memory">3.2.12. [MEMORY]</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_outputs.html">3.3. FitSNAP Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_library.html">3.4. Running as library</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Linear.html">4. Linear Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Linear.html#outputs">4.1. Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Linear.html#uncertainty-quantification-uq">4.2. Uncertainty Quantification (UQ)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Linear.html#in-development-uq-solvers">4.3. In development UQ solvers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#opt">4.3.1. OPT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#mcmc">4.3.2. MCMC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#merr">4.3.3. MERR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#bcs">4.3.4. BCS</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Pytorch.html">5. PyTorch Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#fitting-neural-network-potentials">5.1. Fitting Neural Network Potentials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#loss-function">5.2. Loss Function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#outputs-and-error-calculation">5.3. Outputs and Error Calculation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#error-comparison-files">5.3.1. Error/Comparison files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#pytorch-model-files">5.3.2. PyTorch model files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#calculate-errors-on-a-test-set">5.3.3. Calculate errors on a test set</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#training-performance">5.4. Training Performance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#gpu-acceleration">5.4.1. GPU Acceleration</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ReaxFF.html">6. ReaxFF Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#introduction">6.1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#reaxff-potential">6.2. ReaxFF Potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#reaxff-lammps-commands">6.3. ReaxFF LAMMPS commands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#fitting-reaxff-parameters">6.4. Fitting ReaxFF parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#available-force-fields">6.5. Available Force Fields</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ReaxFF.html#combustion-branch">6.5.1. Combustion Branch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ReaxFF.html#independent-branch">6.5.2. Independent Branch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ReaxFF.html#water-branch">6.5.3. Water Branch</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ReaxFF.html#reaxff-bibliography">6.6. ReaxFF Bibliography</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Programmer Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Contributing.html">1. Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Contributing.html#style-guide">1.1. Style Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Contributing.html#documenting">1.2. Documenting</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">2. Executable</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#data-configuration-extraction">2.1. Data &amp; configuration extraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#modifying-the-output-dataframe">2.2. Modifying the output dataframe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-new-input-file-keywords">2.3. Adding new input file keywords</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-your-own-calculator">2.4. Adding your own Calculator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-your-own-model-solver">2.5. Adding your own Model/Solver</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Lib/index.html">3. Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_fitsnap.html">3.1. FitSnap</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap"><code class="docutils literal notranslate"><span class="pre">FitSnap</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.pt"><code class="docutils literal notranslate"><span class="pre">FitSnap.pt</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.config"><code class="docutils literal notranslate"><span class="pre">FitSnap.config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.scraper"><code class="docutils literal notranslate"><span class="pre">FitSnap.scraper</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.data"><code class="docutils literal notranslate"><span class="pre">FitSnap.data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.calculator"><code class="docutils literal notranslate"><span class="pre">FitSnap.calculator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.solver"><code class="docutils literal notranslate"><span class="pre">FitSnap.solver</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.perform_fit"><code class="docutils literal notranslate"><span class="pre">FitSnap.perform_fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.process_configs"><code class="docutils literal notranslate"><span class="pre">FitSnap.process_configs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.scrape_configs"><code class="docutils literal notranslate"><span class="pre">FitSnap.scrape_configs()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_fitsnap.html#parallel-tools">3.1.1. Parallel Tools</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.DistributedList"><code class="docutils literal notranslate"><span class="pre">DistributedList</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.GracefulError"><code class="docutils literal notranslate"><span class="pre">GracefulError</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.ParallelTools"><code class="docutils literal notranslate"><span class="pre">ParallelTools</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.SharedArray"><code class="docutils literal notranslate"><span class="pre">SharedArray</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.StubsArray"><code class="docutils literal notranslate"><span class="pre">StubsArray</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_fitsnap.html#config">3.1.2. Config</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.io.input.Config"><code class="docutils literal notranslate"><span class="pre">Config</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_scraper.html">3.2. Scraper</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_scraper.html#fitsnap3lib.scrapers.scrape.random"><code class="docutils literal notranslate"><span class="pre">random()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_calculator.html">3.3. Calculator</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator"><code class="docutils literal notranslate"><span class="pre">Calculator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.allocate_per_config"><code class="docutils literal notranslate"><span class="pre">Calculator.allocate_per_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.collect_distributed_lists"><code class="docutils literal notranslate"><span class="pre">Calculator.collect_distributed_lists()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.create_a"><code class="docutils literal notranslate"><span class="pre">Calculator.create_a()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.create_dicts"><code class="docutils literal notranslate"><span class="pre">Calculator.create_dicts()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_calculator.html#module-fitsnap3lib.calculators.lammps_base">3.3.1. LammpsBase</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.lammps_base.LammpsBase"><code class="docutils literal notranslate"><span class="pre">LammpsBase</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_solver.html">3.4. Solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver"><code class="docutils literal notranslate"><span class="pre">Solver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.fit"><code class="docutils literal notranslate"><span class="pre">Solver.fit</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.error_analysis"><code class="docutils literal notranslate"><span class="pre">Solver.error_analysis()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.perform_fit"><code class="docutils literal notranslate"><span class="pre">Solver.perform_fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.prepare_data"><code class="docutils literal notranslate"><span class="pre">Solver.prepare_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#svd">3.4.1. SVD</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.svd.SVD"><code class="docutils literal notranslate"><span class="pre">SVD</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#ridge">3.4.2. RIDGE</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.ridge.RIDGE"><code class="docutils literal notranslate"><span class="pre">RIDGE</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#pytorch">3.4.3. PYTORCH</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.pytorch.PYTORCH"><code class="docutils literal notranslate"><span class="pre">PYTORCH</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_lib.html">3.5. lib/</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_lib.html#atom-centered-networks">3.5.1. Atom-centered Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_lib.html#pairwise-networks">3.5.2. Pairwise Networks</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_tools.html">3.6. tools/</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Tests.html">4. Tests</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FitSNAP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active"><span class="section-number">2. </span>Executable</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/Executable.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul><div class="rst-breadcrumbs-buttons" role="navigation" aria-label="Sequential page navigation">
+        <a href="Contributing.html" class="btn btn-neutral float-left" title="1. Contributing" accesskey="p"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Lib/index.html" class="btn btn-neutral float-right" title="3. Library" accesskey="n">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+  </div>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="executable">
+<h1><span class="section-number">2. </span>Executable<a class="headerlink" href="#executable" title="Link to this heading">¶</a></h1>
+<p>Here we explain how to modify FitSNAP when running as an <a class="reference external" href="Run.html#executable">Executable</a>. First
+we begin with an explanation of what goes on under the good when running FitSNAP as an executable
+with</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python -m fitsnap3 input.in</span>
+</pre></div>
+</div>
+<p>There is a certain sequence of functions that is explained here, and coded in
+<code class="code docutils literal notranslate"><span class="pre">fitsnap3/__main__.py</span></code>. Specifically, the <code class="code docutils literal notranslate"><span class="pre">main()</span></code> function uses the FitSNAP library to
+execute the following sequence of functions that perform a fit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fitsnap3lib.fitsnap</span> <span class="kn">import</span> <span class="n">FitSnap</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">snap</span> <span class="o">=</span> <span class="n">FitSnap</span><span class="p">()</span>
+    <span class="n">snap</span><span class="o">.</span><span class="n">scrape_configs</span><span class="p">(</span><span class="n">delete_scraper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">snap</span><span class="o">.</span><span class="n">process_configs</span><span class="p">(</span><span class="n">delete_data</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># Good practice after a large parallel operation is to impose a barrier.</span>
+    <span class="n">snap</span><span class="o">.</span><span class="n">pt</span><span class="o">.</span><span class="n">all_barrier</span><span class="p">()</span>
+    <span class="n">snap</span><span class="o">.</span><span class="n">perform_fit</span><span class="p">()</span>
+    <span class="n">snap</span><span class="o">.</span><span class="n">write_output</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>From the above code, it is seen that we first run the
+<code class="code docutils literal notranslate"><span class="pre">fitsnap3lib.initialize.initialize_fitsnap_run()</span></code> function. This simply prepares necessary
+imports and outputs settings. The rest of the main program execution relies on functions in the
+FitSNAP library. These are accessed by declaring a FitSNAP object with</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">snap = FitSNAP()</span>
+</pre></div>
+</div>
+<p>This can be achieved in any external python script, provided the necessary imports shown above
+are used, and instatiating the <code class="code docutils literal notranslate"><span class="pre">pt</span></code> and <code class="code docutils literal notranslate"><span class="pre">config</span></code> objects as we did above. This
+<code class="code docutils literal notranslate"><span class="pre">snap</span></code> object has functions located in <code class="code docutils literal notranslate"><span class="pre">fitsnap3lib.fitsnap</span></code>, and the code that these
+functions depends on can be seen by observing <code class="code docutils literal notranslate"><span class="pre">fitsnap3lib/fitsnap.py</span></code>. These functions can
+be executed in any order desired by the user. The library also provides a deeper level of control,
+that we will explain in <a class="reference external" href="Library.html">Library</a>. Examples of using the library to perform a variety of
+tasks outside the usual FitSNAP main program execution are located in
+<a class="reference external" href="https://github.com/FitSNAP/FitSNAP/tree/master/examples/library">https://github.com/FitSNAP/FitSNAP/tree/master/examples/library</a>.</p>
+<p>Further explanations on how to modify FitSNAP as an executable are explained below.</p>
+<section id="data-configuration-extraction">
+<h2><span class="section-number">2.1. </span>Data &amp; configuration extraction<a class="headerlink" href="#data-configuration-extraction" title="Link to this heading">¶</a></h2>
+<p>After creating the FitSNAP object in <code class="code docutils literal notranslate"><span class="pre">__main__.py</span></code>, the first step is scraping the configs.
+Then we process the configs (calculate the descriptors) with <code class="code docutils literal notranslate"><span class="pre">snap.process_configs()</span></code>.
+The <code class="code docutils literal notranslate"><span class="pre">Calculator</span></code> class in <code class="code docutils literal notranslate"><span class="pre">calculators/calculator.py</span></code> has a <code class="code docutils literal notranslate"><span class="pre">create_a</span></code> method
+which allocates the size of the <code class="code docutils literal notranslate"><span class="pre">a</span></code> and <code class="code docutils literal notranslate"><span class="pre">b</span></code> matrices, containing data such as
+descriptors and target energies/forces. <code class="code docutils literal notranslate"><span class="pre">calculators/calculator.py</span></code> also has a
+<code class="code docutils literal notranslate"><span class="pre">process_configs</span></code> method which is overwritten by user-defined derived class, e.g.
+<code class="code docutils literal notranslate"><span class="pre">LammpsSnap</span></code> in <code class="code docutils literal notranslate"><span class="pre">lammps_snap.py</span></code>. The <code class="code docutils literal notranslate"><span class="pre">calculator.process_configs</span></code> method
+therefore gets directed to the method in the derived class, which depends on the particular
+calculator being used.</p>
+</section>
+<section id="modifying-the-output-dataframe">
+<h2><span class="section-number">2.2. </span>Modifying the output dataframe<a class="headerlink" href="#modifying-the-output-dataframe" title="Link to this heading">¶</a></h2>
+<p>The Pandas dataframe is used for linear solvers to store information about the fit.</p>
+<p>The <code class="code docutils literal notranslate"><span class="pre">error_analysis</span></code> function in <code class="code docutils literal notranslate"><span class="pre">solvers/solver.py</span></code> builds a dataframe containing
+arrays from <code class="code docutils literal notranslate"><span class="pre">pt.shared_arrays</span></code> and <code class="code docutils literal notranslate"><span class="pre">pt.fitsnap_dict</span></code>. If you want to add your own column
+to the dataframe, it must first be declared/allocated as a <code class="code docutils literal notranslate"><span class="pre">pt.fitsnap_dict</span></code> in
+<code class="code docutils literal notranslate"><span class="pre">calculators/calculator.py</span></code>, with the <code class="code docutils literal notranslate"><span class="pre">pt.add_2_fitsnap</span></code> function. When extracting
+LAMMPS data in a particular calculator subclass, there are loops over energy <code class="code docutils literal notranslate"><span class="pre">bik</span></code> rows, force
+rows, and stress rows. These are located in <code class="code docutils literal notranslate"><span class="pre">lammps_snap.py</span></code> and <code class="code docutils literal notranslate"><span class="pre">lammps_pace.py</span></code>, in
+the <code class="code docutils literal notranslate"><span class="pre">_collect_lammps()</span></code> function. There it is seen that data is added to the
+<code class="code docutils literal notranslate"><span class="pre">pt.fitsnap_dict['Column_Name'][indices]</span></code> array, where <code class="code docutils literal notranslate"><span class="pre">'Column_Name'</span></code> is the name of
+the new column declared earlier, and <code class="code docutils literal notranslate"><span class="pre">'indices'</span></code> are the rows of the array.</p>
+<p>When adding a new <code class="code docutils literal notranslate"><span class="pre">pt.fitsnap_dict</span></code>, realize that it’s a <code class="code docutils literal notranslate"><span class="pre">DistributedList</span></code>; this means
+that a list of whatever declared size exists on each proc. There is a method
+<code class="code docutils literal notranslate"><span class="pre">collect_distributed_lists</span></code> in <code class="code docutils literal notranslate"><span class="pre">calculators/calculator.py</span></code> that gathers all these
+distributed lists on the root proc.</p>
+</section>
+<section id="adding-new-input-file-keywords">
+<h2><span class="section-number">2.3. </span>Adding new input file keywords<a class="headerlink" href="#adding-new-input-file-keywords" title="Link to this heading">¶</a></h2>
+<p>First you need to choose what section the keyword you’re adding is in. For example in the input
+file you will see a <code class="code docutils literal notranslate"><span class="pre">CALCULATOR</span></code> section. If you want to add a keyword to this section, go to
+<code class="code docutils literal notranslate"><span class="pre">fitsnap3lib/io/sections/calculator_sections/calculator.py</span></code>, and use the existing keyword
+examples to add a new keyword. Likewise for other sections such as <code class="code docutils literal notranslate"><span class="pre">SOLVER</span></code>, we edit
+<code class="code docutils literal notranslate"><span class="pre">fitsnap3lib/io/sections/solver_sections/solver.py</span></code>. If you want to access this keyword later
+in the FitSNAP code somewhere, it is done with <code class="code docutils literal notranslate"><span class="pre">config.sections['SOLVER'].new_keyword</span></code> for
+example.</p>
+<p>If you want to add new descriptor settings for LAMMPS, e.g. in the <code class="code docutils literal notranslate"><span class="pre">BISPECTRUM</span></code> section, follow
+the format in <code class="code docutils literal notranslate"><span class="pre">io/sections/calculator_sections/bispectrum.py</span></code>. Then make sure that the new compute
+setting is used in <code class="code docutils literal notranslate"><span class="pre">calculators/lammps_snap.py</span></code> in the <code class="code docutils literal notranslate"><span class="pre">_set_computes</span></code> function.</p>
+</section>
+<section id="adding-your-own-calculator">
+<h2><span class="section-number">2.4. </span>Adding your own Calculator<a class="headerlink" href="#adding-your-own-calculator" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Add a new file like <code class="code docutils literal notranslate"><span class="pre">my_calculator.py</span></code> in <code class="code docutils literal notranslate"><span class="pre">fitsnap3lib/io/sections/calculator_sections</span></code>.
+Take inspiration from the given <code class="code docutils literal notranslate"><span class="pre">basic_calculator.py</span></code> file.</p></li>
+<li><p>Now add the import for this new calculator in <code class="code docutils literal notranslate"><span class="pre">fitsnap3lib/io/sections/section_factory</span></code>.
+Your new sub class should show up in the <code class="code docutils literal notranslate"><span class="pre">Sections.__subclasses__()</span></code> method.</p></li>
+<li><p>Your new calculator needs a <cite>types</cite> attribute so that <code class="code docutils literal notranslate"><span class="pre">io.sections.eshift</span></code> can assign eshifts
+to types. Add the necessary if statement to <code class="code docutils literal notranslate"><span class="pre">io.sections.eshift</span></code>.</p></li>
+<li><p>Add your calculator keyword name (this looks like <code class="code docutils literal notranslate"><span class="pre">calculator=LAMMPSMYCALCULATOR</span></code>) in
+<code class="code docutils literal notranslate"><span class="pre">calculators.calculator_factory</span></code>, in the import section at the top.</p></li>
+<li><p>Obviously, now we also need a LammpsMycalculator subclass of the calculator class. Add this in
+<code class="code docutils literal notranslate"><span class="pre">calculators.lammps_mycalculator</span></code></p></li>
+<li><p>Edit the <code class="code docutils literal notranslate"><span class="pre">create_a</span></code> function in <code class="code docutils literal notranslate"><span class="pre">calculator.py</span></code> to allocate data necessary for your
+calculator. Currently the <code class="code docutils literal notranslate"><span class="pre">a</span></code> array is for per-atom quantities in all configs, the <code class="code docutils literal notranslate"><span class="pre">b</span></code>
+array is for per-config quantities like energy, the <cite>c</cite> matrix is for per-atom 3-vectors like
+position and velocity. Other arrays like <code class="code docutils literal notranslate"><span class="pre">dgrad</span></code> can be natoms*neighbors.</p></li>
+</ul>
+</section>
+<section id="adding-your-own-model-solver">
+<h2><span class="section-number">2.5. </span>Adding your own Model/Solver<a class="headerlink" href="#adding-your-own-model-solver" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Add a new file like <code class="code docutils literal notranslate"><span class="pre">mysolver.py</span></code> in <code class="code docutils literal notranslate"><span class="pre">fitsnap3lib/io/sections/solver_sections</span></code>.</p></li>
+<li><p>Add <code class="code docutils literal notranslate"><span class="pre">from</span> <span class="pre">fitsnap3lib.io.sections.solver_sections.mysolver</span> <span class="pre">import</span> <span class="pre">MYSOLVER</span></code> to header of
+<code class="code docutils literal notranslate"><span class="pre">section_factory</span></code>.</p></li>
+<li><p>Import your new solver at the header of <code class="code docutils literal notranslate"><span class="pre">fitsnap3lib.solvers.solver_factory</span></code></p></li>
+<li><p>You will need to declare <code class="code docutils literal notranslate"><span class="pre">solver</span> <span class="pre">=</span> <span class="pre">MYSOLVER</span></code> in the <code class="code docutils literal notranslate"><span class="pre">[SOLVER]</span></code> section of the input
+script, similar to adding a new Calculator.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Contributing.html" class="btn btn-neutral float-left" title="1. Contributing" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Lib/index.html" class="btn btn-neutral float-right" title="3. Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022-2025, Sandia Corporation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(false);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6. ReaxFF Models &mdash; FitSNAP  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/lammps.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9bcbadda"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="1. Contributing" href="Contributing.html" />
+    <link rel="prev" title="5. PyTorch Models" href="Pytorch.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html">
+            
+              <img src="_static/FitSNAP.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">1. Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#overview-of-fitsnap">1.1. Overview of FitSNAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Introduction.html#fitsnap-components">1.2. FitSNAP Components</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">2. Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#lammps-installation">2.1. LAMMPS Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Installation.html#mpi-for-lammps-and-fitsnap">2.1.1. MPI for LAMMPS and FitSNAP</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Installation.html#python-dependencies">2.1.2. Python dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Installation.html#lammps-for-fitsnap">2.1.3. LAMMPS for FitSNAP</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#fitsnap-installation">2.2. FitSNAP Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Installation.html#install-fitsnap-with-latest-lammps">2.2.1. Install FitSNAP with latest LAMMPS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Installation.html#minimal-conda-install">2.2.2. Minimal conda install</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Run/index.html">3. Run FitSNAP</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_options.html">3.1. Command-line options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_input.html">3.2. Input files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#bispectrum">3.2.1. [BISPECTRUM]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#ace">3.2.2. [ACE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#calculator">3.2.3. [CALCULATOR]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#eshift">3.2.4. [ESHIFT]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#solver">3.2.5. [SOLVER]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#scraper">3.2.6. [SCRAPER]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#path">3.2.7. [PATH]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#outfile">3.2.8. [OUTFILE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#reference">3.2.9. [REFERENCE]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#groups">3.2.10. [GROUPS]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#extras">3.2.11. [EXTRAS]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Run/Run_input.html#memory">3.2.12. [MEMORY]</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_outputs.html">3.3. FitSNAP Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Run/Run_library.html">3.4. Running as library</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Linear.html">4. Linear Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Linear.html#outputs">4.1. Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Linear.html#uncertainty-quantification-uq">4.2. Uncertainty Quantification (UQ)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Linear.html#in-development-uq-solvers">4.3. In development UQ solvers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#opt">4.3.1. OPT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#mcmc">4.3.2. MCMC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#merr">4.3.3. MERR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Linear.html#bcs">4.3.4. BCS</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Pytorch.html">5. PyTorch Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#fitting-neural-network-potentials">5.1. Fitting Neural Network Potentials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#loss-function">5.2. Loss Function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#outputs-and-error-calculation">5.3. Outputs and Error Calculation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#error-comparison-files">5.3.1. Error/Comparison files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#pytorch-model-files">5.3.2. PyTorch model files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#calculate-errors-on-a-test-set">5.3.3. Calculate errors on a test set</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Pytorch.html#training-performance">5.4. Training Performance</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Pytorch.html#gpu-acceleration">5.4.1. GPU Acceleration</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">6. ReaxFF Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">6.1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reaxff-potential">6.2. ReaxFF Potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reaxff-lammps-commands">6.3. ReaxFF LAMMPS commands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fitting-reaxff-parameters">6.4. Fitting ReaxFF parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#available-force-fields">6.5. Available Force Fields</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#combustion-branch">6.5.1. Combustion Branch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#independent-branch">6.5.2. Independent Branch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#water-branch">6.5.3. Water Branch</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#reaxff-bibliography">6.6. ReaxFF Bibliography</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Programmer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Contributing.html">1. Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Contributing.html#style-guide">1.1. Style Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Contributing.html#documenting">1.2. Documenting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Executable.html">2. Executable</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Executable.html#data-configuration-extraction">2.1. Data &amp; configuration extraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Executable.html#modifying-the-output-dataframe">2.2. Modifying the output dataframe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Executable.html#adding-new-input-file-keywords">2.3. Adding new input file keywords</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Executable.html#adding-your-own-calculator">2.4. Adding your own Calculator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Executable.html#adding-your-own-model-solver">2.5. Adding your own Model/Solver</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Lib/index.html">3. Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_fitsnap.html">3.1. FitSnap</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap"><code class="docutils literal notranslate"><span class="pre">FitSnap</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.pt"><code class="docutils literal notranslate"><span class="pre">FitSnap.pt</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.config"><code class="docutils literal notranslate"><span class="pre">FitSnap.config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.scraper"><code class="docutils literal notranslate"><span class="pre">FitSnap.scraper</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.data"><code class="docutils literal notranslate"><span class="pre">FitSnap.data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.calculator"><code class="docutils literal notranslate"><span class="pre">FitSnap.calculator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.solver"><code class="docutils literal notranslate"><span class="pre">FitSnap.solver</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.perform_fit"><code class="docutils literal notranslate"><span class="pre">FitSnap.perform_fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.process_configs"><code class="docutils literal notranslate"><span class="pre">FitSnap.process_configs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.fitsnap.FitSnap.scrape_configs"><code class="docutils literal notranslate"><span class="pre">FitSnap.scrape_configs()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_fitsnap.html#parallel-tools">3.1.1. Parallel Tools</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.DistributedList"><code class="docutils literal notranslate"><span class="pre">DistributedList</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.GracefulError"><code class="docutils literal notranslate"><span class="pre">GracefulError</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.ParallelTools"><code class="docutils literal notranslate"><span class="pre">ParallelTools</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.SharedArray"><code class="docutils literal notranslate"><span class="pre">SharedArray</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.parallel_tools.StubsArray"><code class="docutils literal notranslate"><span class="pre">StubsArray</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_fitsnap.html#config">3.1.2. Config</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_fitsnap.html#fitsnap3lib.io.input.Config"><code class="docutils literal notranslate"><span class="pre">Config</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_scraper.html">3.2. Scraper</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_scraper.html#fitsnap3lib.scrapers.scrape.random"><code class="docutils literal notranslate"><span class="pre">random()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_calculator.html">3.3. Calculator</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator"><code class="docutils literal notranslate"><span class="pre">Calculator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.allocate_per_config"><code class="docutils literal notranslate"><span class="pre">Calculator.allocate_per_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.collect_distributed_lists"><code class="docutils literal notranslate"><span class="pre">Calculator.collect_distributed_lists()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.create_a"><code class="docutils literal notranslate"><span class="pre">Calculator.create_a()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.calculator.Calculator.create_dicts"><code class="docutils literal notranslate"><span class="pre">Calculator.create_dicts()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_calculator.html#module-fitsnap3lib.calculators.lammps_base">3.3.1. LammpsBase</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_calculator.html#fitsnap3lib.calculators.lammps_base.LammpsBase"><code class="docutils literal notranslate"><span class="pre">LammpsBase</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_solver.html">3.4. Solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver"><code class="docutils literal notranslate"><span class="pre">Solver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.fit"><code class="docutils literal notranslate"><span class="pre">Solver.fit</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.error_analysis"><code class="docutils literal notranslate"><span class="pre">Solver.error_analysis()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.perform_fit"><code class="docutils literal notranslate"><span class="pre">Solver.perform_fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.solver.Solver.prepare_data"><code class="docutils literal notranslate"><span class="pre">Solver.prepare_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#svd">3.4.1. SVD</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.svd.SVD"><code class="docutils literal notranslate"><span class="pre">SVD</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#ridge">3.4.2. RIDGE</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.ridge.RIDGE"><code class="docutils literal notranslate"><span class="pre">RIDGE</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_solver.html#pytorch">3.4.3. PYTORCH</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="Lib/Lib_solver.html#fitsnap3lib.solvers.pytorch.PYTORCH"><code class="docutils literal notranslate"><span class="pre">PYTORCH</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_lib.html">3.5. lib/</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_lib.html#atom-centered-networks">3.5.1. Atom-centered Networks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Lib/Lib_lib.html#pairwise-networks">3.5.2. Pairwise Networks</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Lib/Lib_tools.html">3.6. tools/</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Tests.html">4. Tests</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FitSNAP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active"><span class="section-number">6. </span>ReaxFF Models</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/ReaxFF.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul><div class="rst-breadcrumbs-buttons" role="navigation" aria-label="Sequential page navigation">
+        <a href="Pytorch.html" class="btn btn-neutral float-left" title="5. PyTorch Models" accesskey="p"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Contributing.html" class="btn btn-neutral float-right" title="1. Contributing" accesskey="n">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+  </div>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="reaxff-models">
+<h1><span class="section-number">6. </span>ReaxFF Models<a class="headerlink" href="#reaxff-models" title="Link to this heading">¶</a></h1>
+<section id="introduction">
+<h2><span class="section-number">6.1. </span>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h2>
+<p>The <a class="reference external" href="https://doi.org/10.1038/npjcompumats.2015.11">Reactive Force Field (ReaxFF)</a> replaces fixed bond topologies of classical force fields with the concept of bond order to simulate bond breaking/formation of chemical reactions. Originally conceived for hydrocarbons in the gas phase <a class="footnote-reference brackets" href="#footcite-vanduin2001" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>, ReaxFF has been extended to a wide range of applications <a class="footnote-reference brackets" href="#footcite-senftle2016" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>. ReaxFF in LAMMPS <a class="footnote-reference brackets" href="#footcite-aktulga2012" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a> supports both the QEq charge equilibration <a class="footnote-reference brackets" href="#footcite-rappe1991" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a><a class="footnote-reference brackets" href="#footcite-nakano1997" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a> and atom-condensed Kohn-Sham DFT to second order (ACKS2) <a class="footnote-reference brackets" href="#footcite-verstraelen2013" id="id6" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a><a class="footnote-reference brackets" href="#footcite-ohearn2020" id="id7" role="doc-noteref"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></a> methods to represent the dynamics of electron density while fixed partial charges in classical force fields (eg. CHARMM) do not.</p>
+<div class="video_wrapper align-center" style="padding-bottom: 34.875000%; padding-top: 30px; position: relative; text-align: center; width: 62%">
+<iframe allowfullscreen="true" src="https://www.youtube.com/embed/bmOQ74kkd6A" style="border: 0; height: 100%; left: 0; position: absolute; top: 0; width: 100%">
+</iframe></div></section>
+<hr class="docutils" />
+<section id="reaxff-potential">
+<h2><span class="section-number">6.2. </span>ReaxFF Potential<a class="headerlink" href="#reaxff-potential" title="Link to this heading">¶</a></h2>
+<p>The ReaxFF overall system energy is expressed as the sum:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}E_{system} &amp; = E_{bond} + E_{lp} + E_{over} + E_{under} + E_{val} + E_{pen} + E_{coa} + E_{C2}\\[.6em]
+&amp; \qquad + E_{triple} + E_{tors} + E_{conj} + E_{H-bond} + E_{vdWaals} + E_{Coulomb}\end{split}\]</div>
+<p>Details for each term:</p>
+<ul class="simple">
+<li><p>Bond Order and Bond Energy</p></li>
+<li><p>Lone pair energy</p></li>
+<li><p>Overcoordination</p></li>
+<li><p>Undercoordination</p></li>
+<li><p>Valence Angle Terms (Angle energy, Penalty energy, Three-body conjugation term)</p></li>
+<li><p>Torsion angle terms (Torsion rotation barriers, Four body conjugation term)</p></li>
+<li><p>Hydrogen bond interactions</p></li>
+<li><p>Correction for C2</p></li>
+<li><p>Triple bond energy correction</p></li>
+<li><p>Nonbonded interactions (Taper correction, van der Waals interactions, Coulomb Interactions)</p></li>
+</ul>
+<p>are presented in the <a class="reference external" href="https://doi.org/10.1021/jp709896w">Supporting Information</a> of <em>A ReaxFF Reactive Force Field for Molecular Dynamics Simulations of Hydrocarbon Oxidation</em> by Chenoweth, van Duin, Goddard (2008).</p>
+</section>
+<hr class="docutils" />
+<section id="reaxff-lammps-commands">
+<h2><span class="section-number">6.3. </span>ReaxFF LAMMPS commands<a class="headerlink" href="#reaxff-lammps-commands" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><span class="xref std std-doc">pair_style</span> reaxff (/kk)</p></li>
+<li><p><span class="xref std std-doc">fix</span> qeq/reaxff (/kk)</p></li>
+<li><p><span class="xref std std-doc">fix</span> acks2/reaxff (/kk)</p></li>
+<li><p><span class="xref std std-doc">fix</span> qtpie/reaxff (/kk)</p></li>
+<li><p><span class="xref std std-doc">pair_style</span> reaxff/bonds (/kk)</p></li>
+<li><p><span class="xref std std-doc">pair_style</span> reaxff/species (/kk)</p></li>
+<li><p><span class="xref std std-doc">compute</span> reaxff/atom (/kk)</p></li>
+</ul>
+</section>
+<section id="fitting-reaxff-parameters">
+<h2><span class="section-number">6.4. </span>Fitting ReaxFF parameters<a class="headerlink" href="#fitting-reaxff-parameters" title="Link to this heading">¶</a></h2>
+<p>The Covariance Matrix Adaptation Evolution Strategy (CMA-ES) is a stochastic derivative-free numerical optimization algorithm. <a class="reference external" href="http://cma-es.github.io/">http://cma-es.github.io/</a></p>
+<p>CMA-ES searches for a minimizer (a solution x in <span class="math notranslate nohighlight">\(R^n\)</span>) of an objective function f (cost function), such that f(x) is minimal.</p>
+<p>Similarly to how we fit linear models, we can input descriptors into nonlinear models. To do this, we can use the same FitSNAP input script that we use for linear models, with some slight changes to the sections. First we must add a <code class="code docutils literal notranslate"><span class="pre">CMAES</span></code> section, which for the diphenyl disulfide example looks like:</p>
+<blockquote>
+<div><p>[CMAES]
+population_size =  36
+sigma = 0.3</p>
+</div></blockquote>
+<p>We must also set <code class="code docutils literal notranslate"><span class="pre">solver</span> <span class="pre">=</span> <span class="pre">CMAES</span></code> in the <code class="code docutils literal notranslate"><span class="pre">SOLVER</span></code> section. Now the input script is ready to fit a ReaxFF parameter set.</p>
+<p>The <code class="code docutils literal notranslate"><span class="pre">CMAES</span></code> section keys are explained in more detail below.</p>
+<ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">population_size</span></code></p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">sigma</span></code></p></li>
+</ul>
+<p>If a parameter set is not available for your intented application, then you can fit a new parameter set with FitSNAP-ReaxFF from DFT training data.</p>
+<table class="docutils align-center" id="id105">
+<caption><span class="caption-text">Parameters that can be optimized</span><a class="headerlink" href="#id105" title="Link to this table">¶</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Block</p></th>
+<th class="head"><p>Parameter</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>ATM</p></td>
+<td><p>r_s</p></td>
+<td><p>Sigma bond covalent radius</p></td>
+</tr>
+<tr class="row-odd"><td><p>ATM</p></td>
+<td><p>r_pi</p></td>
+<td><p>Pi bond covalent radius</p></td>
+</tr>
+<tr class="row-even"><td><p>ATM</p></td>
+<td><p>r_pi2</p></td>
+<td><p>Double pi bond covalent radius</p></td>
+</tr>
+<tr class="row-odd"><td><p>BND</p></td>
+<td><p>p_bo1</p></td>
+<td><p>Sigma bond order</p></td>
+</tr>
+<tr class="row-even"><td><p>BND</p></td>
+<td><p>p_bo2</p></td>
+<td><p>Sigma bond order</p></td>
+</tr>
+<tr class="row-odd"><td><p>BND</p></td>
+<td><p>p_bo3</p></td>
+<td><p>Pi bond order parameter</p></td>
+</tr>
+<tr class="row-even"><td><p>BND</p></td>
+<td><p>p_bo4</p></td>
+<td><p>Pi bond order parameter</p></td>
+</tr>
+<tr class="row-odd"><td><p>BND</p></td>
+<td><p>p_bo5</p></td>
+<td><p>Double pi bond order parameter</p></td>
+</tr>
+<tr class="row-even"><td><p>BND</p></td>
+<td><p>p_bo6</p></td>
+<td><p>Double pi bond order parameter</p></td>
+</tr>
+<tr class="row-odd"><td><p>BND</p></td>
+<td><p>p_be1</p></td>
+<td><p>Bond energy parameter</p></td>
+</tr>
+<tr class="row-even"><td><p>BND</p></td>
+<td><p>p_be2</p></td>
+<td><p>Bond energy parameter</p></td>
+</tr>
+<tr class="row-odd"><td><p>BND</p></td>
+<td><p>De_s</p></td>
+<td><p>Sigma-bond dissociation energy</p></td>
+</tr>
+<tr class="row-even"><td><p>BND</p></td>
+<td><p>De_p</p></td>
+<td><p>Pi-bond dissociation energy</p></td>
+</tr>
+<tr class="row-odd"><td><p>BND</p></td>
+<td><p>De_pp</p></td>
+<td><p>Double pi-bond dissociation energy</p></td>
+</tr>
+<tr class="row-even"><td><p>BND</p></td>
+<td><p>p_ovun1</p></td>
+<td><p>Overcoordination penalty</p></td>
+</tr>
+<tr class="row-odd"><td><p>OFD</p></td>
+<td><p>r_s</p></td>
+<td><p>Sigma bond length</p></td>
+</tr>
+<tr class="row-even"><td><p>OFD</p></td>
+<td><p>r_pi</p></td>
+<td><p>Pi bond length</p></td>
+</tr>
+<tr class="row-odd"><td><p>OFD</p></td>
+<td><p>r_pi2</p></td>
+<td><p>PiPi bond length</p></td>
+</tr>
+<tr class="row-even"><td><p>ANG</p></td>
+<td><p>theta_00</p></td>
+<td><p>180o-(equilibrium angle)</p></td>
+</tr>
+<tr class="row-odd"><td><p>ANG</p></td>
+<td><p>p_val1</p></td>
+<td><p>Valence angle parameter</p></td>
+</tr>
+<tr class="row-even"><td><p>ANG</p></td>
+<td><p>p_val2</p></td>
+<td><p>Valence angle parameter</p></td>
+</tr>
+<tr class="row-odd"><td><p>TOR</p></td>
+<td><p>V1</p></td>
+<td><p>V1-torsion barrier</p></td>
+</tr>
+<tr class="row-even"><td><p>TOR</p></td>
+<td><p>V2</p></td>
+<td><p>V2-torsion barrier</p></td>
+</tr>
+<tr class="row-odd"><td><p>TOR</p></td>
+<td><p>V3</p></td>
+<td><p>V3-torsion barrier</p></td>
+</tr>
+<tr class="row-even"><td><p>TOR</p></td>
+<td><p>p_tor1</p></td>
+<td><p>Torsion angle parameter</p></td>
+</tr>
+<tr class="row-odd"><td><p>HBD</p></td>
+<td><p>r0_hb</p></td>
+<td><p>Hydrogen bond equilibrium distance</p></td>
+</tr>
+<tr class="row-even"><td><p>HBD</p></td>
+<td><p>p_hb1</p></td>
+<td><p>Hydrogen bond energy</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="available-force-fields">
+<h2><span class="section-number">6.5. </span>Available Force Fields<a class="headerlink" href="#available-force-fields" title="Link to this heading">¶</a></h2>
+<table class="docutils align-center" id="id106">
+<caption><span class="caption-text">Historical serial Fortran 77 force fields (no longer compatible and not available)</span><a class="headerlink" href="#id106" title="Link to this table">¶</a></caption>
+<colgroup>
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Branch</p></th>
+<th class="head"><p>Atoms</p></th>
+<th class="head"><p>Filename</p></th>
+<th class="head"><p>Source</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C / H</p></td>
+<td><p><em>n/a</em></p></td>
+<td><p>van Duin <em>et al.</em><a class="footnote-reference brackets" href="#footcite-vanduin2001" id="id8" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a></p></td>
+</tr>
+</tbody>
+</table>
+<section id="combustion-branch">
+<h3><span class="section-number">6.5.1. </span>Combustion Branch<a class="headerlink" href="#combustion-branch" title="Link to this heading">¶</a></h3>
+<table class="docutils align-center" id="id107">
+<caption><span class="caption-text">Available COMBUSTION force fields in LAMMPS</span><a class="headerlink" href="#id107" title="Link to this table">¶</a></caption>
+<colgroup>
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Branch</p></th>
+<th class="head"><p>Atoms</p></th>
+<th class="head"><p>Filename (LAMMPS)</p></th>
+<th class="head"><p><a class="reference external" href="https://www.scm.com/doc/ReaxFF/Included_Forcefields.html">Filename (SCM)</a></p></th>
+<th class="head"><p>Source</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>Au/S/C/H</p></td>
+<td><p>reaxff-jarvi2011.ff</p></td>
+<td><p>AuSCH_2011.ff</p></td>
+<td><p>Järvi <em>et al.</em><a class="footnote-reference brackets" href="#footcite-jarvi2011" id="id9" role="doc-noteref"><span class="fn-bracket">[</span>8<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>C</p></td>
+<td><p>reaxff-srinivasan2015.ff</p></td>
+<td><p>C.ff</p></td>
+<td><p>Srinivasan <em>et al.</em><a class="footnote-reference brackets" href="#footcite-srinivasan2015" id="id10" role="doc-noteref"><span class="fn-bracket">[</span>9<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C/H</p></td>
+<td><p>reaxff-mao2017.ff</p></td>
+<td><p>CH_aromatics.ff</p></td>
+<td><p>Mao <em>et al.</em><a class="footnote-reference brackets" href="#footcite-mao2017" id="id11" role="doc-noteref"><span class="fn-bracket">[</span>10<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>C/H/B/N</p></td>
+<td><p>reaxff-pai2016.ff</p></td>
+<td><p>CBN.ff</p></td>
+<td><p>Pai <em>et al.</em><a class="footnote-reference brackets" href="#footcite-pai2016" id="id12" role="doc-noteref"><span class="fn-bracket">[</span>11<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C/H/Na</p></td>
+<td><p>reaxff-hjertenaes2016.ff</p></td>
+<td><p>CHNa.ff</p></td>
+<td><p>Hjertenæs <em>et al.</em><a class="footnote-reference brackets" href="#footcite-hjertenaes2016" id="id13" role="doc-noteref"><span class="fn-bracket">[</span>12<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>C/H/O</p></td>
+<td><p>reaxff-ashraf2017.ff</p></td>
+<td><p>CHO-2016.ff</p></td>
+<td><p>Ashraf and Van Duin<a class="footnote-reference brackets" href="#footcite-ashraf2017" id="id14" role="doc-noteref"><span class="fn-bracket">[</span>13<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C/H/O</p></td>
+<td><p>reaxff-chenoweth2008a.ff</p></td>
+<td><p>CHO.ff</p></td>
+<td><p>Chenoweth <em>et al.</em><a class="footnote-reference brackets" href="#footcite-chenoweth2008a" id="id15" role="doc-noteref"><span class="fn-bracket">[</span>14<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>C/H/O/Ba/Zr/Y</p></td>
+<td><p>reaxff-vanduin2008.ff</p></td>
+<td><p>BaYZrCHO.ff</p></td>
+<td><p>Van Duin <em>et al.</em><a class="footnote-reference brackets" href="#footcite-vanduin2008" id="id16" role="doc-noteref"><span class="fn-bracket">[</span>15<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C/H/O/N</p></td>
+<td><p>reaxff-strachan2003.ff</p></td>
+<td><p><em>n/a</em></p></td>
+<td><p>Strachan <em>et al.</em><a class="footnote-reference brackets" href="#footcite-strachan2003" id="id17" role="doc-noteref"><span class="fn-bracket">[</span>16<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>FIXME</p></td>
+<td><p>C/H/O/N</p></td>
+<td><p>reaxff-budzien2009.ff</p></td>
+<td><p><em>n/a</em></p></td>
+<td><p>Budzien <em>et al.</em><a class="footnote-reference brackets" href="#footcite-budzien2009" id="id18" role="doc-noteref"><span class="fn-bracket">[</span>17<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>FIXME</p></td>
+<td><p>C/H/O/N/S</p></td>
+<td><p>reaxff-mattsson2010.ff</p></td>
+<td><p><em>n/a</em></p></td>
+<td><p>Mattsson <em>et al.</em><a class="footnote-reference brackets" href="#footcite-mattsson2010" id="id19" role="doc-noteref"><span class="fn-bracket">[</span>18<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>FIXME</p></td>
+<td><p>C/H/O/N/S/F/Pt/Cl/Ni/X</p></td>
+<td><p>reaxff-singh2013.ff</p></td>
+<td><p><em>n/a</em></p></td>
+<td><p>Singh <em>et al.</em><a class="footnote-reference brackets" href="#footcite-singh2013" id="id20" role="doc-noteref"><span class="fn-bracket">[</span>19<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C/H/O/N/S/Si</p></td>
+<td><p>reaxff-liu2011.ff</p></td>
+<td><p>dispersion/CHONSSi-lg.ff</p></td>
+<td><p>Liu <em>et al.</em><a class="footnote-reference brackets" href="#footcite-liu2011" id="id21" role="doc-noteref"><span class="fn-bracket">[</span>20<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>C/H/O/N/S/Si</p></td>
+<td><p>reaxff-zhang2009.ff</p></td>
+<td><p>HE2.ff</p></td>
+<td><p>Zhang <em>et al.</em><a class="footnote-reference brackets" href="#footcite-zhang2009" id="id22" role="doc-noteref"><span class="fn-bracket">[</span>21<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C/H/O/N/S/Si/Ge</p></td>
+<td><p>reaxff-psofogiannakis2016.ff</p></td>
+<td><p>CHONSSiGe.ff</p></td>
+<td><p>Psofogiannakis and Van Duin<a class="footnote-reference brackets" href="#footcite-psofogiannakis2016" id="id23" role="doc-noteref"><span class="fn-bracket">[</span>22<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>C/H/O/N/S/Si/Na/P</p></td>
+<td><p>reaxff-zhang2014.ff</p></td>
+<td><p>CHONSSiNaP.ff</p></td>
+<td><p>Zhang <em>et al.</em><a class="footnote-reference brackets" href="#footcite-zhang2014" id="id24" role="doc-noteref"><span class="fn-bracket">[</span>23<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C/H/O/N/S/Si/Pt/Zr/Ni/Cu/Co</p></td>
+<td><p>reaxff-nielson2005.ff</p></td>
+<td><p>CHONSSiPtZrNiCuCo.ff</p></td>
+<td><p>Nielson <em>et al.</em><a class="footnote-reference brackets" href="#footcite-nielson2005" id="id25" role="doc-noteref"><span class="fn-bracket">[</span>24<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>C/H/O/N/S/Si/Pt/Ni/Cu/Co/Zr/Y/Ba</p></td>
+<td><p>reaxff-merinov2014.ff</p></td>
+<td><p>CHONSSiPtNiCuCoZrYBa.ff</p></td>
+<td><p>Merinov <em>et al.</em><a class="footnote-reference brackets" href="#footcite-merinov2014" id="id26" role="doc-noteref"><span class="fn-bracket">[</span>25<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><div class="line-block">
+<div class="line">C/H/O/N/S/Si/Pt/Zr/Ni/</div>
+<div class="line">Cu/Co/He/Ne/Ar/Kr/Xe</div>
+</div>
+</td>
+<td><p>reaxff-kamat2010.ff</p></td>
+<td><p>CHONSSiPtZrNiCuCoHeNeArKrXe.ff</p></td>
+<td><p>Kamat <em>et al.</em><a class="footnote-reference brackets" href="#footcite-kamat2010" id="id27" role="doc-noteref"><span class="fn-bracket">[</span>26<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>C/H/O/N/Si/S</p></td>
+<td><p>reaxff-kulkarni2013.ff</p></td>
+<td><p>SiONH.ff</p></td>
+<td><p>Kulkarni <em>et al.</em><a class="footnote-reference brackets" href="#footcite-kulkarni2013" id="id28" role="doc-noteref"><span class="fn-bracket">[</span>27<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C/H/O/S</p></td>
+<td><p>reaxff-mueller2016.ff</p></td>
+<td><p>Mue2016.ff</p></td>
+<td><p>Müller and Hartke<a class="footnote-reference brackets" href="#footcite-mueller2016" id="id29" role="doc-noteref"><span class="fn-bracket">[</span>28<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>C/H/O/S</p></td>
+<td><p>reaxff-komissarov2021.ff</p></td>
+<td><p><em>n/a</em></p></td>
+<td><p>Komissarov <em>et al.</em><a class="footnote-reference brackets" href="#footcite-komissarov2021" id="id30" role="doc-noteref"><span class="fn-bracket">[</span>29<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C/H/O/S/F/Cl/N</p></td>
+<td><p>reaxff-wood2014.ff</p></td>
+<td><p>CHOSFClN.ff</p></td>
+<td><p>Wood <em>et al.</em><a class="footnote-reference brackets" href="#footcite-wood2014" id="id31" role="doc-noteref"><span class="fn-bracket">[</span>30<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>C/H/Pt</p></td>
+<td><p>reaxff-sanz2008.ff</p></td>
+<td><p>PtCH.ff</p></td>
+<td><p>Sanz-Navarro <em>et al.</em><a class="footnote-reference brackets" href="#footcite-sanz2008" id="id32" role="doc-noteref"><span class="fn-bracket">[</span>31<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>C/H/O/Si</p></td>
+<td><p>reaxff-chenoweth2005.ff</p></td>
+<td><p>PDMSDecomp.ff</p></td>
+<td><p>Chenoweth <em>et al.</em><a class="footnote-reference brackets" href="#footcite-chenoweth2005" id="id33" role="doc-noteref"><span class="fn-bracket">[</span>32<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>FIXME</p></td>
+<td><p>H/O/Au</p></td>
+<td><p>reaxff-joshi2010.ff</p></td>
+<td><p><em>n/a</em></p></td>
+<td><p>Joshi <em>et al.</em><a class="footnote-reference brackets" href="#footcite-joshi2010" id="id34" role="doc-noteref"><span class="fn-bracket">[</span>33<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>Co</p></td>
+<td><p>reaxff-zhang2014b.ff</p></td>
+<td><p>Co.ff</p></td>
+<td><p>Zhang <em>et al.</em><a class="footnote-reference brackets" href="#footcite-zhang2014b" id="id35" role="doc-noteref"><span class="fn-bracket">[</span>34<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>H/O/N/B</p></td>
+<td><p>reaxff-weismiller2010.ff</p></td>
+<td><p>Ab.ff</p></td>
+<td><p>Weismiller <em>et al.</em><a class="footnote-reference brackets" href="#footcite-weismiller2010" id="id36" role="doc-noteref"><span class="fn-bracket">[</span>35<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>Li/S</p></td>
+<td><p>reaxff-islam2015.ff</p></td>
+<td><p>LiS.ff</p></td>
+<td><p>Islam <em>et al.</em><a class="footnote-reference brackets" href="#footcite-islam2015" id="id37" role="doc-noteref"><span class="fn-bracket">[</span>36<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>Ni/C/H</p></td>
+<td><p>reaxff-mueller2010.ff</p></td>
+<td><p>NiCH.ff</p></td>
+<td><p>Mueller <em>et al.</em><a class="footnote-reference brackets" href="#footcite-mueller2010" id="id38" role="doc-noteref"><span class="fn-bracket">[</span>37<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>O/Pt</p></td>
+<td><p>reaxff-fantauzzi2014.ff</p></td>
+<td><p>OPt.ff</p></td>
+<td><p>Fantauzzi <em>et al.</em><a class="footnote-reference brackets" href="#footcite-fantauzzi2014" id="id39" role="doc-noteref"><span class="fn-bracket">[</span>38<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>Pd/H</p></td>
+<td><p>reaxff-senftle2014.ff</p></td>
+<td><p>PdH.ff</p></td>
+<td><p>Senftle <em>et al.</em><a class="footnote-reference brackets" href="#footcite-senftle2014" id="id40" role="doc-noteref"><span class="fn-bracket">[</span>39<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>combustion</p></td>
+<td><p>Si/C/O/H/N/S</p></td>
+<td><p>reaxff-newsome2012.ff</p></td>
+<td><p>SiC.ff</p></td>
+<td><p>Newsome <em>et al.</em><a class="footnote-reference brackets" href="#footcite-newsome2012" id="id41" role="doc-noteref"><span class="fn-bracket">[</span>40<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>combustion</p></td>
+<td><p>V/O/C/H</p></td>
+<td><p>reaxff-chenoweth2008b.ff</p></td>
+<td><p>VOCH.ff</p></td>
+<td><p>Chenoweth <em>et al.</em><a class="footnote-reference brackets" href="#footcite-chenoweth2008b" id="id42" role="doc-noteref"><span class="fn-bracket">[</span>41<span class="fn-bracket">]</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="independent-branch">
+<h3><span class="section-number">6.5.2. </span>Independent Branch<a class="headerlink" href="#independent-branch" title="Link to this heading">¶</a></h3>
+<table class="docutils align-center" id="id108">
+<caption><span class="caption-text">Available INDEPENDENT force fields in LAMMPS</span><a class="headerlink" href="#id108" title="Link to this table">¶</a></caption>
+<colgroup>
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Branch</p></th>
+<th class="head"><p>Atoms</p></th>
+<th class="head"><p>Filename (LAMMPS)</p></th>
+<th class="head"><p><a class="reference external" href="https://www.scm.com/doc/ReaxFF/Included_Forcefields.html">Filename (SCM)</a></p></th>
+<th class="head"><p>Source</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>C/H/Ar/He/Ne/Kr</p></td>
+<td><p>reaxff-yoon2016.ff</p></td>
+<td><p>CHArHeNeKr.ff</p></td>
+<td><p>Yoon <em>et al.</em><a class="footnote-reference brackets" href="#footcite-yoon2016" id="id44" role="doc-noteref"><span class="fn-bracket">[</span>42<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>C/H/Fe</p></td>
+<td><p>reaxff-islam2016.ff</p></td>
+<td><p>CHFe.ff</p></td>
+<td><p>Islam <em>et al.</em><a class="footnote-reference brackets" href="#footcite-islam2016" id="id45" role="doc-noteref"><span class="fn-bracket">[</span>43<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><div class="line-block">
+<div class="line">C/H/Ga</div>
+<div class="line">C/H/In</div>
+</div>
+</td>
+<td><div class="line-block">
+<div class="line">reaxff-rajabpour2021a.ff</div>
+<div class="line">reaxff-rajabpour2021b.ff</div>
+</div>
+</td>
+<td><div class="line-block">
+<div class="line">GaCH-2020.ff</div>
+<div class="line">InCH-2020.ff</div>
+</div>
+</td>
+<td><p>Rajabpour <em>et al.</em><a class="footnote-reference brackets" href="#footcite-rajabpour2021" id="id46" role="doc-noteref"><span class="fn-bracket">[</span>44<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>C/H/O/Ge</p></td>
+<td><p>reaxff-nayir2018.ff</p></td>
+<td><p>CHOGe.ff</p></td>
+<td><p>Nayir <em>et al.</em><a class="footnote-reference brackets" href="#footcite-nayir2018" id="id47" role="doc-noteref"><span class="fn-bracket">[</span>45<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>C/H/O/Li/Al/Ti/P</p></td>
+<td><p>reaxff-shin2018.ff</p></td>
+<td><p>CHOLiAlTiP.ff</p></td>
+<td><p>Shin <em>et al.</em><a class="footnote-reference brackets" href="#footcite-shin2018" id="id48" role="doc-noteref"><span class="fn-bracket">[</span>46<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>C/H/O/N/B/Al/Si/Cl</p></td>
+<td><p>reaxff-uene2024.ff</p></td>
+<td><p>CHONBAlSiCl.ff</p></td>
+<td><p>Uene <em>et al.</em><a class="footnote-reference brackets" href="#footcite-uene2024" id="id49" role="doc-noteref"><span class="fn-bracket">[</span>47<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>C/H/O/N/S/Mg/P/Na/Cu/Cl/Ti/X</p></td>
+<td><p>reaxff-hou2022.ff</p></td>
+<td><p>CHONSMgPNaCuClTi.ff</p></td>
+<td><p>Hou <em>et al.</em><a class="footnote-reference brackets" href="#footcite-hou2022" id="id50" role="doc-noteref"><span class="fn-bracket">[</span>48<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>C/H/O/N/S/Si</p></td>
+<td><p>reaxff-soria2018.ff</p></td>
+<td><p>CHONSSi.ff</p></td>
+<td><p>Soria <em>et al.</em><a class="footnote-reference brackets" href="#footcite-soria2018" id="id51" role="doc-noteref"><span class="fn-bracket">[</span>49<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>C/H/O/N/S/Si/Ge/Ga/Ag</p></td>
+<td><p>reaxff-niefind2024.ff</p></td>
+<td><p>CHONSSiGeGaAg.ff</p></td>
+<td><p>Niefind <em>et al.</em><a class="footnote-reference brackets" href="#footcite-niefind2024" id="id52" role="doc-noteref"><span class="fn-bracket">[</span>50<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>C/H/O/N/S/Zr</p></td>
+<td><p>reaxff-dwivedi2020.ff</p></td>
+<td><p>CHONSZr.ff</p></td>
+<td><p>Dwivedi <em>et al.</em><a class="footnote-reference brackets" href="#footcite-dwivedi2020" id="id53" role="doc-noteref"><span class="fn-bracket">[</span>51<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>C/H/O/N/Si</p></td>
+<td><p>reaxff-wang2020.ff</p></td>
+<td><p>CHONSi.ff</p></td>
+<td><p>Wang <em>et al.</em><a class="footnote-reference brackets" href="#footcite-wang2020" id="id54" role="doc-noteref"><span class="fn-bracket">[</span>52<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>C/H/O/S/Cu/Cl/X</p></td>
+<td><p>reaxff-yeon2018.ff</p></td>
+<td><p>CuSCH.ff</p></td>
+<td><p>Yeon <em>et al.</em><a class="footnote-reference brackets" href="#footcite-yeon2018" id="id55" role="doc-noteref"><span class="fn-bracket">[</span>53<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>C/H/O/S/Mo/Ni/Au/Ti</p></td>
+<td><p>reaxff-mao2022.ff</p></td>
+<td><p>CHOSMoNiAuTi.ff</p></td>
+<td><p>Mao <em>et al.</em><a class="footnote-reference brackets" href="#footcite-mao2022" id="id56" role="doc-noteref"><span class="fn-bracket">[</span>54<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>Cu/Zr</p></td>
+<td><p>reaxff-huang2019.ff</p></td>
+<td><p>CuZr.ff</p></td>
+<td><p>Huang <em>et al.</em><a class="footnote-reference brackets" href="#footcite-huang2019" id="id57" role="doc-noteref"><span class="fn-bracket">[</span>55<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>H/O/N/Si/F</p></td>
+<td><p>reaxff-kim2021.ff</p></td>
+<td><p>HONSiF.ff</p></td>
+<td><p>Kim <em>et al.</em><a class="footnote-reference brackets" href="#footcite-kim2021" id="id58" role="doc-noteref"><span class="fn-bracket">[</span>56<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>H/O/Si/Al/Li</p></td>
+<td><p>reaxff-ostadhossein2016.ff</p></td>
+<td><p>HOSiAlLi.ff</p></td>
+<td><p>Ostadhossein <em>et al.</em><a class="footnote-reference brackets" href="#footcite-ostadhossein2016" id="id59" role="doc-noteref"><span class="fn-bracket">[</span>57<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>H/S/Mo</p></td>
+<td><p>reaxff-ostadhossein2017.ff</p></td>
+<td><p>HSMo.ff</p></td>
+<td><p>Ostadhossein <em>et al.</em><a class="footnote-reference brackets" href="#footcite-ostadhossein2017" id="id60" role="doc-noteref"><span class="fn-bracket">[</span>58<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>I/Br/Pb/Cs</p></td>
+<td><p>reaxff-pols2024.ff</p></td>
+<td><p>IBrPbCs.ff</p></td>
+<td><p>Pols <em>et al.</em><a class="footnote-reference brackets" href="#footcite-pols2024" id="id61" role="doc-noteref"><span class="fn-bracket">[</span>59<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>I/Pb/Cs/X</p></td>
+<td><p>reaxff-pols2021.ff</p></td>
+<td><p>CsPbI.ff</p></td>
+<td><p>Pols <em>et al.</em><a class="footnote-reference brackets" href="#footcite-pols2021" id="id62" role="doc-noteref"><span class="fn-bracket">[</span>60<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>Li/Si/C</p></td>
+<td><p>reaxff-olou2023.ff</p></td>
+<td><p>LiSiC.ff</p></td>
+<td><p>Olou’ou Guifo <em>et al.</em><a class="footnote-reference brackets" href="#footcite-olou2023" id="id63" role="doc-noteref"><span class="fn-bracket">[</span>61<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>Mg/O</p></td>
+<td><p>reaxff-fiesinger2023.ff</p></td>
+<td><p>MgO.ff</p></td>
+<td><p>Fiesinger <em>et al.</em><a class="footnote-reference brackets" href="#footcite-fiesinger2023" id="id64" role="doc-noteref"><span class="fn-bracket">[</span>62<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>Ni/Al</p></td>
+<td><p>reaxff-du2023.ff</p></td>
+<td><p>NiAl.ff</p></td>
+<td><p>Du <em>et al.</em><a class="footnote-reference brackets" href="#footcite-du2023" id="id65" role="doc-noteref"><span class="fn-bracket">[</span>63<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>Ni/Cr</p></td>
+<td><p>reaxff-shin2021.ff</p></td>
+<td><p>NiCr.ff</p></td>
+<td><p>Shin <em>et al.</em><a class="footnote-reference brackets" href="#footcite-shin2021" id="id66" role="doc-noteref"><span class="fn-bracket">[</span>64<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>Ru/H</p></td>
+<td><p>reaxff-onwudinanti2022.ff</p></td>
+<td><p>RuH.ff</p></td>
+<td><p>Onwudinanti <em>et al.</em><a class="footnote-reference brackets" href="#footcite-onwudinanti2022" id="id67" role="doc-noteref"><span class="fn-bracket">[</span>65<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>Ru/N/H</p></td>
+<td><p>reaxff-kim2018.ff</p></td>
+<td><p>RuNH.ff</p></td>
+<td><p>Kim <em>et al.</em><a class="footnote-reference brackets" href="#footcite-kim2018" id="id68" role="doc-noteref"><span class="fn-bracket">[</span>66<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>Si/Al/Mg/O</p></td>
+<td><p>reaxff-yeon2021.ff</p></td>
+<td><p>SiAlMgO.ff</p></td>
+<td><p>Yeon <em>et al.</em><a class="footnote-reference brackets" href="#footcite-yeon2021" id="id69" role="doc-noteref"><span class="fn-bracket">[</span>67<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>Si/O/H</p></td>
+<td><p>reaxff-nayir2019.ff</p></td>
+<td><p>SiOHv2.ff</p></td>
+<td><p>Nayir <em>et al.</em><a class="footnote-reference brackets" href="#footcite-nayir2019" id="id70" role="doc-noteref"><span class="fn-bracket">[</span>68<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>W/S/H/Al/O</p></td>
+<td><p>reaxff-nayir2021.ff</p></td>
+<td><p>WSHAlO.ff</p></td>
+<td><p>Nayir <em>et al.</em><a class="footnote-reference brackets" href="#footcite-nayir2021" id="id71" role="doc-noteref"><span class="fn-bracket">[</span>69<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>independent</p></td>
+<td><p>Zr/Y/O/H</p></td>
+<td><p>reaxff-mayernick2010.ff</p></td>
+<td><p>ZrYOHVac.ff</p></td>
+<td><p>Mayernick <em>et al.</em><a class="footnote-reference brackets" href="#footcite-mayernick2010" id="id72" role="doc-noteref"><span class="fn-bracket">[</span>70<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>independent</p></td>
+<td><p>Zr/Y/O/Ni/H</p></td>
+<td><p>reaxff-liu2019.ff</p></td>
+<td><p>ZrYONiH.ff</p></td>
+<td><p>Liu <em>et al.</em><a class="footnote-reference brackets" href="#footcite-liu2019" id="id73" role="doc-noteref"><span class="fn-bracket">[</span>71<span class="fn-bracket">]</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="water-branch">
+<h3><span class="section-number">6.5.3. </span>Water Branch<a class="headerlink" href="#water-branch" title="Link to this heading">¶</a></h3>
+<table class="docutils align-center" id="id109">
+<caption><span class="caption-text">Available WATER force fields in LAMMPS</span><a class="headerlink" href="#id109" title="Link to this table">¶</a></caption>
+<colgroup>
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 10.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Branch</p></th>
+<th class="head"><p>Atoms</p></th>
+<th class="head"><p>Filename (LAMMPS)</p></th>
+<th class="head"><p><a class="reference external" href="https://www.scm.com/doc/ReaxFF/Included_Forcefields.html">Filename (SCM)</a></p></th>
+<th class="head"><p>Source</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>Al/C/H/O</p></td>
+<td><p>reaxff-hong2016.ff</p></td>
+<td><p>AlCHO.ff</p></td>
+<td><p>Hong and Van Duin<a class="footnote-reference brackets" href="#footcite-hong2016" id="id75" role="doc-noteref"><span class="fn-bracket">[</span>72<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/Al/Ge/X</p></td>
+<td><p>reaxff-zheng2017.ff</p></td>
+<td><p>CHOAlGeX.ff</p></td>
+<td><p>Zheng <em>et al.</em><a class="footnote-reference brackets" href="#footcite-zheng2017" id="id76" role="doc-noteref"><span class="fn-bracket">[</span>73<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/Ca/Si/X</p></td>
+<td><p>reaxff-manzano2012.ff</p></td>
+<td><p>CaSiOH.ff</p></td>
+<td><p>Manzano <em>et al.</em><a class="footnote-reference brackets" href="#footcite-manzano2012" id="id77" role="doc-noteref"><span class="fn-bracket">[</span>74<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/Cs/K/Na/Cl/I/F/Li</p></td>
+<td><p>reaxff-fedkin2019.ff</p></td>
+<td><p>CHOCsKNaClIFLi.ff</p></td>
+<td><p>Fedkin <em>et al.</em><a class="footnote-reference brackets" href="#footcite-fedkin2019" id="id78" role="doc-noteref"><span class="fn-bracket">[</span>75<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/Fe</p></td>
+<td><p>reaxff-aryanpour2010.ff</p></td>
+<td><p>FeOCHCl.ff</p></td>
+<td><p>Aryanpour <em>et al.</em><a class="footnote-reference brackets" href="#footcite-aryanpour2010" id="id79" role="doc-noteref"><span class="fn-bracket">[</span>76<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/Fe/Al/Ni/Cu/S/Cr</p></td>
+<td><p>reaxff-shin2015.ff</p></td>
+<td><p>CHOFeAlNiCuSCr.ff</p></td>
+<td><p>Shin <em>et al.</em><a class="footnote-reference brackets" href="#footcite-shin2015" id="id80" role="doc-noteref"><span class="fn-bracket">[</span>77<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/Fe/Al/Ni/Cu/S/Cr</p></td>
+<td><p>reaxff-tavazza2015.ff</p></td>
+<td><p>CHOFeAlNiCuSCr_v3.ff</p></td>
+<td><p>Tavazza <em>et al.</em><a class="footnote-reference brackets" href="#footcite-tavazza2015" id="id81" role="doc-noteref"><span class="fn-bracket">[</span>78<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/N</p></td>
+<td><p>reaxff-rahaman2011.ff</p></td>
+<td><p>Glycine.ff</p></td>
+<td><p>Rahaman <em>et al.</em><a class="footnote-reference brackets" href="#footcite-rahaman2011" id="id82" role="doc-noteref"><span class="fn-bracket">[</span>79<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/N</p></td>
+<td><p>reaxff-trnka2018.ff</p></td>
+<td><p><em>n/a</em></p></td>
+<td><p>Trnka <em>et al.</em><a class="footnote-reference brackets" href="#footcite-trnka2018" id="id83" role="doc-noteref"><span class="fn-bracket">[</span>80<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/N</p></td>
+<td><p>reaxff-kowalik2019.ff</p></td>
+<td><p>CHON-2019.ff</p></td>
+<td><p>Kowalik <em>et al.</em><a class="footnote-reference brackets" href="#footcite-kowalik2019" id="id84" role="doc-noteref"><span class="fn-bracket">[</span>81<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Fe</p></td>
+<td><p>reaxff-moerman2021.ff</p></td>
+<td><p>CHONSFe.ff</p></td>
+<td><p>Moerman <em>et al.</em><a class="footnote-reference brackets" href="#footcite-moerman2021" id="id85" role="doc-noteref"><span class="fn-bracket">[</span>82<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Mg/P/Na/Cu</p></td>
+<td><p>reaxff-huang2013.ff</p></td>
+<td><p>CuBTC.ff</p></td>
+<td><p>Huang <em>et al.</em><a class="footnote-reference brackets" href="#footcite-huang2013" id="id86" role="doc-noteref"><span class="fn-bracket">[</span>83<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Mg/P/Na/Cu/Cl</p></td>
+<td><p>reaxff-monti2013a.ff</p></td>
+<td><p>CHONSMgPNaCuCl.ff</p></td>
+<td><p>Monti <em>et al.</em><a class="footnote-reference brackets" href="#footcite-monti2013a" id="id87" role="doc-noteref"><span class="fn-bracket">[</span>84<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Mg/P/Na/Cu/Cl</p></td>
+<td><p>reaxff-monti2013b.ff</p></td>
+<td><p>CHONSMgPNaCuCl_v2.ff</p></td>
+<td><p>Monti <em>et al.</em><a class="footnote-reference brackets" href="#footcite-monti2013b" id="id88" role="doc-noteref"><span class="fn-bracket">[</span>85<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Mg/P/Na/Cu/Cl/X</p></td>
+<td><p>reaxff-zhang2018.ff</p></td>
+<td><p>CHON2017_weak.ff</p></td>
+<td><p>Zhang and Van Duin<a class="footnote-reference brackets" href="#footcite-zhang2018" id="id89" role="doc-noteref"><span class="fn-bracket">[</span>86<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Mg/P/Na/Ti/Cl/F</p></td>
+<td><p>reaxff-huygh2014.ff</p></td>
+<td><p>CHONSMgPNaTiClF.ff</p></td>
+<td><p>Huygh <em>et al.</em><a class="footnote-reference brackets" href="#footcite-huygh2014" id="id90" role="doc-noteref"><span class="fn-bracket">[</span>87<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Mg/P/Na/Ti/Cl/F</p></td>
+<td><p>reaxff-kim2013a.ff</p></td>
+<td><p>TiOCHNCl.ff</p></td>
+<td><p>Kim <em>et al.</em><a class="footnote-reference brackets" href="#footcite-kim2013a" id="id91" role="doc-noteref"><span class="fn-bracket">[</span>88<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Mg/P/Na/Ti/Cl/F</p></td>
+<td><p>reaxff-kim2013b.ff</p></td>
+<td><p>TiClOH.ff</p></td>
+<td><p>Kim and van Duin<a class="footnote-reference brackets" href="#footcite-kim2013b" id="id92" role="doc-noteref"><span class="fn-bracket">[</span>89<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Mg/P/Na/Ti/Cl/F/Au</p></td>
+<td><p>reaxff-monti2016.ff</p></td>
+<td><p>CHONSMgPNaTiClFAu.ff</p></td>
+<td><p>Monti <em>et al.</em><a class="footnote-reference brackets" href="#footcite-monti2016" id="id93" role="doc-noteref"><span class="fn-bracket">[</span>90<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Mg/P/Na/Ti/Cl/F/K/Li</p></td>
+<td><p>reaxff-ganeshan2020.ff</p></td>
+<td><p>CHONSMgPNaTiClFKLi.ff</p></td>
+<td><p>Ganeshan <em>et al.</em><a class="footnote-reference brackets" href="#footcite-ganeshan2020" id="id94" role="doc-noteref"><span class="fn-bracket">[</span>91<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/N/Si/Cu/Ag/Zn</p></td>
+<td><p>reaxff-lloyd2016.ff</p></td>
+<td><p>AgZnO.ff</p></td>
+<td><p>Lloyd <em>et al.</em><a class="footnote-reference brackets" href="#footcite-lloyd2016" id="id95" role="doc-noteref"><span class="fn-bracket">[</span>92<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Si/Ca/Cs/K/Sr/Na/Mg/Al/Cu</p></td>
+<td><p>reaxff-psofogiannakis2015.ff</p></td>
+<td><p>CHONSSiCaCsKSrNaMgAlCu.ff</p></td>
+<td><p>Psofogiannakis <em>et al.</em><a class="footnote-reference brackets" href="#footcite-psofogiannakis2015" id="id96" role="doc-noteref"><span class="fn-bracket">[</span>93<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/N/S/Si/Na/Al</p></td>
+<td><p>reaxff-bai2012.ff</p></td>
+<td><p>CHONSSiNaAl.ff</p></td>
+<td><p>Bai <em>et al.</em><a class="footnote-reference brackets" href="#footcite-bai2012" id="id97" role="doc-noteref"><span class="fn-bracket">[</span>94<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/S/Mo/Ni/Li/B/F/P/N</p></td>
+<td><p>reaxff-liu2021.ff</p></td>
+<td><p>CHOSMoNiLiBFPN-2.ff</p></td>
+<td><p>Liu <em>et al.</em><a class="footnote-reference brackets" href="#footcite-liu2021" id="id98" role="doc-noteref"><span class="fn-bracket">[</span>95<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>C/H/O/Si/Na</p></td>
+<td><p>reaxff-hahn2018.ff</p></td>
+<td><p>CHOSiNa.ff</p></td>
+<td><p>Hahn <em>et al.</em><a class="footnote-reference brackets" href="#footcite-hahn2018" id="id99" role="doc-noteref"><span class="fn-bracket">[</span>96<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>C/H/O/Zn</p></td>
+<td><p>reaxff-han2010.ff</p></td>
+<td><p>CHOZn.ff</p></td>
+<td><p>Han <em>et al.</em><a class="footnote-reference brackets" href="#footcite-han2010" id="id100" role="doc-noteref"><span class="fn-bracket">[</span>97<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>H/O/Si/Al/Li</p></td>
+<td><p>reaxff-narayanan2011.ff</p></td>
+<td><p>SiOAlLi.ff</p></td>
+<td><p>Narayanan <em>et al.</em><a class="footnote-reference brackets" href="#footcite-narayanan2011" id="id101" role="doc-noteref"><span class="fn-bracket">[</span>98<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>water</p></td>
+<td><p>H/O/X</p></td>
+<td><p>reaxff-zhang2017.ff</p></td>
+<td><p>Water2017.ff</p></td>
+<td><p>Zhang and Van Duin<a class="footnote-reference brackets" href="#footcite-zhang2017" id="id102" role="doc-noteref"><span class="fn-bracket">[</span>99<span class="fn-bracket">]</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>water</p></td>
+<td><p>Zn/O/H</p></td>
+<td><p>reaxff-raymand2010.ff</p></td>
+<td><p>ZnOH.ff</p></td>
+<td><p>Raymand <em>et al.</em><a class="footnote-reference brackets" href="#footcite-raymand2010" id="id103" role="doc-noteref"><span class="fn-bracket">[</span>100<span class="fn-bracket">]</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="reaxff-bibliography">
+<h2><span class="section-number">6.6. </span>ReaxFF Bibliography<a class="headerlink" href="#reaxff-bibliography" title="Link to this heading">¶</a></h2>
+<blockquote>
+<div><p><a class="reference download internal" download="" href="_downloads/c0be9d069086047a85700b56bfb09d06/reaxff.bib"><code class="xref download docutils literal notranslate"><span class="pre">download</span> <span class="pre">reaxff.bib</span></code></a></p>
+</div></blockquote>
+<div class="docutils container" id="id104">
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="footcite-vanduin2001" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
+<span class="backrefs">(<a role="doc-backlink" href="#id1">1</a>,<a role="doc-backlink" href="#id8">2</a>)</span>
+<p>Adri C. T. van Duin, Siddharth Dasgupta, Francois Lorant, and William A. Goddard. Reaxff: a reactive force field for hydrocarbons. <em>The Journal of Physical Chemistry A</em>, 105(41):9396–9409, 2001. URL: <a class="reference external" href="https://doi.org/10.1021/jp004368u">https://doi.org/10.1021/jp004368u</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-senftle2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>Thomas P Senftle, Sungwook Hong, Md Mahbubul Islam, Sudhir B Kylasa, Yuanxia Zheng, Yun Kyung Shin, Chad Junkermeier, Roman Engel-Herbert, Michael J Janik, Hasan Metin Aktulga, and others. The reaxff reactive force-field: development, applications and future directions. <em>npj Computational Materials</em>, 2(1):1–14, 2016. URL: <a class="reference external" href="https://doi.org/10.1038/npjcompumats.2015.11">https://doi.org/10.1038/npjcompumats.2015.11</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-aktulga2012" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">3</a><span class="fn-bracket">]</span></span>
+<p>Hasan Metin Aktulga, Joseph C Fogarty, Sagar A Pandit, and Ananth Y Grama. Parallel reactive molecular dynamics: numerical methods and algorithmic techniques. <em>parallel computing</em>, 38(4-5):245–259, 2012. URL: <a class="reference external" href="https://doi.org/10.1016/j.parco.2011.08.005">https://doi.org/10.1016/j.parco.2011.08.005</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-rappe1991" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">4</a><span class="fn-bracket">]</span></span>
+<p>Anthony K Rappe and William A Goddard III. Charge equilibration for molecular dynamics simulations. <em>The Journal of Physical Chemistry</em>, 95(8):3358–3363, 1991. URL: <a class="reference external" href="https://doi.org/10.1021/j100161a070">https://doi.org/10.1021/j100161a070</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-nakano1997" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">5</a><span class="fn-bracket">]</span></span>
+<p>Aiichiro Nakano. Parallel multilevel preconditioned conjugate-gradient approach to variable-charge molecular dynamics. <em>Computer Physics Communications</em>, 104(1-3):59–69, 1997. URL: <a class="reference external" href="https://doi.org/10.1016/S0010-4655(97)00041-6">https://doi.org/10.1016/S0010-4655(97)00041-6</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-verstraelen2013" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id6">6</a><span class="fn-bracket">]</span></span>
+<p>Toon Verstraelen, PW Ayers, Veronique Van Speybroeck, and Michel Waroquier. Acks2: atom-condensed kohn-sham dft approximated to second order. <em>The Journal of chemical physics</em>, 2013. URL: <a class="reference external" href="https://doi.org/10.1063/1.4791569">https://doi.org/10.1063/1.4791569</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-ohearn2020" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id7">7</a><span class="fn-bracket">]</span></span>
+<p>Kurt A O’Hearn, Abdullah Alperen, and Hasan Metin Aktulga. Fast solvers for charge distribution models on shared memory platforms. <em>SIAM Journal on Scientific Computing</em>, 42(1):C1–C22, 2020. URL: <a class="reference external" href="https://doi.org/10.1137/18M1224684">https://doi.org/10.1137/18M1224684</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-jarvi2011" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id9">8</a><span class="fn-bracket">]</span></span>
+<p>Tommi T Järvi, Adri CT Van Duin, Kai Nordlund, and William A Goddard III. Development of interatomic reaxff potentials for au–s–c–h systems. <em>The Journal of Physical Chemistry A</em>, 115(37):10315–10322, 2011. URL: <a class="reference external" href="https://doi.org/10.1021/jp201496x">https://doi.org/10.1021/jp201496x</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-srinivasan2015" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id10">9</a><span class="fn-bracket">]</span></span>
+<p>Sriram Goverapet Srinivasan, Adri CT Van Duin, and Panchapakesan Ganesh. Development of a reaxff potential for carbon condensed phases and its application to the thermal fragmentation of a large fullerene. <em>The Journal of Physical Chemistry A</em>, 119(4):571–580, 2015. URL: <a class="reference external" href="https://doi.org/10.1021/jp510274e">https://doi.org/10.1021/jp510274e</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-mao2017" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id11">10</a><span class="fn-bracket">]</span></span>
+<p>Qian Mao, Yihua Ren, KH Luo, and Adri CT Van Duin. Dynamics and kinetics of reversible homo-molecular dimerization of polycyclic aromatic hydrocarbons. <em>The Journal of Chemical Physics</em>, 2017. URL: <a class="reference external" href="https://doi.org/10.1063/1.5000534">https://doi.org/10.1063/1.5000534</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-pai2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id12">11</a><span class="fn-bracket">]</span></span>
+<p>Sung Jin Pai, Byung Chul Yeo, and Sang Soo Han. Development of the reaxff cbn reactive force field for the improved design of liquid cbn hydrogen storage materials. <em>Physical Chemistry Chemical Physics</em>, 18(3):1818–1827, 2016. URL: <a class="reference external" href="https://doi.org/10.1039/C5CP05486A">https://doi.org/10.1039/C5CP05486A</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-hjertenaes2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id13">12</a><span class="fn-bracket">]</span></span>
+<p>Eirik Hjertenæs, Anh Quynh Nguyen, and Henrik Koch. A reaxff force field for sodium intrusion in graphitic cathodes. <em>Physical Chemistry Chemical Physics</em>, 18(46):31431–31440, 2016. URL: <a class="reference external" href="https://doi.org/10.1039/C6CP06774C">https://doi.org/10.1039/C6CP06774C</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-ashraf2017" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id14">13</a><span class="fn-bracket">]</span></span>
+<p>Chowdhury Ashraf and Adri CT Van Duin. Extension of the reaxff combustion force field toward syngas combustion and initial oxidation kinetics. <em>The Journal of Physical Chemistry A</em>, 121(5):1051–1068, 2017. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpca.6b12429">https://doi.org/10.1021/acs.jpca.6b12429</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-chenoweth2008a" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id15">14</a><span class="fn-bracket">]</span></span>
+<p>Kimberly Chenoweth, Adri CT Van Duin, and William A Goddard. Reaxff reactive force field for molecular dynamics simulations of hydrocarbon oxidation. <em>The Journal of Physical Chemistry A</em>, 112(5):1040–1053, 2008. URL: <a class="reference external" href="https://doi.org/10.1021/jp709896w">https://doi.org/10.1021/jp709896w</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-vanduin2008" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id16">15</a><span class="fn-bracket">]</span></span>
+<p>Adri CT Van Duin, Boris V Merinov, Seung Soon Jang, and William A Goddard. Reaxff reactive force field for solid oxide fuel cell systems with application to oxygen ion transport in yttria-stabilized zirconia. <em>The Journal of Physical Chemistry A</em>, 112(14):3133–3140, 2008. URL: <a class="reference external" href="https://doi.org/10.1021/jp076775c">https://doi.org/10.1021/jp076775c</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-strachan2003" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id17">16</a><span class="fn-bracket">]</span></span>
+<p>Alejandro Strachan, Adri CT van Duin, Debashis Chakraborty, Siddharth Dasgupta, and William A Goddard III. Shock waves in high-energy materials: the initial chemical events in nitramine rdx. <em>Physical Review Letters</em>, 91(9):098301, 2003. URL: <a class="reference external" href="https://doi.org/10.1103/PhysRevLett.91.098301">https://doi.org/10.1103/PhysRevLett.91.098301</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-budzien2009" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id18">17</a><span class="fn-bracket">]</span></span>
+<p>Joanne Budzien, Aidan P Thompson, and Sergey V Zybin. Reactive molecular dynamics simulations of shock through a single crystal of pentaerythritol tetranitrate. <em>The Journal of Physical Chemistry B</em>, 113(40):13142–13151, 2009. URL: <a class="reference external" href="https://doi.org/10.1021/jp9016695">https://doi.org/10.1021/jp9016695</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-mattsson2010" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id19">18</a><span class="fn-bracket">]</span></span>
+<p>Thomas R Mattsson, J Matthew D Lane, Kyle R Cochrane, Michael P Desjarlais, Aidan P Thompson, Flint Pierce, and Gary S Grest. First-principles and classical molecular dynamics simulation of shocked polymers. <em>Physical Review B—Condensed Matter and Materials Physics</em>, 81(5):054103, 2010. URL: <a class="reference external" href="https://doi.org/10.1103/PhysRevB.81.054103">https://doi.org/10.1103/PhysRevB.81.054103</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-singh2013" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id20">19</a><span class="fn-bracket">]</span></span>
+<p>Sandeep Kumar Singh, S Goverapet Srinivasan, M Neek-Amal, Sebastian Costamagna, Adri CT Van Duin, and FM Peeters. Thermal properties of fluorinated graphene. <em>Physical Review B—Condensed Matter and Materials Physics</em>, 87(10):104114, 2013. URL: <a class="reference external" href="https://doi.org/10.1103/PhysRevB.87.104114">https://doi.org/10.1103/PhysRevB.87.104114</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-liu2011" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id21">20</a><span class="fn-bracket">]</span></span>
+<p>Lianchi Liu, Yi Liu, Sergey V Zybin, Huai Sun, and William A Goddard III. Reaxff-lg: correction of the reaxff reactive force field for london dispersion, with applications to the equations of state for energetic materials. <em>The Journal of Physical Chemistry A</em>, 115(40):11016–11022, 2011. URL: <a class="reference external" href="https://doi.org/10.1021/jp201599t">https://doi.org/10.1021/jp201599t</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-zhang2009" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id22">21</a><span class="fn-bracket">]</span></span>
+<p>Luzheng Zhang, Sergey V Zybin, Adri CT Van Duin, Siddharth Dasgupta, William A Goddard III, and Edward M Kober. Carbon cluster formation during thermal decomposition of octahydro-1, 3, 5, 7-tetranitro-1, 3, 5, 7-tetrazocine and 1, 3, 5-triamino-2, 4, 6-trinitrobenzene high explosives from reaxff reactive molecular dynamics simulations. <em>The Journal of Physical Chemistry A</em>, 113(40):10619–10640, 2009. URL: <a class="reference external" href="https://doi.org/10.1021/jp901353a">https://doi.org/10.1021/jp901353a</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-psofogiannakis2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id23">22</a><span class="fn-bracket">]</span></span>
+<p>George Psofogiannakis and Adri CT Van Duin. Development of a reaxff reactive force field for si/ge/h systems and application to atomic hydrogen bombardment of si, ge, and sige (100) surfaces. <em>Surface Science</em>, 646:253–260, 2016. URL: <a class="reference external" href="https://doi.org/10.1016/j.susc.2015.08.019">https://doi.org/10.1016/j.susc.2015.08.019</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-zhang2014" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id24">23</a><span class="fn-bracket">]</span></span>
+<p>Bo Zhang, Adri CT Van Duin, and J Karl Johnson. Development of a reaxff reactive force field for tetrabutylphosphonium glycinate/co2 mixtures. <em>The Journal of Physical Chemistry B</em>, 118(41):12008–12016, 2014. URL: <a class="reference external" href="https://doi.org/10.1021/jp5054277">https://doi.org/10.1021/jp5054277</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-nielson2005" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id25">24</a><span class="fn-bracket">]</span></span>
+<p>Kevin D Nielson, Adri CT Van Duin, Jonas Oxgaard, Wei-Qiao Deng, and William A Goddard. Development of the reaxff reactive force field for describing transition metal catalyzed reactions, with application to the initial stages of the catalytic formation of carbon nanotubes. <em>The Journal of Physical Chemistry A</em>, 109(3):493–499, 2005. URL: <a class="reference external" href="https://doi.org/10.1021/jp046244d">https://doi.org/10.1021/jp046244d</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-merinov2014" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id26">25</a><span class="fn-bracket">]</span></span>
+<p>Boris V Merinov, Jonathan E Mueller, Adri CT Van Duin, Qi An, and William A Goddard III. Reaxff reactive force-field modeling of the triple-phase boundary in a solid oxide fuel cell. <em>The journal of physical chemistry letters</em>, 5(22):4039–4043, 2014. URL: <a class="reference external" href="https://doi.org/10.1021/jz501891y">https://doi.org/10.1021/jz501891y</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-kamat2010" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id27">26</a><span class="fn-bracket">]</span></span>
+<p>Amar M Kamat, Adri CT Van Duin, and Alexei Yakovlev. Molecular dynamics simulations of laser-induced incandescence of soot using an extended reaxff reactive force field. <em>The Journal of Physical Chemistry A</em>, 114(48):12561–12572, 2010. URL: <a class="reference external" href="https://doi.org/10.1021/jp1080302">https://doi.org/10.1021/jp1080302</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-kulkarni2013" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id28">27</a><span class="fn-bracket">]</span></span>
+<p>Anant D Kulkarni, Donald G Truhlar, Sriram Goverapet Srinivasan, Adri CT Van Duin, Paul Norman, and Thomas E Schwartzentruber. Oxygen interactions with silica surfaces: coupled cluster and density functional investigation and the development of a new reaxff potential. <em>The Journal of Physical Chemistry C</em>, 117(1):258–269, 2013. URL: <a class="reference external" href="https://doi.org/10.1021/jp3086649">https://doi.org/10.1021/jp3086649</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-mueller2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id29">28</a><span class="fn-bracket">]</span></span>
+<p>Julian Müller and Bernd Hartke. Reaxff reactive force field for disulfide mechanochemistry, fitted to multireference ab initio data. <em>Journal of chemical theory and computation</em>, 12(8):3913–3925, 2016. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jctc.6b00461">https://doi.org/10.1021/acs.jctc.6b00461</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-komissarov2021" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id30">29</a><span class="fn-bracket">]</span></span>
+<p>Leonid Komissarov, Robert Ruger, Matti Hellstrom, and Toon Verstraelen. Params: parameter optimization for atomistic and molecular simulations. <em>Journal of Chemical Information and Modeling</em>, 61(8):3737–3743, 2021. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jcim.1c00333">https://doi.org/10.1021/acs.jcim.1c00333</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-wood2014" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id31">30</a><span class="fn-bracket">]</span></span>
+<p>Mitchell A Wood, Adri CT Van Duin, and Alejandro Strachan. Coupled thermal and electromagnetic induced decomposition in the molecular explosive alpha-hmx; a reactive molecular dynamics study. <em>The Journal of Physical Chemistry A</em>, 118(5):885–895, 2014. URL: <a class="reference external" href="https://doi.org/10.1021/jp406248m">https://doi.org/10.1021/jp406248m</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-sanz2008" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id32">31</a><span class="fn-bracket">]</span></span>
+<p>Carlos F Sanz-Navarro, Per-Olof Åstrand, De Chen, Magnus Rønning, Adri CT Van Duin, Timo Jacob, and William A Goddard. Molecular dynamics simulations of the interactions between platinum clusters and carbon platelets. <em>The Journal of Physical Chemistry A</em>, 112(7):1392–1402, 2008. URL: <a class="reference external" href="https://doi.org/10.1021/jp074806y">https://doi.org/10.1021/jp074806y</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-chenoweth2005" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id33">32</a><span class="fn-bracket">]</span></span>
+<p>Kimberly Chenoweth, Sam Cheung, Adri CT Van Duin, William A Goddard, and Edward M Kober. Simulations on the thermal decomposition of a poly (dimethylsiloxane) polymer using the reaxff reactive force field. <em>Journal of the American Chemical Society</em>, 127(19):7192–7202, 2005. URL: <a class="reference external" href="https://doi.org/10.1021/ja050980t">https://doi.org/10.1021/ja050980t</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-joshi2010" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id34">33</a><span class="fn-bracket">]</span></span>
+<p>Kaushik Joshi, Adri CT van Duin, and Timo Jacob. Development of a reaxff description of gold oxides and initial application to cold welding of partially oxidized gold surfaces. <em>Journal of Materials Chemistry</em>, 20(46):10431–10437, 2010. URL: <a class="reference external" href="https://doi.org/10.1039/C0JM01556C">https://doi.org/10.1039/C0JM01556C</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-zhang2014b" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id35">34</a><span class="fn-bracket">]</span></span>
+<p>Xue-Qing Zhang, Eldhose Iype, Silvia V Nedea, Antonius PJ Jansen, Bartłomiej M Szyja, Emiel JM Hensen, and Rutger A van Santen. Site stability on cobalt nanoparticles: a molecular dynamics reaxff reactive force field study. <em>The Journal of Physical Chemistry C</em>, 118(13):6882–6886, 2014. URL: <a class="reference external" href="https://doi.org/10.1021/jp500053u">https://doi.org/10.1021/jp500053u</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-weismiller2010" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id36">35</a><span class="fn-bracket">]</span></span>
+<p>Michael R Weismiller, Adri CT Van Duin, Jongguen Lee, and Richard A Yetter. Reaxff reactive force field development and applications for molecular dynamics simulations of ammonia borane dehydrogenation and combustion. <em>The Journal of Physical Chemistry A</em>, 114(17):5485–5492, 2010. URL: <a class="reference external" href="https://doi.org/10.1021/jp100136c">https://doi.org/10.1021/jp100136c</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-islam2015" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id37">36</a><span class="fn-bracket">]</span></span>
+<p>Md Mahbubul Islam, Alireza Ostadhossein, Oleg Borodin, A Todd Yeates, William W Tipton, Richard G Hennig, Nitin Kumar, and Adri CT Van Duin. Reaxff molecular dynamics simulations on lithiated sulfur cathode materials. <em>Physical Chemistry Chemical Physics</em>, 17(5):3383–3393, 2015. URL: <a class="reference external" href="https://doi.org/10.1039/C4CP04532G">https://doi.org/10.1039/C4CP04532G</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-mueller2010" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id38">37</a><span class="fn-bracket">]</span></span>
+<p>Jonathan E Mueller, Adri CT Van Duin, and William A Goddard III. Development and validation of reaxff reactive force field for hydrocarbon chemistry catalyzed by nickel. <em>The Journal of Physical Chemistry C</em>, 114(11):4939–4949, 2010. URL: <a class="reference external" href="https://doi.org/10.1021/jp9035056">https://doi.org/10.1021/jp9035056</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-fantauzzi2014" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id39">38</a><span class="fn-bracket">]</span></span>
+<p>Donato Fantauzzi, Jochen Bandlow, Lehel Sabo, Jonathan E Mueller, Adri CT van Duin, and Timo Jacob. Development of a reaxff potential for pt–o systems describing the energetics and dynamics of pt-oxide formation. <em>Physical Chemistry Chemical Physics</em>, 16(42):23118–23133, 2014. URL: <a class="reference external" href="https://doi.org/10.1039/C4CP03111C">https://doi.org/10.1039/C4CP03111C</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-senftle2014" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id40">39</a><span class="fn-bracket">]</span></span>
+<p>Thomas P Senftle, Michael J Janik, and Adri CT Van Duin. A reaxff investigation of hydride formation in palladium nanoclusters via monte carlo and molecular dynamics simulations. <em>The Journal of Physical Chemistry C</em>, 118(9):4967–4981, 2014. URL: <a class="reference external" href="https://doi.org/10.1021/jp411015a">https://doi.org/10.1021/jp411015a</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-newsome2012" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id41">40</a><span class="fn-bracket">]</span></span>
+<p>David A Newsome, Debasis Sengupta, Hosein Foroutan, Michael F Russo, and Adri CT Van Duin. Oxidation of silicon carbide by o2 and h2o: a reaxff reactive molecular dynamics study, part i. <em>The Journal of Physical Chemistry C</em>, 116(30):16111–16121, 2012. URL: <a class="reference external" href="https://doi.org/10.1021/jp306391p">https://doi.org/10.1021/jp306391p</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-chenoweth2008b" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id42">41</a><span class="fn-bracket">]</span></span>
+<p>Kimberly Chenoweth, Adri CT Van Duin, Petter Persson, Mu-Jeng Cheng, Jonas Oxgaard, and William A Goddard Iii. Development and application of a reaxff reactive force field for oxidative dehydrogenation on vanadium oxide catalysts. <em>The Journal of Physical Chemistry C</em>, 112(37):14645–14654, 2008. URL: <a class="reference external" href="https://doi.org/10.1021/jp806988b">https://doi.org/10.1021/jp806988b</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-yoon2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id44">42</a><span class="fn-bracket">]</span></span>
+<p>Kichul Yoon, Ali Rahnamoun, Jacob L Swett, Vighter Iberi, David A Cullen, Ivan V Vlassiouk, Alex Belianinov, Stephen Jesse, Xiahan Sang, Olga S Ovchinnikova, and others. Atomistic-scale simulations of defect formation in graphene under noble gas ion irradiation. <em>ACS nano</em>, 10(9):8376–8384, 2016. URL: <a class="reference external" href="https://doi.org/10.1021/acsnano.6b03036">https://doi.org/10.1021/acsnano.6b03036</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-islam2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id45">43</a><span class="fn-bracket">]</span></span>
+<p>Md Mahbubul Islam, Chenyu Zou, Adri CT Van Duin, and Sumathy Raman. Interactions of hydrogen with the iron and iron carbide interfaces: a reaxff molecular dynamics study. <em>Physical Chemistry Chemical Physics</em>, 18(2):761–771, 2016. URL: <a class="reference external" href="https://doi.org/10.1039/C5CP06108C">https://doi.org/10.1039/C5CP06108C</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-rajabpour2021" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id46">44</a><span class="fn-bracket">]</span></span>
+<p>Siavash Rajabpour, Qian Mao, Nadire Nayir, Joshua A Robinson, and Adri CT Van Duin. Development and applications of reaxff reactive force fields for group-iii gas-phase precursors and surface reactions with graphene in metal–organic chemical vapor deposition synthesis. <em>The Journal of Physical Chemistry C</em>, 125(19):10747–10758, 2021. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.1c01965">https://doi.org/10.1021/acs.jpcc.1c01965</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-nayir2018" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id47">45</a><span class="fn-bracket">]</span></span>
+<p>Nadire Nayir, Adri CT Van Duin, and Sakir Erkoc. Development of a reaxff reactive force field for interstitial oxygen in germanium and its application to geo2/ge interfaces. <em>The Journal of Physical Chemistry C</em>, 123(2):1208–1218, 2018. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.8b08862">https://doi.org/10.1021/acs.jpcc.8b08862</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-shin2018" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id48">46</a><span class="fn-bracket">]</span></span>
+<p>Yun Kyung Shin, Mert Y Sengul, ASM Jonayat, Wonho Lee, Enrique D Gomez, Clive A Randall, and Adri CT Van Duin. Development of a reaxff reactive force field for lithium ion conducting solid electrolyte li 1+ x al x ti 2- x (po 4) 3 (latp). <em>Physical Chemistry Chemical Physics</em>, 20(34):22134–22147, 2018. URL: <a class="reference external" href="https://doi.org/10.1039/C8CP03586E">https://doi.org/10.1039/C8CP03586E</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-uene2024" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id49">47</a><span class="fn-bracket">]</span></span>
+<p>Naoya Uene, Takuya Mabuchi, Masaru Zaitsu, Shigeo Yasuhara, Adri CT van Duin, and Takashi Tokumasu. Reactive force field molecular dynamics studies of the initial growth of boron nitride using bcl3 and nh3 by atomic layer deposition. <em>The Journal of Physical Chemistry C</em>, 128(3):1075–1086, 2024. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.3c06704">https://doi.org/10.1021/acs.jpcc.3c06704</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-hou2022" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id50">48</a><span class="fn-bracket">]</span></span>
+<p>Dingyu Hou, Muye Feng, Jili Wei, Yi Wang, Adri CT van Duin, and Kai H Luo. A reactive force field molecular dynamics study on the inception mechanism of titanium tetraisopropoxide (ttip) conversion to titanium clusters. <em>Chemical Engineering Science</em>, 252:117496, 2022. URL: <a class="reference external" href="https://doi.org/10.1016/j.ces.2022.117496">https://doi.org/10.1016/j.ces.2022.117496</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-soria2018" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id51">49</a><span class="fn-bracket">]</span></span>
+<p>Federico A Soria, Weiwei Zhang, Patricia A Paredes-Olivera, Adri CT Van Duin, and Eduardo M Patrito. Si/c/h reaxff reactive potential for silicon surfaces grafted with organic molecules. <em>The Journal of Physical Chemistry C</em>, 122(41):23515–23527, 2018. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.8b07075">https://doi.org/10.1021/acs.jpcc.8b07075</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-niefind2024" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id52">50</a><span class="fn-bracket">]</span></span>
+<p>Falk Niefind, Qian Mao, Nadire Nayir, Malgorzata Kowalik, Jung-Joon Ahn, Andrew J Winchester, Chengye Dong, Rinu A Maniyara, Joshua A Robinson, Adri CT van Duin, and others. Watching (de) intercalation of 2d metals in epitaxial graphene: insight into the role of defects. <em>Small</em>, 20(11):2306554, 2024. URL: <a class="reference external" href="https://doi.org/10.1002/smll.202306554">https://doi.org/10.1002/smll.202306554</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-dwivedi2020" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id53">51</a><span class="fn-bracket">]</span></span>
+<p>Swarit Dwivedi, Malgorzata Kowalik, Nilton Rosenbach, Dalal S Alqarni, Yun Kyung Shin, Yongjian Yang, John C Mauro, Akshat Tanksale, Alan L Chaffee, and Adri CT Van Duin. Atomistic mechanisms of thermal transformation in a zr-metal organic framework, mil-140c. <em>The Journal of Physical Chemistry Letters</em>, 12(1):177–184, 2020. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpclett.0c02930">https://doi.org/10.1021/acs.jpclett.0c02930</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-wang2020" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id54">52</a><span class="fn-bracket">]</span></span>
+<p>Yang Wang, Yuqing Shi, Qiang Sun, Kang Lu, Momoji Kubo, and Jingxiang Xu. Development of a transferable reaxff parameter set for carbon-and silicon-based solid systems. <em>The Journal of Physical Chemistry C</em>, 124(18):10007–10015, 2020. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.0c01645">https://doi.org/10.1021/acs.jpcc.0c01645</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-yeon2018" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id55">53</a><span class="fn-bracket">]</span></span>
+<p>Jejoon Yeon, Heather L Adams, Chad E Junkermeier, Adri CT Van Duin, Wilfred T Tysoe, and Ashlie Martini. Development of a reaxff force field for cu/s/c/h and reactive md simulations of methyl thiolate decomposition on cu (100). <em>The Journal of Physical Chemistry B</em>, 122(2):888–896, 2018. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcb.7b06976">https://doi.org/10.1021/acs.jpcb.7b06976</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-mao2022" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id56">54</a><span class="fn-bracket">]</span></span>
+<p>Qian Mao, Yuwei Zhang, Malgorzata Kowalik, Nadire Nayir, Michael Chandross, and Adri CT van Duin. Oxidation and hydrogenation of monolayer mos2 with compositing agent under environmental exposure: the reaxff mo/ti/au/o/s/h force field development and applications. <em>Frontiers in Nanotechnology</em>, 4:1034795, 2022. URL: <a class="reference external" href="https://doi.org/10.3389/fnano.2022.1034795">https://doi.org/10.3389/fnano.2022.1034795</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-huang2019" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id57">55</a><span class="fn-bracket">]</span></span>
+<p>HS Huang, LQ Ai, ACT Van Duin, M Chen, and YJ Lü. Reaxff reactive force field for molecular dynamics simulations of liquid cu and zr metals. <em>The Journal of Chemical Physics</em>, 2019. URL: <a class="reference external" href="https://doi.org/10.1063/1.5112794">https://doi.org/10.1063/1.5112794</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-kim2021" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id58">56</a><span class="fn-bracket">]</span></span>
+<p>Dong Hyun Kim, Seung Jae Kwak, Jae Hun Jeong, Suyoung Yoo, Sang Ki Nam, YongJoo Kim, and Won Bo Lee. Molecular dynamics simulation of silicon dioxide etching by hydrogen fluoride using the reactive force field. <em>ACS omega</em>, 6(24):16009–16015, 2021. URL: <a class="reference external" href="https://doi.org/10.1021/acsomega.1c01824">https://doi.org/10.1021/acsomega.1c01824</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-ostadhossein2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id59">57</a><span class="fn-bracket">]</span></span>
+<p>Alireza Ostadhossein, Sung-Yup Kim, Ekin D Cubuk, Yue Qi, and Adri CT Van Duin. Atomic insight into the lithium storage and diffusion mechanism of sio2/al2o3 electrodes of lithium ion batteries: reaxff reactive force field modeling. <em>The Journal of Physical Chemistry A</em>, 120(13):2114–2127, 2016. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpca.5b11908">https://doi.org/10.1021/acs.jpca.5b11908</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-ostadhossein2017" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id60">58</a><span class="fn-bracket">]</span></span>
+<p>Alireza Ostadhossein, Ali Rahnamoun, Yuanxi Wang, Peng Zhao, Sulin Zhang, Vincent H Crespi, and Adri CT Van Duin. Reaxff reactive force-field study of molybdenum disulfide (mos2). <em>The journal of physical chemistry letters</em>, 8(3):631–640, 2017. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpclett.6b02902">https://doi.org/10.1021/acs.jpclett.6b02902</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-pols2024" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id61">59</a><span class="fn-bracket">]</span></span>
+<p>Mike Pols, Adri CT van Duin, Sofía Calero, and Shuxia Tao. Mixing i and br in inorganic perovskites: atomistic insights from reactive molecular dynamics simulations. <em>The Journal of Physical Chemistry C</em>, 128(9):4111–4118, 2024. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.4c00563">https://doi.org/10.1021/acs.jpcc.4c00563</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-pols2021" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id62">60</a><span class="fn-bracket">]</span></span>
+<p>Mike Pols, José Manuel Vicent-Luna, Ivo Filot, Adri CT Van Duin, and Shuxia Tao. Atomistic insights into the degradation of inorganic halide perovskite cspbi3: a reactive force field molecular dynamics study. <em>The journal of physical chemistry letters</em>, 12(23):5519–5525, 2021. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpclett.1c01192">https://doi.org/10.1021/acs.jpclett.1c01192</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-olou2023" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id63">61</a><span class="fn-bracket">]</span></span>
+<p>Stéphane B Olou’ou Guifo, Jonathan E Mueller, Diana van Duin, Mahdi K Talkhoncheh, Adri CT van Duin, David Henriques, and Torsten Markus. Development and validation of a reaxff reactive force field for modeling silicon–carbon composite anode materials in lithium-ion batteries. <em>The Journal of Physical Chemistry C</em>, 127(6):2818–2834, 2023. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.2c07773">https://doi.org/10.1021/acs.jpcc.2c07773</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-fiesinger2023" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id64">62</a><span class="fn-bracket">]</span></span>
+<p>Florian Fiesinger, Daniel Gaissmaier, Matthias van den Borg, Julian Beßner, Adri CT van Duin, and Timo Jacob. Development of a mg/o reaxff potential to describe the passivation processes in magnesium-ion batteries. <em>ChemSusChem</em>, 16(3):e202201821, 2023. URL: <a class="reference external" href="https://doi.org/10.1002/cssc.202201821">https://doi.org/10.1002/cssc.202201821</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-du2023" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id65">63</a><span class="fn-bracket">]</span></span>
+<p>Wan Du, Xue Fan, Hui Li, Dong Zhai, and Yi Liu. Development of a ni–al reactive force field for ni-based superalloy: revealing electrostatic effects on mechanical deformation. <em>Journal of Materials Research and Technology</em>, 24:4454–4467, 2023. URL: <a class="reference external" href="https://doi.org/10.1016/j.jmrt.2023.04.038">https://doi.org/10.1016/j.jmrt.2023.04.038</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-shin2021" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id66">64</a><span class="fn-bracket">]</span></span>
+<p>Yun Kyung Shin, Yawei Gao, Dongwon Shin, and Adri CT van Duin. Impact of three-body interactions in a reaxff force field for ni and cr transition metals and their alloys on the prediction of thermal and mechanical properties. <em>Computational Materials Science</em>, 197:110602, 2021. URL: <a class="reference external" href="https://doi.org/10.1016/j.commatsci.2021.110602">https://doi.org/10.1016/j.commatsci.2021.110602</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-onwudinanti2022" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id67">65</a><span class="fn-bracket">]</span></span>
+<p>Chidozie Onwudinanti, Mike Pols, Geert Brocks, Vianney Koelman, Adri CT Van Duin, Thomas Morgan, and Shuxia Tao. A reaxff molecular dynamics study of hydrogen diffusion in ruthenium–the role of grain boundaries. <em>The Journal of Physical Chemistry C</em>, 126(13):5950–5959, 2022. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.1c08776">https://doi.org/10.1021/acs.jpcc.1c08776</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-kim2018" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id68">66</a><span class="fn-bracket">]</span></span>
+<p>Sung-Yup Kim, Hong Woo Lee, Sung Jin Pai, and Sang Soo Han. Activity, selectivity, and durability of ruthenium nanoparticle catalysts for ammonia synthesis by reactive molecular dynamics simulation: the size effect. <em>ACS applied materials &amp; interfaces</em>, 10(31):26188–26194, 2018. URL: <a class="reference external" href="https://doi.org/10.1021/acsami.8b05070">https://doi.org/10.1021/acsami.8b05070</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-yeon2021" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id69">67</a><span class="fn-bracket">]</span></span>
+<p>Jejoon Yeon, Sanjib C Chowdhury, Chaitanya M Daksha, and John W Gillespie Jr. Development of mg/al/si/o reaxff parameters for magnesium aluminosilicate glass using an artificial neural network-assisted genetic algorithm. <em>The Journal of Physical Chemistry C</em>, 125(33):18380–18394, 2021. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.1c01190">https://doi.org/10.1021/acs.jpcc.1c01190</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-nayir2019" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id70">68</a><span class="fn-bracket">]</span></span>
+<p>Nadire Nayir, Adri CT Van Duin, and Sakir Erkoc. Development of the reaxff reactive force field for inherent point defects in the si/silica system. <em>The Journal of Physical Chemistry A</em>, 123(19):4303–4313, 2019. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpca.9b01481">https://doi.org/10.1021/acs.jpca.9b01481</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-nayir2021" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id71">69</a><span class="fn-bracket">]</span></span>
+<p>Nadire Nayir, Yun Kyung Shin, Yuanxi Wang, Mert Y Sengul, Danielle Reifsnyder Hickey, Mikhail Chubarov, Tanushree H Choudhury, Nasim Alem, Joan Redwing, Vincent H Crespi, and others. A reaxff force field for 2d-ws2 and its interaction with sapphire. <em>The Journal of Physical Chemistry C</em>, 125(32):17950–17961, 2021. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.1c03605">https://doi.org/10.1021/acs.jpcc.1c03605</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-mayernick2010" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id72">70</a><span class="fn-bracket">]</span></span>
+<p>Adam D Mayernick, Matthias Batzill, Adri CT Van Duin, and Michael J Janik. A reactive force-field (reaxff) monte carlo study of surface enrichment and step structure on yttria-stabilized zirconia. <em>Surface science</em>, 604(17-18):1438–1444, 2010. URL: <a class="reference external" href="https://doi.org/10.1016/j.susc.2010.05.006">https://doi.org/10.1016/j.susc.2010.05.006</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-liu2019" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id73">71</a><span class="fn-bracket">]</span></span>
+<p>Shu-Sheng Liu, Leton C Saha, Albert Iskandarov, Takayoshi Ishimoto, Tomokazu Yamamoto, Yoshitaka Umeno, Syo Matsumura, and Michihisa Koyama. Atomic structure observations and reaction dynamics simulations on triple phase boundaries in solid-oxide fuel cells. <em>Communications Chemistry</em>, 2(1):48, 2019. URL: <a class="reference external" href="https://doi.org/10.1038/s42004-019-0148-x">https://doi.org/10.1038/s42004-019-0148-x</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-hong2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id75">72</a><span class="fn-bracket">]</span></span>
+<p>Sungwook Hong and Adri CT Van Duin. Atomistic-scale analysis of carbon coating and its effect on the oxidation of aluminum nanoparticles by reaxff-molecular dynamics simulations. <em>The Journal of Physical Chemistry C</em>, 120(17):9464–9474, 2016. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.6b00786">https://doi.org/10.1021/acs.jpcc.6b00786</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-zheng2017" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id76">73</a><span class="fn-bracket">]</span></span>
+<p>Yuanxia Zheng, Sungwook Hong, George Psofogiannakis, G Bruce Rayner Jr, Suman Datta, Adri CT Van Duin, and Roman Engel-Herbert. Modeling and in situ probing of surface reactions in atomic layer deposition. <em>ACS applied materials &amp; interfaces</em>, 9(18):15848–15856, 2017. URL: <a class="reference external" href="https://doi.org/10.1021/acsami.7b01618">https://doi.org/10.1021/acsami.7b01618</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-manzano2012" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id77">74</a><span class="fn-bracket">]</span></span>
+<p>Hegoi Manzano, Roland JM Pellenq, Franz-Josef Ulm, Markus J Buehler, and Adri CT Van Duin. Hydration of calcium oxide surface predicted by reactive force field molecular dynamics. <em>Langmuir</em>, 28(9):4187–4197, 2012. URL: <a class="reference external" href="https://doi.org/10.1021/la204338m">https://doi.org/10.1021/la204338m</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-fedkin2019" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id78">75</a><span class="fn-bracket">]</span></span>
+<p>Mark V Fedkin, Yun Kyung Shin, Nabankur Dasgupta, Jejoon Yeon, Weiwei Zhang, Diana Van Duin, Adri CT Van Duin, Kento Mori, Atsushi Fujiwara, Masahiko Machida, and others. Development of the reaxff methodology for electrolyte–water systems. <em>The Journal of Physical Chemistry A</em>, 123(10):2125–2141, 2019. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpca.8b10453">https://doi.org/10.1021/acs.jpca.8b10453</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-aryanpour2010" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id79">76</a><span class="fn-bracket">]</span></span>
+<p>Masoud Aryanpour, Adri CT Van Duin, and James D Kubicki. Development of a reactive force field for iron- oxyhydroxide systems. <em>The Journal of Physical Chemistry A</em>, 114(21):6298–6307, 2010. URL: <a class="reference external" href="https://doi.org/10.1021/jp101332k">https://doi.org/10.1021/jp101332k</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-shin2015" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id80">77</a><span class="fn-bracket">]</span></span>
+<p>Yun Kyung Shin, Hyunwook Kwak, Alex V Vasenkov, Debasis Sengupta, and Adri CT Van Duin. Development of a reaxff reactive force field for fe/cr/o/s and application to oxidation of butane over a pyrite-covered cr2o3 catalyst. <em>Acs Catalysis</em>, 5(12):7226–7236, 2015. URL: <a class="reference external" href="https://doi.org/10.1021/acscatal.5b01766">https://doi.org/10.1021/acscatal.5b01766</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-tavazza2015" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id81">78</a><span class="fn-bracket">]</span></span>
+<p>Francesca Tavazza, Thomas P Senftle, Chenyu Zou, Chandler A Becker, and AC T Van Duin. Molecular dynamics investigation of the effects of tip–substrate interactions during nanoindentation. <em>The Journal of Physical Chemistry C</em>, 119(24):13580–13589, 2015. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.5b01275">https://doi.org/10.1021/acs.jpcc.5b01275</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-rahaman2011" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id82">79</a><span class="fn-bracket">]</span></span>
+<p>Obaidur Rahaman, Adri CT Van Duin, William A Goddard III, and Douglas J Doren. Development of a reaxff reactive force field for glycine and application to solvent effect and tautomerization. <em>The Journal of Physical Chemistry B</em>, 115(2):249–261, 2011. URL: <a class="reference external" href="https://doi.org/10.1021/jp108642r">https://doi.org/10.1021/jp108642r</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-trnka2018" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id83">80</a><span class="fn-bracket">]</span></span>
+<p>Tomas Trnka, Igor Tvaroska, and Jaroslav Koca. Automated training of reaxff reactive force fields for energetics of enzymatic reactions. <em>Journal of chemical theory and computation</em>, 14(1):291–302, 2018. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jctc.7b00870">https://doi.org/10.1021/acs.jctc.7b00870</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-kowalik2019" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id84">81</a><span class="fn-bracket">]</span></span>
+<p>Malgorzata Kowalik, Chowdhury Ashraf, Behzad Damirchi, Dooman Akbarian, Siavash Rajabpour, and Adri CT Van Duin. Atomistic scale analysis of the carbonization process for c/h/o/n-based polymers with the reaxff reactive force field. <em>The Journal of Physical Chemistry B</em>, 123(25):5357–5367, 2019. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcb.9b04298">https://doi.org/10.1021/acs.jpcb.9b04298</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-moerman2021" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id85">82</a><span class="fn-bracket">]</span></span>
+<p>Evgeny Moerman, David Furman, and David J Wales. Development of reaxff reactive force field for aqueous iron–sulfur clusters with applications to stability and reactivity in water. <em>Journal of Chemical Information and Modeling</em>, 61(3):1204–1214, 2021. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jcim.0c01292">https://doi.org/10.1021/acs.jcim.0c01292</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-huang2013" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id86">83</a><span class="fn-bracket">]</span></span>
+<p>Liangliang Huang, Teresa Bandosz, Kaushik L Joshi, Adri CT Van Duin, and Keith E Gubbins. Reactive adsorption of ammonia and ammonia/water on cubtc metal-organic framework: a reaxff molecular dynamics simulation. <em>The Journal of chemical physics</em>, 2013. URL: <a class="reference external" href="https://doi.org/10.1063/1.4774332">https://doi.org/10.1063/1.4774332</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-monti2013a" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id87">84</a><span class="fn-bracket">]</span></span>
+<p>Susanna Monti, Cui Li, and Vincenzo Carravetta. Reactive dynamics simulation of monolayer and multilayer adsorption of glycine on cu (110). <em>The Journal of Physical Chemistry C</em>, 117(10):5221–5228, 2013. URL: <a class="reference external" href="https://doi.org/10.1021/jp312828d">https://doi.org/10.1021/jp312828d</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-monti2013b" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id88">85</a><span class="fn-bracket">]</span></span>
+<p>Susanna Monti, Alessandro Corozzi, Peter Fristrup, Kaushik L Joshi, Yun Kyung Shin, Peter Oelschlaeger, Adri CT Van Duin, and Vincenzo Barone. Exploring the conformational and reactive dynamics of biomolecules in solution using an extended version of the glycine reactive force field. <em>Physical Chemistry Chemical Physics</em>, 15(36):15062–15077, 2013. URL: <a class="reference external" href="https://doi.org/10.1039/C3CP51931G">https://doi.org/10.1039/C3CP51931G</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-zhang2018" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id89">86</a><span class="fn-bracket">]</span></span>
+<p>Weiwei Zhang and Adri CT Van Duin. Improvement of the reaxff description for functionalized hydrocarbon/water weak interactions in the condensed phase. <em>The Journal of Physical Chemistry B</em>, 122(14):4083–4092, 2018. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcb.8b01127">https://doi.org/10.1021/acs.jpcb.8b01127</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-huygh2014" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id90">87</a><span class="fn-bracket">]</span></span>
+<p>Stijn Huygh, Annemie Bogaerts, Adri CT Van Duin, and Erik C Neyts. Development of a reaxff reactive force field for intrinsic point defects in titanium dioxide. <em>Computational materials science</em>, 95:579–591, 2014. URL: <a class="reference external" href="https://doi.org/10.1016/j.commatsci.2014.07.056">https://doi.org/10.1016/j.commatsci.2014.07.056</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-kim2013a" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id91">88</a><span class="fn-bracket">]</span></span>
+<p>Sung-Yup Kim, Adri CT Van Duin, and James D Kubicki. Molecular dynamics simulations of the interactions between tio 2 nanoparticles and water with na+ and cl-, methanol, and formic acid using a reactive force field. <em>Journal of Materials Research</em>, 28:513–520, 2013. URL: <a class="reference external" href="https://doi.org/10.1557/jmr.2012.367">https://doi.org/10.1557/jmr.2012.367</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-kim2013b" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id92">89</a><span class="fn-bracket">]</span></span>
+<p>Sung-Yup Kim and Adri CT van Duin. Simulation of titanium metal/titanium dioxide etching with chlorine and hydrogen chloride gases using the reaxff reactive force field. <em>The Journal of Physical Chemistry A</em>, 117(27):5655–5663, 2013. URL: <a class="reference external" href="https://doi.org/10.1021/jp4031943">https://doi.org/10.1021/jp4031943</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-monti2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id93">90</a><span class="fn-bracket">]</span></span>
+<p>Susanna Monti, Vincenzo Carravetta, and Hans Ågren. Simulation of gold functionalization with cysteine by reactive molecular dynamics. <em>The journal of physical chemistry letters</em>, 7(2):272–276, 2016. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpclett.5b02769">https://doi.org/10.1021/acs.jpclett.5b02769</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-ganeshan2020" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id94">91</a><span class="fn-bracket">]</span></span>
+<p>Karthik Ganeshan, Yun Kyung Shin, Naresh C Osti, Yangyunli Sun, Kaitlyn Prenger, Michael Naguib, Madhusudan Tyagi, Eugene Mamontov, De-en Jiang, and Adri CT Van Duin. Structure and dynamics of aqueous electrolytes confined in 2d-tio2/ti3c2t2 mxene heterostructures. <em>ACS Applied Materials &amp; Interfaces</em>, 12(52):58378–58389, 2020. URL: <a class="reference external" href="https://doi.org/10.1021/acsami.0c17536">https://doi.org/10.1021/acsami.0c17536</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-lloyd2016" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id95">92</a><span class="fn-bracket">]</span></span>
+<p>Adam Lloyd, David Cornil, ACT Van Duin, Diana van Duin, Roger Smith, SD Kenny, Jérôme Cornil, and David Beljonne. Development of a reaxff potential for ag/zn/o and application to ag deposition on zno. <em>Surface Science</em>, 645:67–73, 2016. URL: <a class="reference external" href="https://doi.org/10.1016/j.susc.2015.11.009">https://doi.org/10.1016/j.susc.2015.11.009</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-psofogiannakis2015" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id96">93</a><span class="fn-bracket">]</span></span>
+<p>George M Psofogiannakis, John F McCleerey, Eugenio Jaramillo, and Adri CT Van Duin. Reaxff reactive molecular dynamics simulation of the hydration of cu-ssz-13 zeolite and the formation of cu dimers. <em>The Journal of Physical Chemistry C</em>, 119(12):6678–6686, 2015. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.5b00699">https://doi.org/10.1021/acs.jpcc.5b00699</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-bai2012" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id97">94</a><span class="fn-bracket">]</span></span>
+<p>Chen Bai, Lianchi Liu, and Huai Sun. Molecular dynamics simulations of methanol to olefin reactions in hzsm-5 zeolite using a reaxff force field. <em>The Journal of Physical Chemistry C</em>, 116(12):7029–7039, 2012. URL: <a class="reference external" href="https://doi.org/10.1021/jp300221j">https://doi.org/10.1021/jp300221j</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-liu2021" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id98">95</a><span class="fn-bracket">]</span></span>
+<p>Yue Liu, Qintao Sun, Peiping Yu, Yu Wu, Liang Xu, Hao Yang, Miao Xie, Tao Cheng, and William A Goddard III. Effects of high and low salt concentrations in electrolytes at lithium–metal anode surfaces using dft-reaxff hybrid molecular dynamics method. <em>The Journal of Physical Chemistry Letters</em>, 12(11):2922–2929, 2021. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpclett.1c00279">https://doi.org/10.1021/acs.jpclett.1c00279</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-hahn2018" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id99">96</a><span class="fn-bracket">]</span></span>
+<p>Seung Ho Hahn, Jessica Rimsza, Louise Criscenti, Wei Sun, Lu Deng, Jincheng Du, Tao Liang, Susan B Sinnott, and Adri CT Van Duin. Development of a reaxff reactive force field for nasio x/water systems and its application to sodium and proton self-diffusion. <em>The Journal of Physical Chemistry C</em>, 122(34):19613–19624, 2018. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcc.8b05852">https://doi.org/10.1021/acs.jpcc.8b05852</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-han2010" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id100">97</a><span class="fn-bracket">]</span></span>
+<p>Sang Soo Han, Seung-Hoon Choi, and Adri CT Van Duin. Molecular dynamics simulations of stability of metal–organic frameworks against h 2 o using the reaxff reactive force field. <em>Chemical communications</em>, 46(31):5713–5715, 2010. URL: <a class="reference external" href="https://doi.org/10.1039/C0CC01132K">https://doi.org/10.1039/C0CC01132K</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-narayanan2011" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id101">98</a><span class="fn-bracket">]</span></span>
+<p>Badri Narayanan, Adri CT Van Duin, Branden B Kappes, Ivar E Reimanis, and Cristian V Ciobanu. A reactive force field for lithium–aluminum silicates with applications to eucryptite phases. <em>Modelling and Simulation in Materials Science and Engineering</em>, 20(1):015002, 2011. URL: <a class="reference external" href="https://doi.org/10.1088/0965-0393/20/1/015002">https://doi.org/10.1088/0965-0393/20/1/015002</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-zhang2017" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id102">99</a><span class="fn-bracket">]</span></span>
+<p>Weiwei Zhang and Adri CT Van Duin. Second-generation reaxff water force field: improvements in the description of water density and oh-anion diffusion. <em>The Journal of Physical Chemistry B</em>, 121(24):6021–6032, 2017. URL: <a class="reference external" href="https://doi.org/10.1021/acs.jpcb.7b02548">https://doi.org/10.1021/acs.jpcb.7b02548</a>.</p>
+</aside>
+<aside class="footnote brackets" id="footcite-raymand2010" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id103">100</a><span class="fn-bracket">]</span></span>
+<p>David Raymand, Adri CT van Duin, Daniel Spångberg, William A Goddard III, and Kersti Hermansson. Water adsorption on stepped zno surfaces from md simulation. <em>Surface science</em>, 604(9-10):741–752, 2010. URL: <a class="reference external" href="https://doi.org/10.1016/j.susc.2009.12.012">https://doi.org/10.1016/j.susc.2009.12.012</a>.</p>
+</aside>
+</aside>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Pytorch.html" class="btn btn-neutral float-left" title="5. PyTorch Models" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Contributing.html" class="btn btn-neutral float-right" title="1. Contributing" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022-2025, Sandia Corporation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(false);
+      });
+  </script> 
+
+</body>
+</html>

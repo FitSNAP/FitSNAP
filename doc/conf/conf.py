@@ -13,7 +13,7 @@ __file__ = ".."
 #sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
 sys.path.insert(0, site.getsitepackages()[0])
 sys.path.insert(0, __file__)
-print("sys.path=", sys.path)
+#print("sys.path=", sys.path)
 #print(site.getsitepackages()[0])
 
 # -- Project information -----------------------------------------------------
@@ -30,7 +30,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinxcontrib.youtube',
-    'sphinxcontrib.bibtex'
+    'sphinxcontrib.bibtex',
+    'myst_parser'
 ]
 
 templates_path = ['_templates']

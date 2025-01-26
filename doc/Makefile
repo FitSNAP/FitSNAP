@@ -27,14 +27,8 @@ help:
 	@if [ "$(HAS_BASH)" == "NO" ] ; then echo "bash was not found at $(OSHELL)! Please use: $(MAKE) SHELL=/path/to/bash" 1>&2; exit 1; fi
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  html          create HTML pages in html dir"
-	@echo "  fasthtml      approximate HTML page creation in fasthtml dir (for development)"
 	@echo "  clean         remove all intermediate files"
 	@echo "  clean-all     reset the entire build environment"
-	@echo "  anchor_check  scan for duplicate anchor labels"
-	@echo "  style_check   check for complete and consistent style lists"
-	@echo "  package_check check for complete and consistent package lists"
-	@echo "  role_check    check for misformatted role keywords"
-	@echo "  spelling      spell-check the manual"
 
 # ------------------------------------------
 
@@ -52,11 +46,16 @@ $(VENV):
 
 # ------------------------------------------
 
+EXAMPLES_RST:
+	@(cd conf; python examples_rst.py)
+
+# ------------------------------------------
+
 #html: $(VENV)
 # . $(VENV)/bin/activate ;
 # 		deactivate ;\
 
-html:
+html: EXAMPLES_RST
 	@(\
 		env PYTHONWARNINGS= PYTHONDONTWRITEBYTECODE=1 \
 		sphinx-build -E $(SPHINXEXTRA) -b html -c $(SPHINXCONFIG) -d $(BUILDDIR)/doctrees $(RSTDIR) html ;\

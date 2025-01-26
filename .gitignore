@@ -8,6 +8,10 @@ doc/doctrees/
 doc/html/
 doc/fasthtml/
 
+# ignoring jupyter settings
+.ipynb*
+.jupyter*
+
 # ignoring VS Code workspace file
 *.code-workspace
 

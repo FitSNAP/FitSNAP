@@ -12,8 +12,8 @@ The `Reactive Force Field (ReaxFF) <https://doi.org/10.1038/npjcompumats.2015.11
 
 ----
 
-ReaxFF Potential
-----------------
+ReaxFF functional form
+----------------------
 
 The ReaxFF overall system energy is expressed as the sum:
 
@@ -65,9 +65,9 @@ ReaxFF LAMMPS commands
 Fitting ReaxFF parameters
 -------------------------
 
-The Covariance Matrix Adaptation Evolution Strategy (CMA-ES) is a stochastic derivative-free numerical optimization algorithm. http://cma-es.github.io/
+If a parameter set is not available for your intented application, then you can fit a new parameter set with FitSNAP-ReaxFF from DFT training data.
 
-CMA-ES searches for a minimizer (a solution x in :math:`R^n`) of an objective function f (cost function), such that f(x) is minimal.
+The Covariance Matrix Adaptation Evolution Strategy (CMA-ES) is a stochastic derivative-free numerical optimization algorithm. http://cma-es.github.io/ CMA-ES finds a minimum :math:`x \el R^n` of an objective function :math:`f(x)`.
 
 Similarly to how we fit linear models, we can input descriptors into nonlinear models. To do this, we can use the same FitSNAP input script that we use for linear models, with some slight changes to the sections. First we must add a :code:`CMAES` section, which for the diphenyl disulfide example looks like:
 
@@ -83,7 +83,7 @@ The :code:`CMAES` section keys are explained in more detail below.
 
 - :code:`sigma` 
 
-If a parameter set is not available for your intented application, then you can fit a new parameter set with FitSNAP-ReaxFF from DFT training data.
+
 
 .. table:: Parameters that can be optimized
   :widths: auto
@@ -124,8 +124,8 @@ If a parameter set is not available for your intented application, then you can 
 
 ----
 
-Available Force Fields
-----------------------
+Available ReaxFF potentials
+---------------------------
 
 .. list-table:: Historical serial Fortran 77 force fields (no longer compatible and not available)
    :widths: 10 10 10 70

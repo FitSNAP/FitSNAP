@@ -21,10 +21,6 @@ where
 
 - :math:`\boldsymbol{B}_i` is a vector of atomic environment descriptors for atom :math:`i`
 
-..  youtube:: 52Xh4YNy7qQ
-  :align: center
-  :width: 62%
-
 The settings for SNAP descriptors are explained in the `[BISPECTRUM] section <Run.html#bispectrum>`__.
 
 For this linear regression problem we solve the following matrix problem as explained in `Thompson et. al. <snappaper_>`_

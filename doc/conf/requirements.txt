@@ -1,17 +1,7 @@
-numpy
-scipy
-scikit-learn
-virtualenv
-psutil
-pandas
-tabulate
-mpi4py
-Cython
-
 sphinx
 sphinx_rtd_theme
 sphinxcontrib-napoleon
 sphinxcontrib-youtube
 sphinxcontrib-bibtex
-
+myst_parser
 

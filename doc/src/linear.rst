@@ -26,8 +26,9 @@ The settings for SNAP descriptors are explained in the `[BISPECTRUM] section <Ru
 For this linear regression problem we solve the following matrix problem as explained in `Thompson et. al. <snappaper_>`_
 
 .. figure:: ../images/fitting_matrix.png
-   :scale: 60 %
-
+  :align: center
+  :width: 62%
+  
 .. _snappaper: https://www.sciencedirect.com/science/article/pii/S0021999114008353
 
 where 

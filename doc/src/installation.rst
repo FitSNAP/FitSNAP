@@ -50,7 +50,7 @@ Now install the necessary pre-requisites to build Python-LAMMPS using pip or con
     # For fitting ACE:
     python -m pip install sympy pyyaml
     # For contributing to docs:
-    python -m pip install sphinx sphinx_rtd_theme sphinxcontrib-napoleon myst_parser
+    python -m pip install sphinx sphinx_rtd_theme sphinxcontrib-napoleon sphinxcontrib-bibtex sphinxcontrib-youtube myst_parser
 
 To make sure MPI is working, make a Python script called :code:`test.py` with the following::
 
@@ -116,10 +116,7 @@ which should produce no errors.
 After completing this LAMMPS installation, please see `Install FitSNAP with latest LAMMPS`_ to use 
 FitSNAP.
 
-.. NOTE:: There is no longer a need to use modified versions of LAMMPS or PACE libraries for ACE
-model fitting. The :code:`compute pace` used by FitSNAP to calculate ACE descriptors has been fully integrated into
-the ML-PACE package as of the August 29, 2024 LAMMPS stable release (https://github.com/lammps/lammps/tree/stable). 
-The most recent development version can be found in the default branch of the public LAMMPS repository (https://github.com/lammps/lammps). 
+.. NOTE:: There is no longer a need to use modified versions of LAMMPS or PACE libraries for ACE model fitting. The :code:`compute pace` used by FitSNAP to calculate ACE descriptors has been fully integrated into the ML-PACE package as of the August 29, 2024 LAMMPS stable release (https://github.com/lammps/lammps/tree/stable). The most recent development version can be found in the default branch of the public LAMMPS repository (https://github.com/lammps/lammps).
 
 For a summary/review of all these steps, see see `Quick Installation <Quick.html>`__. 
 

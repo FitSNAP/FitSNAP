@@ -15,10 +15,14 @@ The resulting machine learned models therefore predict interatomic interaction e
 function of these geometric descriptors. Once these models are obtained from FitSNAP, they may be
 used directly in `LAMMPS <lammps_>`_ to perform high-performance molecular dynamics simulations.
 
+|
+
 ..  youtube:: 52Xh4YNy7qQ
   :align: center
   :width: 62%
-  
+
+|
+
 .. _snap: https://www.sciencedirect.com/science/article/pii/S0021999114008353
 .. _ace: https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.014104
 .. _lammps: https://docs.lammps.org/
@@ -27,7 +31,9 @@ FitSNAP Components
 ------------------
 
 .. figure:: ../images/components.png
-   :scale: 60 %
+  :align: center
+  :width: 62%
+
 
 Throughout these docs we will use phrases or language particular to our general way of doing
 molecular machine learning. These phrases are also littered throughout our code architecture, for 

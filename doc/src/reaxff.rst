@@ -6,9 +6,18 @@ Introduction
 
 The `Reactive Force Field (ReaxFF) <https://doi.org/10.1038/npjcompumats.2015.11>`_ replaces fixed bond topologies of classical force fields with the concept of bond order to simulate bond breaking/formation of chemical reactions. Originally conceived for hydrocarbons in the gas phase :footcite:p:`vanduin2001`, ReaxFF has been extended to a wide range of applications :footcite:p:`senftle2016`. ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports both the QEq charge equilibration :footcite:p:`rappe1991,nakano1997` and atom-condensed Kohn-Sham DFT to second order (ACKS2) :footcite:p:`verstraelen2013,ohearn2020` methods to represent the dynamics of electron density while fixed partial charges in classical force fields (eg. CHARMM) do not.
 
+
 ..  youtube:: bmOQ74kkd6A
   :align: center
   :width: 62%
+
+|
+
+.. warning::
+
+  Just because a ReaxFF potential is available with the atoms for your intented application, it **DOES NOT** mean it is transferable if the training set did not include configurations similar to your intented application. For example, there are many potentials with C/H/O/N atoms but not all have the pi-bond parameters trained so a benzene molecule might behave in a *completely unphysical manner*. **You need to consult the original journal article (doi links below) together with the supplementary materials to confirm the transferability of a given ReaxFF potential to your application.**
+
+|
 
 ----
 
@@ -65,23 +74,31 @@ ReaxFF LAMMPS commands
 Fitting ReaxFF parameters
 -------------------------
 
-If a parameter set is not available for your intented application, then you can fit a new parameter set with FitSNAP-ReaxFF from DFT training data.
+If a ReaxFF potential is not available for your intented application, then you can fit new ``parameters`` with FitSNAP-ReaxFF from DFT training data starting with an initial ``potential`` of `available ReaxFF potentials`_ (see below) in the ``reaxff/potentials`` directory. Filenames have the form *reaxff-<AUTHOR><YEAR>.ff*.
 
-The Covariance Matrix Adaptation Evolution Strategy (CMA-ES) is a stochastic derivative-free numerical optimization algorithm. http://cma-es.github.io/ CMA-ES finds a minimum :math:`x \el R^n` of an objective function :math:`f(x)`.
+Compared to linear and nonlinear models, a FitSNAP-ReaxFF input script needs:
 
-Similarly to how we fit linear models, we can input descriptors into nonlinear models. To do this, we can use the same FitSNAP input script that we use for linear models, with some slight changes to the sections. First we must add a :code:`CMAES` section, which for the diphenyl disulfide example looks like:
+  - ``[REAXFF]`` section instead of ``[BISPECTRUM]`` or ``[ACE]`` section
 
-    [CMAES]
-    population_size =  36
-    sigma = 0.3
+  - ``[CALCULATOR]`` section with ``calculator = LAMMPSREAXFF`` instead of ``LAMMPSSNAP`` or ``LAMMPSPACE``
 
-We must also set :code:`solver = CMAES` in the :code:`SOLVER` section. Now the input script is ready to fit a ReaxFF parameter set.
+  - ``[SOLVER]`` section with ``solver = CMAES`` instead of eg. ``SVD``, ``PYTORCH``, ...
 
-The :code:`CMAES` section keys are explained in more detail below.
+  - FIXME: move popsize and sigma to SOLVER section
 
-- :code:`population_size`
+  - FIXME: output_style = REAXFF (not needed, implied by presence of REAXFF section)
 
-- :code:`sigma` 
+.. literalinclude:: ../../examples/N2_ReaxFF/reaxff-n2.in
+  :caption: examples/N2_ReaxFF/reaxff-n2.in
+
+.. note::
+
+  Stress fitting is not supported (yet) in FitSNAP-ReaxFF. Only ``energy = 1`` and ``force = 1`` are available, ``stress = 0`` or ``stress = 1`` lines are ignored.
+
+FitSNAP-ReaxFF is based on the `Covariance Matrix Adaptation Evolution Strategy (CMA-ES) <http://cma-es.github.io/>`_ nonlinear optimization algorithm as implemented by the `pycma python package <https://github.com/CMA-ES/pycma>`_ . CMA-ES finds a minimum :math:`x \in \mathbb{R}^n` of an objective function :math:`f(x)`. In FitSNAP-ReaxFF, the objective function minimizes the Sum of Squared Errors (SSE) between DFT reference data and predicted energy/forces calculated with LAMMPS given the parameters to optimized.
+
+The FitSNAP-ReaxFF workflow differs from standard FitSNAP. In SNAP/PACE/PYTORCH/..., there are two separate phases: process_configs() and perform_fit(). In  FitSNAP-ReaxFF, perform_fit() is a loop of process_configs() at each step of the fitting algorithm.  During this loop, a population with size ``popsize`` of ``parameters`` to be optimized is refined until the CMA-ES algorithm meets a termination criteria.
+
 
 
 

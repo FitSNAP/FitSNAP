@@ -27,22 +27,22 @@ author = 'Sandia Corporation'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinxcontrib.youtube',
-    'sphinxcontrib.bibtex',
-    'myst_parser'
+    'sphinxcontrib.bibtex'
 ]
 
 templates_path = ['_templates']
 exclude_patterns = []
-
 bibtex_bibfiles = ['reaxff.bib']
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'lammps_theme'
+#html_theme = 'lammps_theme'
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['../src/_static']
 html_theme_path = ['.']
 html_style = 'lammps.css'
@@ -50,5 +50,5 @@ html_logo = '../images/FitSNAP.png'
 html_favicon = 'fs_favicon.ico'
 html_theme_options = {
     'logo_only': True,
-    'display_version': False,
+    'version_selector': False
 }

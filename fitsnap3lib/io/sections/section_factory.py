@@ -23,7 +23,6 @@ from fitsnap3lib.io.sections.solver_sections.ridge import Ridge
 from fitsnap3lib.io.sections.solver_sections.jax import JAX
 from fitsnap3lib.io.sections.solver_sections.pytorch import PYTORCH
 from fitsnap3lib.io.sections.solver_sections.network import NETWORK
-from fitsnap3lib.io.sections.solver_sections.cmaes import CMAES
 from fitsnap3lib.io.sections.template import Default
 
 

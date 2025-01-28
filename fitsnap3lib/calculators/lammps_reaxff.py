@@ -14,14 +14,14 @@ class LammpsReaxff(LammpsBase):
         self._i = 0
         self._lmp = None
         self.pt.check_lammps()
-        self.force_field_path = self.config.sections['REAXFF'].force_field
+        self.potential_path = self.config.sections['REAXFF'].potential
         self.energy = self.config.sections["CALCULATOR"].energy
         self.force = self.config.sections["CALCULATOR"].force
 
-        with open(self.force_field_path, 'r') as file:
-            self.force_field_string = file.read()
+        with open(self.potential_path, 'r') as file:
+            self.potential_string = file.read()
 
-        lines = self.force_field_string.splitlines()
+        lines = self.potential_string.splitlines()
         line_index = int(lines[1].split()[0])+6
         number_of_elements = int(lines[line_index-4].split()[0])
         self.elements = [lines[i].split()[0] for i in range(line_index, line_index+4*number_of_elements, 4)]
@@ -43,8 +43,8 @@ class LammpsReaxff(LammpsBase):
     def _initialize_lammps(self, printlammps=0):
         super()._initialize_lammps(printlammps)
         self._lmp.command("boundary p p p")
-        self._lmp.command("units " + self.config.sections["REFERENCE"].units)
-        self._lmp.command("atom_style " + self.config.sections["REFERENCE"].atom_style)
+        self._lmp.command("units real")
+        self._lmp.command("atom_style charge")
         self._lmp.command("atom_modify map array sort 0 2.0")
         #xlo, ylo, zlo = np.min(self._data["Positions"],axis=0)-10.0
         #xhi, yhi, zhi = np.max(self._data["Positions"],axis=0)+10.0
@@ -54,7 +54,7 @@ class LammpsReaxff(LammpsBase):
         self._lmp.command(f"create_box {len(self.elements)} box")
         self._lmp.commands_list([f"mass {i+1} {self.masses[i]}" for i in range(len(self.masses))])
         self._lmp.command("pair_style reaxff NULL")
-        self._lmp.command(f"pair_coeff * * {self.force_field_path} {' '.join(self.elements)}")
+        self._lmp.command(f"pair_coeff * * {self.potential_path} {' '.join(self.elements)}")
 
         self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff") # maxiter 400
         #self._lmp.command("fix 1 all acks2/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 500")
@@ -169,9 +169,9 @@ class LammpsReaxff(LammpsBase):
 
         pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+\.[0-9]+){{{len(parameters_list)}}}\n'
 
-        if( not (match := re.search(pattern, self.force_field_string, flags=re.MULTILINE|re.DOTALL)) ):
+        if( not (match := re.search(pattern, self.potential_string, flags=re.MULTILINE|re.DOTALL)) ):
             print("pattern...", pattern)
-            print("self.force_field_string...", self.force_field_string)
+            print("self.potential_string...", self.potential_string)
             raise Exception("Unable to match text to replace")
 
         tokens = match.group(0).split()
@@ -186,7 +186,7 @@ class LammpsReaxff(LammpsBase):
         #replacement = atoms_string + ''.join(tokens_formatted) + '\n'
         replacement = atoms_string + ' ' + ' '.join(tokens_formatted) + '\n'
         #print(replacement)
-        self.force_field_string = self.force_field_string.replace(match.group(0),replacement)
+        self.potential_string = self.potential_string.replace(match.group(0),replacement)
 
     def change_parameters_string(self, x):
 
@@ -194,6 +194,6 @@ class LammpsReaxff(LammpsBase):
             p = self.parameters[i]
             self.change_parameter_string(p['block'], p['atoms'], p['name'], x[i])
 
-        return self.force_field_string
+        return self.potential_string
 
 

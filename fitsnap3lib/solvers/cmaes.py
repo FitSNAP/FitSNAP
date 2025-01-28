@@ -30,8 +30,8 @@ class CMAES(Solver):
     def __init__(self, name, pt, config):
 
         super().__init__(name, pt, config, linear=False)
-        self.popsize = self.config.sections['CMAES'].popsize
-        self.sigma = self.config.sections['CMAES'].sigma
+        self.popsize = self.config.sections['SOLVER'].popsize
+        self.sigma = self.config.sections['SOLVER'].sigma
         self.parameters = self.config.sections["REAXFF"].parameters
 
 

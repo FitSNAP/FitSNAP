@@ -4,8 +4,7 @@ ReaxFF Models
 Introduction
 ------------
 
-The `Reactive Force Field (ReaxFF) <https://doi.org/10.1038/npjcompumats.2015.11>`_ replaces fixed bond topologies of classical force fields with the concept of bond order to simulate bond breaking/formation of chemical reactions. Originally conceived for hydrocarbons in the gas phase :footcite:p:`vanduin2001`, ReaxFF has been extended to a wide range of applications :footcite:p:`senftle2016`. ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports both the QEq charge equilibration :footcite:p:`rappe1991,nakano1997` and atom-condensed Kohn-Sham DFT to second order (ACKS2) :footcite:p:`verstraelen2013,ohearn2020` methods to represent the dynamics of electron density while fixed partial charges in classical force fields (eg. CHARMM) do not.
-
+The `Reactive Force Field (ReaxFF) <https://doi.org/10.1038/npjcompumats.2015.11>`_ replaces fixed bond topologies of classical force fields with the concept of bond order to simulate bond breaking/formation of chemical reactions. Originally conceived for hydrocarbons in the gas phase :footcite:p:`vanduin2001`, ReaxFF has been extended to a wide range of applications :footcite:p:`senftle2016`. ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports both the QEq charge equilibration :footcite:p:`rappe1991,nakano1997` and atom-condensed Kohn-Sham DFT to second order (ACKS2) :footcite:p:`verstraelen2013,ohearn2020` methods :guilabel:`FIXME: QTPIE` to represent the dynamics of electron density while fixed partial charges in classical force fields (eg. CHARMM) do not.
 
 ..  youtube:: bmOQ74kkd6A
   :align: center
@@ -13,13 +12,13 @@ The `Reactive Force Field (ReaxFF) <https://doi.org/10.1038/npjcompumats.2015.11
 
 |
 
-.. warning::
+.. danger::
 
   Just because a ReaxFF potential is available with the atoms for your intented application, it **DOES NOT** mean it is transferable if the training set did not include configurations similar to your intented application. For example, there are many potentials with C/H/O/N atoms but not all have the pi-bond parameters trained so a benzene molecule might behave in a *completely unphysical manner*. **You need to consult the original journal article (doi links below) together with the supplementary materials to confirm the transferability of a given ReaxFF potential to your application.**
 
 |
 
-----
+--------
 
 ReaxFF functional form
 ----------------------
@@ -29,11 +28,11 @@ The ReaxFF overall system energy is expressed as the sum:
 .. math::
 
   E_{system} & = E_{bond} + E_{lp} + E_{over} + E_{under} + E_{val} + E_{pen} + E_{coa} + E_{C2}\\[.6em]
-  & \qquad + E_{triple} + E_{tors} + E_{conj} + E_{H-bond} + E_{vdWaals} + E_{Coulomb}
+  & \qquad + E_{triple} + E_{tors} + E_{conj} + E_{Hbond} + E_{vdWaals} + E_{Coulomb}
 
 Details for each term:
 
-- Bond Order and Bond Energy
+- Bond order/energy
 
 - Lone pair energy
 
@@ -41,73 +40,141 @@ Details for each term:
 
 - Undercoordination
 
-- Valence Angle Terms (Angle energy, Penalty energy, Three-body conjugation term)
-
-- Torsion angle terms (Torsion rotation barriers, Four body conjugation term)
-
-- Hydrogen bond interactions
+- Valence Terms (Angle energy, Penalty energy, Three-body conjugation term)
 
 - Correction for C2
 
 - Triple bond energy correction
 
-- Nonbonded interactions (Taper correction, van der Waals interactions, Coulomb Interactions)
+- Torsion Terms (Torsion rotation barriers, Four body conjugation term)
+
+- Hydrogen bond interactions
+
+- Nonbonded interactions (van der Waals, Coulomb)
 
 are presented in the `Supporting Information <https://doi.org/10.1021/jp709896w>`_ of *A ReaxFF Reactive Force Field for Molecular Dynamics Simulations of Hydrocarbon Oxidation* by Chenoweth, van Duin, Goddard (2008).
 
-----
+|
+
+--------
 
 ReaxFF LAMMPS commands
 ----------------------
 
-* :doc:`pair_style <pair_reaxff>` reaxff (/kk)
-* :doc:`fix <fix_qeq_reaxff>` qeq/reaxff (/kk)
-* :doc:`fix <fix_acks2_reaxff>` acks2/reaxff (/kk)
-* :doc:`fix <fix_qtpie_reaxff>` qtpie/reaxff (/kk)
-* :doc:`pair_style <fix_reaxff_bonds>` reaxff/bonds (/kk)
-* :doc:`pair_style <fix_reaxff_species>` reaxff/species (/kk)
-* :doc:`compute <compute_reaxff_atom>` reaxff/atom (/kk)
+* `pair_style reaxff <https://doc.lammps.org/pair_reaxff.html>`_ (/kk)
+* `fix qeq/reaxff <https://doc.lammps.org/fix_qeq_reaxff.html>`_ (/kk)
+* `fix acks2/reaxff <https://doc.lammps.org/fix_acks2_reaxff.html>`_ (/kk)
+* `fix qtpie/reaxff <https://doc.lammps.org/fix_qtpie_reaxff.html>`_ (/kk)
+* `compute reaxff/bonds <https://doc.lammps.org/compute_reaxff_bonds.html>`_ (/kk)
+* `compute reaxff/species <https://doc.lammps.org/compute_reaxff_species.html>`_ (/kk)
+* `compute reaxff/atom <https://doc.lammps.org/compute_reaxff_atom.html>`_ (/kk)
 
+where (/kk) denotes LAMMPS commands available in KOKKOS package.
 
+.. note::
 
+  KOKKOS version of ReaxFF with ``-k on t 1 -sf kk`` is always used by FitSNAP-ReaxFF.
+
+    |
+    | *"IMO anyone and everyone should be using the KOKKOS version of ReaxFF. Not only is it more memory robust and will never have these hbondchk errors, it is also faster on CPUs, at least in most cases that I’ve benchmarked, or same speed at the very least."*
+
+    | -- Stan Moore (2024/10) on MatSci.org:
+    | **Lammps hbondchk failed**.
+    | https://matsci.org/t/lammps-hbondchk-failed/58230/6
+    |
+
+    *"I highly suggest using the KOKKOS package for ReaxFF, works in serial for CPUs too."*
+
+    | -- Stan Moore (2024/10) on MatSci.org:
+    | **Segmentation fault: address not mapped to object at address 0xc2cfb87c**.
+    | https://matsci.org/t/segmentation-fault-address-not-mapped-to-object-at-address-0xc2cfb87c/58493/5
+    |
+
+    *"You could also try the KOKKOS version which doesn’t use the safezone, mincap, and minhbonds factors which can bloat the memory if you set them too high."*
+
+    | -- Stan Moore (2025/01) on MatSci.org:
+    | **Possible memory problem with Reaxff when the total atom number increased**.
+    | https://matsci.org/t/possible-memory-problem-with-reaxff-when-the-total-atom-number-increased/60431/2
+
+|
+
+--------
 
 Fitting ReaxFF parameters
 -------------------------
 
-If a ReaxFF potential is not available for your intented application, then you can fit new ``parameters`` with FitSNAP-ReaxFF from DFT training data starting with an initial ``potential`` of `available ReaxFF potentials`_ (see below) in the ``reaxff/potentials`` directory. Filenames have the form *reaxff-<AUTHOR><YEAR>.ff*.
+If a ReaxFF potential is not available for your intented application, then you can fit new ``parameters`` with FitSNAP-ReaxFF from DFT training data. FitSNAP-ReaxFF is based on the `Covariance Matrix Adaptation Evolution Strategy (CMAES) <http://cma-es.github.io/>`_ optimization algorithm as implemented by the `pycma python package <https://github.com/CMA-ES/pycma>`_. CMAES finds a minimum :math:`x \in \mathbb{R}^n` of an objective function :math:`f(x)`. In FitSNAP-ReaxFF, the objective function minimized is the Sum of Squared Errors (SSE) between DFT reference data and predicted energy/forces given current values of parameters to be optimized.
 
-Compared to linear and nonlinear models, a FitSNAP-ReaxFF input script needs:
+The FitSNAP-ReaxFF workflow is fundamentally different than FitSNAP but relies on the same underlying infrastructure:
 
-  - ``[REAXFF]`` section instead of ``[BISPECTRUM]`` or ``[ACE]`` section
+**FitSNAP (SNAP/PACE/...)**
+  two separate phases after scraping data (i) *process_configs()* to calculate descriptors and (ii) *perform_fit()* to solve for optimal coefficients.
 
-  - ``[CALCULATOR]`` section with ``calculator = LAMMPSREAXFF`` instead of ``LAMMPSSNAP`` or ``LAMMPSPACE``
+**FitSNAP-ReaxFF**
+  *perform_fit()* is a parallel loop of *process_configs()* at each step of the fitting algorithm.  During this loop, a population with size ``popsize`` of ``parameters`` to be optimized is refined until the CMAES algorithm meets a termination criteria.
 
-  - ``[SOLVER]`` section with ``solver = CMAES`` instead of eg. ``SVD``, ``PYTORCH``, ...
 
-  - FIXME: move popsize and sigma to SOLVER section
 
-  - FIXME: output_style = REAXFF (not needed, implied by presence of REAXFF section)
+You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxff/potentials/reaxff-<AUTHOR><YEAR>.ff`` :ref:`(see below for full list bundled with FitSNAP-ReaxFF) <available_potentials>`. You can also start with any other valid ReaxFF potential file (with the exception of *eReaxFF* and *LG dispersion correction*), or :guilabel:`FIXME: restart from a previously optimized potential`.
+
+|
+
+N2_ReaxFF example
+^^^^^^^^^^^^^^^^^
+
+Let's start with a simple example related to the `nitrogen molecule example <https://alphataubio.com/inq/tutorial_shell_python.html>`_ of INQ, a modern clean-slate C++/CUDA open source (TD)DFT package from LLNL. DFT reference data can also be obtained from  `Quantum Espresso (QE) <https://www.quantum-espresso.org/>`_, `Vienna Ab initio Simulation Package (VASP) <https://www.vasp.at/>`_, literature, databases,...
 
 .. literalinclude:: ../../examples/N2_ReaxFF/reaxff-n2.in
   :caption: examples/N2_ReaxFF/reaxff-n2.in
 
-.. note::
 
-  Stress fitting is not supported (yet) in FitSNAP-ReaxFF. Only ``energy = 1`` and ``force = 1`` are available, ``stress = 0`` or ``stress = 1`` lines are ignored.
+FitSNAP-ReaxFF input script
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-FitSNAP-ReaxFF is based on the `Covariance Matrix Adaptation Evolution Strategy (CMA-ES) <http://cma-es.github.io/>`_ nonlinear optimization algorithm as implemented by the `pycma python package <https://github.com/CMA-ES/pycma>`_ . CMA-ES finds a minimum :math:`x \in \mathbb{R}^n` of an objective function :math:`f(x)`. In FitSNAP-ReaxFF, the objective function minimizes the Sum of Squared Errors (SSE) between DFT reference data and predicted energy/forces calculated with LAMMPS given the parameters to optimized.
+Compared to linear and nonlinear models, the input script for ReaxFF models needs:
 
-The FitSNAP-ReaxFF workflow differs from standard FitSNAP. In SNAP/PACE/PYTORCH/..., there are two separate phases: process_configs() and perform_fit(). In  FitSNAP-ReaxFF, perform_fit() is a loop of process_configs() at each step of the fitting algorithm.  During this loop, a population with size ``popsize`` of ``parameters`` to be optimized is refined until the CMA-ES algorithm meets a termination criteria.
+  - ``[REAXFF]`` section instead of ``[BISPECTRUM]`` or ``[ACE]`` section
+
+  - ``calculator = LAMMPSREAXFF`` instead of ``LAMMPSSNAP``, ``LAMMPSPACE``, ...
+
+  - ``solver = CMAES`` instead of eg. ``SVD``, ``PYTORCH``, ...
+
+``[REAXFF]`` section
+""""""""""""""""""""
+
+  - ``potential`` path of initial ReaxFF potential file
+
+  - ``parameters`` python array of dictionaries with keys:
+
+    - :guilabel:`FIXME: get 'value' from ff file`
+
+    - ``'block'`` string:
+
+      - ``'ATM'`` for atom
+      - ``'BND'`` for bond
+      - ``'OFD'`` for off-diagonal
+      - ``'ANG'`` for angle
+      - ``'TOR'`` for torsion
+      - ``'HBD'`` for hydrogen-bond
+
+    - ``'atoms'`` python array of string(s) with:
+
+      - 1 atom for ``ATM``, eg. ``['C']``
+      - 2 atoms for ``BND``/``OFD``, eg. ``['C','H']``
+      - 3 atoms for ``ANG``/``HBD``, eg. ``['C','H','O']``
+      - 4 atoms for ``TOR``, eg. ``['C','H','O','N']``
+
+    - ``'name'`` string of *actual LAMMPS implementation parameter name* (which might be different than other ReaxFF implementations commonly seen in comments of potential files)
+
+    - ``'range'`` **optional** python array of two floats to specify minimum and maximum allowed values for a parameter, with :guilabel:`FIXME: default` :math:`\pm 20\%` of initial value
 
 
-
-
-.. table:: Parameters that can be optimized
+.. table:: LAMMPS implementation parameter names that can be optimized
   :widths: auto
   :align: center
 
   ===== ========= ====================================
-  Block Parameter Description
+  Block Name      Description
   ===== ========= ====================================
   ATM   r_s       Sigma bond covalent radius
   ATM   r_pi      Pi bond covalent radius
@@ -138,8 +205,89 @@ The FitSNAP-ReaxFF workflow differs from standard FitSNAP. In SNAP/PACE/PYTORCH/
   HBD   p_hb1     Hydrogen bond energy
   ===== ========= ====================================
 
+.. note::
 
-----
+  ``reaxff/tools/reaxff-format-ff.py`` properly reformats a ReaxFF potential file (eg. copy/pasted from journal articles) together with actual LAMMPS implementation parameter names in comment fields. This format can have more precision (8 digits) because LAMMPS parses a potential file by splitting values on spaces instead of the legacy FORTRAN fixed column format (4 digits).
+
+  **Therefore, potentials reformatted by** ``reaxff-format-ff.py`` **or optimized by FitSNAP-ReaxFF are only intended for LAMMPS and might not work with other ReaxFF implementations**.
+
+
+``[CALCULATOR]`` section
+""""""""""""""""""""""""
+
+  - ``calculator`` **must be** ``LAMMPSREAXFF`` **for FitSNAP-ReaxFF**
+
+  - ``charge_fix`` charge equilibration fix command, eg:
+
+    - *(a)* ``fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff``
+
+    - *(b)* ``fix 1 all acks2/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 500``
+
+    - *(c)* ``fix 1 all qtpie/reaxff 1 0.0 10.0 1.0e-6 reaxff exp.qtpie``
+
+    - enables retraining of legacy ReaxFF QEq potentials for ACKS2 or QTPIE
+
+    - fix ID (``1`` in *examples a-c*), can only contain alphanumeric characters and underscores to be valid in LAMMPS
+
+  - ``energy`` turn on ``1`` or off ``0`` energy fitting
+
+  - ``force`` turn on ``1`` or off ``0`` force fitting
+
+  - ``stress`` **ignored in FitSNAP-ReaxFF**
+
+
+.. note::
+
+  Stress fitting is not supported in FitSNAP-ReaxFF, only ``energy = 1`` and ``force = 1`` are available.
+
+
+``[SOLVER]`` section
+""""""""""""""""""""
+
+  - ``solver`` **must be** ``CMAES`` **for FitSNAP-ReaxFF**
+
+  - ``popsize`` population size setting of CMAES algorithm, with default :math:`4+3*log(|P|)` where :math:`|P|` is the number of parameters to be optimized. [ `detailed discussion with the author of the pycma python package <https://github.com/CMA-ES/pycma/issues/140>`_ ]
+
+  - ``sigma`` sigma setting of CMAES algorithm, with default 0.1
+
+
+``[SCRAPER]`` section
+"""""""""""""""""""""
+
+  - same as FitSNAP
+
+
+``[PATH]`` section
+""""""""""""""""""
+
+  - same as FitSNAP
+
+``[OUTFILE]`` section
+"""""""""""""""""""""
+
+  - ``potential`` path of optimized ReaxFF potential file
+
+  - ``output_style`` **not applicable because** ``output_style=REAXFF`` **implied by REAXFF section**
+
+
+``[REFERENCE]`` section
+"""""""""""""""""""""""
+
+  - **not applicable in FitSNAP-ReaxFF**
+
+.. note:: Only ``units real`` and ``atom_style charge`` are supported in FitSNAP-ReaxFF.
+
+
+``[GROUPS]`` section
+""""""""""""""""""""
+
+  - same as FitSNAP
+
+
+
+--------
+
+.. _available_potentials:
 
 Available ReaxFF potentials
 ---------------------------
@@ -216,17 +364,17 @@ Combustion Branch
      - reaxff-strachan2003.ff
      - *n/a*
      - :footcite:t:`strachan2003`
-   * - FIXME
+   * - :guilabel:`FIXME`
      - C/H/O/N
      - reaxff-budzien2009.ff
      - *n/a*
      - :footcite:t:`budzien2009`
-   * - FIXME
+   * - :guilabel:`FIXME`
      - C/H/O/N/S
      - reaxff-mattsson2010.ff
      - *n/a*
      - :footcite:t:`mattsson2010`
-   * - FIXME
+   * - :guilabel:`FIXME`
      - C/H/O/N/S/F/Pt/Cl/Ni/X
      - reaxff-singh2013.ff
      - *n/a*
@@ -297,7 +445,7 @@ Combustion Branch
      - reaxff-chenoweth2005.ff
      - PDMSDecomp.ff
      - :footcite:t:`chenoweth2005`
-   * - FIXME
+   * - :guilabel:`FIXME`
      - H/O/Au
      - reaxff-joshi2010.ff
      - *n/a*
@@ -677,7 +825,7 @@ Water Branch
 
 
 
-----
+--------
 
 ReaxFF Bibliography
 -------------------

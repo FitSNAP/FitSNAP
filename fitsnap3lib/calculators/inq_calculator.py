@@ -1,11 +1,12 @@
-#import ctypes
 from fitsnap3lib.calculators.calculator import Calculator
 import numpy as np
 
-#import pinq
+import sys
+sys.path.append('/Users/mitch/.local/lib/python3.13/site-packages')
+import pinq
 
 
-class InqCalculator(Calculator):
+class INQCalculator(Calculator):
 
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
@@ -37,36 +38,58 @@ class InqCalculator(Calculator):
 
     def _initialize_inq(self):
 
-        # FIXME
-        pass
+        pinq.clear()
+        pinq.cell.cubic(5, "Angstrom", periodicity=3)
+        pinq.electrons.cutoff(40.0, "Hartree")
+        #pinq.electrons.spin_polarized()
+        #pinq.ground_state.max_steps(500)
+        #pinq.ground_state.mixing(.2)
+        #pinq.ground_state.tolerance(1e-6)
+        #pinq.kpoints.grid(2, 2, 2)
+        #pinq.theory.hartree_fock()
+        #pinq.theory.pbe0()
+        #pinq.theory.b3lyp()
 
 
     def _prepare_inq(self):
 
-        # FIXME
-        pass
+        self._create_atoms()
 
 
     def _create_atoms(self):
 
-        # FIXME
-        number_of_atoms = len(self._data["AtomTypes"])
-        positions = self._data["Positions"].flatten()
-        #elem_all = [type_mapping[a_t] for a_t in self._data["AtomTypes"]]
+        pinq.ions.clear()
+
+        for atom, position in zip(self._data["AtomTypes"], self._data["Positions"]):
+            pinq.ions.insert(atom, position, "Angstrom")
+
+        #number_of_atoms = len(self._data["AtomTypes"])
         #n_atoms = int(self._lmp.get_natoms())
         #assert number_of_atoms == n_atoms, "Atom counts don't match when creating atoms: {}, {}\nGroup and configuration: {} {}".format(number_of_atoms, n_atoms, self._data["Group"], self._data["File"])
 
 
-    def _collect_inq(self):
-
-        # FIXME
-        pass
-
-
     def _run_inq(self):
 
-        # FIXME
-        pass
+        try:
+
+            pinq.run.ground_state()
+
+        except:
+
+            # FIXME: handle exception
+
+
+    def _collect_inq(self):
+
+        if self.energy:
+            self._data['Energy'] = pinq.results.ground_state.energy.total()
+
+        if self.force:
+            self._data['Forces'] = pinq.results.ground_state.forces()
+
+        # Note that the dipole is only calculated for the non-periodic directions.
+        # For the periodic directions is set to zero since the dipole is not properly defined.
+        #if self.dipole:
 
 
     def _extract_atom_positions(self, num_atoms):

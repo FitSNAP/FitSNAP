@@ -15,8 +15,6 @@ class LammpsReaxff(LammpsBase):
         self._lmp = None
         self.pt.check_lammps()
         self.potential_path = self.config.sections['REAXFF'].potential
-        self.energy = self.config.sections["CALCULATOR"].energy
-        self.force = self.config.sections["CALCULATOR"].force
 
         with open(self.potential_path, 'r') as file:
             self.potential_string = file.read()
@@ -29,8 +27,7 @@ class LammpsReaxff(LammpsBase):
         self.type_mapping = {e: self.elements.index(e)+1 for e in self.elements}
         self.parameters = self.config.sections['REAXFF'].parameters
 
-        for p in self.parameters:
-            p['types'] = [self.type_mapping[a] for a in p['atoms']]
+
 
         self._initialize_lammps()
 
@@ -79,9 +76,31 @@ class LammpsReaxff(LammpsBase):
 
     def change_parameters(self, x):
 
-        new_parameters = [
-            {'block': 'BND', 'types': p['types'], 'name': p['name'], 'value': x[i]}
-            for i, p in enumerate(self.parameters)]
+        #new_parameters = [
+        #    {'block': 'BND', 'types': p['types'], 'name': p['name'], 'value': x[i]}
+        #    for i, p in enumerate(self.parameters)]
+
+        parameter_ids = []
+
+        # for p in self.parameters:
+        #    p['types'] = [self.type_mapping[a] for a in p['atoms']]
+
+        for p in self.parameters:
+
+            # BND.H.O.p_be2
+            block_atoms_name = p.split('.')
+            block = block_atoms_name.pop(0)
+            block_index = ['ATM','BND','OFD','ANG','TOR','HBD'].index(block)
+            _, parameters_list = self.num_atoms_parameters_list(block)
+            parameter_index = parameters_list.index(block_atoms_name.pop(-1))
+            parameter_ids.append([block_index, parameter_index])
+
+
+
+
+        #new_parameters = [
+        #    {'block': 'BND', 'types': p['types'], 'name': p['name'], 'value': x[i]}
+        #   for i, p in enumerate(self.parameters)]
 
         self._lmp.set_reaxff_parameters(new_parameters)
 
@@ -114,51 +133,49 @@ class LammpsReaxff(LammpsBase):
 
         #if(self.pt._rank==0): pprint(all_data)
 
-    def change_parameter_string(self, block, atoms, name, value):
+    def num_atoms_parameters_list(self, block):
 
         if( block == 'ATM' ):
-            num_atoms = 1
-            parameters_list = [
+            yield 1
+            yield [
                 'r_s', 'valency', 'mass', 'r_vdw', 'epsilon', 'gamma', 'r_pi', 'valency_e',
                 'alpha', 'gamma_w', 'valency_boc', 'p_ovun5', '', 'chi', 'eta', 'p_hbond', 
                 'r_pi_pi', 'p_lp2', '', 'b_o_131', 'b_o_132', 'b_o_133', 'bcut_acks2', '', 
                 'p_ovun2', 'p_val3', '', 'valency_val', 'p_val5', 'rcore2', 'ecore2', 'acore2']
 
         elif( block == 'BND' ):
-            num_atoms = 2
-            parameters_list = [
-                'De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1', 
+            yield 2
+            yield [
+                'De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1',
                 'p_be2','p_bo3','p_bo4','','p_bo1','p_bo2','ovc','']
 
         elif( block == 'OFD' ):
-            num_atoms = 2
-            parameters_list = [
-                'D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']
+            yield 2
+            yield ['D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']
 
         elif( block == 'ANG' ):
-            num_atoms = 3
-            parameters_list = [
-                'theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']
+            yield 3
+            yield ['theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']
 
         elif( block == 'TOR' ):
-            num_atoms = 4
-            parameters_list = [
-                'V1', 'V2', 'V3', 'p_tor1', 'p_cot1', '', '']
+            yield 4
+            yield ['V1', 'V2', 'V3', 'p_tor1', 'p_cot1', '', '']
 
         elif( block == 'HBD' ):
-            num_atoms = 3
-            parameters_list = [
-                'r0_hb', 'p_hb1', 'p_hb2', 'p_hb3']
+            yield 3
+            yield ['r0_hb', 'p_hb1', 'p_hb2', 'p_hb3']
 
         else:
             raise Exception(f"Block {block} not recognized, possible values are ATM, BND, OFD, ANG, TOR, HBD.")
 
-        if( num_atoms != len(atoms) ): 
+
+    def parameter_block(self, block, atoms):
+
+        num_atoms, parameters_list = self.num_atoms_parameters_list(block)
+
+        if( num_atoms != len(atoms) ):
             raise Exception(f"Block {block} expected {num_atoms} atoms, but {atoms} has {len(atoms)}.")
         
-        # Raises a ValueError if name not found
-        parameter_index = parameters_list.index(name)
-
         if( block == 'ATM' ):
             atoms_string = ''.join([' {:2}'.format(atoms[0]) for a in atoms])
             extra_indent = '\n   '
@@ -174,19 +191,37 @@ class LammpsReaxff(LammpsBase):
             print("self.potential_string...", self.potential_string)
             raise Exception("Unable to match text to replace")
 
-        tokens = match.group(0).split()
+        return match.group(0)
+
+
+    def parameter_value(self, block, atoms, name):
+
+        num_atoms, parameters_list = self.num_atoms_parameters_list(block)
+        parameter_index = parameters_list.index(name)
+        return float(self.parameter_block(block, atoms).split()[num_atoms+parameter_index])
+
+
+    def change_parameter_string(self, block, atoms, name, value):
+
+        num_atoms, parameters_list = self.num_atoms_parameters_list(block, atoms)
+        parameter_index = parameters_list.index(name)
+        parameter_block = self.parameter_block(block, atoms)
+        tokens = parameter_block.split()
         #tokens[num_atoms+parameter_index] = value
         tokens[num_atoms+parameter_index] = ' {:8.4f}'.format(value)
         #tokens_formatted = [' {:8.4f}'.format(float(t)) for t in tokens[num_atoms:]]
         tokens_formatted = tokens[num_atoms:]
 
+        extra_indent = '\n   ' if block == 'ATM' else '\n      '
+
         if( len(parameters_list)>8 ): tokens_formatted.insert(8, extra_indent)
         if( len(parameters_list)>16 ): tokens_formatted.insert(17, extra_indent)
         if( len(parameters_list)>24 ): tokens_formatted.insert(26, extra_indent)
         #replacement = atoms_string + ''.join(tokens_formatted) + '\n'
-        replacement = atoms_string + ' ' + ' '.join(tokens_formatted) + '\n'
-        #print(replacement)
-        self.potential_string = self.potential_string.replace(match.group(0),replacement)
+        replacement = ' '.join(tokens[:num_atoms]) + ' ' + ' '.join(tokens_formatted) + '\n'
+        print(replacement)
+        self.potential_string = self.potential_string.replace(parameter_block,replacement)
+
 
     def change_parameters_string(self, x):
 

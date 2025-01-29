@@ -31,7 +31,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinxcontrib.youtube',
-    'sphinxcontrib.bibtex'
+    'sphinxcontrib.bibtex',
+    'myst_parser'
 ]
 
 templates_path = ['_templates']

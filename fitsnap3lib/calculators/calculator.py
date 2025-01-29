@@ -23,6 +23,14 @@ class Calculator:
         self.number_of_files_per_node = None
         self.shared_index = None
         self.distributed_index = 0
+        self.energy = self.config.sections["CALCULATOR"].energy
+        self.force = self.config.sections["CALCULATOR"].force
+        self.stress = self.config.sections["CALCULATOR"].stress
+
+        # FIXME: needed later to fit charges/dipole in fitsnap-reaxff
+        # self.charge = self.config.sections["CALCULATOR"].charge
+        # self.dipole = self.config.sections["CALCULATOR"].dipole
+
 
     def get_width(self):
         pass

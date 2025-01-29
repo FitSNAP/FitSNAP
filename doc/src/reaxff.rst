@@ -75,23 +75,17 @@ where (/kk) denotes LAMMPS commands available in KOKKOS package.
 
   KOKKOS version of ReaxFF with ``-k on t 1 -sf kk`` is always used by FitSNAP-ReaxFF.
 
-    |
     | *"IMO anyone and everyone should be using the KOKKOS version of ReaxFF. Not only is it more memory robust and will never have these hbondchk errors, it is also faster on CPUs, at least in most cases that I’ve benchmarked, or same speed at the very least."*
-
     | -- Stan Moore (2024/10) on MatSci.org:
     | **Lammps hbondchk failed**.
     | https://matsci.org/t/lammps-hbondchk-failed/58230/6
-    |
 
-    *"I highly suggest using the KOKKOS package for ReaxFF, works in serial for CPUs too."*
-
+    | *"I highly suggest using the KOKKOS package for ReaxFF, works in serial for CPUs too."*
     | -- Stan Moore (2024/10) on MatSci.org:
     | **Segmentation fault: address not mapped to object at address 0xc2cfb87c**.
     | https://matsci.org/t/segmentation-fault-address-not-mapped-to-object-at-address-0xc2cfb87c/58493/5
-    |
 
-    *"You could also try the KOKKOS version which doesn’t use the safezone, mincap, and minhbonds factors which can bloat the memory if you set them too high."*
-
+    | *"You could also try the KOKKOS version which doesn’t use the safezone, mincap, and minhbonds factors which can bloat the memory if you set them too high."*
     | -- Stan Moore (2025/01) on MatSci.org:
     | **Possible memory problem with Reaxff when the total atom number increased**.
     | https://matsci.org/t/possible-memory-problem-with-reaxff-when-the-total-atom-number-increased/60431/2
@@ -117,15 +111,13 @@ The FitSNAP-ReaxFF workflow is fundamentally different than FitSNAP but relies o
 
 You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxff/potentials/reaxff-<AUTHOR><YEAR>.ff`` :ref:`(see below for full list bundled with FitSNAP-ReaxFF) <available_potentials>`. You can also start with any other valid ReaxFF potential file (with the exception of *eReaxFF* and *LG dispersion correction*), or :guilabel:`FIXME: restart from a previously optimized potential`.
 
-|
+.. admonition:: N2_ReaxFF example
+  :class: Hint
 
-N2_ReaxFF example
-^^^^^^^^^^^^^^^^^
+  Let's start with a simple example related to the `nitrogen molecule example <https://alphataubio.com/inq/tutorial_shell_python.html>`_ of INQ, a modern clean-slate C++/CUDA open source (TD)DFT package from LLNL. DFT reference data can also be obtained from  `Quantum Espresso (QE) <https://www.quantum-espresso.org/>`_, `Vienna Ab initio Simulation Package (VASP) <https://www.vasp.at/>`_, literature, databases,...
 
-Let's start with a simple example related to the `nitrogen molecule example <https://alphataubio.com/inq/tutorial_shell_python.html>`_ of INQ, a modern clean-slate C++/CUDA open source (TD)DFT package from LLNL. DFT reference data can also be obtained from  `Quantum Espresso (QE) <https://www.quantum-espresso.org/>`_, `Vienna Ab initio Simulation Package (VASP) <https://www.vasp.at/>`_, literature, databases,...
-
-.. literalinclude:: ../../examples/N2_ReaxFF/reaxff-n2.in
-  :caption: examples/N2_ReaxFF/reaxff-n2.in
+  .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF.in
+    :caption: **examples/N2_ReaxFF/N2_ReaxFF.in**
 
 
 FitSNAP-ReaxFF input script
@@ -144,32 +136,21 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
 
   - ``potential`` path of initial ReaxFF potential file
 
-  - ``parameters`` python array of dictionaries with keys:
+  - ``parameters`` strings of the form ``<BLOCK>.<ATOM_1>...<ATOM_N>.<NAME>``:
 
-    - :guilabel:`FIXME: get 'value' from ff file`
+      - ``ATM.C.name`` for atom parameters
+      - ``BND.C.H.name`` for bond parameters
+      - ``OFD.C.H.name`` for off-diagonal parameters
+      - ``ANG.C.H.O.name`` for angle parameters
+      - ``TOR.C.H.O.N.name`` for torsion parameters
+      - ``HBD.C.H.O.name`` for hydrogen-bond parameters
 
-    - ``'block'`` string:
+    where ``name`` *LAMMPS implementation parameter name* (which might be different than other ReaxFF implementations commonly seen in comments of potential files)
 
-      - ``'ATM'`` for atom
-      - ``'BND'`` for bond
-      - ``'OFD'`` for off-diagonal
-      - ``'ANG'`` for angle
-      - ``'TOR'`` for torsion
-      - ``'HBD'`` for hydrogen-bond
-
-    - ``'atoms'`` python array of string(s) with:
-
-      - 1 atom for ``ATM``, eg. ``['C']``
-      - 2 atoms for ``BND``/``OFD``, eg. ``['C','H']``
-      - 3 atoms for ``ANG``/``HBD``, eg. ``['C','H','O']``
-      - 4 atoms for ``TOR``, eg. ``['C','H','O','N']``
-
-    - ``'name'`` string of *actual LAMMPS implementation parameter name* (which might be different than other ReaxFF implementations commonly seen in comments of potential files)
-
-    - ``'range'`` **optional** python array of two floats to specify minimum and maximum allowed values for a parameter, with :guilabel:`FIXME: default` :math:`\pm 20\%` of initial value
+    - ``'range'`` **optional** python array of two floats to specify minimum and maximum allowed values for a parameter :math:`p`, with default range :math:`p_0\pm.2|p_0|` if :math:`|p_0|>0` and :math:`(-1,1)` otherwise
 
 
-.. table:: LAMMPS implementation parameter names that can be optimized
+.. table:: LAMMPS implementation parameter names
   :widths: auto
   :align: center
 
@@ -207,7 +188,7 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
 
 .. note::
 
-  ``reaxff/tools/reaxff-format-ff.py`` properly reformats a ReaxFF potential file (eg. copy/pasted from journal articles) together with actual LAMMPS implementation parameter names in comment fields. This format can have more precision (8 digits) because LAMMPS parses a potential file by splitting values on spaces instead of the legacy FORTRAN fixed column format (4 digits).
+  ``reaxff/tools/reaxff-format-ff.py`` properly reformats a ReaxFF potential file (eg. copy/pasted from journal articles) together with *LAMMPS implementation parameter names* in comment fields. This format can have more precision (8 digits) because LAMMPS parses a potential file by splitting values on spaces instead of the legacy FORTRAN fixed column format (4 digits).
 
   **Therefore, potentials reformatted by** ``reaxff-format-ff.py`` **or optimized by FitSNAP-ReaxFF are only intended for LAMMPS and might not work with other ReaxFF implementations**.
 
@@ -246,7 +227,7 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
 
   - ``solver`` **must be** ``CMAES`` **for FitSNAP-ReaxFF**
 
-  - ``popsize`` population size setting of CMAES algorithm, with default :math:`4+3*log(|P|)` where :math:`|P|` is the number of parameters to be optimized. [ `detailed discussion with the author of the pycma python package <https://github.com/CMA-ES/pycma/issues/140>`_ ]
+  - ``popsize`` population size setting of CMAES algorithm, with default :math:`4+3*log(|P|)` where :math:`|P|` is the number of parameters to be optimized. [`detailed discussion with the author of the pycma python package <https://github.com/CMA-ES/pycma/issues/140>`_]
 
   - ``sigma`` sigma setting of CMAES algorithm, with default 0.1
 

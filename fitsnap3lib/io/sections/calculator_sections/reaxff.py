@@ -10,5 +10,5 @@ class Reaxff(Section):
 
         self.allowedkeys = ['potential', 'parameters']
         self.potential = self.get_value("REAXFF", "potential", "None", "str")
-        self.parameters = eval(self.get_value("REAXFF", "parameters", "None", "str"))
+        self.parameters = self.get_value("REAXFF", "parameters", "None", "str")
         self.delete()

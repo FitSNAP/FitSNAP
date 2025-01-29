@@ -71,13 +71,11 @@ class INQCalculator(Calculator):
     def _run_inq(self):
 
         try:
-
             pinq.run.ground_state()
-
         except:
-
             # FIXME: handle exception
-
+            pass
+            
 
     def _collect_inq(self):
 

@@ -55,7 +55,7 @@ EXAMPLES_RST:
 # . $(VENV)/bin/activate ;
 # 		deactivate ;\
 
-html: EXAMPLES_RST
+html: #EXAMPLES_RST
 	@(\
 		env PYTHONWARNINGS= PYTHONDONTWRITEBYTECODE=1 \
 		sphinx-build -E $(SPHINXEXTRA) -b html -c $(SPHINXCONFIG) -d $(BUILDDIR)/doctrees $(RSTDIR) html ;\

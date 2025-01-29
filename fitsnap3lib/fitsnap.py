@@ -39,6 +39,9 @@ from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
 import random
 
+from cProfile import Profile
+from pstats import SortKey, Stats
+
 
 class FitSnap:
     """ 
@@ -70,6 +73,7 @@ class FitSnap:
         self.pt = ParallelTools(comm=comm)
         self.pt.all_barrier()
         self.config = Config(self.pt, input, arguments_lst=arglist)
+        self.pt.reaxff = "REAXFF" in self.config.sections
         if self.config.args.verbose:
             self.pt.single_print(f"FitSNAP instance hash: {self.config.hash}")
         # Instantiate other backbone attributes.
@@ -81,6 +85,9 @@ class FitSnap:
             if "SOLVER" in self.config.sections else None
         self.output = output(self.config.sections["OUTFILE"].output_style, self.pt, self.config) \
             if "OUTFILE" in self.config.sections else None
+
+        if self.pt.reaxff:
+            self.output = output("REAXFF", self.pt, self.config) 
 
         self.fit = None
         self.multinode = 0
@@ -203,8 +210,14 @@ class FitSnap:
                 if self.solver.linear:
                     self.solver.perform_fit()
                 elif "REAXFF" in self.config.sections:
-                    self.calculator.allocate_per_config(self.data)
-                    if(self.pt._rank==0): self.solver.perform_fit(self)
+
+                  self.calculator.allocate_per_config(self.data)
+                  #self.solver.perform_fit(self)
+
+                  with Profile() as profile:
+                    self.solver.perform_fit(self)
+                    Stats(profile).dump_stats(f"stats{self.pt._rank}")
+
                 else:
                     # Perform nonlinear fitting on 1 proc only.
                     if(self.pt._rank==0): self.solver.perform_fit()

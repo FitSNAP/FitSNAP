@@ -25,16 +25,37 @@ class LammpsReaxff(LammpsBase):
         self.elements = [lines[i].split()[0] for i in range(line_index, line_index+4*number_of_elements, 4)]
         self.masses = [float(lines[i].split()[3]) for i in range(line_index, line_index+4*number_of_elements, 4)]
         self.type_mapping = {e: self.elements.index(e)+1 for e in self.elements}
-        self.parameters = self.config.sections['REAXFF'].parameters
-
-
-
+        self._parse_parameters(self.config.sections['REAXFF'].parameters)
         self._initialize_lammps()
 
 
     def __del__(self):
         self._lmp = self.pt.close_lammps()
         del self
+
+    def _parse_parameters(self, config_parameters):
+
+        self.parameters = []
+
+        # for p in self.parameters:
+        #    p['types'] = ]
+
+        for p in config_parameters.split():
+
+            # BND.H.O.p_be2
+            tokens = p.split('.')
+            p_block = tokens.pop(0)
+            p_block_index = ['ATM','BND','OFD','ANG','TOR','HBD'].index(p_block)
+            _, parameters_list = self.num_atoms_parameters_list(p_block)
+            p_name = tokens.pop(-1)
+            p_index = parameters_list.index(p_name)
+            p_atom_types = [self.type_mapping[a] for a in tokens]
+            p_value = self.parameter_value(p_block, tokens, p_name)
+            parameter = [p_block_index] + p_atom_types + [p_index, p_value]
+            print(parameter)
+            self.parameters.append(parameter)
+
+
 
 
     def _initialize_lammps(self, printlammps=0):
@@ -76,33 +97,12 @@ class LammpsReaxff(LammpsBase):
 
     def change_parameters(self, x):
 
-        #new_parameters = [
-        #    {'block': 'BND', 'types': p['types'], 'name': p['name'], 'value': x[i]}
-        #    for i, p in enumerate(self.parameters)]
+        for i, xi in enumerate(x):
+            self.parameters[i][-1] = float(xi)
 
-        parameter_ids = []
+        #print(self.parameters)
 
-        # for p in self.parameters:
-        #    p['types'] = [self.type_mapping[a] for a in p['atoms']]
-
-        for p in self.parameters:
-
-            # BND.H.O.p_be2
-            block_atoms_name = p.split('.')
-            block = block_atoms_name.pop(0)
-            block_index = ['ATM','BND','OFD','ANG','TOR','HBD'].index(block)
-            _, parameters_list = self.num_atoms_parameters_list(block)
-            parameter_index = parameters_list.index(block_atoms_name.pop(-1))
-            parameter_ids.append([block_index, parameter_index])
-
-
-
-
-        #new_parameters = [
-        #    {'block': 'BND', 'types': p['types'], 'name': p['name'], 'value': x[i]}
-        #   for i, p in enumerate(self.parameters)]
-
-        self._lmp.set_reaxff_parameters(new_parameters)
+        self._lmp.set_reaxff_parameters(self.parameters)
 
 
     def _collect_lammps(self):

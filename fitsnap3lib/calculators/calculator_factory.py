@@ -4,7 +4,12 @@ from fitsnap3lib.calculators.lammps_pace import LammpsPace
 from fitsnap3lib.calculators.lammps_snap import LammpsSnap
 from fitsnap3lib.calculators.lammps_custom import LammpsCustom
 from fitsnap3lib.calculators.lammps_reaxff import LammpsReaxff
-#from fitsnap3lib.calculators.inq_calculator import InqCalculator
+
+from importlib.util import find_spec
+if find_spec("pinq"):
+    print("Importing INQCalculator... ", end='')
+    from fitsnap3lib.calculators.inq_calculator import INQCalculator
+    print("done.", end='')
 
 
 #pt = ParallelTools()

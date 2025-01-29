@@ -32,7 +32,6 @@
 import sys
 from time import time, sleep
 import numpy as np
-from lammps import lammps
 from random import randint
 from psutil import virtual_memory
 from itertools import chain
@@ -200,6 +199,7 @@ class ParallelTools():
         self.fitsnap_dict = {}
         self.logger = None
         self.pytest = False
+        self.reaxff = False
         self._fp = None
 
     """
@@ -524,6 +524,14 @@ class ParallelTools():
 
     def check_lammps(self, lammps_noexceptions=0):
         cmds = ["-screen", "none", "-log", "none"]
+
+        # super hack to workaround lammps repo admin
+        if self.reaxff:
+            from lammps.reaxff import lammps_reaxff as lammps
+            cmds.extend(['-k','on','t','1','-sf','kk'])
+        else:
+            from lammps import lammps
+
         if self.stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
         else:
@@ -544,6 +552,14 @@ class ParallelTools():
                 
     def initialize_lammps(self, lammpslog=0, printlammps=0):
         cmds = ["-screen", "none"]
+
+        # super hack to workaround lammps repo admin
+        if self.reaxff:
+            from lammps.reaxff import lammps_reaxff as lammps
+            cmds.extend(['-k','on','t','1','-sf','kk'])
+        else:
+            from lammps import lammps
+
         if not lammpslog:
             cmds.append("-log")
             cmds.append("none")

@@ -114,7 +114,7 @@ You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxf
 .. admonition:: N2_ReaxFF example
   :class: Hint
 
-  Let's start with a simple example related to the `nitrogen molecule example <https://alphataubio.com/inq/tutorial_shell_python.html>`_ of INQ, a modern clean-slate C++/CUDA open source (TD)DFT package from LLNL. DFT reference data can also be obtained from  `Quantum Espresso (QE) <https://www.quantum-espresso.org/>`_, `Vienna Ab initio Simulation Package (VASP) <https://www.vasp.at/>`_, literature, databases,...
+  Let's start with a simple example related to the `nitrogen molecule example <https://alphataubio.com/inq/tutorial_shell_python.html>`_ of INQ, a modern clean-slate C++/CUDA open source (TD)DFT package from LLNL. DFT reference data can also be obtained from  `Quantum Espresso (QE) <https://www.quantum-espresso.org/>`_, `Vienna Ab initio Simulation Package (VASP) <https://www.vasp.at/>`_, literature, online databases,...
 
   .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF.in
     :caption: **examples/N2_ReaxFF/N2_ReaxFF.in**
@@ -136,7 +136,7 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
 
   - ``potential`` path of initial ReaxFF potential file
 
-  - ``parameters`` strings of the form ``<BLOCK>.<ATOM_1>...<ATOM_N>.<NAME>``:
+  - ``parameters`` strings separated by spaces with format ``<BLOCK>.<ATOM_1>...<ATOM_N>.<NAME>``:
 
       - ``ATM.C.name`` for atom parameters
       - ``BND.C.H.name`` for bond parameters
@@ -145,7 +145,7 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
       - ``TOR.C.H.O.N.name`` for torsion parameters
       - ``HBD.C.H.O.name`` for hydrogen-bond parameters
 
-    where ``name`` *LAMMPS implementation parameter name* (which might be different than other ReaxFF implementations commonly seen in comments of potential files)
+    where ``name`` is *LAMMPS implementation parameter name* (which might be different than other ReaxFF implementations commonly seen in comments of potential files)
 
     - ``'range'`` **optional** python array of two floats to specify minimum and maximum allowed values for a parameter :math:`p`, with default range :math:`p_0\pm.2|p_0|` if :math:`|p_0|>0` and :math:`(-1,1)` otherwise
 

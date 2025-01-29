@@ -32,7 +32,6 @@ class CMAES(Solver):
         super().__init__(name, pt, config, linear=False)
         self.popsize = self.config.sections['SOLVER'].popsize
         self.sigma = self.config.sections['SOLVER'].sigma
-        self.parameters = self.config.sections["REAXFF"].parameters
 
 
     def parallel_loss_subgroup(self, x_arrays):
@@ -55,12 +54,12 @@ class CMAES(Solver):
         global reaxff_calculator
         reaxff_calculator = fs.calculator
 
-        x0 = [reaxff_calculator.parameter_value(p) for p in self.parameters]
+        x0 = [p[-1] for p in reaxff_calculator.parameters]
         print( x0 )
 
-        bounds = np.empty([len(self.parameters),2])
+        bounds = np.empty([len(reaxff_calculator.parameters),2])
 
-        for i, p in enumerate(self.parameters):
+        for i, p in enumerate(reaxff_calculator.parameters):
             if 'range' in p:
                 bounds[i] = p['range']
             else:
@@ -75,8 +74,6 @@ class CMAES(Solver):
           'popsize': self.popsize, 'seed': 12345, 'maxiter': 5,
           'bounds': list(np.transpose(bounds))
         }
-
-        self.pt.create_shared_array('parameters', self.popsize, len(self.parameters))
 
         if self.pt.stubs == 0:
             from mpi4py import MPI

@@ -55,11 +55,9 @@ class CMAES(Solver):
         global reaxff_calculator
         reaxff_calculator = fs.calculator
 
-        x0 = [reaxff_calculator.parameter_value(p['block'], p['atoms'], p['name']) for p in self.parameters]
-
+        x0 = [reaxff_calculator.parameter_value(p) for p in self.parameters]
         print( x0 )
 
-        # create a 2x|p| list
         bounds = np.empty([len(self.parameters),2])
 
         for i, p in enumerate(self.parameters):

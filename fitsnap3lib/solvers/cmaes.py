@@ -55,12 +55,27 @@ class CMAES(Solver):
         global reaxff_calculator
         reaxff_calculator = fs.calculator
 
-        x0 = [p['value'] for p in self.parameters]
+        x0 = [reaxff_calculator.parameter_value(p['block'], p['atoms'], p['name']) for p in self.parameters]
+
+        print( x0 )
+
+        # create a 2x|p| list
+        bounds = np.empty([len(self.parameters),2])
+
+        for i, p in enumerate(self.parameters):
+            if 'range' in p:
+                bounds[i] = p['range']
+            else:
+                delta = 0.2*np.abs(x0[i])
+                delta = delta if delta>0.0 else 1.0
+                bounds[i] = [x0[i]-delta, x0[i]+delta]
+
+        print(bounds)
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
           'popsize': self.popsize, 'seed': 12345, 'maxiter': 5,
-          'bounds': [[p['range'][0] for p in self.parameters],[p['range'][1] for p in self.parameters]]
+          'bounds': list(np.transpose(bounds))
         }
 
         self.pt.create_shared_array('parameters', self.popsize, len(self.parameters))

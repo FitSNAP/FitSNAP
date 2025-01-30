@@ -160,17 +160,16 @@ class Json(Scraper):
                         d["ground_relative_index"] = ground_index - i
                         d["Energy"] -= ground_reference_energy
 
-                    subgroup = {
+                    qm_y = [d["Energy"] for d in configs]
+                    auto_weights = np.max(qm_y)*1.1-np.array(qm_y)
+
+                    self.all_data.append({
                         'ground_index': ground_index,
                         'reference_energy': np.array([c["Energy"] for c in configs]),
-                        'weights': np.array([c["Weight"] for c in configs]),
+                        #'weights': np.array([c["Weight"] for c in configs]),
+                        'weights': auto_weights/np.sum(auto_weights),
                         'configs': configs
-                    }
-
-                    #tmp2 = np.square(np.max(qm_y)-np.array(qm_y)+1)
-                    #auto_weights2 = tmp2/np.sum(tmp2)
-
-                    self.all_data.append(subgroup)
+                    })
 
             else:
                 self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)    

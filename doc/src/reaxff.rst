@@ -116,11 +116,17 @@ You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxf
 
   Let's start with a simple example related to the `nitrogen molecule example <https://alphataubio.com/inq/tutorial_shell_python.html>`_ of INQ, a modern clean-slate C++/CUDA open source (TD)DFT package from LLNL. DFT reference data can also be obtained from  `Quantum Espresso (QE) <https://www.quantum-espresso.org/>`_, `Vienna Ab initio Simulation Package (VASP) <https://www.vasp.at/>`_, literature, online databases,...
 
+  *First*, training data is computed using INQ with PBE functional and saved to ``JSON/N2_ReaxFF-PBE/N2_ReaxFF-PBE.json``:
+
   .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-PBE.py
     :caption: **examples/N2_ReaxFF/N2_ReaxFF-PBE.py**
 
+  *Second*, a FitSNAP-ReaxFF optimization with input script ``N2_ReaxFF.in``:
+
   .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF.in
     :caption: **examples/N2_ReaxFF/N2_ReaxFF.in**
+
+  *Third*, potential energy computed along the bond scan :math:`\text{N}\!\equiv\!\text{N}` by running LAMMPS with potentials ``reaxff-wood2014.ff`` and ``N2_ReaxFF-optimized.ff`` is compared to QM training data with matplotlib and saved to ``N2_ReaxFF.png``:
 
   .. image:: ../../examples/N2_ReaxFF/N2_ReaxFF.png
     :align: center

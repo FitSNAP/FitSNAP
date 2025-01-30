@@ -30,8 +30,9 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
-    'sphinxcontrib.youtube',
+    'sphinx_tabs.tabs',
     'sphinxcontrib.bibtex',
+    'sphinxcontrib.youtube',
     'myst_parser'
 ]
 

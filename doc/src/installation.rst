@@ -50,7 +50,7 @@ Now install the necessary pre-requisites to build Python-LAMMPS using pip or con
     # For fitting ACE:
     python -m pip install sympy pyyaml
     # For contributing to docs:
-    python -m pip install sphinx sphinx_rtd_theme sphinxcontrib-napoleon sphinxcontrib-bibtex sphinxcontrib-youtube myst_parser
+    python -m pip install sphinx sphinx_rtd_theme sphinxcontrib-napoleon sphinx_tabs sphinxcontrib-bibtex sphinxcontrib-youtube myst_parser
 
 To make sure MPI is working, make a Python script called :code:`test.py` with the following::
 

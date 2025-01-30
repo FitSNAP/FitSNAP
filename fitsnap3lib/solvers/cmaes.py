@@ -12,7 +12,7 @@ def loss_function_subgroup(i_x_j):
     subgroup = reaxff_calculator.pt.fitsnap_dict["Data"][i_x_j[2]]
     reaxff_calculator.change_parameters(i_x_j[1])
     configs = subgroup['configs']
-    for c in configs: reaxff_calculator.process_reaxff_config(c)
+    for c in configs: reaxff_calculator.process_configs(c, i_x_j[0])
 
     if reaxff_calculator.energy:
       ground_predicted_energy = configs[subgroup['ground_index']]['predicted_energy']

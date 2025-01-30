@@ -15,6 +15,7 @@ class LammpsReaxff(LammpsBase):
         self._lmp = None
         self.pt.check_lammps()
         self.potential_path = self.config.sections['REAXFF'].potential
+        self.charge_fix = self.config.sections['CALCULATOR'].charge_fix
 
         with open(self.potential_path, 'r') as file:
             self.potential_string = file.read()
@@ -33,31 +34,6 @@ class LammpsReaxff(LammpsBase):
         self._lmp = self.pt.close_lammps()
         del self
 
-    def _parse_parameters(self, config_parameters):
-
-        self.parameters = []
-
-        # for p in self.parameters:
-        #    p['types'] = ]
-
-        for p in config_parameters.split():
-
-            # BND.H.O.p_be2
-            tokens = p.split('.')
-            p_block = tokens.pop(0)
-            p_block_index = ['ATM','BND','OFD','ANG','TOR','HBD'].index(p_block)
-            _, parameters_list = self.num_atoms_parameters_list(p_block)
-            p_name = tokens.pop(-1)
-            p_index = parameters_list.index(p_name)
-            p_atom_types = [self.type_mapping[a] for a in tokens]
-            p_value = self.parameter_value(p_block, tokens, p_name)
-            parameter = [p_block_index] + p_atom_types + [p_index, p_value]
-            print(parameter)
-            self.parameters.append(parameter)
-
-
-
-
     def _initialize_lammps(self, printlammps=0):
         super()._initialize_lammps(printlammps)
         self._lmp.command("boundary p p p")
@@ -73,9 +49,7 @@ class LammpsReaxff(LammpsBase):
         self._lmp.commands_list([f"mass {i+1} {self.masses[i]}" for i in range(len(self.masses))])
         self._lmp.command("pair_style reaxff NULL")
         self._lmp.command(f"pair_coeff * * {self.potential_path} {' '.join(self.elements)}")
-
-        self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff") # maxiter 400
-        #self._lmp.command("fix 1 all acks2/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 500")
+        self._lmp.command(self.charge_fix)
 
 
     def process_configs(self, data, i):
@@ -109,7 +83,8 @@ class LammpsReaxff(LammpsBase):
     def _collect_lammps(self):
 
         if self.energy:
-            self._data['predicted_energy'] = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
+            predicted_energy = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
+            self._data['predicted_energy'] = predicted_energy if not np.isnan(predicted_energy) else 9999
             #print("_collect_lammps(self)...", self._i, self._data["Energy"], config_energy)
 
 
@@ -178,18 +153,17 @@ class LammpsReaxff(LammpsBase):
             raise Exception(f"Block {block} expected {num_atoms} atoms, but {atoms} has {len(atoms)}.")
         
         if( block == 'ATM' ):
-            atoms_string = ''.join([' {:2}'.format(atoms[0]) for a in atoms])
+            atoms_string = ''.join(['\s*{:2}'.format(atoms[0]) for a in atoms])
             extra_indent = '\n   '
         else:
-            #atoms_string = ''.join([' {:2d}'.format(self.elements.index(a)+1) for a in atoms])
-            atoms_string = ''.join(['  '+str(self.elements.index(a)+1) for a in atoms])
+            atoms_string = ''.join(['\s*'+str(self.elements.index(a)+1) for a in atoms])
             extra_indent = '\n      '
 
-        pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+\.[0-9]+){{{len(parameters_list)}}}\n'
+        pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+\.[0-9]+){{{len(parameters_list)}}}'
 
         if( not (match := re.search(pattern, self.potential_string, flags=re.MULTILINE|re.DOTALL)) ):
             print("pattern...", pattern)
-            print("self.potential_string...", self.potential_string)
+            #print("self.potential_string...", self.potential_string)
             raise Exception("Unable to match text to replace")
 
         return match.group(0)
@@ -202,15 +176,34 @@ class LammpsReaxff(LammpsBase):
         return float(self.parameter_block(block, atoms).split()[num_atoms+parameter_index])
 
 
-    def change_parameter_string(self, block, atoms, name, value):
+    def _parse_parameters(self, config_parameters):
 
-        num_atoms, parameters_list = self.num_atoms_parameters_list(block, atoms)
-        parameter_index = parameters_list.index(name)
+        self.parameters = []
+
+        for p in config_parameters.split():
+
+            # BND.H.O.p_be2
+            tokens = p.split('.')
+            p_block = tokens.pop(0)
+            p_block_index = ['ATM','BND','OFD','ANG','TOR','HBD'].index(p_block)
+            _, parameters_list = self.num_atoms_parameters_list(p_block)
+            p_name = tokens.pop(-1)
+            p_name_index = parameters_list.index(p_name)
+            p_atom_types = [self.type_mapping[a] for a in tokens]
+            p_value = self.parameter_value(p_block, tokens, p_name)
+            parameter = [p_block_index] + p_atom_types + [p_name_index, p_value]
+            print(parameter)
+            self.parameters.append(parameter)
+
+
+    def change_parameter_string(self, block_index, atom_types, name_index, value):
+
+        block = ['ATM','BND','OFD','ANG','TOR','HBD'][block_index]
+        num_atoms, parameters_list = self.num_atoms_parameters_list(block)
+        atoms = [self.elements[t-1] for t in atom_types]
         parameter_block = self.parameter_block(block, atoms)
         tokens = parameter_block.split()
-        #tokens[num_atoms+parameter_index] = value
-        tokens[num_atoms+parameter_index] = ' {:8.4f}'.format(value)
-        #tokens_formatted = [' {:8.4f}'.format(float(t)) for t in tokens[num_atoms:]]
+        tokens[num_atoms+name_index] = ' {:12.8f}'.format(value)
         tokens_formatted = tokens[num_atoms:]
 
         extra_indent = '\n   ' if block == 'ATM' else '\n      '
@@ -218,9 +211,8 @@ class LammpsReaxff(LammpsBase):
         if( len(parameters_list)>8 ): tokens_formatted.insert(8, extra_indent)
         if( len(parameters_list)>16 ): tokens_formatted.insert(17, extra_indent)
         if( len(parameters_list)>24 ): tokens_formatted.insert(26, extra_indent)
-        #replacement = atoms_string + ''.join(tokens_formatted) + '\n'
         replacement = ' '.join(tokens[:num_atoms]) + ' ' + ' '.join(tokens_formatted) + '\n'
-        print(replacement)
+        #print(replacement)
         self.potential_string = self.potential_string.replace(parameter_block,replacement)
 
 
@@ -228,7 +220,7 @@ class LammpsReaxff(LammpsBase):
 
         for i in range(len(x)):
             p = self.parameters[i]
-            self.change_parameter_string(p['block'], p['atoms'], p['name'], x[i])
+            self.change_parameter_string(p[0], p[1:-2], p[-2], p[-1])
 
         return self.potential_string
 

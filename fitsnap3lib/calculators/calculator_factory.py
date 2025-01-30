@@ -9,7 +9,7 @@ from importlib.util import find_spec
 if find_spec("pinq"):
     print("Importing INQCalculator... ", end='')
     from fitsnap3lib.calculators.inq_calculator import INQCalculator
-    print("done.", end='')
+    print("done.")
 
 
 #pt = ParallelTools()

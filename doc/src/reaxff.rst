@@ -116,9 +116,15 @@ You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxf
 
   Let's start with a simple example related to the `nitrogen molecule example <https://alphataubio.com/inq/tutorial_shell_python.html>`_ of INQ, a modern clean-slate C++/CUDA open source (TD)DFT package from LLNL. DFT reference data can also be obtained from  `Quantum Espresso (QE) <https://www.quantum-espresso.org/>`_, `Vienna Ab initio Simulation Package (VASP) <https://www.vasp.at/>`_, literature, online databases,...
 
+  .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-PBE.py
+    :caption: **examples/N2_ReaxFF/N2_ReaxFF-PBE.py**
+
   .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF.in
     :caption: **examples/N2_ReaxFF/N2_ReaxFF.in**
 
+  .. image:: ../../examples/N2_ReaxFF/N2_ReaxFF.png
+    :align: center
+    :width: 62%
 
 FitSNAP-ReaxFF input script
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

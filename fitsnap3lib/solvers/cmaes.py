@@ -17,6 +17,7 @@ def loss_function_subgroup(i_x_j):
     if reaxff_calculator.energy:
       ground_predicted_energy = configs[subgroup['ground_index']]['predicted_energy']
       predicted_energy = np.array([c['predicted_energy']-ground_predicted_energy for c in configs])
+      #pprint(predicted_energy)
       weighted_residuals = subgroup['weights'] * np.square((predicted_energy - subgroup['reference_energy']))
 
     if reaxff_calculator.force:
@@ -36,10 +37,11 @@ class CMAES(Solver):
 
     def parallel_loss_subgroup(self, x_arrays):
 
+        x_list = x_arrays if isinstance(x_arrays, list) else [x_arrays]
         all_data = self.pt.fitsnap_dict["Data"]
-        x_subgroup_pairs = itertools.product(range(len(x_arrays)),range(len(all_data)))
-        tuples = [(i,x_arrays[i],j) for i, j in x_subgroup_pairs]
-        answer = [0.0] * len(x_arrays)
+        x_subgroup_pairs = itertools.product(range(len(x_list)),range(len(all_data)))
+        tuples = [(i,x_list[i],j) for i, j in x_subgroup_pairs]
+        answer = [0.0] * len(x_list)
         for p in self.executor.map(loss_function_subgroup, tuples, unordered=True): answer[p[0]] += p[1]
         return answer
 
@@ -67,11 +69,11 @@ class CMAES(Solver):
                 delta = delta if delta>0.0 else 1.0
                 bounds[i] = [x0[i]-delta, x0[i]+delta]
 
-        print(bounds)
+        #print(bounds)
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
-          'popsize': self.popsize, 'seed': 12345, 'maxiter': 5,
+          'popsize': self.popsize, 'seed': 12345, # 'maxiter': 5,
           'bounds': list(np.transpose(bounds))
         }
 

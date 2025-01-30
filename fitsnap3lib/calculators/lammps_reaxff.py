@@ -78,10 +78,11 @@ class LammpsReaxff(LammpsBase):
         #self._lmp.command("fix 1 all acks2/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 500")
 
 
-    def process_reaxff_config(self, data):
+    def process_configs(self, data, i):
 
         try:
             self._data = data
+            self._i = i
             self._prepare_lammps()
             self._run_lammps()
             self._collect_lammps()

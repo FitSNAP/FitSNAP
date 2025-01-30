@@ -161,7 +161,7 @@ class Json(Scraper):
                         d["Energy"] -= ground_reference_energy
 
                     qm_y = [d["Energy"] for d in configs]
-                    auto_weights = np.max(qm_y)*1.1-np.array(qm_y)
+                    auto_weights = np.square(np.max(qm_y)*1.1-np.array(qm_y))
 
                     self.all_data.append({
                         'ground_index': ground_index,

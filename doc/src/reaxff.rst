@@ -105,9 +105,7 @@ The FitSNAP-ReaxFF workflow is fundamentally different than FitSNAP but relies o
   two separate phases after scraping data (i) *process_configs()* to calculate descriptors and (ii) *perform_fit()* to solve for optimal coefficients.
 
 **FitSNAP-ReaxFF**
-  *perform_fit()* is a parallel loop of *process_configs()* at each step of the fitting algorithm.  During this loop, a population with size ``popsize`` of ``parameters`` to be optimized is refined until the CMAES algorithm meets a termination criteria.
-
-
+  one integrated phase *perform_fit()* is a parallel loop of *process_configs()* at each step of the fitting algorithm.  During this loop, a population with size ``popsize`` of ``parameters`` to be optimized is refined until the CMAES algorithm meets a termination criteria.
 
 You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxff/potentials/reaxff-<AUTHOR><YEAR>.ff`` :ref:`(see below for full list bundled with FitSNAP-ReaxFF) <available_potentials>`. You can also start with any other valid ReaxFF potential file (with the exception of *eReaxFF* and *LG dispersion correction*), or :guilabel:`FIXME: restart from a previously optimized potential`.
 
@@ -123,10 +121,31 @@ You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxf
 
   *Second*, a FitSNAP-ReaxFF optimization with input script ``N2_ReaxFF.in``:
 
-  .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF.in
-    :caption: **examples/N2_ReaxFF/N2_ReaxFF.in**
+  .. tabs::
 
-  *Third*, potential energy computed along the bond scan :math:`\text{N}\!\equiv\!\text{N}` by running LAMMPS with potentials ``reaxff-wood2014.ff`` and ``N2_ReaxFF-optimized.ff`` is compared to QM training data with matplotlib and saved to ``N2_ReaxFF.png``:
+   .. tab:: QEQ
+
+      .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-qeq.in
+        :caption: **examples/N2_ReaxFF/N2_ReaxFF-qeq.in**
+
+   .. tab:: ACKS2
+
+      .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-acks2.in
+        :caption: **examples/N2_ReaxFF/N2_ReaxFF-acks2.in**
+
+   .. tab:: QTPIE
+
+      .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-qtpie.in
+        :caption: **examples/N2_ReaxFF/N2_ReaxFF-qtpie.in**
+
+  *Third*, potential energy computed along the bond scan :math:`\text{N}\!\equiv\!\text{N}` by running LAMMPS with potentials
+
+    - ``reaxff-wood2014.ff``
+    - ``N2_ReaxFF-qeq.ff``
+    - ``N2_ReaxFF-acks2.ff``
+    - ``N2_ReaxFF-qtpie.ff``
+
+  is compared to QM training data with matplotlib and saved to ``N2_ReaxFF.png``:
 
   .. image:: ../../examples/N2_ReaxFF/N2_ReaxFF.png
     :align: center

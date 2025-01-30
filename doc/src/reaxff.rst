@@ -4,13 +4,25 @@ ReaxFF Models
 Introduction
 ------------
 
-The `Reactive Force Field (ReaxFF) <https://doi.org/10.1038/npjcompumats.2015.11>`_ replaces fixed bond topologies of classical force fields with the concept of bond order to simulate bond breaking/formation of chemical reactions. Originally conceived for hydrocarbons in the gas phase :footcite:p:`vanduin2001`, ReaxFF has been extended to a wide range of applications :footcite:p:`senftle2016`. ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports both the QEq charge equilibration :footcite:p:`rappe1991,nakano1997` and atom-condensed Kohn-Sham DFT to second order (ACKS2) :footcite:p:`verstraelen2013,ohearn2020` methods :guilabel:`FIXME: QTPIE` to represent the dynamics of electron density while fixed partial charges in classical force fields (eg. CHARMM) do not.
+The `Reactive Force Field (ReaxFF) <https://doi.org/10.1038/npjcompumats.2015.11>`_ replaces fixed bond topologies of classical force fields with the concept of bond order to simulate bond breaking/formation of chemical reactions. Originally conceived for hydrocarbons in the gas phase :footcite:p:`vanduin2001`, ReaxFF has been extended to a wide range of applications :footcite:p:`senftle2016`.
 
 ..  youtube:: bmOQ74kkd6A
   :align: center
   :width: 62%
 
 |
+
+ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports three charge equilibration methods to represent the dynamics of electron density while fixed partial charges in classical force fields (eg. CHARMM) do not.
+
+  - Charge Equilibration (QEq) :footcite:p:`rappe1991,nakano1997`
+
+  - Atom-Condensed Kohn-Sham DFT to second order (ACKS2) :footcite:p:`verstraelen2013,ohearn2020`
+
+  - Charge Transfer and Polarization in Equilibrium (QTPIE) :footcite:p:`chen2007`
+
+.. note::
+
+  FitSNAP-ReaxFF enables retraining of legacy ReaxFF QEq potentials for ACKS2 and QTPIE, including optimization of the bond_softness, chi, eta, gamma, bcut_acks2, and gauss_exp parameters.
 
 .. danger::
 
@@ -102,10 +114,10 @@ If a ReaxFF potential is not available for your intented application, then you c
 The FitSNAP-ReaxFF workflow is fundamentally different than FitSNAP but relies on the same underlying infrastructure:
 
 **FitSNAP (SNAP/PACE/...)**
-  two separate phases after scraping data (i) *process_configs()* to calculate descriptors and (ii) *perform_fit()* to solve for optimal coefficients.
+  Two separate phases after scraping data (i) *process_configs()* to calculate descriptors and (ii) *perform_fit()* to solve for optimal coefficients.
 
 **FitSNAP-ReaxFF**
-  one integrated phase *perform_fit()* is a parallel loop of *process_configs()* at each step of the fitting algorithm.  During this loop, a population with size ``popsize`` of ``parameters`` to be optimized is refined until the CMAES algorithm meets a termination criteria.
+  One integrated phase *perform_fit()* consists of a loop where *process_configs()* runs in parallel at each step of the fitting algorithm. During this loop, a population of ``popsize`` candidate ``parameters`` is refined until the CMAES algorithm meets a termination criteria.
 
 You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxff/potentials/reaxff-<AUTHOR><YEAR>.ff`` :ref:`(see below for full list bundled with FitSNAP-ReaxFF) <available_potentials>`. You can also start with any other valid ReaxFF potential file (with the exception of *eReaxFF* and *LG dispersion correction*), or :guilabel:`FIXME: restart from a previously optimized potential`.
 
@@ -119,7 +131,7 @@ You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxf
   .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-PBE.py
     :caption: **examples/N2_ReaxFF/N2_ReaxFF-PBE.py**
 
-  *Second*, a FitSNAP-ReaxFF optimization with input script ``N2_ReaxFF.in``:
+  *Second*, a FitSNAP-ReaxFF optimization with input scripts ``N2_ReaxFF-<CHARGE_FIX>.in``:
 
   .. tabs::
 
@@ -236,8 +248,6 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
     - *(b)* ``fix 1 all acks2/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 500``
 
     - *(c)* ``fix 1 all qtpie/reaxff 1 0.0 10.0 1.0e-6 reaxff exp.qtpie``
-
-    - enables retraining of legacy ReaxFF QEq potentials for ACKS2 or QTPIE
 
     - fix ID (``1`` in *examples a-c*), can only contain alphanumeric characters and underscores to be valid in LAMMPS
 

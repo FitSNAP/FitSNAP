@@ -111,35 +111,32 @@ class LammpsReaxff(LammpsBase):
 
     def num_atoms_parameters_list(self, block):
 
+        if( block == 'GEN' ):
+            yield 0, ['']*33 + 'bond_softness' + ['']*5
+
         if( block == 'ATM' ):
-            yield 1
-            yield [
+            yield 1, [
                 'r_s', 'valency', 'mass', 'r_vdw', 'epsilon', 'gamma', 'r_pi', 'valency_e',
-                'alpha', 'gamma_w', 'valency_boc', 'p_ovun5', '', 'chi', 'eta', 'p_hbond', 
+                'alpha', 'gamma_w', 'valency_boc', 'p_ovun5', 'gauss_exp', 'chi', 'eta', 'p_hbond', 
                 'r_pi_pi', 'p_lp2', '', 'b_o_131', 'b_o_132', 'b_o_133', 'bcut_acks2', '', 
                 'p_ovun2', 'p_val3', '', 'valency_val', 'p_val5', 'rcore2', 'ecore2', 'acore2']
 
         elif( block == 'BND' ):
-            yield 2
-            yield [
+            yield 2, [
                 'De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1',
                 'p_be2','p_bo3','p_bo4','','p_bo1','p_bo2','ovc','']
 
         elif( block == 'OFD' ):
-            yield 2
-            yield ['D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']
+            yield 2, ['D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']
 
         elif( block == 'ANG' ):
-            yield 3
-            yield ['theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']
+            yield 3, ['theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']
 
         elif( block == 'TOR' ):
-            yield 4
-            yield ['V1', 'V2', 'V3', 'p_tor1', 'p_cot1', '', '']
+            yield 4, ['V1', 'V2', 'V3', 'p_tor1', 'p_cot1', '', '']
 
         elif( block == 'HBD' ):
-            yield 3
-            yield ['r0_hb', 'p_hb1', 'p_hb2', 'p_hb3']
+            yield 3, ['r0_hb', 'p_hb1', 'p_hb2', 'p_hb3']
 
         else:
             raise Exception(f"Block {block} not recognized, possible values are ATM, BND, OFD, ANG, TOR, HBD.")

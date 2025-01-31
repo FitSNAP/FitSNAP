@@ -16,7 +16,8 @@ def loss_function_subgroup(i_x_j):
 
     if reaxff_calculator.energy:
       ground_predicted_energy = configs[subgroup['ground_index']]['predicted_energy']
-      predicted_energy = np.array([c['predicted_energy']-ground_predicted_energy for c in configs])
+      for c in configs: c['predicted_energy'] -= ground_predicted_energy
+      predicted_energy = np.array([c['predicted_energy'] for c in configs])
       #pprint(predicted_energy)
       weighted_residuals = subgroup['weights'] * np.square((predicted_energy - subgroup['reference_energy']))
 
@@ -43,6 +44,7 @@ class CMAES(Solver):
         tuples = [(i,x_list[i],j) for i, j in x_subgroup_pairs]
         answer = [0.0] * len(x_list)
         for p in self.executor.map(loss_function_subgroup, tuples, unordered=True): answer[p[0]] += p[1]
+        print(answer)
         return answer
 
 
@@ -56,14 +58,16 @@ class CMAES(Solver):
         global reaxff_calculator
         reaxff_calculator = fs.calculator
 
-        x0 = [p[-1] for p in reaxff_calculator.parameters]
+        x0 = reaxff_calculator.values
         print( x0 )
 
         bounds = np.empty([len(reaxff_calculator.parameters),2])
 
         for i, p in enumerate(reaxff_calculator.parameters):
             if 'range' in p:
-                bounds[i] = p['range']
+                bounds[i] = p['range'] # FIXME 'range' config parser
+            elif p[0]==0:
+                bounds[i] = [0.0, 99.99]
             else:
                 delta = 0.2*np.abs(x0[i])
                 delta = delta if delta>0.0 else 1.0
@@ -73,7 +77,7 @@ class CMAES(Solver):
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
-          'popsize': self.popsize, 'seed': 12345, # 'maxiter': 5,
+          'popsize': self.popsize, 'seed': 12345, 'maxiter': 3,
           'bounds': list(np.transpose(bounds))
         }
 
@@ -101,9 +105,6 @@ class CMAES(Solver):
         #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
         #x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)
 
-        #print("======== es ========")
-        #pprint(vars(es))
-        #print("======== es ========")
         #c = es.countiter
         #x = cfun.find_feasible(es)
         #print("find_feasible took {} iterations".format(es.countiter - c))

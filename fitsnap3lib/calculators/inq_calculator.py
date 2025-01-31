@@ -13,13 +13,6 @@ class INQCalculator(Calculator):
         self._data = {}
         self._i = 0
 
-
-    def bond_scan(self):
-
-        # FIXME
-        pass
-
-
     def process_configs(self, data, i):
         """
         Calculate QM training data for a given configuration.

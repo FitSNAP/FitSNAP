@@ -197,37 +197,42 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
   :widths: auto
   :align: center
 
-  ===== ========= ====================================
-  Block Name      Description
-  ===== ========= ====================================
-  ATM   r_s       Sigma bond covalent radius
-  ATM   r_pi      Pi bond covalent radius
-  ATM   r_pi2     Double pi bond covalent radius
-  BND   p_bo1     Sigma bond order
-  BND   p_bo2     Sigma bond order
-  BND   p_bo3     Pi bond order parameter
-  BND   p_bo4     Pi bond order parameter
-  BND   p_bo5     Double pi bond order parameter
-  BND   p_bo6     Double pi bond order parameter
-  BND   p_be1     Bond energy parameter
-  BND   p_be2     Bond energy parameter
-  BND   De_s      Sigma-bond dissociation energy
-  BND   De_p      Pi-bond dissociation energy
-  BND   De_pp     Double pi-bond dissociation energy
-  BND   p_ovun1   Overcoordination penalty
-  OFD   r_s       Sigma bond length
-  OFD   r_pi      Pi bond length
-  OFD   r_pi2     PiPi bond length
-  ANG   theta_00  180o-(equilibrium angle)
-  ANG   p_val1    Valence angle parameter
-  ANG   p_val2    Valence angle parameter
-  TOR   V1        V1-torsion barrier
-  TOR   V2        V2-torsion barrier
-  TOR   V3        V3-torsion barrier
-  TOR   p_tor1    Torsion angle parameter
-  HBD   r0_hb     Hydrogen bond equilibrium distance
-  HBD   p_hb1     Hydrogen bond energy
-  ===== ========= ====================================
+  ===== ============= ====================================
+  Block Name          Description
+  ===== ============= ====================================
+  GEN   bond_softness Bond softness (ACKS2)
+  ATM   r_s           Sigma bond covalent radius
+  ATM   r_pi          Pi bond covalent radius
+  ATM   gauss_exp     Gaussian orbital exponent (QTPIE)
+  ATM   chi           Electronegativity **[always eV]** (ACKS2, QTPIE)
+  ATM   eta           Atomic hardness **[always eV]** (ACKS2, QTPIE)
+  ATM   gamma         Valence orbital exponent (ACKS2, QTPIE)
+  ATM   bcut_acks2    Bond cutoff distance (ACKS2, QTPIE)
+  BND   p_bo1         Sigma bond order
+  BND   p_bo2         Sigma bond order
+  BND   p_bo3         Pi bond order parameter
+  BND   p_bo4         Pi bond order parameter
+  BND   p_bo5         Double pi bond order parameter
+  BND   p_bo6         Double pi bond order parameter
+  BND   p_be1         Bond energy parameter
+  BND   p_be2         Bond energy parameter
+  BND   De_s          Sigma-bond dissociation energy
+  BND   De_p          Pi-bond dissociation energy
+  BND   De_pp         Double pi-bond dissociation energy
+  BND   p_ovun1       Overcoordination penalty
+  OFD   r_s           Sigma bond length
+  OFD   r_pi          Pi bond length
+  OFD   r_pi2         PiPi bond length
+  ANG   theta_00      180o-(equilibrium angle)
+  ANG   p_val1        Valence angle parameter
+  ANG   p_val2        Valence angle parameter
+  TOR   V1            V1-torsion barrier
+  TOR   V2            V2-torsion barrier
+  TOR   V3            V3-torsion barrier
+  TOR   p_tor1        Torsion angle parameter
+  HBD   r0_hb         Hydrogen bond equilibrium distance
+  HBD   p_hb1         Hydrogen bond energy
+  ===== ============= ====================================
 
 .. note::
 

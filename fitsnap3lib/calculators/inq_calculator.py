@@ -1,32 +1,56 @@
 from fitsnap3lib.calculators.calculator import Calculator
+import pinq, json
 import numpy as np
+from pprint import pprint
 
-import sys
-sys.path.append('/Users/mitch/.local/lib/python3.13/site-packages')
-import pinq
+# has to be outside class, cant pass a class
+# around with MPICommExecutor
+def process_single_task(self, data, i=0):
+
+    inq_calculator.process_single(self, data, i)
 
 
 class INQCalculator(Calculator):
 
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
+        print('ok 1')
+        #self.theory = self.config.sections["CALCULATOR"].theory
         self._data = {}
         self._i = 0
 
-    def process_configs(self, data, i):
-        """
-        Calculate QM training data for a given configuration.
-        """
-        try:
-            self._data = data
-            self._i = i
-            self._initialize_inq()
-            self._prepare_inq()
-            self._run_inq()
-            self._collect_inq()
-        except Exception as e:
-            # FIXME
-            raise e
+
+    def process_single(self, data, i=0):
+      """
+      Calculate QM training data for a given configuration.
+      """
+      print('ok 2')
+      try:
+          inq_calculator._data = data
+          inq_calculator._i = i
+          inq_calculator._initialize_inq()
+          inq_calculator._prepare_inq()
+          inq_calculator._run_inq()
+          inq_calculator._collect_inq()
+      except Exception as e:
+          # FIXME
+          raise e
+
+    def process_configs(self, data):
+
+        global inq_calculator
+        inq_calculator = self
+
+        if self.pt.stubs == 1:
+            pprint(data)
+            for d in data: self.process_single(d)
+        else:
+            from mpi4py import MPI
+            from mpi4py.futures import MPICommExecutor, wait
+
+            with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
+                if self.executor is not None:
+                    self.executor.map(process_single_task, data, unordered=True)
 
 
     def _initialize_inq(self):
@@ -39,8 +63,12 @@ class INQCalculator(Calculator):
         #pinq.ground_state.mixing(.2)
         #pinq.ground_state.tolerance(1e-6)
         #pinq.kpoints.grid(2, 2, 2)
+
+        # gives same results as PBE for N2 example
         #pinq.theory.hartree_fock()
         #pinq.theory.pbe0()
+
+        # fancier functionals dont work because INQ dispersion not implemented
         #pinq.theory.b3lyp()
 
 
@@ -56,6 +84,7 @@ class INQCalculator(Calculator):
         for atom, position in zip(self._data["AtomTypes"], self._data["Positions"]):
             pinq.ions.insert(atom, position, "Angstrom")
 
+        # FIXME: error checking correct number of atoms created
         #number_of_atoms = len(self._data["AtomTypes"])
         #n_atoms = int(self._lmp.get_natoms())
         #assert number_of_atoms == n_atoms, "Atom counts don't match when creating atoms: {}, {}\nGroup and configuration: {} {}".format(number_of_atoms, n_atoms, self._data["Group"], self._data["File"])
@@ -78,6 +107,9 @@ class INQCalculator(Calculator):
         if self.force:
             self._data['Forces'] = pinq.results.ground_state.forces()
 
+        if self.dipole:
+            self._data['Dipole'] = pinq.results.ground_state.dipole()
+
         # Note that the dipole is only calculated for the non-periodic directions.
         # For the periodic directions is set to zero since the dipole is not properly defined.
         #if self.dipole:
@@ -85,6 +117,6 @@ class INQCalculator(Calculator):
 
     def _extract_atom_positions(self, num_atoms):
 
-        # FIXME: might be needed one day for geometry optimization
+        # FIXME: might be needed later for geometry optimization
         pass
 

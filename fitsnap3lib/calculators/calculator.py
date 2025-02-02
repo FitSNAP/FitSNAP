@@ -26,10 +26,7 @@ class Calculator:
         self.energy = self.config.sections["CALCULATOR"].energy
         self.force = self.config.sections["CALCULATOR"].force
         self.stress = self.config.sections["CALCULATOR"].stress
-
-        # FIXME: needed later to fit charges/dipole in fitsnap-reaxff
-        # self.charge = self.config.sections["CALCULATOR"].charge
-        # self.dipole = self.config.sections["CALCULATOR"].dipole
+        self.dipole = self.config.sections["CALCULATOR"].dipole
 
 
     def get_width(self):

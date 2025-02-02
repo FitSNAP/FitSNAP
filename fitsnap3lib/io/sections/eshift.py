@@ -6,7 +6,7 @@ class Eshift(Section):
 
     def __init__(self, name, config, pt, infile, args):
         super().__init__(name, config, pt, infile, args)
-        types = []
+        self.types = []
         if config.has_section("BISPECTRUM"):
             self.types = self.get_value("BISPECTRUM", "type", "H").split()
         elif config.has_section("ACE"):

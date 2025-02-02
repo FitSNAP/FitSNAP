@@ -19,7 +19,9 @@ def loss_function_subgroup(i_x_j):
       for c in configs: c['predicted_energy'] -= ground_predicted_energy
       predicted_energy = np.array([c['predicted_energy'] for c in configs])
       #pprint(predicted_energy)
-      weighted_residuals = subgroup['weights'] * np.square((predicted_energy - subgroup['reference_energy']))
+      residuals = nan_to_num(predicted_energy - subgroup['reference_energy'], nan=99)
+      weighted_residuals = subgroup['weights'] * np.square(residuals)
+
 
     if reaxff_calculator.force:
       pass
@@ -66,18 +68,16 @@ class CMAES(Solver):
         for i, p in enumerate(reaxff_calculator.parameters):
             if 'range' in p:
                 bounds[i] = p['range'] # FIXME 'range' config parser
-            elif p[0]==0:
-                bounds[i] = [0.0, 99.99]
             else:
                 delta = 0.2*np.abs(x0[i])
                 delta = delta if delta>0.0 else 1.0
                 bounds[i] = [x0[i]-delta, x0[i]+delta]
 
-        #print(bounds)
+        pprint(bounds)
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
-          'popsize': self.popsize, 'seed': 12345, 'maxiter': 3,
+          'popsize': self.popsize, 'seed': 12345, #'maxiter': 3,
           'bounds': list(np.transpose(bounds))
         }
 
@@ -100,6 +100,7 @@ class CMAES(Solver):
 
         if self.pt._rank == 0:
             self.fit = reaxff_calculator.change_parameters_string(x_best)
+            reaxff_calculator.process_configs(c, i_x_j[0], descriptors=True)
             self.errors = es.pop_sorted
 
         #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)

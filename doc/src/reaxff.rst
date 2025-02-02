@@ -28,6 +28,10 @@ ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports three charge equilibration m
 
   Just because a ReaxFF potential is available with the atoms for your intented application, it **DOES NOT** mean it is transferable if the training set did not include configurations similar to your intented application. For example, there are many potentials with C/H/O/N atoms but not all have the pi-bond parameters trained so a benzene molecule might behave in a *completely unphysical manner*. **You need to consult the original journal article (doi links below) together with the supplementary materials to confirm the transferability of a given ReaxFF potential to your application.**
 
+The Potential Energy Surface (PES) is an insanely immense mathematical object. PES of a system with N atoms doesn't have N points, it has *3N dimensions*! The odds are infinitesimal that someone else visited the same tiny slice of subspace you're interested in and made a Machine-Learning Inter-Atomic-Potential (ML-IAP) or a Reax Force Field (FF) for you already. Stop looking for potentials from somewhere else, except to practice and learn to maybe get close to what you're doing. For *original research* there's no way around having to generate your own DFT and/or experimental data to train a new MLIAP or FF. **This is the purpose of FitSNAP-ReaxFF.**
+
+
+
 |
 
 --------
@@ -114,52 +118,52 @@ If a ReaxFF potential is not available for your intented application, then you c
 The FitSNAP-ReaxFF workflow is fundamentally different than FitSNAP but relies on the same underlying infrastructure:
 
 **FitSNAP (SNAP/PACE/...)**
-  Two separate phases after scraping data (i) *process_configs()* to calculate descriptors and (ii) *perform_fit()* to solve for optimal coefficients.
+  Two separate phases after scraping data: (i) *process_configs()* to calculate descriptors and (ii) *perform_fit()* to solve for optimal coefficients.
 
 **FitSNAP-ReaxFF**
-  One integrated phase *perform_fit()* consists of a loop where *process_configs()* runs in parallel at each step of the fitting algorithm. During this loop, a population of ``popsize`` candidate ``parameters`` is refined until the CMAES algorithm meets a termination criteria.
+  One integrated phase: *perform_fit()* consists of a loop where *process_configs()* runs in parallel at each step of the fitting algorithm. During this loop, a population of ``popsize`` candidate ``parameters`` is refined until the CMAES algorithm meets a termination criteria.
 
 You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxff/potentials/reaxff-<AUTHOR><YEAR>.ff`` :ref:`(see below for full list bundled with FitSNAP-ReaxFF) <available_potentials>`. You can also start with any other valid ReaxFF potential file (with the exception of *eReaxFF* and *LG dispersion correction*), or :guilabel:`FIXME: restart from a previously optimized potential`.
 
-.. admonition:: N2_ReaxFF example
+.. admonition:: reaxff-n2 example
   :class: Hint
 
   Let's start with a simple example related to the `nitrogen molecule example <https://alphataubio.com/inq/tutorial_shell_python.html>`_ of INQ, a modern clean-slate C++/CUDA open source (TD)DFT package from LLNL. DFT reference data can also be obtained from  `Quantum Espresso (QE) <https://www.quantum-espresso.org/>`_, `Vienna Ab initio Simulation Package (VASP) <https://www.vasp.at/>`_, literature, online databases,...
 
-  *First*, training data is computed using INQ with PBE functional and saved to ``JSON/N2_ReaxFF-PBE/N2_ReaxFF-PBE.json``:
+  *First*, training data is computed using INQ with PBE functional and saved to ``JSON/reaxff-n2-PBE/reaxff-n2-PBE.json``:
 
-  .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-PBE.py
-    :caption: **examples/N2_ReaxFF/N2_ReaxFF-PBE.py**
+  .. literalinclude:: ../../examples/reaxff-n2/reaxff-n2-inq.py
+    :caption: **examples/reaxff-n2/reaxff-n2-inq.py**
 
-  *Second*, a FitSNAP-ReaxFF optimization with input scripts ``N2_ReaxFF-<CHARGE_FIX>.in``:
+  *Second*, a FitSNAP-ReaxFF optimization with input scripts ``reaxff-n2-<CHARGE_FIX>.in``:
 
   .. tabs::
 
    .. tab:: QEQ
 
-      .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-qeq.in
-        :caption: **examples/N2_ReaxFF/N2_ReaxFF-qeq.in**
+      .. literalinclude:: ../../examples/reaxff-n2/reaxff-n2-qeq.in
+        :caption: **examples/reaxff-n2/reaxff-n2-qeq.in**
 
    .. tab:: ACKS2
 
-      .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-acks2.in
-        :caption: **examples/N2_ReaxFF/N2_ReaxFF-acks2.in**
+      .. literalinclude:: ../../examples/reaxff-n2/reaxff-n2-acks2.in
+        :caption: **examples/reaxff-n2/reaxff-n2-acks2.in**
 
    .. tab:: QTPIE
 
-      .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-qtpie.in
-        :caption: **examples/N2_ReaxFF/N2_ReaxFF-qtpie.in**
+      .. literalinclude:: ../../examples/reaxff-n2/reaxff-n2-qtpie.in
+        :caption: **examples/reaxff-n2/reaxff-n2-qtpie.in**
 
   *Third*, potential energy computed along the bond scan :math:`\text{N}\!\equiv\!\text{N}` by running LAMMPS with potentials
 
     - ``reaxff-wood2014.ff``
-    - ``N2_ReaxFF-qeq.ff``
-    - ``N2_ReaxFF-acks2.ff``
-    - ``N2_ReaxFF-qtpie.ff``
+    - ``reaxff-n2-qeq.ff``
+    - ``reaxff-n2-acks2.ff``
+    - ``reaxff-n2-qtpie.ff``
 
-  is compared to QM training data with matplotlib and saved to ``N2_ReaxFF.png``:
+  is compared to QM training data with matplotlib and saved to ``reaxff-n2.png``:
 
-  .. image:: ../../examples/N2_ReaxFF/N2_ReaxFF.png
+  .. image:: ../../examples/reaxff-n2/reaxff-n2.png
     :align: center
     :width: 62%
 
@@ -208,14 +212,14 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
   ATM   eta           Atomic hardness **[always eV]** (ACKS2, QTPIE)
   ATM   gamma         Valence orbital exponent (ACKS2, QTPIE)
   ATM   bcut_acks2    Bond cutoff distance (ACKS2, QTPIE)
-  BND   p_bo1         Sigma bond order
-  BND   p_bo2         Sigma bond order
-  BND   p_bo3         Pi bond order parameter
-  BND   p_bo4         Pi bond order parameter
-  BND   p_bo5         Double pi bond order parameter
-  BND   p_bo6         Double pi bond order parameter
-  BND   p_be1         Bond energy parameter
-  BND   p_be2         Bond energy parameter
+  BND   p_bo1         Sigma bond order coefficient
+  BND   p_bo2         Sigma bond order exponent
+  BND   p_bo3         Pi bond order coefficient
+  BND   p_bo4         Pi bond order exponent
+  BND   p_bo5         Double pi bond order coefficient
+  BND   p_bo6         Double pi bond order exponent
+  BND   p_be1         Bond energy coefficient
+  BND   p_be2         Bond energy exponent
   BND   De_s          Sigma-bond dissociation energy
   BND   De_p          Pi-bond dissociation energy
   BND   De_pp         Double pi-bond dissociation energy

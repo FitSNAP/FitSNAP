@@ -11,7 +11,7 @@ class Calculator(Section):
         super().__init__(name, config, pt, infile, args)
         #self.pt = ParallelTools()
         self.allowedkeys = ['calculator', 'energy', 'per_atom_energy', 'force', 'stress', \
-                            'nonlinear', 'per_atom_scalar', 'charge_fix']
+                            'nonlinear', 'per_atom_scalar', 'charge_fix', 'dipole']
         self._check_section()
 
         self.calculator = self.get_value("CALCULATOR", "calculator", "LAMMPSSNAP")
@@ -19,6 +19,7 @@ class Calculator(Section):
         self.per_atom_energy = self.get_value("CALCULATOR", "per_atom_energy", "False", "bool")
         self.per_atom_scalar = self.get_value("CALCULATOR", "per_atom_scalar", "False", "bool")
         self.charge_fix = self.get_value("CALCULATOR", "charge_fix", "None", "str")
+        self.dipole = self.get_value("CALCULATOR", "dipole", "False", "bool")
 
         self.dee = self.check_path(self.get_value("CALCULATOR", "dee", "detailed_energy_errors.dat"))
         self.pt.add_2_fitsnap("energy", self.energy)

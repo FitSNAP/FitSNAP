@@ -1,7 +1,7 @@
 Executable
 ==========
 
-Here we explain how to modify FitSNAP when running as an `Executable <Run.html#executable>`__. First 
+Here we explain how to modify FitSNAP when running as an `Executable <run.html#executable>`__. First 
 we begin with an explanation of what goes on under the good when running FitSNAP as an executable 
 with
 

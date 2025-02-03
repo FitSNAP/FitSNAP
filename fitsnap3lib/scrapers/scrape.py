@@ -236,12 +236,6 @@ class Scraper:
         raise NotImplementedError("Call to virtual Scraper.scrape_configs method!")
 
     def _init_units(self):
-
-        # REFERENCE section not applicable in fitsnap-reaxff
-        # since only units real supported
-        if "REAXFF" in self.config.sections:
-            return
-
         if self.config.sections["REFERENCE"].units == "real":
             self.kb = 0.00198198665029335
         if self.config.sections["REFERENCE"].units == "metal":

@@ -108,7 +108,7 @@ This section contains settings for the SNAP bispectrum descriptors from `Thompso
 
 .. _snappaper: https://www.sciencedirect.com/science/article/pii/S0021999114008353
 
-- :code:`numTypes` number of atom types in your set of configurations located in `the [PATH] section <Run.html#path>`__
+- :code:`numTypes` number of atom types in your set of configurations located in `the [PATH] section <run_input.html#path>`__
 
 - :code:`type` contains a list of element type symbols, one for each type. Make sure these are 
   ordered correctly, e.g. if you have a LAMMPS type 1 atom that is :code:`Ga`, and LAMMPS type 2 
@@ -184,7 +184,7 @@ This section contains settings for the Atomic Cluster Expansion (ACE) descriptor
 .. _acelammps: https://docs.lammps.org/pair_pace.html
 .. _goff2024: https://doi.org/10.1016/j.jcp.2024.113073
 
-- :code:`numTypes` number of atom types in your set of configurations located in `the [PATH] section <Run.html#path>`__
+- :code:`numTypes` number of atom types in your set of configurations located in `the [PATH] section <run_input.html#path>`__
 
 - :code:`type` contains a list of element type symbols, one for each type. Make sure these are 
   ordered correctly, e.g. if you have a LAMMPS type 1 atom that is :code:`Ga`, and LAMMPS type 2 
@@ -256,12 +256,12 @@ This section declares which file scraper to use for gathering training data.
 
 - :code:`scraper` is either :code:`JSON` or :code:`XYZ.`
 
-If using the XYZ scraper, each `Group <Run.html#groups>`__ of configurations has its own XYZ file 
-containing configurations of atoms concatenated together, in extended XYZ format. Follow the example 
+If using the XYZ scraper, each `Group <run_input.html#groups>`__ of configurations has its own XYZ file
+containing configurations of atoms concatenated together, in extended XYZ format. Follow the example
 in :code:`examples/Ta_XYZ`.
 
-If using the JSON scraper, each `Group <Run.html#groups>`__ may have its own directory containing 
-separate JSON files for each configuration. Guarantee compatibility with FitSNAP by using our 
+If using the JSON scraper, each `Group <run_input.html#groups>`__ may have its own directory containing
+separate JSON files for each configuration. Guarantee compatibility with FitSNAP by using our
 :code:`tools/VASP2JSON.py` conversion script; this requires that your DFT training data be in VASP 
 OUTCAR format. Likewise for :code:`tools/VASPxml2JSON.py`.
 
@@ -319,7 +319,7 @@ The rest of the keywords are associated with the particular LAMMPS pair style yo
 ^^^^^^^^
 
 Each group should be its own sub-directory in the directory given by the :code:`dataPath/` keyword in 
-`the [PATH] section <Run.html#path>`__. There are a few different allowed syntaxes; subdirectory 
+`the [PATH] section <run_input.html#path>`__. There are a few different allowed syntaxes; subdirectory
 names in the first column is common to all options.
 
 :code:`group_sections` declares which parameters you want to set for each group of configurations. 

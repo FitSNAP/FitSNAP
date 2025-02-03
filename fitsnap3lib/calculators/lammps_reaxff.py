@@ -66,13 +66,12 @@ class LammpsReaxff(LammpsBase):
         try:
             self._data = data
             self._i = i
-            self._initialize_lammps()
+            #self._initialize_lammps()
             self._prepare_lammps()
             self._lmp.set_reaxff_parameters(self.parameters, self.values )
-            #self._run_lammps()
             self._lmp.command("run 1000 post no")
             self._collect_lammps()
-            self._lmp = self.pt.close_lammps()
+            #self._lmp = self.pt.close_lammps()
         except Exception as e:
             raise e
 
@@ -85,28 +84,35 @@ class LammpsReaxff(LammpsBase):
     def change_parameters(self, x):
 
         self.values = x
-        #self._lmp.set_reaxff_parameters(self.parameters, x)
 
 
     def _collect_lammps(self):
 
+        #dist = self._lmp.numpy.extract_compute('dist',LMP_STYLE_LOCAL,LMP_TYPE_VECTOR)
+        #q = self._lmp.numpy.extract_compute('charge',LMP_STYLE_ATOM,LMP_TYPE_VECTOR)
+
         if self.energy:
-            predicted_energy = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
-            if np.isnan(predicted_energy):
-              rounded_values = [round(float(v),2) for v in self.values]
-              print(f'predicted_energy is nan {self._i} {rounded_values}')
-              predicted_energy = 99e99
-            self._data['predicted_energy'] = predicted_energy
+            pe = _extract_compute_np(self._lmp, 'thermo_pe',LMP_STYLE_GLOBAL,LMP_TYPE_SCALAR)
+            self._data['predicted_energy'] = pe
 
-            dist = self._lmp.numpy.extract_compute('dist',LMP_STYLE_LOCAL,LMP_TYPE_VECTOR)
-            q = self._lmp.numpy.extract_compute('charge',LMP_STYLE_ATOM,LMP_TYPE_VECTOR)
-            dipole = self._lmp.numpy.extract_compute('dipole',LMP_STYLE_GLOBAL,LMP_TYPE_SCALAR)
-            pe = self._lmp.numpy.extract_compute('thermo_pe',LMP_STYLE_GLOBAL,LMP_TYPE_SCALAR)
-            print(f"dist {dist[0]:.2f} dipole {dipole:.8f} q0 {q[0]: .8f} q[1] {q[1]: .8f} pe {pe: .8f}",
-              end='=======================\n' if np.isnan(pe) else '\n')
+            #predicted_energy = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
+            #if np.isnan(pe):
+            #  rounded_values = [round(float(v),2) for v in self.values]
+            #  print(f'predicted_energy is nan {self._i} {rounded_values}')
+            #  predicted_energy = 99e99
 
-            #print("_collect_lammps(self)...", self._i, self._data["Energy"], config_energy)
+            #print(f"dist {dist[0]:.2f} dipole {dipole:.8f} q0 {q[0]: .8f} q[1] {q[1]: .8f} pe {pe: .8f}",
+            #  end='=======================\n' if np.isnan(pe) else '\n')
 
+        if self.force:
+            f = self._lmp.extract_atom('f',LMP_STYLE_ATOM,LMP_TYPE_ARRAY)
+            print(f"f {f}")
+            self._data['predicted_forces'] = f
+
+        if self.dipole:
+            dipole = _extract_compute_np(self._lmp,'dipole',LMP_STYLE_GLOBAL,LMP_TYPE_VECTOR)
+            self._data['predicted_dipole'] = dipole
+            #print(f"dipole {dipole}")
 
     def allocate_per_config(self, data: list):
         """
@@ -241,13 +247,14 @@ class LammpsReaxff(LammpsBase):
         atoms = [self.elements[t-1] for t in atom_types]
         parameter_block = self.parameter_block(block, atoms)
         tokens = parameter_block.split()
-        tokens[num_atoms+name_index] = ' {:12.8f}'.format(value)
-        tokens_formatted = tokens[num_atoms:]
+        #tokens[num_atoms+name_index] = ' {:8.4f}'.format(value)
+        tokens[num_atoms+name_index] = value
+        tokens_formatted = [' {:8.4f}'.format(float(v)) for v in tokens[num_atoms:]]
         extra_indent = '\n   ' if block == 'ATM' else '\n      '
         if( len(parameters_list)>8 ): tokens_formatted.insert(8, extra_indent)
         if( len(parameters_list)>16 ): tokens_formatted.insert(17, extra_indent)
         if( len(parameters_list)>24 ): tokens_formatted.insert(26, extra_indent)
-        replacement = ' ' + ' '.join(tokens[:num_atoms]) + ' ' + ' '.join(tokens_formatted) + '\n'
+        replacement = ' ' + ' '.join(tokens[:num_atoms]) + ' ' + ''.join(tokens_formatted)
         #print(replacement)
         self.potential_string = self.potential_string.replace(parameter_block,replacement)
 

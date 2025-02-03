@@ -21,7 +21,7 @@ where
 
 - :math:`\boldsymbol{B}_i` is a vector of atomic environment descriptors for atom :math:`i`
 
-The settings for SNAP descriptors are explained in the `[BISPECTRUM] section <Run.html#bispectrum>`__.
+The settings for SNAP descriptors are explained in the `[BISPECTRUM] section <run.html#bispectrum>`__.
 
 For this linear regression problem we solve the following matrix problem as explained in `Thompson et. al. <snappaper_>`_
 
@@ -39,14 +39,14 @@ where
 - :math:`E^{qm}_s` is the quantum mechanical target energy for configuration :math:`s`
 
 - :math:`E^{ref}_s` is the reference energy of a potential that is overlayed on the linear regression 
-  model, as declared in the `[REFERENCE] section <Run.html#reference>`__
+  model, as declared in the `[REFERENCE] section <run.html#reference>`__
 
 - :math:`F^{qm}_{j,\alpha}` is the quantum mechanical target force for atom :math:`j` in the 
   :math:`\alpha` direction.
 
 - :math:`F^{qm}_{j,\alpha}` is the reference force for atom :math:`j` in the :math:`\alpha` 
   direction, from a potential that is overlayed on the linear regression model, as declared in 
-  the `[REFERENCE] section <Run.html#reference>`__.
+  the `[REFERENCE] section <run.html#reference>`__.
 
 - :math:`W_{\alpha \beta, s}` is virial in the :math:`\alpha` and :math:`\beta` directions for 
   configuration :math:`s`, where both quantum mechanical target and reference virials are included 
@@ -54,7 +54,7 @@ where
 
 FitSNAP solves this matrix problem using SVD and supports other solvers as well. For more details on 
 settings used for descriptors and solvers, please see the docs on 
-`FitSNAP Input Scripts <Run.html#input-scripts>`__.
+`FitSNAP Input Scripts <run.html#input-scripts>`__.
 
 Outputs
 -------
@@ -69,11 +69,11 @@ linear model fit, the following outputs will be produced:
 
 - :code:`*_metrics.md` is a markdown file containing mean absolute errors and RMSEs for your dataset. 
   If using LAMMPS metal units, energy errors are in eV, and force errors are in eV/Angstrom. The prefix name 
-  of this file depends on the :code:`metrics` parameter declared in the `[OUTFILE] section <Run.html#outfile>`__.
+  of this file depends on the :code:`metrics` parameter declared in the `[OUTFILE] section <run.html#outfile>`__.
 
 - **LAMMPS-ready potential files**. For example if fitting with SNAP descriptors, this will create 
   :code:`*_pot.snapparam` and :code:`*_pot.snapcoeff` files with prefix names depending on the :code:`potential`
-  parameter declared in the `[OUTFILE] section <Run.html#outfile>`__. To use these files with LAMMPS, 
+  parameter declared in the `[OUTFILE] section <run.html#outfile>`__. To use these files with LAMMPS, 
   please refer to the LAMMPS documentation. 
 
 Uncertainty Quantification (UQ)

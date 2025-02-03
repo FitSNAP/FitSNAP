@@ -15,18 +15,24 @@ def loss_function_subgroup(i_x_j):
     for c in configs: reaxff_calculator.process_configs(c, i_x_j[0])
 
     if reaxff_calculator.energy:
-      ground_predicted_energy = configs[subgroup['ground_index']]['predicted_energy']
-      for c in configs: c['predicted_energy'] -= ground_predicted_energy
-      predicted_energy = np.array([c['predicted_energy'] for c in configs])
-      #pprint(predicted_energy)
-      residuals = nan_to_num(predicted_energy - subgroup['reference_energy'], nan=99)
-      weighted_residuals = subgroup['weights'] * np.square(residuals)
-
+        ground_predicted_energy = configs[subgroup['ground_index']]['predicted_energy']
+        for c in configs: c['predicted_energy'] -= ground_predicted_energy
+        predicted_energy = np.array([c['predicted_energy'] for c in configs])
+        #pprint(predicted_energy)
+        residuals = np.nan_to_num(predicted_energy - subgroup['reference_energy'], nan=99)
+        weighted_residuals = subgroup['weights'] * np.square(residuals)
 
     if reaxff_calculator.force:
       pass
 
-    return (i_x_j[0], float(np.sum(weighted_residuals)))
+    if reaxff_calculator.dipole:
+        predicted_dipole = np.array(c['predicted_dipole'])
+        reference_dipole = np.array(c["Dipole"])
+        #print(f"predicted_dipole {predicted_dipole} reference_dipole {reference_dipole}")
+        dipole_residuals = np.nan_to_num([predicted_dipole - reference_dipole for c in configs], nan=99)
+        #print(f"dipole_residuals {dipole_residuals}")
+
+    return (i_x_j[0], float(np.sum(weighted_residuals) + np.sum(np.square(dipole_residuals))))
 
 
 class CMAES(Solver):
@@ -77,7 +83,7 @@ class CMAES(Solver):
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
-          'popsize': self.popsize, 'seed': 12345, #'maxiter': 3,
+          'popsize': self.popsize, 'seed': 12345, #'maxiter': 1,
           'bounds': list(np.transpose(bounds))
         }
 
@@ -100,8 +106,13 @@ class CMAES(Solver):
 
         if self.pt._rank == 0:
             self.fit = reaxff_calculator.change_parameters_string(x_best)
-            reaxff_calculator.process_configs(c, i_x_j[0], descriptors=True)
-            self.errors = es.pop_sorted
+            reaxff_calculator.change_parameters(x_best)
+            all_data = reaxff_calculator.pt.fitsnap_dict["Data"]
+            for subgroup in all_data:
+              for c in subgroup['configs']:
+                  reaxff_calculator.process_configs(c, 99)
+
+            self.errors = all_data
 
         #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
         #x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)

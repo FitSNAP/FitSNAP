@@ -61,7 +61,7 @@ developers and debugging for now.
 **-\-nofit**
 
 This will run FitSNAP without performing a fit. Only descriptors will be calculated. This is useful 
-when paired with `dump_dataframe = 1 in the [EXTRAS] section <Run_input.html#extras>`__
+when paired with `dump_dataframe = 1 in the [EXTRAS] section <run_input.html#extras>`__
 
 ----------
 

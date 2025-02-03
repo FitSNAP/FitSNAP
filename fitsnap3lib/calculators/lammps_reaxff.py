@@ -40,8 +40,13 @@ class LammpsReaxff(LammpsBase):
         super()._initialize_lammps(printlammps=printlammps)
         self._lmp.command("clear")
         self._lmp.command("boundary p p p")
+
+        reference = self.config.sections["REFERENCE"]
+        if reference.units != "real" or reference.atom_style != "charge":
+            raise NotImplementedError("FitSNAP-ReaxFF only supports 'units real' and 'atom_style charge'.")
         self._lmp.command("units real")
         self._lmp.command("atom_style charge")
+
         self._lmp.command("atom_modify map array sort 0 2.0")
 
         # FIXME
@@ -66,12 +71,10 @@ class LammpsReaxff(LammpsBase):
         try:
             self._data = data
             self._i = i
-            #self._initialize_lammps()
             self._prepare_lammps()
             self._lmp.set_reaxff_parameters(self.parameters, self.values )
             self._lmp.command("run 1000 post no")
             self._collect_lammps()
-            #self._lmp = self.pt.close_lammps()
         except Exception as e:
             raise e
 
@@ -234,7 +237,7 @@ class LammpsReaxff(LammpsBase):
         # GEN.bond_softness
         if name_index == 34:
             potential_string_lines = self.potential_string.splitlines(True)
-            potential_string_lines[name_index+2] = ' {:12.8f} ! GEN.bond_softness'.format(value)
+            potential_string_lines[name_index+2] = ' {:8.4f} ! GEN.bond_softness\n'.format(value)
             self.potential_string = ''.join(potential_string_lines)
         else:
             raise NotImplementedError(f"GEN.{name_index} not implemented.")

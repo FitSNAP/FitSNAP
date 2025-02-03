@@ -59,9 +59,9 @@ class INQCalculator(Calculator):
         pinq.cell.cubic(5, "Angstrom", periodicity=3)
         pinq.electrons.cutoff(40.0, "Hartree")
         #pinq.electrons.spin_polarized()
-        #pinq.ground_state.max_steps(500)
+        pinq.ground_state.max_steps(500)
         #pinq.ground_state.mixing(.2)
-        #pinq.ground_state.tolerance(1e-6)
+        pinq.ground_state.tolerance(1e-6)
         #pinq.kpoints.grid(2, 2, 2)
 
         # gives same results as PBE for N2 example
@@ -105,7 +105,7 @@ class INQCalculator(Calculator):
             self._data['Energy'] = pinq.results.ground_state.energy.total()
 
         if self.force:
-            self._data['Forces'] = pinq.results.ground_state.forces()
+            self._data['Forces'] = [list(f) for f in pinq.results.ground_state.forces()]
 
         if self.dipole:
             self._data['Dipole'] = pinq.results.ground_state.dipole()

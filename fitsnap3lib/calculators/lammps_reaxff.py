@@ -72,8 +72,8 @@ class LammpsReaxff(LammpsBase):
             self._data = data
             self._i = i
             self._prepare_lammps()
-            self._lmp.set_reaxff_parameters(self.parameters, self.values )
-            self._lmp.command("run 1000 post no")
+            self._lmp.set_reaxff_parameters(self.parameters, self.values)
+            self._lmp.command("run 0 post no")
             self._collect_lammps()
         except Exception as e:
             raise e

@@ -42,7 +42,7 @@ class INQ(Calculator):
           inq_calculator._run_inq()
           inq_calculator._collect_inq()
       except Exception as e:
-          # FIXME
+          # FIXME: handle exception
           raise e
 
     def process_configs(self, data):
@@ -68,7 +68,15 @@ class INQ(Calculator):
     def _initialize_inq(self):
 
         pinq.clear()
-        pinq.cell.cubic(5, self.distance_units, periodicity=3)
+
+        if (cell := self.config.sections["INQ"].cell).startswith('cubic'):
+            _, side, units, periodicity = cell.split()
+            pinq.cell.cubic(5, units, periodicity=periodicity)
+            # FIXME: check self.distance_units == units
+        else:
+            # FIXME: cell orthorhombic and lattice
+            pass
+
         pinq.electrons.cutoff(40.0, "Hartree")
         #pinq.electrons.spin_polarized()
         pinq.ground_state.max_steps(500)
@@ -78,7 +86,7 @@ class INQ(Calculator):
 
         # gives same results as PBE for N2 example
         #pinq.theory.hartree_fock()
-        #pinq.theory.pbe0()
+        pinq.theory.pbe0()
 
         # fancier functionals dont work because INQ dispersion not implemented
         #pinq.theory.b3lyp()

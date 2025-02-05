@@ -125,45 +125,45 @@ The FitSNAP-ReaxFF workflow is fundamentally different than FitSNAP but relies o
 
 You can start a FitSNAP-ReaxFF optimization with a potential file from   ``reaxff/potentials/reaxff-<AUTHOR><YEAR>.ff`` :ref:`(see below for full list bundled with FitSNAP-ReaxFF) <available_potentials>`. You can also start with any other valid ReaxFF potential file (with the exception of *eReaxFF* and *LG dispersion correction*), or :guilabel:`FIXME: restart from a previously optimized potential`.
 
-.. admonition:: reaxff-n2 example
+.. admonition:: N2_ReaxFF example
   :class: Hint
 
   Let's start with a simple example related to the `nitrogen molecule example <https://alphataubio.com/inq/tutorial_shell_python.html>`_ of INQ, a modern clean-slate C++/CUDA open source (TD)DFT package from LLNL. DFT reference data can also be obtained from  `Quantum Espresso (QE) <https://www.quantum-espresso.org/>`_, `Vienna Ab initio Simulation Package (VASP) <https://www.vasp.at/>`_, literature, online databases,...
 
-  *First*, training data is computed using INQ with PBE functional and saved to ``JSON/reaxff-n2-PBE/reaxff-n2-PBE.json``:
+  *First*, training data is computed using INQ with PBE functional and saved to ``JSON/N2/N2*.json``:
 
-  .. literalinclude:: ../../examples/reaxff-n2/reaxff-n2-inq.py
-    :caption: **examples/reaxff-n2/reaxff-n2-inq.py**
+  .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-inq.py
+    :caption: **examples/N2_ReaxFF/N2_ReaxFF-inq.py**
 
-  *Second*, a FitSNAP-ReaxFF optimization with input scripts ``reaxff-n2-<CHARGE_FIX>.in``:
+  *Second*, a FitSNAP-ReaxFF optimization with input scripts ``N2_ReaxFF-<CHARGE_FIX>.in``:
 
   .. tabs::
 
    .. tab:: QEQ
 
-      .. literalinclude:: ../../examples/reaxff-n2/reaxff-n2-qeq.in
-        :caption: **examples/reaxff-n2/reaxff-n2-qeq.in**
+      .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-qeq.in
+        :caption: **examples/N2_ReaxFF/N2_ReaxFF-qeq.in**
 
    .. tab:: ACKS2
 
-      .. literalinclude:: ../../examples/reaxff-n2/reaxff-n2-acks2.in
-        :caption: **examples/reaxff-n2/reaxff-n2-acks2.in**
+      .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-acks2.in
+        :caption: **examples/N2_ReaxFF/N2_ReaxFF.in**
 
    .. tab:: QTPIE
 
-      .. literalinclude:: ../../examples/reaxff-n2/reaxff-n2-qtpie.in
-        :caption: **examples/reaxff-n2/reaxff-n2-qtpie.in**
+      .. literalinclude:: ../../examples/N2_ReaxFF/N2_ReaxFF-qtpie.in
+        :caption: **examples/N2_ReaxFF/N2_ReaxFF-qtpie.in**
 
   *Third*, potential energy computed along the bond scan :math:`\text{N}\!\equiv\!\text{N}` by running LAMMPS with potentials
 
     - ``reaxff-wood2014.ff``
-    - ``reaxff-n2-qeq.ff``
-    - ``reaxff-n2-acks2.ff``
-    - ``reaxff-n2-qtpie.ff``
+    - ``reaxff-N2_ReaxFF-qeq.ff``
+    - ``reaxff-N2_ReaxFF-acks2.ff``
+    - ``reaxff-N2_ReaxFF-qtpie.ff``
 
-  is compared to QM training data with matplotlib and saved to ``reaxff-n2.png``:
+  is compared to QM training data with matplotlib and saved to ``N2_ReaxFF.png``:
 
-  .. image:: ../../examples/reaxff-n2/reaxff-n2.png
+  .. image:: ../../examples/reaxff-n2/N2_ReaxFF.png
     :align: center
     :width: 62%
 
@@ -185,6 +185,7 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
 
   - ``parameters`` strings separated by spaces with format ``<BLOCK>.<ATOM_1>...<ATOM_N>.<NAME>``:
 
+      - ``GEN.name`` for atom parameters
       - ``ATM.C.name`` for atom parameters
       - ``BND.C.H.name`` for bond parameters
       - ``OFD.C.H.name`` for off-diagonal parameters
@@ -194,7 +195,7 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
 
     where ``name`` is *LAMMPS implementation parameter name* (which might be different than other ReaxFF implementations commonly seen in comments of potential files)
 
-    - ``'range'`` **optional** python array of two floats to specify minimum and maximum allowed values for a parameter :math:`p`, with default range :math:`p_0\pm.2|p_0|` if :math:`|p_0|>0` and :math:`(-1,1)` otherwise
+    .. - ``'range'`` **optional** python array of two floats to specify minimum and maximum allowed values for a parameter :math:`p`, with default range :math:`p_0\pm.2|p_0|` if :math:`|p_0|>0` and :math:`(-1,1)` otherwise
 
 
 .. table:: LAMMPS implementation parameter names
@@ -240,9 +241,8 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
 
 .. note::
 
-  ``reaxff/tools/reaxff-format-ff.py`` properly reformats a ReaxFF potential file (eg. copy/pasted from journal articles) together with *LAMMPS implementation parameter names* in comment fields. This format can have more precision (8 digits) because LAMMPS parses a potential file by splitting values on spaces instead of the legacy FORTRAN fixed column format (4 digits).
+  ``reaxff/tools/reaxff-format-ff.py`` properly reformats a ReaxFF potential file (eg. copy/pasted from journal articles) together with *LAMMPS implementation parameter names* in comment fields.
 
-  **Therefore, potentials reformatted by** ``reaxff-format-ff.py`` **or optimized by FitSNAP-ReaxFF are only intended for LAMMPS and might not work with other ReaxFF implementations**.
 
 
 ``[CALCULATOR]`` section
@@ -266,6 +266,7 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
 
   - ``stress`` **ignored in FitSNAP-ReaxFF**
 
+  - ``dipole`` turn on ``1`` or off ``0`` dipole fitting
 
 .. note::
 
@@ -306,7 +307,7 @@ Compared to linear and nonlinear models, the input script for ReaxFF models need
 
   - **not applicable in FitSNAP-ReaxFF**
 
-.. note:: Only ``units real`` and ``atom_style charge`` are supported in FitSNAP-ReaxFF.
+.. note:: FitSNAP-ReaxFF only supports ``units real`` and ``atom_style charge``.
 
 
 ``[GROUPS]`` section

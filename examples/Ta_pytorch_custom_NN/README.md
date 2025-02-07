@@ -2,8 +2,9 @@
 
 Fit a NN with
 
-    python -m fitsnap3 Ta-example.in --overwrite # use --overwrite if you want to overwrite existing
-fitsnap files.
+    # use --overwrite if you want to overwrite existing fitsnap files
+    
+    python -m fitsnap3 Ta-example.in --overwrite 
 
 This also creates corresponding plots of errors vs. epochs and target force vs. model force. 
 

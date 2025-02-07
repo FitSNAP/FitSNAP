@@ -147,9 +147,10 @@ class LammpsBase(Calculator):
         self._lmp.command("units " + self.config.sections["REFERENCE"].units)
         self._lmp.command("atom_style " + self.config.sections["REFERENCE"].atom_style)
 
+        # "box tilt large" is deprecated in LAMMPS
         lmp_setup = _extract_commands("""
                         atom_modify map array sort 0 2.0
-                        box tilt large""")
+                        """)
         for line in lmp_setup:
             self._lmp.command(line)
 
@@ -213,7 +214,9 @@ class LammpsBase(Calculator):
             self._lmp.command(f"variable {k} equal {v}")
 
     def _run_lammps(self):
-        self._lmp.command("run 0")
+        # small optimization suggested by Stan Moore to avoid
+        # computing timing summary after every run
+        self._lmp.command("run 0 post no")
 
     def _extract_atom_ids(self, num_atoms):
         # helper function to account for change in LAMMPS numpy_wrapper method name

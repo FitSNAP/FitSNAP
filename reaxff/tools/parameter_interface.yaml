@@ -1,0 +1,9474 @@
+---
+dtype: ReaxFFParameters
+head: 'Reactive MD-force field: H/O/Si/Al for aluminosilicates George P Feb 2014'
+positions:
+- - H
+  - O
+  - Si
+  - Al
+- - H.H
+  - O.O
+  - H.O
+  - H.Si
+  - O.Si
+  - Si.Si
+  - Al.H
+  - Al.O
+  - Al.Si
+  - Al.Al
+- - H.O
+  - H.Si
+  - O.Si
+  - Al.H
+  - Al.O
+  - Al.Si
+- - H.H.H
+  - O.O.O
+  - H.O.O
+  - H.O.H
+  - O.H.O
+  - H.H.O
+  - Si.Si.Si
+  - H.Si.Si
+  - H.Si.H
+  - O.Si.Si
+  - H.Si.O
+  - O.Si.O
+  - Si.O.Si
+  - H.O.Si
+  - O.O.Si
+  - H.H.Si
+  - Si.H.Si
+  - O.H.Si
+  - Al.H.O
+  - Al.H.H
+  - Al.H.Al
+  - Al.O.H
+  - Al.O.O
+  - Al.O.Al
+  - H.Al.H
+  - H.Al.O
+  - O.Al.O
+  - Al.Al.O
+  - Al.Al.H
+  - Al.Al.H..2
+  - Al.O.Si
+- - H.O.O.H
+  - H.O.O.O
+  - O.O.O.O
+  - H.Si.Si.H
+  - H.Si.Si.Si
+- - O.H.O
+version: '2023.101'
+---
+name: p_boc1
+value: 50.0
+range:
+- 40.0
+- 60.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 0
+category: Expert
+description: Overcoordination parameter
+equation: 4c
+---
+name: p_boc2
+value: 9.5469
+range:
+- 7.637520000000001
+- 11.45628
+is_active: false
+atoms: ''
+block: GEN
+block_index: 1
+category: Expert
+description: Overcoordination parameter
+equation: 4d
+---
+name: -p_coa2
+value: 26.5405
+range:
+- 21.232400000000002
+- 31.8486
+is_active: false
+atoms: ''
+block: GEN
+block_index: 2
+category: Expert
+description: Valency angle conjugation parameter
+equation: '15'
+---
+name: p_trip4
+value: 1.7224
+range:
+- 1.37792
+- 2.06688
+is_active: false
+atoms: ''
+block: GEN
+block_index: 3
+category: Expert
+description: Triple bond stabilization parameter
+equation: '20'
+---
+name: p_trip3
+value: 6.8702
+range:
+- 5.49616
+- 8.24424
+is_active: false
+atoms: ''
+block: GEN
+block_index: 4
+category: Expert
+description: Triple bond stabilization parameter
+equation: '20'
+---
+name: k_c2
+value: 60.485
+range:
+- 48.388000000000005
+- 72.582
+is_active: false
+atoms: ''
+block: GEN
+block_index: 5
+category: Expert
+description: C2-correction
+equation: '19'
+---
+name: p_ovun6
+value: 1.0588
+range:
+- 0.84704
+- 1.27056
+is_active: false
+atoms: ''
+block: GEN
+block_index: 6
+category: Expert
+description: Undercoordination parameter
+equation: '12'
+---
+name: p_trip2
+value: 4.6
+range:
+- 3.6799999999999997
+- 5.52
+is_active: false
+atoms: ''
+block: GEN
+block_index: 7
+category: Expert
+description: Triple bond stabilization parameter
+equation: '20'
+---
+name: p_ovun7
+value: 12.1176
+range:
+- 9.69408
+- 14.54112
+is_active: false
+atoms: ''
+block: GEN
+block_index: 8
+category: Expert
+description: Undercoordination parameter
+equation: '12'
+---
+name: p_ovun8
+value: 13.3056
+range:
+- 10.644480000000001
+- 15.966719999999999
+is_active: false
+atoms: ''
+block: GEN
+block_index: 9
+category: Expert
+description: Undercoordination parameter
+equation: '12'
+---
+name: p_trip1
+value: -70.5044
+range:
+- -84.60528000000001
+- -56.40352000000001
+is_active: false
+atoms: ''
+block: GEN
+block_index: 10
+category: Expert
+description: Triple bond stabilization energy
+equation: '20'
+---
+name: nonb_low,swa
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 11
+category: DoNotOptimize
+description: Lower Taper-radius
+equation: '21'
+---
+name: R_cut
+value: 10.0
+range:
+- 8.0
+- 12.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 12
+category: DoNotOptimize
+description: Upper Taper-radius
+equation: '21'
+---
+name: p_fe1
+value: 2.8793
+range:
+- 2.30344
+- 3.4551600000000002
+is_active: false
+atoms: ''
+block: GEN
+block_index: 13
+category: DoNotOptimize
+description: Fe dimer correction
+equation: 6a
+---
+name: p_val6
+value: 33.8667
+range:
+- 27.093360000000004
+- 40.64004
+is_active: false
+atoms: ''
+block: GEN
+block_index: 14
+category: Expert
+description: Valency undercoordination
+equation: 13c
+---
+name: p_lp1
+value: 6.0891
+range:
+- 4.8712800000000005
+- 7.30692
+is_active: false
+atoms: ''
+block: GEN
+block_index: 15
+category: Expert
+description: Valency angle/lone pair parameter
+equation: '8'
+---
+name: p_val9
+value: 1.0563
+range:
+- 0.84504
+- 1.26756
+is_active: false
+atoms: ''
+block: GEN
+block_index: 16
+category: Expert
+description: Valency angle parameter
+equation: 13f
+---
+name: p_val10
+value: 2.0384
+range:
+- 1.6307200000000002
+- 2.4460800000000003
+is_active: false
+atoms: ''
+block: GEN
+block_index: 17
+category: Expert
+description: Valency angle parameter
+equation: 13g
+---
+name: p_fe2
+value: 6.1431
+range:
+- 4.91448
+- 7.371719999999999
+is_active: false
+atoms: ''
+block: GEN
+block_index: 18
+category: DoNotOptimize
+description: Fe dimer correction
+equation: 6a
+---
+name: p_pen2
+value: 6.929
+range:
+- 5.543200000000001
+- 8.3148
+is_active: false
+atoms: ''
+block: GEN
+block_index: 19
+category: Expert
+description: Double bond/angle parameter
+equation: 14a
+---
+name: p_pen3
+value: 0.3989
+range:
+- 0.31912
+- 0.47867999999999994
+is_active: false
+atoms: ''
+block: GEN
+block_index: 20
+category: Expert
+description: 'Double bond/angle parameter: overcoord'
+equation: 14b
+---
+name: p_pen4
+value: 3.9954
+range:
+- 3.19632
+- 4.79448
+is_active: false
+atoms: ''
+block: GEN
+block_index: 21
+category: Expert
+description: 'Double bond/angle parameter: overcoord'
+equation: 14b
+---
+name: p_fe3
+value: -2.4837
+range:
+- -2.9804399999999998
+- -1.9869599999999998
+is_active: false
+atoms: ''
+block: GEN
+block_index: 22
+category: DoNotOptimize
+description: Fe dimer correction
+equation: 6a
+---
+name: p_tor2
+value: 5.7796
+range:
+- 4.62368
+- 6.93552
+is_active: false
+atoms: ''
+block: GEN
+block_index: 23
+category: Expert
+description: Torsion/BO parameter
+equation: 16b
+---
+name: p_tor3
+value: 10.0
+range:
+- 8.0
+- 12.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 24
+category: Expert
+description: Torsion overcoordination
+equation: 16c
+---
+name: p_tor4
+value: 1.9487
+range:
+- 1.5589600000000001
+- 2.33844
+is_active: false
+atoms: ''
+block: GEN
+block_index: 25
+category: Expert
+description: Torsion overcoordination
+equation: 16c
+---
+name: p_elho
+value: -1.2327
+range:
+- -1.4792399999999999
+- -0.9861599999999999
+is_active: false
+atoms: ''
+block: GEN
+block_index: 26
+category: Expert
+description: eReaxFF
+equation: 26a
+---
+name: p_cot2
+value: 2.1645
+range:
+- 1.7316
+- 2.5974
+is_active: false
+atoms: ''
+block: GEN
+block_index: 27
+category: Expert
+description: Conjugation
+equation: 17b
+---
+name: p_vdW1
+value: 1.5591
+range:
+- 1.24728
+- 1.87092
+is_active: false
+atoms: ''
+block: GEN
+block_index: 28
+category: Expert
+description: VdW shielding
+equation: 23b
+---
+name: cutoff*100
+value: 0.1
+range:
+- 0.08000000000000002
+- 0.12
+is_active: false
+atoms: ''
+block: GEN
+block_index: 29
+category: Expert
+description: Cutoff for bond order (* 100)
+equation: 3a,b
+---
+name: p_coa4
+value: 2.1365
+range:
+- 1.7092
+- 2.5637999999999996
+is_active: false
+atoms: ''
+block: GEN
+block_index: 30
+category: Expert
+description: Valency angle conjugation parameter
+equation: '15'
+---
+name: p_ovun4
+value: 0.6991
+range:
+- 0.5592800000000001
+- 0.83892
+is_active: false
+atoms: ''
+block: GEN
+block_index: 31
+category: Expert
+description: Overcoordination parameter
+equation: 11b
+---
+name: p_ovun3
+value: 50.0
+range:
+- 40.0
+- 60.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 32
+category: Expert
+description: Overcoordination parameter
+equation: 11b
+---
+name: p_val8
+value: 1.8512
+range:
+- 1.48096
+- 2.22144
+is_active: false
+atoms: ''
+block: GEN
+block_index: 33
+category: Expert
+description: Valency/lone pair parameter
+equation: 13d
+---
+name: X_soft
+value: 0.5
+range:
+- 0.4
+- 0.6
+is_active: false
+atoms: ''
+block: GEN
+block_index: 34
+category: Expert
+description: ACKS2 softness parameter
+equation: '25'
+---
+name: n/a 1
+value: 20.0
+range:
+- 16.0
+- 24.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 35
+category: DoNotOptimize
+description: ' n/a'
+equation: n/a
+---
+name: p_val
+value: 5.0
+range:
+- 4.0
+- 6.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 36
+category: Expert
+description: eReaxFF
+equation: 27 via n_el
+---
+name: n/a 2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 37
+category: DoNotOptimize
+description: 'if 1: remove delta_j term for non-C-C-C angles and where none of the
+  atoms is N'
+equation: 13d
+---
+name: p_coa3
+value: 2.6962
+range:
+- 2.15696
+- 3.23544
+is_active: false
+atoms: ''
+block: GEN
+block_index: 38
+category: Expert
+description: Valency angle conjugation parameter
+equation: '15'
+---
+name: n/a 3
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 39
+category: DoNotOptimize
+description: 'Condition to turn triple bond option: vpar(40) == 1'
+equation: '20'
+---
+name: n/a 4
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 40
+category: Expert
+description: eReax-specific taper radius for interactions with/between electrons and
+  holes
+equation: 26 via Tap(R)
+---
+name: n/a 5
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms: ''
+block: GEN
+block_index: 41
+category: DoNotOptimize
+description: if 1 then include electron correction on valence angle
+equation: none
+---
+name: H:r_0^sigma
+value: 0.893
+range:
+- 0.7144
+- 1.0715999999999999
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 0
+category: Standard
+description: Sigma bond covalent radius
+equation: '2'
+---
+name: H:Val_i
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 1
+category: DoNotOptimize
+description: Valency
+equation: 3a,4b,5,9a
+---
+name: H:n/a 1
+value: 1.008
+range:
+- 0.8064
+- 1.2096
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 2
+category: DoNotOptimize
+description: Atomic mass
+equation: 9a
+---
+name: H:r_vdW
+value: 1.355
+range:
+- 1.084
+- 1.626
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 3
+category: Expert
+description: van der Waals radius
+equation: 23a
+---
+name: H:D_ij
+value: 0.093
+range:
+- 0.07440000000000001
+- 0.11159999999999999
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 4
+category: Expert
+description: van der Waals dissociation energy
+equation: 23a
+---
+name: H:gamma_i
+value: 0.8203
+range:
+- 0.65624
+- 0.98436
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 5
+category: Expert
+description: gammaEEM, EEM shielding
+equation: '24'
+---
+name: H:r_0^pi
+value: -0.1
+range:
+- -0.12
+- -0.08000000000000002
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 6
+category: Standard
+description: Pi bond covalent radius
+equation: '2'
+---
+name: H:Val_i^e
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 7
+category: DoNotOptimize
+description: Number of valence electrons
+equation: 7,8,9
+---
+name: H:alpha_ij
+value: 8.223
+range:
+- 6.578400000000001
+- 9.867600000000001
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 8
+category: Expert
+description: van der Waals parameter
+equation: 23b
+---
+name: H:1/gamma_w
+value: 33.2894
+range:
+- 26.631520000000002
+- 39.94728
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 9
+category: Expert
+description: van der Waals shielding
+equation: 23b
+---
+name: H:Val_j^angle
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 10
+category: DoNotOptimize
+description: Valency for 1, 3-BO correction
+equation: 16c,13c
+---
+name: H:p_ovun5
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 11
+category: Expert
+description: Undercoordination energy
+equation: '12'
+---
+name: H:p_i^xel2
+value: 121.125
+range:
+- 96.9
+- 145.35
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 12
+category: Expert
+description: eReaxFF, atom type parameter
+equation: '26'
+---
+name: H:chi_i
+value: 3.7248
+range:
+- 2.9798400000000003
+- 4.46976
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 13
+category: Expert
+description: EEM electronegativity
+equation: 24,25
+---
+name: H:eta_i
+value: 9.6093
+range:
+- 7.68744
+- 11.531159999999998
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 14
+category: Expert
+description: EEM hardness
+equation: 24,25
+---
+name: H:n/a 2
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 15
+category: DoNotOptimize
+description: Donor or acceptor switch in H-bonds
+equation: n/a
+---
+name: H:r_0^pipi
+value: -0.1
+range:
+- -0.12
+- -0.08000000000000002
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 16
+category: Standard
+description: Double pi bond covalent radius
+equation: '2'
+---
+name: H:p_lp2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 17
+category: Expert
+description: Lone pair energy
+equation: '10'
+---
+name: H:n/a 3
+value: 61.6606
+range:
+- 49.328480000000006
+- 73.99272
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 18
+category: DoNotOptimize
+description: Atomic heat of formation
+equation: n/a
+---
+name: H:p_boc4
+value: 3.0408
+range:
+- 2.43264
+- 3.6489599999999998
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 19
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: H:p_boc3
+value: 2.4197
+range:
+- 1.9357600000000001
+- 2.90364
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 20
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: H:p_boc5
+value: 0.0003
+range:
+- 0.00023999999999999998
+- 0.00035999999999999997
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 21
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: H:C_i
+value: 1.0698
+range:
+- 0.8558400000000002
+- 1.28376
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 22
+category: Expert
+description: Atomic softness cutoff parameter
+equation: '25'
+---
+name: H:alpha_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 23
+category: Expert
+description: eReaxFF, constant, dependent on atom type
+equation: 26,26a
+---
+name: H:p_ovun2
+value: -19.4571
+range:
+- -23.34852
+- -15.56568
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 24
+category: Expert
+description: Valence angle parameter
+equation: '12'
+---
+name: H:p_val3
+value: 4.2733
+range:
+- 3.41864
+- 5.12796
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 25
+category: Expert
+description: Valence angle parameter
+equation: 13b,13a
+---
+name: H:beta_i
+value: 1.0338
+range:
+- 0.8270400000000001
+- 1.24056
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 26
+category: Expert
+description: eReaxFF, constant, dependent on atom type
+equation: 26a
+---
+name: H:Val_i^'boc
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 27
+category: DoNotOptimize
+description: Number of lone pairs
+equation: 3b
+---
+name: H:p_val5
+value: 2.8793
+range:
+- 2.30344
+- 3.4551600000000002
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 28
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H:p_c1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 29
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: H:p_c2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 30
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: H:p_c3
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+block: ATM
+block_index: 31
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: O:r_0^sigma
+value: 1.245
+range:
+- 0.9960000000000001
+- 1.494
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 0
+category: Standard
+description: Sigma bond covalent radius
+equation: '2'
+---
+name: O:Val_i
+value: 2.0
+range:
+- 1.6
+- 2.4
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 1
+category: DoNotOptimize
+description: Valency
+equation: 3a,4b,5,9a
+---
+name: O:n/a 1
+value: 15.999
+range:
+- 12.7992
+- 19.1988
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 2
+category: DoNotOptimize
+description: Atomic mass
+equation: 9a
+---
+name: O:r_vdW
+value: 2.389
+range:
+- 1.9112
+- 2.8667999999999996
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 3
+category: Expert
+description: van der Waals radius
+equation: 23a
+---
+name: O:D_ij
+value: 0.1
+range:
+- 0.08000000000000002
+- 0.12
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 4
+category: Expert
+description: van der Waals dissociation energy
+equation: 23a
+---
+name: O:gamma_i
+value: 1.0898
+range:
+- 0.8718400000000002
+- 1.30776
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 5
+category: Expert
+description: gammaEEM, EEM shielding
+equation: '24'
+---
+name: O:r_0^pi
+value: 1.0548
+range:
+- 0.84384
+- 1.26576
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 6
+category: Standard
+description: Pi bond covalent radius
+equation: '2'
+---
+name: O:Val_i^e
+value: 6.0
+range:
+- 4.800000000000001
+- 7.199999999999999
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 7
+category: DoNotOptimize
+description: Number of valence electrons
+equation: 7,8,9
+---
+name: O:alpha_ij
+value: 9.73
+range:
+- 7.784000000000001
+- 11.676
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 8
+category: Expert
+description: van der Waals parameter
+equation: 23b
+---
+name: O:1/gamma_w
+value: 13.8449
+range:
+- 11.075920000000002
+- 16.61388
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 9
+category: Expert
+description: van der Waals shielding
+equation: 23b
+---
+name: O:Val_j^angle
+value: 4.0
+range:
+- 3.2
+- 4.8
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 10
+category: DoNotOptimize
+description: Valency for 1, 3-BO correction
+equation: 16c,13c
+---
+name: O:p_ovun5
+value: 37.5
+range:
+- 30.0
+- 45.0
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 11
+category: Expert
+description: Undercoordination energy
+equation: '12'
+---
+name: O:p_i^xel2
+value: 116.0768
+range:
+- 92.86144000000002
+- 139.29216
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 12
+category: Expert
+description: eReaxFF, atom type parameter
+equation: '26'
+---
+name: O:chi_i
+value: 8.5
+range:
+- 6.800000000000001
+- 10.2
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 13
+category: Expert
+description: EEM electronegativity
+equation: 24,25
+---
+name: O:eta_i
+value: 8.3122
+range:
+- 6.649760000000001
+- 9.97464
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 14
+category: Expert
+description: EEM hardness
+equation: 24,25
+---
+name: O:n/a 2
+value: 2.0
+range:
+- 1.6
+- 2.4
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 15
+category: DoNotOptimize
+description: Donor or acceptor switch in H-bonds
+equation: n/a
+---
+name: O:r_0^pipi
+value: 0.9049
+range:
+- 0.7239200000000001
+- 1.08588
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 16
+category: Standard
+description: Double pi bond covalent radius
+equation: '2'
+---
+name: O:p_lp2
+value: 0.4056
+range:
+- 0.32448000000000005
+- 0.48672
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 17
+category: Expert
+description: Lone pair energy
+equation: '10'
+---
+name: O:n/a 3
+value: 59.0626
+range:
+- 47.250080000000004
+- 70.87512
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 18
+category: DoNotOptimize
+description: Atomic heat of formation
+equation: n/a
+---
+name: O:p_boc4
+value: 3.5027
+range:
+- 2.80216
+- 4.20324
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 19
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: O:p_boc3
+value: 0.764
+range:
+- 0.6112000000000001
+- 0.9168
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 20
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: O:p_boc5
+value: 0.0021
+range:
+- 0.00168
+- 0.0025199999999999997
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 21
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: O:C_i
+value: 0.9745
+range:
+- 0.7796000000000001
+- 1.1694
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 22
+category: Expert
+description: Atomic softness cutoff parameter
+equation: '25'
+---
+name: O:alpha_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 23
+category: Expert
+description: eReaxFF, constant, dependent on atom type
+equation: 26,26a
+---
+name: O:p_ovun2
+value: -3.55
+range:
+- -4.26
+- -2.84
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 24
+category: Expert
+description: Valence angle parameter
+equation: '12'
+---
+name: O:p_val3
+value: 2.9
+range:
+- 2.3200000000000003
+- 3.4799999999999995
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 25
+category: Expert
+description: Valence angle parameter
+equation: 13b,13a
+---
+name: O:beta_i
+value: 1.0493
+range:
+- 0.83944
+- 1.2591599999999998
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 26
+category: Expert
+description: eReaxFF, constant, dependent on atom type
+equation: 26a
+---
+name: O:Val_i^'boc
+value: 4.0
+range:
+- 3.2
+- 4.8
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 27
+category: DoNotOptimize
+description: Number of lone pairs
+equation: 3b
+---
+name: O:p_val5
+value: 2.9225
+range:
+- 2.338
+- 3.5069999999999997
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 28
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: O:p_c1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 29
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: O:p_c2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 30
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: O:p_c3
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+block: ATM
+block_index: 31
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: Si:r_0^sigma
+value: 2.0175
+range:
+- 1.614
+- 2.421
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 0
+category: Standard
+description: Sigma bond covalent radius
+equation: '2'
+---
+name: Si:Val_i
+value: 4.0
+range:
+- 3.2
+- 4.8
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 1
+category: DoNotOptimize
+description: Valency
+equation: 3a,4b,5,9a
+---
+name: Si:n/a 1
+value: 28.06
+range:
+- 22.448
+- 33.672
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 2
+category: DoNotOptimize
+description: Atomic mass
+equation: 9a
+---
+name: Si:r_vdW
+value: 2.0473
+range:
+- 1.63784
+- 2.4567599999999996
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 3
+category: Expert
+description: van der Waals radius
+equation: 23a
+---
+name: Si:D_ij
+value: 0.1835
+range:
+- 0.1468
+- 0.22019999999999998
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 4
+category: Expert
+description: van der Waals dissociation energy
+equation: 23a
+---
+name: Si:gamma_i
+value: 0.8925
+range:
+- 0.714
+- 1.071
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 5
+category: Expert
+description: gammaEEM, EEM shielding
+equation: '24'
+---
+name: Si:r_0^pi
+value: 1.2962
+range:
+- 1.03696
+- 1.55544
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 6
+category: Standard
+description: Pi bond covalent radius
+equation: '2'
+---
+name: Si:Val_i^e
+value: 4.0
+range:
+- 3.2
+- 4.8
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 7
+category: DoNotOptimize
+description: Number of valence electrons
+equation: 7,8,9
+---
+name: Si:alpha_ij
+value: 12.3588
+range:
+- 9.88704
+- 14.83056
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 8
+category: Expert
+description: van der Waals parameter
+equation: 23b
+---
+name: Si:1/gamma_w
+value: 1.2523
+range:
+- 1.00184
+- 1.5027599999999999
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 9
+category: Expert
+description: van der Waals shielding
+equation: 23b
+---
+name: Si:Val_j^angle
+value: 4.0
+range:
+- 3.2
+- 4.8
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 10
+category: DoNotOptimize
+description: Valency for 1, 3-BO correction
+equation: 16c,13c
+---
+name: Si:p_ovun5
+value: 21.7115
+range:
+- 17.369200000000003
+- 26.0538
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 11
+category: Expert
+description: Undercoordination energy
+equation: '12'
+---
+name: Si:p_i^xel2
+value: 139.9309
+range:
+- 111.94472000000002
+- 167.91708
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 12
+category: Expert
+description: eReaxFF, atom type parameter
+equation: '26'
+---
+name: Si:chi_i
+value: 4.6988
+range:
+- 3.7590400000000006
+- 5.63856
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 13
+category: Expert
+description: EEM electronegativity
+equation: 24,25
+---
+name: Si:eta_i
+value: 6.0
+range:
+- 4.800000000000001
+- 7.199999999999999
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 14
+category: Expert
+description: EEM hardness
+equation: 24,25
+---
+name: Si:n/a 2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 15
+category: DoNotOptimize
+description: Donor or acceptor switch in H-bonds
+equation: n/a
+---
+name: Si:r_0^pipi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 16
+category: Standard
+description: Double pi bond covalent radius
+equation: '2'
+---
+name: Si:p_lp2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 17
+category: Expert
+description: Lone pair energy
+equation: '10'
+---
+name: Si:n/a 3
+value: 128.2031
+range:
+- 102.56248000000001
+- 153.84372
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 18
+category: DoNotOptimize
+description: Atomic heat of formation
+equation: n/a
+---
+name: Si:p_boc4
+value: 8.7895
+range:
+- 7.031600000000001
+- 10.5474
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 19
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: Si:p_boc3
+value: 23.9298
+range:
+- 19.14384
+- 28.71576
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 20
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: Si:p_boc5
+value: 0.8381
+range:
+- 0.67048
+- 1.00572
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 21
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: Si:C_i
+value: 0.8563
+range:
+- 0.68504
+- 1.0275599999999998
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 22
+category: Expert
+description: Atomic softness cutoff parameter
+equation: '25'
+---
+name: Si:alpha_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 23
+category: Expert
+description: eReaxFF, constant, dependent on atom type
+equation: 26,26a
+---
+name: Si:p_ovun2
+value: -4.7525
+range:
+- -5.703
+- -3.8020000000000005
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 24
+category: Expert
+description: Valence angle parameter
+equation: '12'
+---
+name: Si:p_val3
+value: 2.1607
+range:
+- 1.7285599999999999
+- 2.59284
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 25
+category: Expert
+description: Valence angle parameter
+equation: 13b,13a
+---
+name: Si:beta_i
+value: 1.0338
+range:
+- 0.8270400000000001
+- 1.24056
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 26
+category: Expert
+description: eReaxFF, constant, dependent on atom type
+equation: 26a
+---
+name: Si:Val_i^'boc
+value: 4.0
+range:
+- 3.2
+- 4.8
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 27
+category: DoNotOptimize
+description: Number of lone pairs
+equation: 3b
+---
+name: Si:p_val5
+value: 2.5791
+range:
+- 2.0632800000000002
+- 3.0949199999999997
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 28
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Si:p_c1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 29
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: Si:p_c2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 30
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: Si:p_c3
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+block: ATM
+block_index: 31
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: Al:r_0^sigma
+value: 2.1967
+range:
+- 1.75736
+- 2.63604
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 0
+category: Standard
+description: Sigma bond covalent radius
+equation: '2'
+---
+name: Al:Val_i
+value: 3.0
+range:
+- 2.4000000000000004
+- 3.5999999999999996
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 1
+category: DoNotOptimize
+description: Valency
+equation: 3a,4b,5,9a
+---
+name: Al:n/a 1
+value: 26.982
+range:
+- 21.5856
+- 32.3784
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 2
+category: DoNotOptimize
+description: Atomic mass
+equation: 9a
+---
+name: Al:r_vdW
+value: 2.3738
+range:
+- 1.8990400000000003
+- 2.84856
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 3
+category: Expert
+description: van der Waals radius
+equation: 23a
+---
+name: Al:D_ij
+value: 0.2328
+range:
+- 0.18624000000000002
+- 0.27936
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 4
+category: Expert
+description: van der Waals dissociation energy
+equation: 23a
+---
+name: Al:gamma_i
+value: 0.4873
+range:
+- 0.38984
+- 0.58476
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 5
+category: Expert
+description: gammaEEM, EEM shielding
+equation: '24'
+---
+name: Al:r_0^pi
+value: -1.6836
+range:
+- -2.02032
+- -1.34688
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 6
+category: Standard
+description: Pi bond covalent radius
+equation: '2'
+---
+name: Al:Val_i^e
+value: 3.0
+range:
+- 2.4000000000000004
+- 3.5999999999999996
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 7
+category: DoNotOptimize
+description: Number of valence electrons
+equation: 7,8,9
+---
+name: Al:alpha_ij
+value: 9.4002
+range:
+- 7.520160000000001
+- 11.28024
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 8
+category: Expert
+description: van der Waals parameter
+equation: 23b
+---
+name: Al:1/gamma_w
+value: 2.6409
+range:
+- 2.11272
+- 3.1690799999999997
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 9
+category: Expert
+description: van der Waals shielding
+equation: 23b
+---
+name: Al:Val_j^angle
+value: 3.0
+range:
+- 2.4000000000000004
+- 3.5999999999999996
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 10
+category: DoNotOptimize
+description: Valency for 1, 3-BO correction
+equation: 16c,13c
+---
+name: Al:p_ovun5
+value: 0.0076
+range:
+- 0.00608
+- 0.00912
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 11
+category: Expert
+description: Undercoordination energy
+equation: '12'
+---
+name: Al:p_i^xel2
+value: 16.5151
+range:
+- 13.21208
+- 19.81812
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 12
+category: Expert
+description: eReaxFF, atom type parameter
+equation: '26'
+---
+name: Al:chi_i
+value: -0.7626
+range:
+- -0.9151199999999999
+- -0.61008
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 13
+category: Expert
+description: EEM electronegativity
+equation: 24,25
+---
+name: Al:eta_i
+value: 6.4941
+range:
+- 5.19528
+- 7.7929200000000005
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 14
+category: Expert
+description: EEM hardness
+equation: 24,25
+---
+name: Al:n/a 2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 15
+category: DoNotOptimize
+description: Donor or acceptor switch in H-bonds
+equation: n/a
+---
+name: Al:r_0^pipi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 16
+category: Standard
+description: Double pi bond covalent radius
+equation: '2'
+---
+name: Al:p_lp2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 17
+category: Expert
+description: Lone pair energy
+equation: '10'
+---
+name: Al:n/a 3
+value: 78.4675
+range:
+- 62.774
+- 94.161
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 18
+category: DoNotOptimize
+description: Atomic heat of formation
+equation: n/a
+---
+name: Al:p_boc4
+value: 20.0
+range:
+- 16.0
+- 24.0
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 19
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: Al:p_boc3
+value: 0.25
+range:
+- 0.2
+- 0.3
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 20
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: Al:p_boc5
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 21
+category: Expert
+description: Bond order correction
+equation: 4e,f
+---
+name: Al:C_i
+value: 0.8563
+range:
+- 0.68504
+- 1.0275599999999998
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 22
+category: Expert
+description: Atomic softness cutoff parameter
+equation: '25'
+---
+name: Al:alpha_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 23
+category: Expert
+description: eReaxFF, constant, dependent on atom type
+equation: 26,26a
+---
+name: Al:p_ovun2
+value: -23.1826
+range:
+- -27.819119999999998
+- -18.546080000000003
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 24
+category: Expert
+description: Valence angle parameter
+equation: '12'
+---
+name: Al:p_val3
+value: 2.1732104811561004
+range:
+- 1.2000000000000002
+- 3.0
+is_active: true
+atoms:
+- Al
+block: ATM
+block_index: 25
+category: Expert
+description: Valence angle parameter
+equation: 13b,13a
+---
+name: Al:beta_i
+value: 1.0338
+range:
+- 0.8270400000000001
+- 1.24056
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 26
+category: Expert
+description: eReaxFF, constant, dependent on atom type
+equation: 26a
+---
+name: Al:Val_i^'boc
+value: 8.0
+range:
+- 6.4
+- 9.6
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 27
+category: DoNotOptimize
+description: Number of lone pairs
+equation: 3b
+---
+name: Al:p_val5
+value: 2.148780235831638
+range:
+- 2.0632800000000002
+- 3.0949199999999997
+is_active: true
+atoms:
+- Al
+block: ATM
+block_index: 28
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al:p_c1
+value: 1.4
+range:
+- 1.12
+- 1.6799999999999997
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 29
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: Al:p_c2
+value: 0.2
+range:
+- 0.16000000000000003
+- 0.24
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 30
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: Al:p_c3
+value: 13.0
+range:
+- 10.4
+- 15.6
+is_active: false
+atoms:
+- Al
+block: ATM
+block_index: 31
+category: Expert
+description: Inner wall vdW repulsion parameter
+equation: 23c
+---
+name: H.H:D_e^sigma
+value: 153.3934
+range:
+- 122.71472000000001
+- 184.07208
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 0
+category: Standard
+description: Sigma-bond dissociation energy
+equation: 6,11a
+---
+name: H.H:D_e^pi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 1
+category: Standard
+description: Pi-bond dissociation energy
+equation: '6'
+---
+name: H.H:D_e^pipi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 2
+category: Standard
+description: Double pi-bond dissociation energy
+equation: '6'
+---
+name: H.H:p_be1
+value: -0.46
+range:
+- -0.552
+- -0.36800000000000005
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 3
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: H.H:p_bo5
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 4
+category: Standard
+description: Double pi bond parameter
+equation: '2'
+---
+name: H.H:Val'_i^boc
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 5
+category: DoNotOptimize
+description: 1,3-Bond order correction
+equation: 3b
+---
+name: H.H:p_bo6
+value: 6.0
+range:
+- 4.800000000000001
+- 7.199999999999999
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 6
+category: Standard
+description: Double pi bond order
+equation: '2'
+---
+name: H.H:p_ovun1
+value: 0.73
+range:
+- 0.5840000000000001
+- 0.8759999999999999
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 7
+category: Standard
+description: Overcoordination penalty
+equation: 11a
+---
+name: H.H:p_be2
+value: 6.25
+range:
+- 5.0
+- 7.5
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 8
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: H.H:p_bo3
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 9
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: H.H:p_bo4
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 10
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: H.H:n/a
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 11
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: H.H:p_bo1
+value: -0.079
+range:
+- -0.0948
+- -0.0632
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 12
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: H.H:p_bo2
+value: 6.0552
+range:
+- 4.8441600000000005
+- 7.26624
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 13
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: H.H:delta'_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 14
+category: DoNotOptimize
+description: Uncorrected BO overcoordination
+equation: 3a
+---
+name: H.H:p_ij^xel1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+block: BND
+block_index: 15
+category: Expert
+description: eReaxFF param for adjusting number of electrons available to host atom
+equation: '27'
+---
+name: O.O:D_e^sigma
+value: 142.2858
+range:
+- 113.82864000000001
+- 170.74295999999998
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 0
+category: Standard
+description: Sigma-bond dissociation energy
+equation: 6,11a
+---
+name: O.O:D_e^pi
+value: 145.0
+range:
+- 116.0
+- 174.0
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 1
+category: Standard
+description: Pi-bond dissociation energy
+equation: '6'
+---
+name: O.O:D_e^pipi
+value: 50.8293
+range:
+- 40.66344000000001
+- 60.99516
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 2
+category: Standard
+description: Double pi-bond dissociation energy
+equation: '6'
+---
+name: O.O:p_be1
+value: 0.2506
+range:
+- 0.20048
+- 0.30072
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 3
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: O.O:p_bo5
+value: -0.1
+range:
+- -0.12
+- -0.08000000000000002
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 4
+category: Standard
+description: Double pi bond parameter
+equation: '2'
+---
+name: O.O:Val'_i^boc
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 5
+category: DoNotOptimize
+description: 1,3-Bond order correction
+equation: 3b
+---
+name: O.O:p_bo6
+value: 29.7503
+range:
+- 23.800240000000002
+- 35.700359999999996
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 6
+category: Standard
+description: Double pi bond order
+equation: '2'
+---
+name: O.O:p_ovun1
+value: 0.6051
+range:
+- 0.48408
+- 0.7261199999999999
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 7
+category: Standard
+description: Overcoordination penalty
+equation: 11a
+---
+name: O.O:p_be2
+value: 0.3451
+range:
+- 0.27608000000000005
+- 0.41412
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 8
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: O.O:p_bo3
+value: -0.1055
+range:
+- -0.1266
+- -0.0844
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 9
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: O.O:p_bo4
+value: 9.0
+range:
+- 7.2
+- 10.799999999999999
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 10
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: O.O:n/a
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 11
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: O.O:p_bo1
+value: -0.1225
+range:
+- -0.147
+- -0.098
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 12
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: O.O:p_bo2
+value: 5.5
+range:
+- 4.4
+- 6.6
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 13
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: O.O:delta'_i
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 14
+category: DoNotOptimize
+description: Uncorrected BO overcoordination
+equation: 3a
+---
+name: O.O:p_ij^xel1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- O
+block: BND
+block_index: 15
+category: Expert
+description: eReaxFF param for adjusting number of electrons available to host atom
+equation: '27'
+---
+name: H.O:D_e^sigma
+value: 160.0
+range:
+- 128.0
+- 192.0
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 0
+category: Standard
+description: Sigma-bond dissociation energy
+equation: 6,11a
+---
+name: H.O:D_e^pi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 1
+category: Standard
+description: Pi-bond dissociation energy
+equation: '6'
+---
+name: H.O:D_e^pipi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 2
+category: Standard
+description: Double pi-bond dissociation energy
+equation: '6'
+---
+name: H.O:p_be1
+value: -0.5725
+range:
+- -0.6869999999999999
+- -0.458
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 3
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: H.O:p_bo5
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 4
+category: Standard
+description: Double pi bond parameter
+equation: '2'
+---
+name: H.O:Val'_i^boc
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 5
+category: DoNotOptimize
+description: 1,3-Bond order correction
+equation: 3b
+---
+name: H.O:p_bo6
+value: 6.0
+range:
+- 4.800000000000001
+- 7.199999999999999
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 6
+category: Standard
+description: Double pi bond order
+equation: '2'
+---
+name: H.O:p_ovun1
+value: 0.5626
+range:
+- 0.45008000000000004
+- 0.6751199999999999
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 7
+category: Standard
+description: Overcoordination penalty
+equation: 11a
+---
+name: H.O:p_be2
+value: 1.115
+range:
+- 0.892
+- 1.3379999999999999
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 8
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: H.O:p_bo3
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 9
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: H.O:p_bo4
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 10
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: H.O:n/a
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 11
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: H.O:p_bo1
+value: -0.092
+range:
+- -0.1104
+- -0.0736
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 12
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: H.O:p_bo2
+value: 4.279
+range:
+- 3.4232
+- 5.134799999999999
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 13
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: H.O:delta'_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 14
+category: DoNotOptimize
+description: Uncorrected BO overcoordination
+equation: 3a
+---
+name: H.O:p_ij^xel1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+block: BND
+block_index: 15
+category: Expert
+description: eReaxFF param for adjusting number of electrons available to host atom
+equation: '27'
+---
+name: H.Si:D_e^sigma
+value: 250.0
+range:
+- 200.0
+- 300.0
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 0
+category: Standard
+description: Sigma-bond dissociation energy
+equation: 6,11a
+---
+name: H.Si:D_e^pi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 1
+category: Standard
+description: Pi-bond dissociation energy
+equation: '6'
+---
+name: H.Si:D_e^pipi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 2
+category: Standard
+description: Double pi-bond dissociation energy
+equation: '6'
+---
+name: H.Si:p_be1
+value: -0.7128
+range:
+- -0.8553599999999999
+- -0.5702400000000001
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 3
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: H.Si:p_bo5
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 4
+category: Standard
+description: Double pi bond parameter
+equation: '2'
+---
+name: H.Si:Val'_i^boc
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 5
+category: DoNotOptimize
+description: 1,3-Bond order correction
+equation: 3b
+---
+name: H.Si:p_bo6
+value: 6.0
+range:
+- 4.800000000000001
+- 7.199999999999999
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 6
+category: Standard
+description: Double pi bond order
+equation: '2'
+---
+name: H.Si:p_ovun1
+value: 0.1186
+range:
+- 0.09488
+- 0.14232
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 7
+category: Standard
+description: Overcoordination penalty
+equation: 11a
+---
+name: H.Si:p_be2
+value: 18.579
+range:
+- 14.8632
+- 22.2948
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 8
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: H.Si:p_bo3
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 9
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: H.Si:p_bo4
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 10
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: H.Si:n/a
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 11
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: H.Si:p_bo1
+value: -0.0731
+range:
+- -0.08771999999999999
+- -0.058480000000000004
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 12
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: H.Si:p_bo2
+value: 7.4983
+range:
+- 5.998640000000001
+- 8.99796
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 13
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: H.Si:delta'_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 14
+category: DoNotOptimize
+description: Uncorrected BO overcoordination
+equation: 3a
+---
+name: H.Si:p_ij^xel1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+block: BND
+block_index: 15
+category: Expert
+description: eReaxFF param for adjusting number of electrons available to host atom
+equation: '27'
+---
+name: O.Si:D_e^sigma
+value: 272.8709
+range:
+- 218.29672000000002
+- 327.44508
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 0
+category: Standard
+description: Sigma-bond dissociation energy
+equation: 6,11a
+---
+name: O.Si:D_e^pi
+value: 18.4462
+range:
+- 14.756960000000001
+- 22.13544
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 1
+category: Standard
+description: Pi-bond dissociation energy
+equation: '6'
+---
+name: O.Si:D_e^pipi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 2
+category: Standard
+description: Double pi-bond dissociation energy
+equation: '6'
+---
+name: O.Si:p_be1
+value: -0.6107
+range:
+- -0.7328399999999999
+- -0.48856000000000005
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 3
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: O.Si:p_bo5
+value: -0.3
+range:
+- -0.36
+- -0.24
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 4
+category: Standard
+description: Double pi bond parameter
+equation: '2'
+---
+name: O.Si:Val'_i^boc
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 5
+category: DoNotOptimize
+description: 1,3-Bond order correction
+equation: 3b
+---
+name: O.Si:p_bo6
+value: 36.0
+range:
+- 28.8
+- 43.199999999999996
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 6
+category: Standard
+description: Double pi bond order
+equation: '2'
+---
+name: O.Si:p_ovun1
+value: 0.827
+range:
+- 0.6616
+- 0.9924
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 7
+category: Standard
+description: Overcoordination penalty
+equation: 11a
+---
+name: O.Si:p_be2
+value: 10.2334
+range:
+- 8.186720000000001
+- 12.280079999999998
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 8
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: O.Si:p_bo3
+value: -0.5495
+range:
+- -0.6594
+- -0.4396
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 9
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: O.Si:p_bo4
+value: 29.9954
+range:
+- 23.99632
+- 35.994479999999996
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 10
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: O.Si:n/a
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 11
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: O.Si:p_bo1
+value: -0.1277
+range:
+- -0.15324000000000002
+- -0.10216000000000001
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 12
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: O.Si:p_bo2
+value: 7.5863
+range:
+- 6.06904
+- 9.10356
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 13
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: O.Si:delta'_i
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 14
+category: DoNotOptimize
+description: Uncorrected BO overcoordination
+equation: 3a
+---
+name: O.Si:p_ij^xel1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- Si
+block: BND
+block_index: 15
+category: Expert
+description: eReaxFF param for adjusting number of electrons available to host atom
+equation: '27'
+---
+name: Si.Si:D_e^sigma
+value: 78.0276
+range:
+- 62.42208000000001
+- 93.63312
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 0
+category: Standard
+description: Sigma-bond dissociation energy
+equation: 6,11a
+---
+name: Si.Si:D_e^pi
+value: 54.0531
+range:
+- 43.24248
+- 64.86372
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 1
+category: Standard
+description: Pi-bond dissociation energy
+equation: '6'
+---
+name: Si.Si:D_e^pipi
+value: 30.0
+range:
+- 24.0
+- 36.0
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 2
+category: Standard
+description: Double pi-bond dissociation energy
+equation: '6'
+---
+name: Si.Si:p_be1
+value: 0.5398
+range:
+- 0.43184
+- 0.6477599999999999
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 3
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: Si.Si:p_bo5
+value: -0.3
+range:
+- -0.36
+- -0.24
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 4
+category: Standard
+description: Double pi bond parameter
+equation: '2'
+---
+name: Si.Si:Val'_i^boc
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 5
+category: DoNotOptimize
+description: 1,3-Bond order correction
+equation: 3b
+---
+name: Si.Si:p_bo6
+value: 16.0
+range:
+- 12.8
+- 19.2
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 6
+category: Standard
+description: Double pi bond order
+equation: '2'
+---
+name: Si.Si:p_ovun1
+value: 0.0476
+range:
+- 0.03808
+- 0.057120000000000004
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 7
+category: Standard
+description: Overcoordination penalty
+equation: 11a
+---
+name: Si.Si:p_be2
+value: 0.2865
+range:
+- 0.2292
+- 0.34379999999999994
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 8
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: Si.Si:p_bo3
+value: -0.8055
+range:
+- -0.9665999999999999
+- -0.6444000000000001
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 9
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: Si.Si:p_bo4
+value: 7.1248
+range:
+- 5.69984
+- 8.54976
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 10
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: Si.Si:n/a
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 11
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: Si.Si:p_bo1
+value: -0.0681
+range:
+- -0.08171999999999999
+- -0.05448
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 12
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: Si.Si:p_bo2
+value: 8.6957
+range:
+- 6.9565600000000005
+- 10.43484
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 13
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: Si.Si:delta'_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 14
+category: DoNotOptimize
+description: Uncorrected BO overcoordination
+equation: 3a
+---
+name: Si.Si:p_ij^xel1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+- Si
+block: BND
+block_index: 15
+category: Expert
+description: eReaxFF param for adjusting number of electrons available to host atom
+equation: '27'
+---
+name: Al.H:D_e^sigma
+value: 110.85056222558671
+range:
+- 0.8579
+- 122.7844
+is_active: true
+atoms:
+- Al
+- H
+block: BND
+block_index: 0
+category: Standard
+description: Sigma-bond dissociation energy
+equation: 6,11a
+---
+name: Al.H:D_e^pi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+block: BND
+block_index: 1
+category: Standard
+description: Pi-bond dissociation energy
+equation: '6'
+---
+name: Al.H:D_e^pipi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+block: BND
+block_index: 2
+category: Standard
+description: Double pi-bond dissociation energy
+equation: '6'
+---
+name: Al.H:p_be1
+value: -0.268638292165559
+range:
+- -0.7833600000000001
+- 1.0
+is_active: true
+atoms:
+- Al
+- H
+block: BND
+block_index: 3
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: Al.H:p_bo5
+value: -0.3
+range:
+- -0.36
+- -0.24
+is_active: false
+atoms:
+- Al
+- H
+block: BND
+block_index: 4
+category: Standard
+description: Double pi bond parameter
+equation: '2'
+---
+name: Al.H:Val'_i^boc
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+block: BND
+block_index: 5
+category: DoNotOptimize
+description: 1,3-Bond order correction
+equation: 3b
+---
+name: Al.H:p_bo6
+value: 36.0
+range:
+- 28.8
+- 43.199999999999996
+is_active: false
+atoms:
+- Al
+- H
+block: BND
+block_index: 6
+category: Standard
+description: Double pi bond order
+equation: '2'
+---
+name: Al.H:p_ovun1
+value: 0.10064674783325546
+range:
+- 0.01
+- 0.5
+is_active: true
+atoms:
+- Al
+- H
+block: BND
+block_index: 7
+category: Standard
+description: Overcoordination penalty
+equation: 11a
+---
+name: Al.H:p_be2
+value: 12.960381757787127
+range:
+- 0.2281
+- 13.0
+is_active: true
+atoms:
+- Al
+- H
+block: BND
+block_index: 8
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: Al.H:p_bo3
+value: -0.35
+range:
+- -0.41999999999999993
+- -0.28
+is_active: false
+atoms:
+- Al
+- H
+block: BND
+block_index: 9
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: Al.H:p_bo4
+value: 25.0
+range:
+- 20.0
+- 30.0
+is_active: false
+atoms:
+- Al
+- H
+block: BND
+block_index: 10
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: Al.H:n/a
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Al
+- H
+block: BND
+block_index: 11
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: Al.H:p_bo1
+value: -0.2742369487518715
+range:
+- -0.332
+- -0.06736
+is_active: true
+atoms:
+- Al
+- H
+block: BND
+block_index: 12
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: Al.H:p_bo2
+value: 13.117089615086142
+range:
+- 5.0015
+- 15.0
+is_active: true
+atoms:
+- Al
+- H
+block: BND
+block_index: 13
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: Al.H:delta'_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+block: BND
+block_index: 14
+category: DoNotOptimize
+description: Uncorrected BO overcoordination
+equation: 3a
+---
+name: Al.H:p_ij^xel1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+block: BND
+block_index: 15
+category: Expert
+description: eReaxFF param for adjusting number of electrons available to host atom
+equation: '27'
+---
+name: Al.O:D_e^sigma
+value: 179.07263637667816
+range:
+- 118.9203
+- 232.7313
+is_active: true
+atoms:
+- Al
+- O
+block: BND
+block_index: 0
+category: Standard
+description: Sigma-bond dissociation energy
+equation: 6,11a
+---
+name: Al.O:D_e^pi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+block: BND
+block_index: 1
+category: Standard
+description: Pi-bond dissociation energy
+equation: '6'
+---
+name: Al.O:D_e^pipi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+block: BND
+block_index: 2
+category: Standard
+description: Double pi-bond dissociation energy
+equation: '6'
+---
+name: Al.O:p_be1
+value: -0.36404642878489246
+range:
+- -1.0
+- -0.0736
+is_active: true
+atoms:
+- Al
+- O
+block: BND
+block_index: 3
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: Al.O:p_bo5
+value: -0.3
+range:
+- -0.36
+- -0.24
+is_active: false
+atoms:
+- Al
+- O
+block: BND
+block_index: 4
+category: Standard
+description: Double pi bond parameter
+equation: '2'
+---
+name: Al.O:Val'_i^boc
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+block: BND
+block_index: 5
+category: DoNotOptimize
+description: 1,3-Bond order correction
+equation: 3b
+---
+name: Al.O:p_bo6
+value: 36.0
+range:
+- 28.8
+- 43.199999999999996
+is_active: false
+atoms:
+- Al
+- O
+block: BND
+block_index: 6
+category: Standard
+description: Double pi bond order
+equation: '2'
+---
+name: Al.O:p_ovun1
+value: 0.2029675956054738
+range:
+- 0.01
+- 0.4562
+is_active: true
+atoms:
+- Al
+- O
+block: BND
+block_index: 7
+category: Standard
+description: Overcoordination penalty
+equation: 11a
+---
+name: Al.O:p_be2
+value: 0.0008172491769187203
+range:
+- 0.0008
+- 1.5477
+is_active: true
+atoms:
+- Al
+- O
+block: BND
+block_index: 8
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: Al.O:p_bo3
+value: -0.35
+range:
+- -0.41999999999999993
+- -0.28
+is_active: false
+atoms:
+- Al
+- O
+block: BND
+block_index: 9
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: Al.O:p_bo4
+value: 25.0
+range:
+- 20.0
+- 30.0
+is_active: false
+atoms:
+- Al
+- O
+block: BND
+block_index: 10
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: Al.O:n/a
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Al
+- O
+block: BND
+block_index: 11
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: Al.O:p_bo1
+value: -0.10362739603955079
+range:
+- -0.23507999999999998
+- -0.074
+is_active: true
+atoms:
+- Al
+- O
+block: BND
+block_index: 12
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: Al.O:p_bo2
+value: 6.4624634162881485
+range:
+- 4.6533
+- 7.30728
+is_active: true
+atoms:
+- Al
+- O
+block: BND
+block_index: 13
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: Al.O:delta'_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+block: BND
+block_index: 14
+category: DoNotOptimize
+description: Uncorrected BO overcoordination
+equation: 3a
+---
+name: Al.O:p_ij^xel1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+block: BND
+block_index: 15
+category: Expert
+description: eReaxFF param for adjusting number of electrons available to host atom
+equation: '27'
+---
+name: Al.Si:D_e^sigma
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 0
+category: Standard
+description: Sigma-bond dissociation energy
+equation: 6,11a
+---
+name: Al.Si:D_e^pi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 1
+category: Standard
+description: Pi-bond dissociation energy
+equation: '6'
+---
+name: Al.Si:D_e^pipi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 2
+category: Standard
+description: Double pi-bond dissociation energy
+equation: '6'
+---
+name: Al.Si:p_be1
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 3
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: Al.Si:p_bo5
+value: 0.3
+range:
+- 0.24
+- 0.36
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 4
+category: Standard
+description: Double pi bond parameter
+equation: '2'
+---
+name: Al.Si:Val'_i^boc
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 5
+category: DoNotOptimize
+description: 1,3-Bond order correction
+equation: 3b
+---
+name: Al.Si:p_bo6
+value: 26.0
+range:
+- 20.8
+- 31.2
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 6
+category: Standard
+description: Double pi bond order
+equation: '2'
+---
+name: Al.Si:p_ovun1
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 7
+category: Standard
+description: Overcoordination penalty
+equation: 11a
+---
+name: Al.Si:p_be2
+value: 0.5
+range:
+- 0.4
+- 0.6
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 8
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: Al.Si:p_bo3
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 9
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: Al.Si:p_bo4
+value: 12.0
+range:
+- 9.600000000000001
+- 14.399999999999999
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 10
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: Al.Si:n/a
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 11
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: Al.Si:p_bo1
+value: -0.2
+range:
+- -0.24
+- -0.16000000000000003
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 12
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: Al.Si:p_bo2
+value: 10.0
+range:
+- 8.0
+- 12.0
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 13
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: Al.Si:delta'_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 14
+category: DoNotOptimize
+description: Uncorrected BO overcoordination
+equation: 3a
+---
+name: Al.Si:p_ij^xel1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Si
+block: BND
+block_index: 15
+category: Expert
+description: eReaxFF param for adjusting number of electrons available to host atom
+equation: '27'
+---
+name: Al.Al:D_e^sigma
+value: 62.122176652752245
+range:
+- 27.26216
+- 65.7742
+is_active: true
+atoms:
+- Al
+- Al
+block: BND
+block_index: 0
+category: Standard
+description: Sigma-bond dissociation energy
+equation: 6,11a
+---
+name: Al.Al:D_e^pi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 1
+category: Standard
+description: Pi-bond dissociation energy
+equation: '6'
+---
+name: Al.Al:D_e^pipi
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 2
+category: Standard
+description: Double pi-bond dissociation energy
+equation: '6'
+---
+name: Al.Al:p_be1
+value: 0.4832
+range:
+- 0.38656
+- 0.57984
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 3
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: Al.Al:p_bo5
+value: -0.3
+range:
+- -0.36
+- -0.24
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 4
+category: Standard
+description: Double pi bond parameter
+equation: '2'
+---
+name: Al.Al:Val'_i^boc
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 5
+category: DoNotOptimize
+description: 1,3-Bond order correction
+equation: 3b
+---
+name: Al.Al:p_bo6
+value: 16.0
+range:
+- 12.8
+- 19.2
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 6
+category: Standard
+description: Double pi bond order
+equation: '2'
+---
+name: Al.Al:p_ovun1
+value: 0.5154
+range:
+- 0.41232
+- 0.6184799999999999
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 7
+category: Standard
+description: Overcoordination penalty
+equation: 11a
+---
+name: Al.Al:p_be2
+value: 6.4631
+range:
+- 5.17048
+- 7.755719999999999
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 8
+category: Standard
+description: Bond energy parameter
+equation: '6'
+---
+name: Al.Al:p_bo3
+value: -0.4197
+range:
+- -0.50364
+- -0.33576000000000006
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 9
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: Al.Al:p_bo4
+value: 14.3085
+range:
+- 11.446800000000001
+- 17.1702
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 10
+category: Standard
+description: Pi bond order parameter
+equation: '2'
+---
+name: Al.Al:n/a
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 11
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: Al.Al:p_bo1
+value: -0.1463
+range:
+- -0.17556000000000002
+- -0.11704000000000002
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 12
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: Al.Al:p_bo2
+value: 6.1608
+range:
+- 4.928640000000001
+- 7.3929599999999995
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 13
+category: Standard
+description: Sigma bond order
+equation: '2'
+---
+name: Al.Al:delta'_i
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 14
+category: DoNotOptimize
+description: Uncorrected BO overcoordination
+equation: 3a
+---
+name: Al.Al:p_ij^xel1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+block: BND
+block_index: 15
+category: Expert
+description: eReaxFF param for adjusting number of electrons available to host atom
+equation: '27'
+---
+name: H.O:D_ij
+value: 0.0283
+range:
+- 0.02264
+- 0.03396
+is_active: false
+atoms:
+- H
+- O
+block: OFD
+block_index: 0
+category: Expert
+description: VdW energy
+equation: 23a
+---
+name: H.O:r_vdW
+value: 1.2885
+range:
+- 1.0308000000000002
+- 1.5461999999999998
+is_active: false
+atoms:
+- H
+- O
+block: OFD
+block_index: 1
+category: Expert
+description: VdW radius
+equation: 23a
+---
+name: H.O:alpha_ij
+value: 10.919
+range:
+- 8.7352
+- 13.1028
+is_active: false
+atoms:
+- H
+- O
+block: OFD
+block_index: 2
+category: Expert
+description: VdW parameter
+equation: 23a
+---
+name: H.O:r_0^sigma
+value: 0.9215
+range:
+- 0.7372000000000001
+- 1.1058
+is_active: false
+atoms:
+- H
+- O
+block: OFD
+block_index: 3
+category: Standard
+description: Sigma bond length
+equation: '2'
+---
+name: H.O:r_0^pi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- H
+- O
+block: OFD
+block_index: 4
+category: Standard
+description: Pi bond length
+equation: '2'
+---
+name: H.O:r_0^pipi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- H
+- O
+block: OFD
+block_index: 5
+category: Standard
+description: PiPi bond length
+equation: '2'
+---
+name: H.Si:D_ij
+value: 0.1659
+range:
+- 0.13272
+- 0.19907999999999998
+is_active: false
+atoms:
+- H
+- Si
+block: OFD
+block_index: 0
+category: Expert
+description: VdW energy
+equation: 23a
+---
+name: H.Si:r_vdW
+value: 1.4
+range:
+- 1.12
+- 1.6799999999999997
+is_active: false
+atoms:
+- H
+- Si
+block: OFD
+block_index: 1
+category: Expert
+description: VdW radius
+equation: 23a
+---
+name: H.Si:alpha_ij
+value: 11.7054
+range:
+- 9.36432
+- 14.046479999999999
+is_active: false
+atoms:
+- H
+- Si
+block: OFD
+block_index: 2
+category: Expert
+description: VdW parameter
+equation: 23a
+---
+name: H.Si:r_0^sigma
+value: 1.3437
+range:
+- 1.07496
+- 1.6124399999999999
+is_active: false
+atoms:
+- H
+- Si
+block: OFD
+block_index: 3
+category: Standard
+description: Sigma bond length
+equation: '2'
+---
+name: H.Si:r_0^pi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- H
+- Si
+block: OFD
+block_index: 4
+category: Standard
+description: Pi bond length
+equation: '2'
+---
+name: H.Si:r_0^pipi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- H
+- Si
+block: OFD
+block_index: 5
+category: Standard
+description: PiPi bond length
+equation: '2'
+---
+name: O.Si:D_ij
+value: 0.133
+range:
+- 0.10640000000000001
+- 0.1596
+is_active: false
+atoms:
+- O
+- Si
+block: OFD
+block_index: 0
+category: Expert
+description: VdW energy
+equation: 23a
+---
+name: O.Si:r_vdW
+value: 2.0545
+range:
+- 1.6436000000000002
+- 2.4654
+is_active: false
+atoms:
+- O
+- Si
+block: OFD
+block_index: 1
+category: Expert
+description: VdW radius
+equation: 23a
+---
+name: O.Si:alpha_ij
+value: 10.8315
+range:
+- 8.6652
+- 12.9978
+is_active: false
+atoms:
+- O
+- Si
+block: OFD
+block_index: 2
+category: Expert
+description: VdW parameter
+equation: 23a
+---
+name: O.Si:r_0^sigma
+value: 1.7043
+range:
+- 1.36344
+- 2.0451599999999996
+is_active: false
+atoms:
+- O
+- Si
+block: OFD
+block_index: 3
+category: Standard
+description: Sigma bond length
+equation: '2'
+---
+name: O.Si:r_0^pi
+value: 1.3773
+range:
+- 1.1018400000000002
+- 1.6527599999999998
+is_active: false
+atoms:
+- O
+- Si
+block: OFD
+block_index: 4
+category: Standard
+description: Pi bond length
+equation: '2'
+---
+name: O.Si:r_0^pipi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- O
+- Si
+block: OFD
+block_index: 5
+category: Standard
+description: PiPi bond length
+equation: '2'
+---
+name: Al.H:D_ij
+value: 0.0564
+range:
+- 0.04512
+- 0.06767999999999999
+is_active: false
+atoms:
+- Al
+- H
+block: OFD
+block_index: 0
+category: Expert
+description: VdW energy
+equation: 23a
+---
+name: Al.H:r_vdW
+value: 1.4937
+range:
+- 1.19496
+- 1.79244
+is_active: false
+atoms:
+- Al
+- H
+block: OFD
+block_index: 1
+category: Expert
+description: VdW radius
+equation: 23a
+---
+name: Al.H:alpha_ij
+value: 12.0744
+range:
+- 9.65952
+- 14.48928
+is_active: false
+atoms:
+- Al
+- H
+block: OFD
+block_index: 2
+category: Expert
+description: VdW parameter
+equation: 23a
+---
+name: Al.H:r_0^sigma
+value: 2.072174910007963
+range:
+- 1.3820800000000002
+- 2.07312
+is_active: true
+atoms:
+- Al
+- H
+block: OFD
+block_index: 3
+category: Standard
+description: Sigma bond length
+equation: '2'
+---
+name: Al.H:r_0^pi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- Al
+- H
+block: OFD
+block_index: 4
+category: Standard
+description: Pi bond length
+equation: '2'
+---
+name: Al.H:r_0^pipi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- Al
+- H
+block: OFD
+block_index: 5
+category: Standard
+description: PiPi bond length
+equation: '2'
+---
+name: Al.O:D_ij
+value: 0.196
+range:
+- 0.15680000000000002
+- 0.2352
+is_active: false
+atoms:
+- Al
+- O
+block: OFD
+block_index: 0
+category: Expert
+description: VdW energy
+equation: 23a
+---
+name: Al.O:r_vdW
+value: 1.8464
+range:
+- 1.4771200000000002
+- 2.21568
+is_active: false
+atoms:
+- Al
+- O
+block: OFD
+block_index: 1
+category: Expert
+description: VdW radius
+equation: 23a
+---
+name: Al.O:alpha_ij
+value: 11.1461
+range:
+- 8.91688
+- 13.37532
+is_active: false
+atoms:
+- Al
+- O
+block: OFD
+block_index: 2
+category: Expert
+description: VdW parameter
+equation: 23a
+---
+name: Al.O:r_0^sigma
+value: 1.4195542658979146
+range:
+- 1.2516800000000001
+- 1.8775199999999999
+is_active: true
+atoms:
+- Al
+- O
+block: OFD
+block_index: 3
+category: Standard
+description: Sigma bond length
+equation: '2'
+---
+name: Al.O:r_0^pi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- Al
+- O
+block: OFD
+block_index: 4
+category: Standard
+description: Pi bond length
+equation: '2'
+---
+name: Al.O:r_0^pipi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- Al
+- O
+block: OFD
+block_index: 5
+category: Standard
+description: PiPi bond length
+equation: '2'
+---
+name: Al.Si:D_ij
+value: 0.098
+range:
+- 0.07840000000000001
+- 0.1176
+is_active: false
+atoms:
+- Al
+- Si
+block: OFD
+block_index: 0
+category: Expert
+description: VdW energy
+equation: 23a
+---
+name: Al.Si:r_vdW
+value: 1.787
+range:
+- 1.4296
+- 2.1443999999999996
+is_active: false
+atoms:
+- Al
+- Si
+block: OFD
+block_index: 1
+category: Expert
+description: VdW radius
+equation: 23a
+---
+name: Al.Si:alpha_ij
+value: 10.6898
+range:
+- 8.55184
+- 12.82776
+is_active: false
+atoms:
+- Al
+- Si
+block: OFD
+block_index: 2
+category: Expert
+description: VdW parameter
+equation: 23a
+---
+name: Al.Si:r_0^sigma
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- Al
+- Si
+block: OFD
+block_index: 3
+category: Standard
+description: Sigma bond length
+equation: '2'
+---
+name: Al.Si:r_0^pi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- Al
+- Si
+block: OFD
+block_index: 4
+category: Standard
+description: Pi bond length
+equation: '2'
+---
+name: Al.Si:r_0^pipi
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- Al
+- Si
+block: OFD
+block_index: 5
+category: Standard
+description: PiPi bond length
+equation: '2'
+---
+name: H.H.H:Theta_0,0
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- H
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.H.H:p_val1
+value: 27.9213
+range:
+- 22.337040000000002
+- 33.505559999999996
+is_active: false
+atoms:
+- H
+- H
+- H
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.H.H:p_val2
+value: 5.8635
+range:
+- 4.6908
+- 7.0362
+is_active: false
+atoms:
+- H
+- H
+- H
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.H.H:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- H
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.H.H:p_val7
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- H
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.H.H:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- H
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.H.H:p_val4
+value: 1.04
+range:
+- 0.8320000000000001
+- 1.248
+is_active: false
+atoms:
+- H
+- H
+- H
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: O.O.O:Theta_0,0
+value: 80.7324
+range:
+- 64.58592
+- 96.87888
+is_active: false
+atoms:
+- O
+- O
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: O.O.O:p_val1
+value: 30.4554
+range:
+- 24.364320000000003
+- 36.54648
+is_active: false
+atoms:
+- O
+- O
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.O.O:p_val2
+value: 0.9953
+range:
+- 0.7962400000000001
+- 1.1943599999999999
+is_active: false
+atoms:
+- O
+- O
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.O.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- O
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: O.O.O:p_val7
+value: 1.631
+range:
+- 1.3048000000000002
+- 1.9571999999999998
+is_active: false
+atoms:
+- O
+- O
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: O.O.O:p_pen1
+value: 50.0
+range:
+- 40.0
+- 60.0
+is_active: false
+atoms:
+- O
+- O
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: O.O.O:p_val4
+value: 1.0783
+range:
+- 0.8626400000000001
+- 1.29396
+is_active: false
+atoms:
+- O
+- O
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.O.O:Theta_0,0
+value: 75.6935
+range:
+- 60.5548
+- 90.8322
+is_active: false
+atoms:
+- H
+- O
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.O.O:p_val1
+value: 50.0
+range:
+- 40.0
+- 60.0
+is_active: false
+atoms:
+- H
+- O
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.O.O:p_val2
+value: 2.0
+range:
+- 1.6
+- 2.4
+is_active: false
+atoms:
+- H
+- O
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.O.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.O.O:p_val7
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- H
+- O
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.O.O:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.O.O:p_val4
+value: 1.168
+range:
+- 0.9344
+- 1.4016
+is_active: false
+atoms:
+- H
+- O
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.O.H:Theta_0,0
+value: 85.8
+range:
+- 68.64
+- 102.96
+is_active: false
+atoms:
+- H
+- O
+- H
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.O.H:p_val1
+value: 9.8453
+range:
+- 7.87624
+- 11.814359999999999
+is_active: false
+atoms:
+- H
+- O
+- H
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.O.H:p_val2
+value: 2.272
+range:
+- 1.8175999999999999
+- 2.7263999999999995
+is_active: false
+atoms:
+- H
+- O
+- H
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.O.H:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+- H
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.O.H:p_val7
+value: 2.8635
+range:
+- 2.2908000000000004
+- 3.4362
+is_active: false
+atoms:
+- H
+- O
+- H
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.O.H:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+- H
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.O.H:p_val4
+value: 1.58
+range:
+- 1.2640000000000002
+- 1.896
+is_active: false
+atoms:
+- H
+- O
+- H
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: O.H.O:Theta_0,0
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- H
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: O.H.O:p_val1
+value: 15.0
+range:
+- 12.0
+- 18.0
+is_active: false
+atoms:
+- O
+- H
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.H.O:p_val2
+value: 2.89
+range:
+- 2.3120000000000003
+- 3.468
+is_active: false
+atoms:
+- O
+- H
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.H.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- H
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: O.H.O:p_val7
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- H
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: O.H.O:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- H
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: O.H.O:p_val4
+value: 2.8774
+range:
+- 2.3019200000000004
+- 3.45288
+is_active: false
+atoms:
+- O
+- H
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.H.O:Theta_0,0
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.H.O:p_val1
+value: 8.5744
+range:
+- 6.859520000000001
+- 10.28928
+is_active: false
+atoms:
+- H
+- H
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.H.O:p_val2
+value: 3.0
+range:
+- 2.4000000000000004
+- 3.5999999999999996
+is_active: false
+atoms:
+- H
+- H
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.H.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.H.O:p_val7
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.H.O:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.H.O:p_val4
+value: 1.0421
+range:
+- 0.8336800000000001
+- 1.25052
+is_active: false
+atoms:
+- H
+- H
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Si.Si.Si:Theta_0,0
+value: 71.049
+range:
+- 56.839200000000005
+- 85.25880000000001
+is_active: false
+atoms:
+- Si
+- Si
+- Si
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Si.Si.Si:p_val1
+value: 32.4076
+range:
+- 25.926080000000002
+- 38.88912
+is_active: false
+atoms:
+- Si
+- Si
+- Si
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Si.Si.Si:p_val2
+value: 1.2648
+range:
+- 1.01184
+- 1.5177599999999998
+is_active: false
+atoms:
+- Si
+- Si
+- Si
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Si.Si.Si:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+- Si
+- Si
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Si.Si.Si:p_val7
+value: 0.0133
+range:
+- 0.01064
+- 0.01596
+is_active: false
+atoms:
+- Si
+- Si
+- Si
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Si.Si.Si:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+- Si
+- Si
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Si.Si.Si:p_val4
+value: 1.2899
+range:
+- 1.0319200000000002
+- 1.54788
+is_active: false
+atoms:
+- Si
+- Si
+- Si
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.Si.Si:Theta_0,0
+value: 77.2616
+range:
+- 61.80928
+- 92.71392
+is_active: false
+atoms:
+- H
+- Si
+- Si
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.Si.Si:p_val1
+value: 5.019
+range:
+- 4.0152
+- 6.0228
+is_active: false
+atoms:
+- H
+- Si
+- Si
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.Si.Si:p_val2
+value: 7.8944
+range:
+- 6.31552
+- 9.473279999999999
+is_active: false
+atoms:
+- H
+- Si
+- Si
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.Si.Si:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.Si.Si:p_val7
+value: 4.0
+range:
+- 3.2
+- 4.8
+is_active: false
+atoms:
+- H
+- Si
+- Si
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.Si.Si:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.Si.Si:p_val4
+value: 1.04
+range:
+- 0.8320000000000001
+- 1.248
+is_active: false
+atoms:
+- H
+- Si
+- Si
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.Si.H:Theta_0,0
+value: 75.7983
+range:
+- 60.63864
+- 90.95796
+is_active: false
+atoms:
+- H
+- Si
+- H
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.Si.H:p_val1
+value: 14.4132
+range:
+- 11.530560000000001
+- 17.29584
+is_active: false
+atoms:
+- H
+- Si
+- H
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.Si.H:p_val2
+value: 2.864
+range:
+- 2.2912
+- 3.4368
+is_active: false
+atoms:
+- H
+- Si
+- H
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.Si.H:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- H
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.Si.H:p_val7
+value: 4.0
+range:
+- 3.2
+- 4.8
+is_active: false
+atoms:
+- H
+- Si
+- H
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.Si.H:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- H
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.Si.H:p_val4
+value: 1.04
+range:
+- 0.8320000000000001
+- 1.248
+is_active: false
+atoms:
+- H
+- Si
+- H
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: O.Si.Si:Theta_0,0
+value: 99.8997
+range:
+- 79.91976
+- 119.87964
+is_active: false
+atoms:
+- O
+- Si
+- Si
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: O.Si.Si:p_val1
+value: 26.661
+range:
+- 21.3288
+- 31.9932
+is_active: false
+atoms:
+- O
+- Si
+- Si
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.Si.Si:p_val2
+value: 2.1237
+range:
+- 1.69896
+- 2.54844
+is_active: false
+atoms:
+- O
+- Si
+- Si
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.Si.Si:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- Si
+- Si
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: O.Si.Si:p_val7
+value: 0.01
+range:
+- 0.008
+- 0.012
+is_active: false
+atoms:
+- O
+- Si
+- Si
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: O.Si.Si:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- Si
+- Si
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: O.Si.Si:p_val4
+value: 1.4341
+range:
+- 1.14728
+- 1.7209199999999998
+is_active: false
+atoms:
+- O
+- Si
+- Si
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.Si.O:Theta_0,0
+value: 73.6998
+range:
+- 58.95984
+- 88.43975999999999
+is_active: false
+atoms:
+- H
+- Si
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.Si.O:p_val1
+value: 40.0
+range:
+- 32.0
+- 48.0
+is_active: false
+atoms:
+- H
+- Si
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.Si.O:p_val2
+value: 1.8782
+range:
+- 1.5025600000000001
+- 2.25384
+is_active: false
+atoms:
+- H
+- Si
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.Si.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.Si.O:p_val7
+value: 4.0
+range:
+- 3.2
+- 4.8
+is_active: false
+atoms:
+- H
+- Si
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.Si.O:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.Si.O:p_val4
+value: 1.129
+range:
+- 0.9032
+- 1.3548
+is_active: false
+atoms:
+- H
+- Si
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: O.Si.O:Theta_0,0
+value: 98.2184
+range:
+- 78.57472000000001
+- 117.86207999999999
+is_active: false
+atoms:
+- O
+- Si
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: O.Si.O:p_val1
+value: 38.9429
+range:
+- 31.154320000000002
+- 46.73148
+is_active: false
+atoms:
+- O
+- Si
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.Si.O:p_val2
+value: 0.7727
+range:
+- 0.61816
+- 0.9272400000000001
+is_active: false
+atoms:
+- O
+- Si
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.Si.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- Si
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: O.Si.O:p_val7
+value: 1.1658
+range:
+- 0.93264
+- 1.39896
+is_active: false
+atoms:
+- O
+- Si
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: O.Si.O:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- Si
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: O.Si.O:p_val4
+value: 2.2641
+range:
+- 1.81128
+- 2.71692
+is_active: false
+atoms:
+- O
+- Si
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Si.O.Si:Theta_0,0
+value: 39.2858
+range:
+- 31.42864
+- 47.14296
+is_active: false
+atoms:
+- Si
+- O
+- Si
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Si.O.Si:p_val1
+value: 1.3068
+range:
+- 1.0454400000000001
+- 1.5681599999999998
+is_active: false
+atoms:
+- Si
+- O
+- Si
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Si.O.Si:p_val2
+value: 5.6478
+range:
+- 4.5182400000000005
+- 6.77736
+is_active: false
+atoms:
+- Si
+- O
+- Si
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Si.O.Si:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+- O
+- Si
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Si.O.Si:p_val7
+value: 3.8972
+range:
+- 3.1177600000000005
+- 4.67664
+is_active: false
+atoms:
+- Si
+- O
+- Si
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Si.O.Si:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+- O
+- Si
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Si.O.Si:p_val4
+value: 3.0
+range:
+- 2.4000000000000004
+- 3.5999999999999996
+is_active: false
+atoms:
+- Si
+- O
+- Si
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.O.Si:Theta_0,0
+value: 79.2126
+range:
+- 63.37008
+- 95.05511999999999
+is_active: false
+atoms:
+- H
+- O
+- Si
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.O.Si:p_val1
+value: 4.8973
+range:
+- 3.9178400000000004
+- 5.87676
+is_active: false
+atoms:
+- H
+- O
+- Si
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.O.Si:p_val2
+value: 8.0
+range:
+- 6.4
+- 9.6
+is_active: false
+atoms:
+- H
+- O
+- Si
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.O.Si:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+- Si
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.O.Si:p_val7
+value: 1.0859
+range:
+- 0.8687200000000002
+- 1.30308
+is_active: false
+atoms:
+- H
+- O
+- Si
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.O.Si:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+- Si
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.O.Si:p_val4
+value: 2.1209
+range:
+- 1.69672
+- 2.5450799999999996
+is_active: false
+atoms:
+- H
+- O
+- Si
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: O.O.Si:Theta_0,0
+value: 82.7397
+range:
+- 66.19176
+- 99.28764
+is_active: false
+atoms:
+- O
+- O
+- Si
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: O.O.Si:p_val1
+value: 32.1198
+range:
+- 25.69584
+- 38.54376
+is_active: false
+atoms:
+- O
+- O
+- Si
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.O.Si:p_val2
+value: 1.8862
+range:
+- 1.50896
+- 2.26344
+is_active: false
+atoms:
+- O
+- O
+- Si
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.O.Si:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- O
+- Si
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: O.O.Si:p_val7
+value: 0.1058
+range:
+- 0.08464
+- 0.12696
+is_active: false
+atoms:
+- O
+- O
+- Si
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: O.O.Si:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- O
+- Si
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: O.O.Si:p_val4
+value: 1.5443
+range:
+- 1.23544
+- 1.85316
+is_active: false
+atoms:
+- O
+- O
+- Si
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.H.Si:Theta_0,0
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- Si
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.H.Si:p_val1
+value: 47.13
+range:
+- 37.70400000000001
+- 56.556
+is_active: false
+atoms:
+- H
+- H
+- Si
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.H.Si:p_val2
+value: 6.0
+range:
+- 4.800000000000001
+- 7.199999999999999
+is_active: false
+atoms:
+- H
+- H
+- Si
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.H.Si:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- Si
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.H.Si:p_val7
+value: 1.6371
+range:
+- 1.3096800000000002
+- 1.9645199999999998
+is_active: false
+atoms:
+- H
+- H
+- Si
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.H.Si:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- H
+- Si
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.H.Si:p_val4
+value: 1.04
+range:
+- 0.8320000000000001
+- 1.248
+is_active: false
+atoms:
+- H
+- H
+- Si
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Si.H.Si:Theta_0,0
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+- H
+- Si
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Si.H.Si:p_val1
+value: 27.4206
+range:
+- 21.936480000000003
+- 32.90472
+is_active: false
+atoms:
+- Si
+- H
+- Si
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Si.H.Si:p_val2
+value: 6.0
+range:
+- 4.800000000000001
+- 7.199999999999999
+is_active: false
+atoms:
+- Si
+- H
+- Si
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Si.H.Si:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+- H
+- Si
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Si.H.Si:p_val7
+value: 1.6371
+range:
+- 1.3096800000000002
+- 1.9645199999999998
+is_active: false
+atoms:
+- Si
+- H
+- Si
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Si.H.Si:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Si
+- H
+- Si
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Si.H.Si:p_val4
+value: 1.04
+range:
+- 0.8320000000000001
+- 1.248
+is_active: false
+atoms:
+- Si
+- H
+- Si
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: O.H.Si:Theta_0,0
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- H
+- Si
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: O.H.Si:p_val1
+value: 7.055
+range:
+- 5.644
+- 8.466
+is_active: false
+atoms:
+- O
+- H
+- Si
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.H.Si:p_val2
+value: 3.9236
+range:
+- 3.1388800000000003
+- 4.70832
+is_active: false
+atoms:
+- O
+- H
+- Si
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.H.Si:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- H
+- Si
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: O.H.Si:p_val7
+value: 1.6371
+range:
+- 1.3096800000000002
+- 1.9645199999999998
+is_active: false
+atoms:
+- O
+- H
+- Si
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: O.H.Si:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- H
+- Si
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: O.H.Si:p_val4
+value: 1.04
+range:
+- 0.8320000000000001
+- 1.248
+is_active: false
+atoms:
+- O
+- H
+- Si
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al.H.O:Theta_0,0
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Al.H.O:p_val1
+value: 10.288872173164238
+range:
+- 3.4200000000000004
+- 20.0
+is_active: true
+atoms:
+- Al
+- H
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.H.O:p_val2
+value: 2.050791338798432
+range:
+- 0.82
+- 4.8339
+is_active: true
+atoms:
+- Al
+- H
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.H.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Al.H.O:p_val7
+value: 1.375
+range:
+- 1.1
+- 1.65
+is_active: false
+atoms:
+- Al
+- H
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Al.H.O:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Al.H.O:p_val4
+value: 1.7625853218129905
+range:
+- 1.01
+- 1.77
+is_active: true
+atoms:
+- Al
+- H
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al.H.H:Theta_0,0
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+- H
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Al.H.H:p_val1
+value: 3.0
+range:
+- 2.4000000000000004
+- 3.5999999999999996
+is_active: false
+atoms:
+- Al
+- H
+- H
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.H.H:p_val2
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Al
+- H
+- H
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.H.H:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+- H
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Al.H.H:p_val7
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Al
+- H
+- H
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Al.H.H:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+- H
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Al.H.H:p_val4
+value: 1.25
+range:
+- 1.0
+- 1.5
+is_active: false
+atoms:
+- Al
+- H
+- H
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al.H.Al:Theta_0,0
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+- Al
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Al.H.Al:p_val1
+value: 20.2391
+range:
+- 16.191280000000003
+- 24.28692
+is_active: false
+atoms:
+- Al
+- H
+- Al
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.H.Al:p_val2
+value: 0.1328
+range:
+- 0.10624
+- 0.15936
+is_active: false
+atoms:
+- Al
+- H
+- Al
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.H.Al:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+- Al
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Al.H.Al:p_val7
+value: 2.986
+range:
+- 2.3888000000000003
+- 3.5832
+is_active: false
+atoms:
+- Al
+- H
+- Al
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Al.H.Al:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- H
+- Al
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Al.H.Al:p_val4
+value: 1.087
+range:
+- 0.8696
+- 1.3044
+is_active: false
+atoms:
+- Al
+- H
+- Al
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al.O.H:Theta_0,0
+value: 85.2598836519652
+range:
+- 64.6197
+- 106.33955999999999
+is_active: true
+atoms:
+- Al
+- O
+- H
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Al.O.H:p_val1
+value: 18.32466081376171
+range:
+- 4.2037
+- 19.7491
+is_active: true
+atoms:
+- Al
+- O
+- H
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.O.H:p_val2
+value: 1.3524452289537408
+range:
+- 1.35168
+- 10.0
+is_active: true
+atoms:
+- Al
+- O
+- H
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.O.H:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+- H
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Al.O.H:p_val7
+value: 3.0
+range:
+- 2.4000000000000004
+- 3.5999999999999996
+is_active: false
+atoms:
+- Al
+- O
+- H
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Al.O.H:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+- H
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Al.O.H:p_val4
+value: 2.999064081572655
+range:
+- 0.8
+- 3.0
+is_active: true
+atoms:
+- Al
+- O
+- H
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al.O.O:Theta_0,0
+value: 34.4326
+range:
+- 27.546080000000003
+- 41.31912
+is_active: false
+atoms:
+- Al
+- O
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Al.O.O:p_val1
+value: 25.9544
+range:
+- 20.76352
+- 31.14528
+is_active: false
+atoms:
+- Al
+- O
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.O.O:p_val2
+value: 5.1239
+range:
+- 4.09912
+- 6.14868
+is_active: false
+atoms:
+- Al
+- O
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.O.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Al.O.O:p_val7
+value: 2.75
+range:
+- 2.2
+- 3.3
+is_active: false
+atoms:
+- Al
+- O
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Al.O.O:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Al.O.O:p_val4
+value: 1.7141
+range:
+- 1.37128
+- 2.05692
+is_active: false
+atoms:
+- Al
+- O
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al.O.Al:Theta_0,0
+value: 5.3244541645627095
+range:
+- 5.2474
+- 64.5513
+is_active: true
+atoms:
+- Al
+- O
+- Al
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Al.O.Al:p_val1
+value: 11.644678891697982
+range:
+- 9.89352
+- 40.0
+is_active: true
+atoms:
+- Al
+- O
+- Al
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.O.Al:p_val2
+value: 0.5583029343171376
+range:
+- 0.5527
+- 9.9945
+is_active: true
+atoms:
+- Al
+- O
+- Al
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.O.Al:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+- Al
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Al.O.Al:p_val7
+value: 0.6619
+range:
+- 0.5295200000000001
+- 0.79428
+is_active: false
+atoms:
+- Al
+- O
+- Al
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Al.O.Al:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+- Al
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Al.O.Al:p_val4
+value: 0.9990133527660373
+range:
+- 0.9526400000000002
+- 3.0
+is_active: true
+atoms:
+- Al
+- O
+- Al
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.Al.H:Theta_0,0
+value: 67.4229
+range:
+- 53.938320000000004
+- 80.90747999999999
+is_active: false
+atoms:
+- H
+- Al
+- H
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.Al.H:p_val1
+value: 4.5148
+range:
+- 3.6118400000000004
+- 5.41776
+is_active: false
+atoms:
+- H
+- Al
+- H
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.Al.H:p_val2
+value: 5.9702
+range:
+- 4.776160000000001
+- 7.1642399999999995
+is_active: false
+atoms:
+- H
+- Al
+- H
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.Al.H:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Al
+- H
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.Al.H:p_val7
+value: 3.0
+range:
+- 2.4000000000000004
+- 3.5999999999999996
+is_active: false
+atoms:
+- H
+- Al
+- H
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.Al.H:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Al
+- H
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.Al.H:p_val4
+value: 2.6879
+range:
+- 2.1503200000000002
+- 3.2254799999999997
+is_active: false
+atoms:
+- H
+- Al
+- H
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.Al.O:Theta_0,0
+value: 64.04623946873888
+range:
+- 0.0
+- 64.8437
+is_active: true
+atoms:
+- H
+- Al
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: H.Al.O:p_val1
+value: 9.353574580460545
+range:
+- 5.4547
+- 30.9495
+is_active: true
+atoms:
+- H
+- Al
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.Al.O:p_val2
+value: 1.5965231396182307
+range:
+- 0.9702
+- 3.1941599999999997
+is_active: true
+atoms:
+- H
+- Al
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: H.Al.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Al
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: H.Al.O:p_val7
+value: 0.7372
+range:
+- 0.5897600000000001
+- 0.8846399999999999
+is_active: false
+atoms:
+- H
+- Al
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: H.Al.O:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Al
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: H.Al.O:p_val4
+value: 1.151295936072037
+range:
+- 0.808
+- 3.0
+is_active: true
+atoms:
+- H
+- Al
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: O.Al.O:Theta_0,0
+value: 61.15464273966753
+range:
+- 43.7395
+- 84.7469
+is_active: true
+atoms:
+- O
+- Al
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: O.Al.O:p_val1
+value: 26.30400877814852
+range:
+- 7.3926
+- 40.0
+is_active: true
+atoms:
+- O
+- Al
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.Al.O:p_val2
+value: 3.318766057009318
+range:
+- 1.245
+- 4.48824
+is_active: true
+atoms:
+- O
+- Al
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: O.Al.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- Al
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: O.Al.O:p_val7
+value: 3.0
+range:
+- 2.4000000000000004
+- 3.5999999999999996
+is_active: false
+atoms:
+- O
+- Al
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: O.Al.O:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- Al
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: O.Al.O:p_val4
+value: 2.9999812928207583
+range:
+- 1.0123
+- 3.0
+is_active: true
+atoms:
+- O
+- Al
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al.Al.O:Theta_0,0
+value: 32.1032
+range:
+- 25.682560000000002
+- 38.52384
+is_active: false
+atoms:
+- Al
+- Al
+- O
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Al.Al.O:p_val1
+value: 2.3304
+range:
+- 1.8643200000000002
+- 2.79648
+is_active: false
+atoms:
+- Al
+- Al
+- O
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.Al.O:p_val2
+value: 4.5935
+range:
+- 3.6748
+- 5.512199999999999
+is_active: false
+atoms:
+- Al
+- Al
+- O
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.Al.O:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- O
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Al.Al.O:p_val7
+value: 0.5894
+range:
+- 0.47152000000000005
+- 0.70728
+is_active: false
+atoms:
+- Al
+- Al
+- O
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Al.Al.O:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- O
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Al.Al.O:p_val4
+value: 1.014
+range:
+- 0.8112
+- 1.2167999999999999
+is_active: false
+atoms:
+- Al
+- Al
+- O
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al.Al.H:Theta_0,0
+value: 180.0
+range:
+- 144.0
+- 216.0
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Al.Al.H:p_val1
+value: -26.786
+range:
+- -32.1432
+- -21.428800000000003
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.Al.H:p_val2
+value: 7.3549
+range:
+- 5.88392
+- 8.82588
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.Al.H:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Al.Al.H:p_val7
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Al.Al.H:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Al.Al.H:p_val4
+value: 1.0252
+range:
+- 0.82016
+- 1.2302399999999998
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al.Al.H..2:Theta_0,0
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Al.Al.H..2:p_val1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.Al.H..2:p_val2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.Al.H..2:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Al.Al.H..2:p_val7
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Al.Al.H..2:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Al.Al.H..2:p_val4
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- Al
+- H
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: Al.O.Si:Theta_0,0
+value: 7.167
+range:
+- 5.7336
+- 8.600399999999999
+is_active: false
+atoms:
+- Al
+- O
+- Si
+block: ANG
+block_index: 0
+category: Standard
+description: 180o-(equilibrium angle)
+equation: 13g
+---
+name: Al.O.Si:p_val1
+value: 11.9291
+range:
+- 9.543280000000001
+- 14.314919999999999
+is_active: false
+atoms:
+- Al
+- O
+- Si
+block: ANG
+block_index: 1
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.O.Si:p_val2
+value: 3.9535
+range:
+- 3.1628000000000003
+- 4.7442
+is_active: false
+atoms:
+- Al
+- O
+- Si
+block: ANG
+block_index: 2
+category: Standard
+description: Valence angle parameter
+equation: 13a
+---
+name: Al.O.Si:p_coa1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+- Si
+block: ANG
+block_index: 3
+category: Expert
+description: Valence conjugation
+equation: '15'
+---
+name: Al.O.Si:p_val7
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- Al
+- O
+- Si
+block: ANG
+block_index: 4
+category: Expert
+description: Undercoordination
+equation: 13c
+---
+name: Al.O.Si:p_pen1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- Al
+- O
+- Si
+block: ANG
+block_index: 5
+category: Expert
+description: Penalty energy
+equation: 14b,14a
+---
+name: Al.O.Si:p_val4
+value: 3.4258
+range:
+- 2.7406400000000004
+- 4.11096
+is_active: false
+atoms:
+- Al
+- O
+- Si
+block: ANG
+block_index: 6
+category: Expert
+description: Valence angle parameter
+equation: 13b
+---
+name: H.O.O.H:V_1
+value: 2.5
+range:
+- 2.0
+- 3.0
+is_active: false
+atoms:
+- H
+- O
+- O
+- H
+block: TOR
+block_index: 0
+category: Standard
+description: V1-torsion barrier
+equation: 16a
+---
+name: H.O.O.H:V_2
+value: -4.0
+range:
+- -4.8
+- -3.2
+is_active: false
+atoms:
+- H
+- O
+- O
+- H
+block: TOR
+block_index: 1
+category: Standard
+description: V2-torsion barrier
+equation: 16a
+---
+name: H.O.O.H:V_3
+value: 0.9
+range:
+- 0.7200000000000001
+- 1.08
+is_active: false
+atoms:
+- H
+- O
+- O
+- H
+block: TOR
+block_index: 2
+category: Standard
+description: V3-torsion barrier
+equation: 16a
+---
+name: H.O.O.H:p_tor1
+value: -2.5
+range:
+- -3.0
+- -2.0
+is_active: false
+atoms:
+- H
+- O
+- O
+- H
+block: TOR
+block_index: 3
+category: Standard
+description: Torsion angle parameter
+equation: 16a
+---
+name: H.O.O.H:p_cot1
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- H
+- O
+- O
+- H
+block: TOR
+block_index: 4
+category: Expert
+description: Conjugation energy
+equation: 17a
+---
+name: H.O.O.H:n/a 1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+- O
+- H
+block: TOR
+block_index: 5
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: H.O.O.H:n/a 2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+- O
+- H
+block: TOR
+block_index: 6
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: H.O.O.O:V_1
+value: 0.8302
+range:
+- 0.6641600000000001
+- 0.99624
+is_active: false
+atoms:
+- H
+- O
+- O
+- O
+block: TOR
+block_index: 0
+category: Standard
+description: V1-torsion barrier
+equation: 16a
+---
+name: H.O.O.O:V_2
+value: -4.0
+range:
+- -4.8
+- -3.2
+is_active: false
+atoms:
+- H
+- O
+- O
+- O
+block: TOR
+block_index: 1
+category: Standard
+description: V2-torsion barrier
+equation: 16a
+---
+name: H.O.O.O:V_3
+value: -0.7763
+range:
+- -0.9315599999999999
+- -0.62104
+is_active: false
+atoms:
+- H
+- O
+- O
+- O
+block: TOR
+block_index: 2
+category: Standard
+description: V3-torsion barrier
+equation: 16a
+---
+name: H.O.O.O:p_tor1
+value: -2.5
+range:
+- -3.0
+- -2.0
+is_active: false
+atoms:
+- H
+- O
+- O
+- O
+block: TOR
+block_index: 3
+category: Standard
+description: Torsion angle parameter
+equation: 16a
+---
+name: H.O.O.O:p_cot1
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- H
+- O
+- O
+- O
+block: TOR
+block_index: 4
+category: Expert
+description: Conjugation energy
+equation: 17a
+---
+name: H.O.O.O:n/a 1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+- O
+- O
+block: TOR
+block_index: 5
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: H.O.O.O:n/a 2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- O
+- O
+- O
+block: TOR
+block_index: 6
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: O.O.O.O:V_1
+value: -2.5
+range:
+- -3.0
+- -2.0
+is_active: false
+atoms:
+- O
+- O
+- O
+- O
+block: TOR
+block_index: 0
+category: Standard
+description: V1-torsion barrier
+equation: 16a
+---
+name: O.O.O.O:V_2
+value: -4.0
+range:
+- -4.8
+- -3.2
+is_active: false
+atoms:
+- O
+- O
+- O
+- O
+block: TOR
+block_index: 1
+category: Standard
+description: V2-torsion barrier
+equation: 16a
+---
+name: O.O.O.O:V_3
+value: 1.0
+range:
+- 0.8
+- 1.2
+is_active: false
+atoms:
+- O
+- O
+- O
+- O
+block: TOR
+block_index: 2
+category: Standard
+description: V3-torsion barrier
+equation: 16a
+---
+name: O.O.O.O:p_tor1
+value: -2.5
+range:
+- -3.0
+- -2.0
+is_active: false
+atoms:
+- O
+- O
+- O
+- O
+block: TOR
+block_index: 3
+category: Standard
+description: Torsion angle parameter
+equation: 16a
+---
+name: O.O.O.O:p_cot1
+value: -1.0
+range:
+- -1.2
+- -0.8
+is_active: false
+atoms:
+- O
+- O
+- O
+- O
+block: TOR
+block_index: 4
+category: Expert
+description: Conjugation energy
+equation: 17a
+---
+name: O.O.O.O:n/a 1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- O
+- O
+- O
+block: TOR
+block_index: 5
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: O.O.O.O:n/a 2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- O
+- O
+- O
+- O
+block: TOR
+block_index: 6
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: H.Si.Si.H:V_1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- H
+block: TOR
+block_index: 0
+category: Standard
+description: V1-torsion barrier
+equation: 16a
+---
+name: H.Si.Si.H:V_2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- H
+block: TOR
+block_index: 1
+category: Standard
+description: V2-torsion barrier
+equation: 16a
+---
+name: H.Si.Si.H:V_3
+value: 0.064
+range:
+- 0.0512
+- 0.0768
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- H
+block: TOR
+block_index: 2
+category: Standard
+description: V3-torsion barrier
+equation: 16a
+---
+name: H.Si.Si.H:p_tor1
+value: -2.4426
+range:
+- -2.93112
+- -1.9540800000000003
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- H
+block: TOR
+block_index: 3
+category: Standard
+description: Torsion angle parameter
+equation: 16a
+---
+name: H.Si.Si.H:p_cot1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- H
+block: TOR
+block_index: 4
+category: Expert
+description: Conjugation energy
+equation: 17a
+---
+name: H.Si.Si.H:n/a 1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- H
+block: TOR
+block_index: 5
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: H.Si.Si.H:n/a 2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- H
+block: TOR
+block_index: 6
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: H.Si.Si.Si:V_1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- Si
+block: TOR
+block_index: 0
+category: Standard
+description: V1-torsion barrier
+equation: 16a
+---
+name: H.Si.Si.Si:V_2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- Si
+block: TOR
+block_index: 1
+category: Standard
+description: V2-torsion barrier
+equation: 16a
+---
+name: H.Si.Si.Si:V_3
+value: 0.1587
+range:
+- 0.12696000000000002
+- 0.19044
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- Si
+block: TOR
+block_index: 2
+category: Standard
+description: V3-torsion barrier
+equation: 16a
+---
+name: H.Si.Si.Si:p_tor1
+value: -2.4426
+range:
+- -2.93112
+- -1.9540800000000003
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- Si
+block: TOR
+block_index: 3
+category: Standard
+description: Torsion angle parameter
+equation: 16a
+---
+name: H.Si.Si.Si:p_cot1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- Si
+block: TOR
+block_index: 4
+category: Expert
+description: Conjugation energy
+equation: 17a
+---
+name: H.Si.Si.Si:n/a 1
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- Si
+block: TOR
+block_index: 5
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: H.Si.Si.Si:n/a 2
+value: 0.0
+range:
+- -1.0
+- 1.0
+is_active: false
+atoms:
+- H
+- Si
+- Si
+- Si
+block: TOR
+block_index: 6
+category: DoNotOptimize
+description: n/a
+equation: n/a
+---
+name: O.H.O:r_hb^0
+value: 2.12
+range:
+- 1.6960000000000002
+- 2.544
+is_active: false
+atoms:
+- O
+- H
+- O
+block: HBD
+block_index: 0
+category: Standard
+description: Hydrogen bond equilibrium distance
+equation: '18'
+---
+name: O.H.O:p_hb1
+value: -3.58
+range:
+- -4.296
+- -2.8640000000000003
+is_active: false
+atoms:
+- O
+- H
+- O
+block: HBD
+block_index: 1
+category: Standard
+description: Hydrogen bond energy
+equation: '18'
+---
+name: O.H.O:-p_hb2
+value: 1.45
+range:
+- 1.1600000000000001
+- 1.7399999999999998
+is_active: false
+atoms:
+- O
+- H
+- O
+block: HBD
+block_index: 2
+category: Expert
+description: Hydrogen bond/bond order
+equation: '18'
+---
+name: O.H.O:-p_hb3
+value: 19.5
+range:
+- 15.600000000000001
+- 23.4
+is_active: false
+atoms:
+- O
+- H
+- O
+block: HBD
+block_index: 3
+category: Expert
+description: Hydrogen bond parameter
+equation: '18'
+...

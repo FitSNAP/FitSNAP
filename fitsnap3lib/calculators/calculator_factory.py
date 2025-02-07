@@ -2,8 +2,13 @@ from fitsnap3lib.parallel_tools import ParallelTools
 from fitsnap3lib.calculators.calculator import Calculator
 from fitsnap3lib.calculators.lammps_pace import LammpsPace
 from fitsnap3lib.calculators.lammps_snap import LammpsSnap
-#from fitsnap3lib.calculators.basic_calculator import Basic
 from fitsnap3lib.calculators.lammps_custom import LammpsCustom
+from fitsnap3lib.calculators.lammps_reaxff import LammpsReaxff
+
+# only import INQ if it's available
+from importlib.util import find_spec
+if find_spec("pinq"):
+    from fitsnap3lib.calculators.inq import INQ
 
 
 #pt = ParallelTools()

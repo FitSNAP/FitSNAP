@@ -39,6 +39,9 @@ from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
 import random
 
+from cProfile import Profile
+from pstats import SortKey, Stats
+
 
 class FitSnap:
     """ 
@@ -54,7 +57,7 @@ class FitSnap:
         pt (:obj:`class` ParallelTools): Instance of the ParallelTools class for helping MPI 
                                          communication and shared arrays.
         config (:obj:`class` Config): Instance of the Config class for initializing settings, 
-                                      initialized with a ParallelTools instance.
+                                      initialized with a Config instance.
         scraper (:obj:`class` Scraper): Instance of the Scraper class for gathering configs.
         data (:obj:`list`): List of dictionaries, where each configuration of atoms has its own 
             dictionary.
@@ -70,6 +73,7 @@ class FitSnap:
         self.pt = ParallelTools(comm=comm)
         self.pt.all_barrier()
         self.config = Config(self.pt, input, arguments_lst=arglist)
+        self.pt.reaxff = "REAXFF" in self.config.sections
         if self.config.args.verbose:
             self.pt.single_print(f"FitSNAP instance hash: {self.config.hash}")
         # Instantiate other backbone attributes.
@@ -81,6 +85,9 @@ class FitSnap:
             if "SOLVER" in self.config.sections else None
         self.output = output(self.config.sections["OUTFILE"].output_style, self.pt, self.config) \
             if "OUTFILE" in self.config.sections else None
+
+        if self.pt.reaxff:
+            self.output = output("REAXFF", self.pt, self.config) 
 
         self.fit = None
         self.multinode = 0
@@ -126,7 +133,12 @@ class FitSnap:
         def scrape_configs():
             self.scraper.scrape_groups()
             self.scraper.divvy_up_configs()
-            self.data = self.scraper.scrape_configs()
+
+            if "REAXFF" in self.config.sections:
+                self.data = self.scraper.scrape_configs_reaxff()
+            else:
+                self.data = self.scraper.scrape_configs()
+
             if delete_scraper:
                 del self.scraper
         scrape_configs()
@@ -197,10 +209,18 @@ class FitSnap:
             elif self.fit is None:
                 if self.solver.linear:
                     self.solver.perform_fit()
+                elif "REAXFF" in self.config.sections:
+
+                  self.calculator.allocate_per_config(self.data)
+                  #self.solver.perform_fit(self)
+
+                  with Profile() as profile:
+                    self.solver.perform_fit(self)
+                    Stats(profile).dump_stats(f"stats{self.pt._rank}")
+
                 else:
                     # Perform nonlinear fitting on 1 proc only.
-                    if(self.pt._rank==0):
-                        self.solver.perform_fit()
+                    if(self.pt._rank==0): self.solver.perform_fit()
             else:
                 self.solver.fit = self.fit
                 

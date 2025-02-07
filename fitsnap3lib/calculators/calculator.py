@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 
 
+import sys
+
 #config = Config()
 #pt = ParallelTools()
 
@@ -21,6 +23,11 @@ class Calculator:
         self.number_of_files_per_node = None
         self.shared_index = None
         self.distributed_index = 0
+        self.energy = self.config.sections["CALCULATOR"].energy
+        self.force = self.config.sections["CALCULATOR"].force
+        self.stress = self.config.sections["CALCULATOR"].stress
+        self.dipole = self.config.sections["CALCULATOR"].dipole
+
 
     def get_width(self):
         pass
@@ -321,6 +328,7 @@ class Calculator:
             if isinstance(self.pt.fitsnap_dict[key], DistributedList):
                 self.pt.gather_fitsnap(key)
                 if self.pt.fitsnap_dict[key] is not None and self.pt.stubs != 1:
+                    print(f"key={key} self.pt.fitsnap_dict[key]={self.pt.fitsnap_dict[key]}", file=sys.stderr)
                     self.pt.fitsnap_dict[key] = [item for sublist in self.pt.fitsnap_dict[key] for item in sublist]
                 elif self.pt.fitsnap_dict[key] is not None:
                     self.pt.fitsnap_dict[key] = self.pt.fitsnap_dict[key].get_list()

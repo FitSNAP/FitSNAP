@@ -4,7 +4,7 @@ from fitsnap3lib.parallel_tools import DistributedList
 import json, re, sys
 import numpy as np
 from functools import reduce
-from itertools import chain
+from itertools import chain, groupby
 from pprint import pprint
 
 from lammps import LMP_STYLE_GLOBAL, LMP_STYLE_ATOM, LMP_STYLE_LOCAL, LMP_TYPE_SCALAR, LMP_TYPE_VECTOR, LMP_TYPE_ARRAY
@@ -13,7 +13,6 @@ class LammpsReaxff(LammpsBase):
 
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
-        self._i = 0
         self._lmp = None
         self.pt.check_lammps()
         self.potential_path = self.config.sections['REAXFF'].potential
@@ -46,7 +45,6 @@ class LammpsReaxff(LammpsBase):
             raise NotImplementedError("FitSNAP-ReaxFF only supports 'units real' and 'atom_style charge'.")
         self._lmp.command("units real")
         self._lmp.command("atom_style charge")
-
         self._lmp.command("atom_modify map array sort 0 2.0")
 
         # FIXME
@@ -61,32 +59,25 @@ class LammpsReaxff(LammpsBase):
         self._lmp.command("pair_style reaxff NULL")
         self._lmp.command(f"pair_coeff * * {self.potential_path} {' '.join(self.elements)}")
         self._lmp.command(self.charge_fix)
-        self._lmp.command("compute dist all pair/local dist")
-        self._lmp.command("compute charge all property/atom q")
-        self._lmp.command("compute dipole all dipole")
+        if self.dipole: self._lmp.command("compute dipole all dipole")
 
 
-    def process_configs(self, data, i):
+    def set_data_index(self, data_index):
 
-        try:
-            self._data = data
-            self._i = i
-            self._prepare_lammps()
-            self._lmp.set_reaxff_parameters(self.parameters, self.values)
-            self._lmp.command("run 0 post no")
-            self._collect_lammps()
-        except Exception as e:
-            raise e
-
-    def _prepare_lammps(self):
-
+        self._data_index = data_index
+        self._data = self.pt.fitsnap_dict["Data"][data_index]
         self._lmp.command("delete_atoms group all")
         self._create_atoms_helper(type_mapping=self.type_mapping)
 
 
-    def change_parameters(self, x):
+    def process_data_for_parameter_values(self, x):
 
-        self.values = x
+        try:
+            self._lmp.set_reaxff_parameters(self.parameters, x)
+            self._lmp.command("run 0 post no")
+            self._collect_lammps()
+        except Exception as e:
+            raise e
 
 
     def _collect_lammps(self):
@@ -96,16 +87,7 @@ class LammpsReaxff(LammpsBase):
 
         if self.energy:
             pe = _extract_compute_np(self._lmp, 'thermo_pe',LMP_STYLE_GLOBAL,LMP_TYPE_SCALAR)
-            self._data['predicted_energy'] = pe
-
-            #predicted_energy = _extract_compute_np(self._lmp, "thermo_pe", 0, 0)
-            #if np.isnan(pe):
-            #  rounded_values = [round(float(v),2) for v in self.values]
-            #  print(f'predicted_energy is nan {self._i} {rounded_values}')
-            #  predicted_energy = 99e99
-
-            #print(f"dist {dist[0]:.2f} dipole {dipole:.8f} q0 {q[0]: .8f} q[1] {q[1]: .8f} pe {pe: .8f}",
-            #  end='=======================\n' if np.isnan(pe) else '\n')
+            self.pt.shared_arrays['predicted_energy'].array[self._data_index] = pe
 
         if self.force:
             f = self._lmp.extract_atom('f',LMP_STYLE_ATOM,LMP_TYPE_ARRAY)
@@ -117,6 +99,7 @@ class LammpsReaxff(LammpsBase):
             self._data['predicted_dipole'] = dipole
             #print(f"dipole {dipole}")
 
+
     def allocate_per_config(self, data: list):
         """
         Allocate shared arrays for REAXFF fitting
@@ -125,18 +108,62 @@ class LammpsReaxff(LammpsBase):
             data: List of data dictionaries.
         """
 
+        # -------- DATA DISTRIBUTED LIST --------
+        #pprint(data)
         self.pt.add_2_fitsnap("Data", DistributedList(len(data)))
-
-        for i, d in enumerate(data):
-            self.pt.fitsnap_dict["Data"][i] = d
-
+        self.pt.fitsnap_dict["Data"] = data
         self.pt.all_barrier()
         self.pt.gather_fitsnap("Data")
 
         all_data = self.pt.fitsnap_dict["Data"] = list(chain.from_iterable(self.pt.fitsnap_dict["Data"]))
-        print(f"self.pt.get_rank()={self.pt.get_rank()} len(all_data)={len(all_data)}")
-
+        len_all_data = len(all_data)
+        print(f"self.pt.get_rank() {self.pt.get_rank()} len_all_data {len_all_data}")
         #if(self.pt._rank==0): pprint(all_data)
+
+
+        # -------- SHARED ARRAYS --------
+
+        print(f"self.pt.fitsnap_dict {self.pt.fitsnap_dict}")
+
+        if self.energy:
+            self.pt.create_shared_array('ground_index', len_all_data, 1, dtype='i')
+            self.pt.create_shared_array('ground_energy', len_all_data, 1)
+            self.pt.create_shared_array('predicted_energy', len_all_data, 1)
+
+        #data = sorted(data, key=keyfunc)
+
+        for k, g in groupby(all_data, lambda d: d["Group"]):
+            group=list(g)      # Store group iterator as a list
+            #uniquekeys.append(k)
+            print(f"k {k} g {g}")
+
+            ground_index = 0
+            ground_reference_energy = 999999.99
+
+            for i, d in enumerate(group):
+
+                if ground_reference_energy > d["Energy"]:
+                    ground_index = i
+                    ground_reference_energy = d["Energy"]
+
+            #if "Weight" not in d: d["Weight"] = 1.0
+            #    configs.append(d)
+
+            #for i, d in enumerate(configs):
+            #    d["ground_relative_index"] = ground_index - i
+            #    d["Energy"] -= ground_reference_energy
+
+            #qm_y = [d["Energy"] for d in configs]
+            #auto_weights = np.square(np.max(qm_y)*1.1-np.array(qm_y))
+
+        #if self.force: self.pt.create_shared_array('predicted_dipole', len_all_data, 1)
+        if self.stress: raise NotImplementedError("FitSNAP-ReaxFF does not support stress fitting.")
+        #if self.dipole: self.pt.create_shared_array('predicted_dipole', len_all_data, 1)
+
+        ground_index = 0
+        ground_reference_energy = 999999.99
+
+
 
     def num_atoms_parameters_list(self, block):
 

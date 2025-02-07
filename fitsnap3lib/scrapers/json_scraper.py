@@ -51,49 +51,49 @@ class Json(Scraper):
                     # Move data up one level
                     self.data.update(self.data.pop('Data')[0])  
 
-                    for key in self.data:
-                        if "Style" in key:
-                            if key.replace("Style", "") in self.conversions:
-                                temp = self.config.sections["SCRAPER"].properties[key.replace("Style", "")]
-                                temp[1] = self.data[key]
-                                self.conversions[key.replace("Style", "")] = convert(temp)
-
                     for key in self.config.sections["SCRAPER"].properties:
                         if key in self.data:
                             self.data[key] = np.asarray(self.data[key])
 
-                    natoms = np.shape(self.data["Positions"])[0]
-                    self.data["QMLattice"] = (self.data["Lattice"] * self.conversions["Lattice"]).T
-
-                    # Populate with LAMMPS-normalized lattice
-                    del self.data["Lattice"]  
-
-                    # TODO Check whether "Label" container useful to keep around
-                    if "Label" in self.data:
-                        del self.data["Label"] 
-
                     if not isinstance(self.data["Energy"], float):
                         self.data["Energy"] = float(self.data["Energy"])
 
-                    # Insert electronegativities, which are per-atom scalars
-                    if (self.config.sections["CALCULATOR"].per_atom_scalar):
-                        if not isinstance(self.data["Chis"], float):
-                            self.data["Chis"] = self.data["Chis"]
+                    if "REAXFF" not in self.config.sections:
 
-                    # Currently, ESHIFT should be in units of your training data (note there is no conversion)
-                    if hasattr(self.config.sections["ESHIFT"], 'eshift'):
-                        for atom in self.data["AtomTypes"]:
-                            self.data["Energy"] += self.config.sections["ESHIFT"].eshift[atom]
+                        for key in self.data:
+                            if "Style" in key:
+                                if key.replace("Style", "") in self.conversions:
+                                    temp = self.config.sections["SCRAPER"].properties[key.replace("Style", "")]
+                                    temp[1] = self.data[key]
+                                    self.conversions[key.replace("Style", "")] = convert(temp)
+
+                        natoms = np.shape(self.data["Positions"])[0]
+                        self.data["QMLattice"] = (self.data["Lattice"] * self.conversions["Lattice"]).T
+
+                        # Populate with LAMMPS-normalized lattice
+                        del self.data["Lattice"]
+
+                        # TODO Check whether "Label" container useful to keep around
+                        if "Label" in self.data:
+                            del self.data["Label"]
+
+                        # Insert electronegativities, which are per-atom scalars
+                        if (self.config.sections["CALCULATOR"].per_atom_scalar):
+                            if not isinstance(self.data["Chis"], float):
+                                self.data["Chis"] = self.data["Chis"]
+
+                        # Currently, ESHIFT should be in units of your training data (note there is no conversion)
+                        if hasattr(self.config.sections["ESHIFT"], 'eshift'):
+                            for atom in self.data["AtomTypes"]:
+                                self.data["Energy"] += self.config.sections["ESHIFT"].eshift[atom]
+
+                        self._rotate_coords()
+                        self._translate_coords()
+                        self._weighting(natoms)
+                        self.data["Energy"] *= self.conversions["Energy"]
+                        # end of non-REAXFF code block
 
                     self.data["test_bool"] = self.test_bool[i]
-
-                    self.data["Energy"] *= self.conversions["Energy"]
-
-                    self._rotate_coords()
-                    self._translate_coords()
-
-                    self._weighting(natoms)
-
                     self.all_data.append(self.data)
             else:
                 self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)    
@@ -106,6 +106,8 @@ class Json(Scraper):
         Loop file files in parallel and populate the data dictionary on this proc.
         Note that `self.configs` at this point includes all filenames on this proc.
         """
+
+        return self.scrape_configs()
         self.all_data = [] # Reset to empty list in case running scraper twice.
         self.files = self.configs
 

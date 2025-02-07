@@ -8,7 +8,7 @@ from fitsnap3lib.calculators.lammps_reaxff import LammpsReaxff
 # only import INQ if it's available
 from importlib.util import find_spec
 if find_spec("pinq"):
-    from fitsnap3lib.calculators.inq_calculator import INQCalculator
+    from fitsnap3lib.calculators.inq import INQ
 
 
 #pt = ParallelTools()

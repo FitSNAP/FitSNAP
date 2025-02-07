@@ -70,24 +70,24 @@ class LammpsReaxff(LammpsBase):
         self._create_atoms_helper(type_mapping=self.type_mapping)
 
 
-    def process_data_for_parameter_values(self, x):
+    def process_data_for_parameter_values(self, i, xi):
 
         try:
-            self._lmp.set_reaxff_parameters(self.parameters, x)
+            self._lmp.set_reaxff_parameters(self.parameters, xi)
             self._lmp.command("run 0 post no")
-            self._collect_lammps()
+            self._collect_lammps(i)
         except Exception as e:
             raise e
 
 
-    def _collect_lammps(self):
+    def _collect_lammps(self, i):
 
         #dist = self._lmp.numpy.extract_compute('dist',LMP_STYLE_LOCAL,LMP_TYPE_VECTOR)
         #q = self._lmp.numpy.extract_compute('charge',LMP_STYLE_ATOM,LMP_TYPE_VECTOR)
 
         if self.energy:
             pe = _extract_compute_np(self._lmp, 'thermo_pe',LMP_STYLE_GLOBAL,LMP_TYPE_SCALAR)
-            self.pt.shared_arrays['predicted_energy'].array[self._data_index] = pe
+            self.pt.shared_arrays['predicted_energy'].array[i][self._data_index] = pe
 
         if self.force:
             f = self._lmp.extract_atom('f',LMP_STYLE_ATOM,LMP_TYPE_ARRAY)
@@ -127,42 +127,43 @@ class LammpsReaxff(LammpsBase):
 
         if self.energy:
             self.pt.create_shared_array('ground_index', len_all_data, 1, dtype='i')
-            self.pt.create_shared_array('ground_energy', len_all_data, 1)
-            self.pt.create_shared_array('predicted_energy', len_all_data, 1)
+            self.pt.create_shared_array('reference_energy', len_all_data, 1)
+            self.pt.create_shared_array('weights', len_all_data, 1)
+            popsize = self.config.sections['SOLVER'].popsize
+            self.pt.create_shared_array('predicted_energy', popsize, len_all_data)
 
         #data = sorted(data, key=keyfunc)
 
+        i=0
+
         for k, g in groupby(all_data, lambda d: d["Group"]):
             group=list(g)      # Store group iterator as a list
-            #uniquekeys.append(k)
             print(f"k {k} g {g}")
 
             ground_index = 0
-            ground_reference_energy = 999999.99
+            ground_energy = 999999.99
+            reference_energy = self.pt.shared_arrays['reference_energy'].array
 
-            for i, d in enumerate(group):
+            for j, d in enumerate(group):
 
-                if ground_reference_energy > d["Energy"]:
-                    ground_index = i
-                    ground_reference_energy = d["Energy"]
+                # FIXME: let users choose manual weights
+                #if "Weight" not in d: d["Weight"] = 1.0
 
-            #if "Weight" not in d: d["Weight"] = 1.0
-            #    configs.append(d)
+                if ground_energy > d["Energy"]:
+                    ground_index, ground_energy = j, d["Energy"]
 
-            #for i, d in enumerate(configs):
-            #    d["ground_relative_index"] = ground_index - i
-            #    d["Energy"] -= ground_reference_energy
+            for j, d in enumerate(group):
+                self.pt.shared_arrays['ground_index'].array[i+j] = i + ground_index
+                reference_energy[i+j] = d["Energy"] - ground_energy
 
-            #qm_y = [d["Energy"] for d in configs]
-            #auto_weights = np.square(np.max(qm_y)*1.1-np.array(qm_y))
+            qm_y = self.pt.shared_arrays['reference_energy'].array[i:i+len(group)]
+            weights = self.pt.shared_arrays['weights'].array
+            weights[i:i+len(group)] = np.square(np.max(qm_y)*1.1-np.array(qm_y))
+            i+=len(group)
 
         #if self.force: self.pt.create_shared_array('predicted_dipole', len_all_data, 1)
         if self.stress: raise NotImplementedError("FitSNAP-ReaxFF does not support stress fitting.")
         #if self.dipole: self.pt.create_shared_array('predicted_dipole', len_all_data, 1)
-
-        ground_index = 0
-        ground_reference_energy = 999999.99
-
 
 
     def num_atoms_parameters_list(self, block):

@@ -6,23 +6,12 @@ Introduction
 
 The `Reactive Force Field (ReaxFF) <https://doi.org/10.1038/npjcompumats.2015.11>`_ replaces fixed bond topologies of classical force fields with the concept of bond order to simulate bond breaking/formation of chemical reactions. Originally conceived for hydrocarbons in the gas phase :footcite:p:`vanduin2001`, ReaxFF has been extended to a wide range of applications :footcite:p:`senftle2016`.
 
+
 ..  youtube:: bmOQ74kkd6A
   :align: center
   :width: 62%
 
 |
-
-ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports three charge equilibration methods to represent the dynamics of electron density while fixed partial charges in classical force fields (eg. CHARMM) do not.
-
-  - Charge Equilibration (QEq) :footcite:p:`rappe1991,nakano1997`
-
-  - Atom-Condensed Kohn-Sham DFT to second order (ACKS2) :footcite:p:`verstraelen2013,ohearn2020`
-
-  - Charge Transfer and Polarization in Equilibrium (QTPIE) :footcite:p:`chen2007`
-
-.. note::
-
-  FitSNAP-ReaxFF enables retraining of legacy ReaxFF QEq potentials for ACKS2 and QTPIE, including optimization of the bond_softness, chi, eta, gamma, bcut_acks2, and gauss_exp parameters.
 
 .. danger::
 
@@ -30,6 +19,15 @@ ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports three charge equilibration m
 
 The Potential Energy Surface (PES) is an insanely immense mathematical object. PES of a system with N atoms doesn't have N points, it has *3N dimensions*! The odds are infinitesimal that someone else visited the same tiny slice of subspace you're interested in and made a Machine-Learning Inter-Atomic-Potential (ML-IAP) or a Reax Force Field (FF) for you already. Stop looking for potentials from somewhere else, except to practice and learn to maybe get close to what you're doing. For *original research* there's no way around having to generate your own DFT and/or experimental data to train a new MLIAP or FF. **This is the purpose of FitSNAP-ReaxFF.**
 
+ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports three charge equilibration methods to represent the dynamics of electron density:
+
+  - Charge Equilibration (QEq) :footcite:p:`rappe1991,nakano1997`
+
+  - Atom-Condensed Kohn-Sham DFT to second order (ACKS2) :footcite:p:`verstraelen2013,ohearn2020`
+
+  - Charge Transfer and Polarization in Equilibrium (QTPIE) :footcite:p:`chen2007`
+
+while fixed partial charges in classical force fields (eg. CHARMM) do not. **FitSNAP-ReaxFF enables retraining of legacy ReaxFF QEq potentials for ACKS2 and QTPIE**, including optimization of the bond_softness, chi, eta, gamma, bcut_acks2, and gauss_exp parameters.
 
 
 |

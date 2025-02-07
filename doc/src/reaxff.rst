@@ -68,6 +68,16 @@ Details for each term:
 
 are presented in the `Supporting Information <https://doi.org/10.1021/jp709896w>`_ of *A ReaxFF Reactive Force Field for Molecular Dynamics Simulations of Hydrocarbon Oxidation* by Chenoweth, van Duin, Goddard (2008).
 
+In the context of the ReaxFF (Reactive Force Field) method, overcoordination and undercoordination refer to the situation where atoms are either bonded with more or fewer neighbors than expected, based on the bond formation rules of the force field.
+
+## Overcoordination:
+
+This occurs when an atom forms more bonds than what is typical for its valence. In ReaxFF, overcoordination can happen when the bond orders are artificially inflated, resulting in an atom being connected to too many neighbors (more than its normal bonding capacity). This can lead to an unrealistic geometry in simulations, as atoms might form bonds that are not physically plausible.
+
+## Undercoordination:
+
+This happens when an atom has fewer bonds or neighbors than expected based on its chemical environment. In ReaxFF, undercoordination can occur when bond orders are too low, leading to atoms having fewer connections than would be expected, which can make the structure unrealistic or energetically unfavorable. Both overcoordination and undercoordination can affect the accuracy and reliability of molecular simulations using ReaxFF, as the force field needs to accurately reflect the real atomic bonding patterns to give realistic results. These issues can arise during simulations involving bond breaking and formation, such as during chemical reactions or phase transitions.
+
 |
 
 --------

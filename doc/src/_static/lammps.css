@@ -1,5 +1,12 @@
 @import url("css/theme.css");
 
+tr.Standard:nth-child(odd) td { background-color: rgba(0,129,0,0.06) !important; }
+tr.Standard:nth-child(even) td { background-color: rgba(0,129,0,0.1) !important; }
+tr.Expert:nth-child(odd) td { background-color: rgba(256,256,0,0.06) !important; }
+tr.Expert:nth-child(even) td { background-color: rgba(256,256,0,0.1) !important; }
+tr.DoNotOptimize:nth-child(odd) td { background-color: rgba(256,0,0,0.06) !important; }
+tr.DoNotOptimize:nth-child(even) td { background-color: rgba(256,0,0,0.1) !important; }
+
 cite {
   font-family: monospace;
   font-style: normal;

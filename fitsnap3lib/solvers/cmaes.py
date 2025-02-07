@@ -35,6 +35,17 @@ def loss_function_subgroup(i_x_j):
     return (i_x_j[0], float(np.sum(weighted_residuals) + np.sum(np.square(dipole_residuals))))
 
 
+def loss_function_data_index(i):
+
+    d = reaxff_calculator.set_data_index(i)
+
+    for x in self.pt.fitsnap_dict["x_arrays"]:
+        reaxff_calculator.process_data_for_parameter_values(x)
+
+    if reaxff_calculator.energy:
+        pass
+
+
 class CMAES(Solver):
 
     def __init__(self, name, pt, config):
@@ -44,14 +55,14 @@ class CMAES(Solver):
         self.sigma = self.config.sections['SOLVER'].sigma
 
 
-    def parallel_loss_subgroup(self, x_arrays):
+    def parallel_loss_function(self, x_arrays):
 
-        x_list = x_arrays if isinstance(x_arrays, list) else [x_arrays]
-        all_data = self.pt.fitsnap_dict["Data"]
-        x_subgroup_pairs = itertools.product(range(len(x_list)),range(len(all_data)))
-        tuples = [(i,x_list[i],j) for i, j in x_subgroup_pairs]
-        answer = [0.0] * len(x_list)
-        for p in self.executor.map(loss_function_subgroup, tuples, unordered=True): answer[p[0]] += p[1]
+        self.pt.shared_arrays['x_arrays'].array = x_arrays
+        answer = [0.0] * len(x_arrays)
+        #for p in self.executor.map(loss_function_config, range(len(all_data)), unordered=True):
+        #   answer[p[0]] += p[1]
+
+        self.executor.map(loss_function_data_index, self.range_all_data, unordered=True)
         print(answer)
         return answer
 
@@ -65,10 +76,9 @@ class CMAES(Solver):
         # no way around this sorry
         global reaxff_calculator
         reaxff_calculator = fs.calculator
-
         x0 = reaxff_calculator.values
-        print( x0 )
-
+        #print( x0 )
+        self.range_all_data = range(len(self.pt.fitsnap_dict["Data"]))
         bounds = np.empty([len(reaxff_calculator.parameters),2])
 
         for i, p in enumerate(reaxff_calculator.parameters):
@@ -79,13 +89,15 @@ class CMAES(Solver):
                 delta = delta if delta>0.0 else 1.0
                 bounds[i] = [x0[i]-delta, x0[i]+delta]
 
-        pprint(bounds)
+        #pprint(bounds)
 
         #options={'maxiter': 99, 'maxfevals': 999, 'popsize': 3}
         options={
           'popsize': self.popsize, 'seed': 12345, #'maxiter': 1,
           'bounds': list(np.transpose(bounds))
         }
+
+        self.pt.create_shared_array('x_arrays', self.popsize, len(reaxff_calculator.parameters))
 
         if self.pt.stubs == 0:
             from mpi4py import MPI
@@ -98,7 +110,7 @@ class CMAES(Solver):
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
                 if self.executor is not None:
                     x_best, es = cma.fmin2( None, x0, self.sigma,
-                        parallel_objective=self.parallel_loss_subgroup, options=options)
+                        parallel_objective=self.parallel_loss_function, options=options)
 
         if self.pt.stubs == 1:
             x_best, es = cma.fmin2( None, x0, self.sigma,

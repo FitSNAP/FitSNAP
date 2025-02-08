@@ -33,7 +33,7 @@ class CMAES(Solver):
             predicted_energy = self.pt.shared_arrays['predicted_energy'].array[i]
             weights = self.pt.shared_arrays['weights'].array
             residual = np.square(predicted_energy - predicted_energy[ground_index] - reference_energy)
-            return np.sum(weights * residual)
+            return np.sum(weights * np.nan_to_num(residual,99))
 
         answer = [sum_weighted_residual(i) for i in range(len(x_arrays))]
         #print(answer)
@@ -76,16 +76,25 @@ class CMAES(Solver):
 
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
                 if self.executor is not None:
-                    x_best, es = cma.fmin2( None, x0, self.sigma,
+                    self.x_best, es = cma.fmin2( None, x0, self.sigma,
                         parallel_objective=self.parallel_loss_function, options=options)
-
-        if self.pt.stubs == 1:
-            x_best, es = cma.fmin2( None, x0, self.sigma,
+        else:
+            self.x_best, es = cma.fmin2( None, x0, self.sigma,
                 parallel_objective=self.parallel_loss_function, options=options)
 
         if self.pt._rank == 0:
-            self.fit = reaxff_calculator.change_parameters_string(x_best)
+            self.fit = reaxff_calculator.change_parameters_string(self.x_best)
 
+
+    def error_analysis(self):
+
+        reaxff_calculator.process_data_for_parameter_values(0, self.x_best)
+
+        #all_data = reaxff_calculator.pt.fitsnap_dict["Data"]
+        #for subgroup in all_data:
+        #  for c in subgroup['configs']:
+        #      reaxff_calculator.process_configs(c, 99)
+        #self.errors = all_data
 
 
 
@@ -131,15 +140,6 @@ class CMAES(Solver):
 
 ################################ SCRATCH ################################
 
-
-    def error_analysis(self):
-
-        reaxff_calculator.change_parameters(x_best)
-        #all_data = reaxff_calculator.pt.fitsnap_dict["Data"]
-        #for subgroup in all_data:
-        #  for c in subgroup['configs']:
-        #      reaxff_calculator.process_configs(c, 99)
-        #self.errors = all_data
 
 
     def cmaes_constraints(self, x):

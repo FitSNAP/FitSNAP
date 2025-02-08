@@ -61,8 +61,11 @@ class CMAES(Solver):
 
         #pprint(bounds)
 
+        import warnings
+        warnings.simplefilter("ignore", category=UserWarning)
+
         options={
-          'popsize': self.popsize, 'seed': 12345, #'maxiter': 1,
+          'popsize': self.popsize, 'seed': 12345, #'maxiter': 99,
           'bounds': list(np.transpose(bounds))
         }
 

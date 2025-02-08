@@ -278,6 +278,7 @@ class LammpsReaxff(LammpsBase):
         atoms = [self.elements[t-1] for t in atom_types]
         parameter_block = self.parameter_block(block, atoms)
         tokens = parameter_block.split()
+        atoms_formatted = [' {:>2}'.format(a) for a in tokens[:num_atoms]]
         #tokens[num_atoms+name_index] = ' {:8.4f}'.format(value)
         tokens[num_atoms+name_index] = value
         tokens_formatted = [' {:8.4f}'.format(float(v)) for v in tokens[num_atoms:]]
@@ -285,7 +286,7 @@ class LammpsReaxff(LammpsBase):
         if( len(parameters_list)>8 ): tokens_formatted.insert(8, extra_indent)
         if( len(parameters_list)>16 ): tokens_formatted.insert(17, extra_indent)
         if( len(parameters_list)>24 ): tokens_formatted.insert(26, extra_indent)
-        replacement = ' ' + ' '.join(tokens[:num_atoms]) + ' ' + ''.join(tokens_formatted)
+        replacement = ''.join(atoms_formatted) + ''.join(tokens_formatted)
         #print(replacement)
         self.potential_string = self.potential_string.replace(parameter_block,replacement)
 

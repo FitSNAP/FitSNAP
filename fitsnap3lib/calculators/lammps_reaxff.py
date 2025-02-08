@@ -65,8 +65,10 @@ class LammpsReaxff(LammpsBase):
     def set_data_index(self, data_index):
 
         self._data_index = data_index
+        pprint(self.pt.fitsnap_dict["Data"])
         self._data = self.pt.fitsnap_dict["Data"][data_index]
         self._lmp.command("delete_atoms group all")
+        print(f"self._data_index {self._data_index} self._data {self._data}")
         self._create_atoms_helper(type_mapping=self.type_mapping)
 
 
@@ -101,12 +103,6 @@ class LammpsReaxff(LammpsBase):
 
 
     def allocate_per_config(self, data: list):
-        """
-        Allocate shared arrays for REAXFF fitting
-
-        Args:
-            data: List of data dictionaries.
-        """
 
         # -------- DATA DISTRIBUTED LIST --------
         #pprint(data)
@@ -115,15 +111,23 @@ class LammpsReaxff(LammpsBase):
         self.pt.all_barrier()
         self.pt.gather_fitsnap("Data")
 
-        all_data = self.pt.fitsnap_dict["Data"] = list(chain.from_iterable(self.pt.fitsnap_dict["Data"]))
+        all_data = self.pt.fitsnap_dict["Data"]
+        #all_data = sorted(chain.from_iterable(all_data),key=lambda d: (d["Group"],d["File"]))
+
+        if(self.pt._rank==0): print("BEFORE"); pprint(all_data)
+        all_data = self.pt.fitsnap_dict["Data"] = list(chain.from_iterable(all_data))
+        if(self.pt._rank==0): print("AFTER"); pprint(all_data)
+
+        self.pt.all_barrier()
         len_all_data = len(all_data)
         print(f"self.pt.get_rank() {self.pt.get_rank()} len_all_data {len_all_data}")
         #if(self.pt._rank==0): pprint(all_data)
 
-
         # -------- SHARED ARRAYS --------
 
-        print(f"self.pt.fitsnap_dict {self.pt.fitsnap_dict}")
+        #if(self.pt._rank!=0): return
+
+        #print(f"self.pt.fitsnap_dict {self.pt.fitsnap_dict}")
 
         if self.energy:
             self.pt.create_shared_array('ground_index', len_all_data, 1, dtype='i')
@@ -137,33 +141,44 @@ class LammpsReaxff(LammpsBase):
         i=0
 
         for k, g in groupby(all_data, lambda d: d["Group"]):
-            group=list(g)      # Store group iterator as a list
-            print(f"k {k} g {g}")
-
+            group=list(g)
             ground_index = 0
             ground_energy = 999999.99
-            reference_energy = self.pt.shared_arrays['reference_energy'].array
 
             for j, d in enumerate(group):
 
                 # FIXME: let users choose manual weights
                 #if "Weight" not in d: d["Weight"] = 1.0
 
-                if ground_energy > d["Energy"]:
+                if d["Energy"] < ground_energy:
                     ground_index, ground_energy = j, d["Energy"]
 
             for j, d in enumerate(group):
                 self.pt.shared_arrays['ground_index'].array[i+j] = i + ground_index
-                reference_energy[i+j] = d["Energy"] - ground_energy
+                self.pt.shared_arrays['reference_energy'].array[i+j] = d["Energy"] - ground_energy
 
             qm_y = self.pt.shared_arrays['reference_energy'].array[i:i+len(group)]
-            weights = self.pt.shared_arrays['weights'].array
-            weights[i:i+len(group)] = np.square(np.max(qm_y)*1.1-np.array(qm_y))
+            auto_weights = np.square(np.max(qm_y)*1.1-np.array(qm_y))
+            self.pt.shared_arrays['weights'].array[i:i+len(group)] = auto_weights/np.sum(auto_weights)
             i+=len(group)
 
         #if self.force: self.pt.create_shared_array('predicted_dipole', len_all_data, 1)
         if self.stress: raise NotImplementedError("FitSNAP-ReaxFF does not support stress fitting.")
         #if self.dipole: self.pt.create_shared_array('predicted_dipole', len_all_data, 1)
+
+        if(self.pt._rank==0):
+
+            print("-------- ground_index --------")
+            pprint(self.pt.shared_arrays['ground_index'].array)
+
+            print("-------- qm_y --------")
+            pprint(qm_y)
+
+            print("-------- reference_energy --------")
+            pprint(self.pt.shared_arrays['reference_energy'].array)
+
+            print("-------- weights --------")
+            pprint(self.pt.shared_arrays['weights'].array)
 
 
     def num_atoms_parameters_list(self, block):

@@ -720,11 +720,6 @@ Water Branch
      - :footcite:t:`rahaman2011`
    * - water
      - C/H/O/N
-     - reaxff-trnka2018.ff
-     - *n/a*
-     - :footcite:t:`trnka2018`
-   * - water
-     - C/H/O/N
      - reaxff-kowalik2019.ff
      - CHON-2019.ff
      - :footcite:t:`kowalik2019`

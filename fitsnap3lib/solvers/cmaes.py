@@ -91,7 +91,10 @@ class CMAES(Solver):
 
     def error_analysis(self):
 
-        reaxff_calculator.process_data_for_parameter_values(0, self.x_best)
+        for i in self.range_all_data:
+            d = reaxff_calculator.set_data_index(i)
+            reaxff_calculator.process_data_for_parameter_values(0, self.x_best)
+
 
         #all_data = reaxff_calculator.pt.fitsnap_dict["Data"]
         #for subgroup in all_data:

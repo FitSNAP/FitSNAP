@@ -65,10 +65,10 @@ class LammpsReaxff(LammpsBase):
     def set_data_index(self, data_index):
 
         self._data_index = data_index
-        pprint(self.pt.fitsnap_dict["Data"])
+        #pprint(self.pt.fitsnap_dict["Data"])
         self._data = self.pt.fitsnap_dict["Data"][data_index]
         self._lmp.command("delete_atoms group all")
-        print(f"self._data_index {self._data_index} self._data {self._data}")
+        #print(f"self._data_index {self._data_index} self._data {self._data}")
         self._create_atoms_helper(type_mapping=self.type_mapping)
 
 
@@ -166,20 +166,15 @@ class LammpsReaxff(LammpsBase):
         if self.stress: raise NotImplementedError("FitSNAP-ReaxFF does not support stress fitting.")
         #if self.dipole: self.pt.create_shared_array('predicted_dipole', len_all_data, 1)
 
-        if(self.pt._rank==0):
+        if(False and self.pt._rank==0):
 
-            print("-------- ground_index --------")
-            pprint(self.pt.shared_arrays['ground_index'].array)
+            print(f"*** [rank {self.pt._rank}] ground_index {self.pt.shared_arrays['ground_index'].array}")
 
-            print("-------- qm_y --------")
-            pprint(qm_y)
+            print(f"*** [rank {self.pt._rank}] qm_y {qm_y}")
 
-            print("-------- reference_energy --------")
-            pprint(self.pt.shared_arrays['reference_energy'].array)
+            print(f"*** [rank {self.pt._rank}] reference_energy {self.pt.shared_arrays['reference_energy'].array}")
 
-            print("-------- weights --------")
-            pprint(self.pt.shared_arrays['weights'].array)
-
+            print(f"*** [rank {self.pt._rank}] reference_energy {self.pt.shared_arrays['reference_energy'].array}")
 
     def num_atoms_parameters_list(self, block):
 
@@ -187,28 +182,28 @@ class LammpsReaxff(LammpsBase):
             return 0, ['']*34 + ['bond_softness'] + ['']*7
 
         elif block == 'ATM':
-            return 1, [
+            return 1, list(map(str.lower, [
                 'r_s', 'valency', 'mass', 'r_vdw', 'epsilon', 'gamma', 'r_pi', 'valency_e',
                 'alpha', 'gamma_w', 'valency_boc', 'p_ovun5', 'gauss_exp', 'chi', 'eta', 'p_hbond', 
                 'r_pi_pi', 'p_lp2', '', 'b_o_131', 'b_o_132', 'b_o_133', 'bcut_acks2', '', 
-                'p_ovun2', 'p_val3', '', 'valency_val', 'p_val5', 'rcore2', 'ecore2', 'acore2']
+                'p_ovun2', 'p_val3', '', 'valency_val', 'p_val5', 'rcore2', 'ecore2', 'acore2']))
 
         elif block == 'BND':
-            return 2, [
+            return 2, list(map(str.lower, [
                 'De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1',
-                'p_be2','p_bo3','p_bo4','','p_bo1','p_bo2','ovc','']
+                'p_be2','p_bo3','p_bo4','','p_bo1','p_bo2','ovc','']))
 
         elif block == 'OFD':
-            return 2, ['D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']
+            return 2, list(map(str.lower, ['D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']))
 
         elif block == 'ANG':
-            return 3, ['theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']
+            return 3, list(map(str.lower, ['theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']))
 
         elif block == 'TOR':
-            return 4, ['V1', 'V2', 'V3', 'p_tor1', 'p_cot1', '', '']
+            return 4, list(map(str.lower, ['V1', 'V2', 'V3', 'p_tor1', 'p_cot1', '', '']))
 
         elif block == 'HBD':
-            return 3, ['r0_hb', 'p_hb1', 'p_hb2', 'p_hb3']
+            return 3, list(map(str.lower, ['r0_hb', 'p_hb1', 'p_hb2', 'p_hb3']))
 
         else:
             raise Exception(f"Block {block} not recognized, possible values are GEN, ATM, BND, OFD, ANG, TOR, HBD.")
@@ -228,7 +223,7 @@ class LammpsReaxff(LammpsBase):
             atoms_string = ''.join([r'\s*'+str(self.elements.index(a)+1) for a in atoms])
             extra_indent = '\n      '
 
-        pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+\.[0-9]+){{{len(parameters_list)}}}'
+        pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+\.[0-9]+){{{len(parameters_list)}}}$'
 
         if( not (match := re.search(pattern, self.potential_string, flags=re.MULTILINE|re.DOTALL)) ):
             print("pattern...", pattern)
@@ -255,8 +250,8 @@ class LammpsReaxff(LammpsBase):
 
         self.parameters = []
         self.values = []
-
-        for p in config_parameters.split():
+        self.parameter_names = config_parameters.split()
+        for p in self.parameter_names:
 
             # BND.H.O.p_be2
             print(p, end=' ')
@@ -264,7 +259,7 @@ class LammpsReaxff(LammpsBase):
             p_block = tokens.pop(0)
             p_block_index = ['GEN','ATM','BND','OFD','ANG','TOR','HBD'].index(p_block)
             _, parameters_list = self.num_atoms_parameters_list(p_block)
-            p_name = tokens.pop(-1)
+            p_name = tokens.pop(-1).lower()
             p_name_index = parameters_list.index(p_name)
             p_atom_types = [self.type_mapping[a] for a in tokens]
             parameter = [p_block_index] + p_atom_types + [p_name_index]

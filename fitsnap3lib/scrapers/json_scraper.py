@@ -95,8 +95,14 @@ class Json(Scraper):
 
                     self.data["test_bool"] = self.test_bool[i]
                     self.all_data.append(self.data)
+
+                    # FIXME: remove after debugging
+                    if "Dipole" in self.data: del self.data["Dipole"]
+                    if "Forces" in self.data: del self.data["Forces"]
+                    if "test_bool" in self.data: del self.data["test_bool"]
+
             else:
-                self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)    
+                self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)
 
         return self.all_data
 

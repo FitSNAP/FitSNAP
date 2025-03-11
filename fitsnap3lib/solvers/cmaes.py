@@ -4,12 +4,19 @@ from fitsnap3lib.calculators.lammps_reaxff import LammpsReaxff
 import cma, itertools, functools
 import numpy as np
 from pprint import pprint
+from mpi4py import MPI
 
 
-def loss_function_data_index(i):
+def fence_x_arrays(index):
+    reaxff_calculator.pt.shared_arrays['x_arrays'].win.Fence()
 
-    d = reaxff_calculator.set_data_index(i)
+
+def loss_function_data_index(index):
+
+    d = reaxff_calculator.set_data_index(index)
+
     for i, ix in enumerate(reaxff_calculator.pt.shared_arrays['x_arrays'].array):
+        #print(f"index {index} i {i} ix {ix}")
         reaxff_calculator.process_data_for_parameter_values(i, ix)
 
 
@@ -24,7 +31,12 @@ class CMAES(Solver):
 
     def parallel_loss_function(self, x_arrays):
 
-        self.pt.shared_arrays['x_arrays'].array = x_arrays
+        self.pt.shared_arrays['x_arrays'].array[:] = x_arrays
+        self.pt.shared_arrays['x_arrays'].win.Sync()
+        self.pt.shared_arrays['x_arrays'].win.Flush(MPI.PROC_NULL)
+        for r in range(1, self.pt.get_size()): self.executor.submit(fence_x_arrays, r)
+        self.pt.shared_arrays['x_arrays'].win.Fence()
+
         list(self.executor.map(loss_function_data_index, self.range_all_data, unordered=True))
 
         def sum_weighted_residual(i):
@@ -46,6 +58,7 @@ class CMAES(Solver):
         # no way around this sorry
         global reaxff_calculator
         reaxff_calculator = fs.calculator
+
         x0 = reaxff_calculator.values
         #print( x0 )
         self.range_all_data = range(len(self.pt.fitsnap_dict["Data"]))
@@ -55,7 +68,7 @@ class CMAES(Solver):
             if 'range' in p:
                 bounds[i] = p['range'] # FIXME 'range' config parser
             else:
-                delta = 0.2*np.abs(x0[i])
+                delta = 0.5*np.abs(x0[i])
                 delta = delta if delta>0.0 else 1.0
                 bounds[i] = [x0[i]-delta, x0[i]+delta]
 
@@ -65,7 +78,7 @@ class CMAES(Solver):
         warnings.simplefilter("ignore", category=UserWarning)
 
         options={
-          'popsize': self.popsize, 'seed': 12345, #'maxiter': 99,
+          'popsize': self.popsize, 'seed': 12345, 'maxiter': 3,
           'bounds': list(np.transpose(bounds))
         }
 
@@ -74,7 +87,6 @@ class CMAES(Solver):
         if self.pt.stubs == 0:
             # SAFER TO USE *MPICommExecutor* INSTEAD OF *MPIPoolExecutor*
             # [https://mpi4py.readthedocs.io/en/stable/mpi4py.futures.html#mpicommexecutor]
-            from mpi4py import MPI
             from mpi4py.futures import MPICommExecutor
 
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
@@ -88,12 +100,21 @@ class CMAES(Solver):
         if self.pt._rank == 0:
             self.fit = reaxff_calculator.change_parameters_string(self.x_best)
 
+            print("----------------------------------------")
+            print(self.config.sections['CALCULATOR'].charge_fix)
+            print("PARAMETER_NAME          BEFORE     AFTER")
+            for p, x0i, xbi in zip(reaxff_calculator.parameter_names, x0, self.x_best):
+                print(f"{p:<20} {x0i:9.4f} {xbi:9.4f}")
+            print("----------------------------------------")
+
 
     def error_analysis(self):
 
-        for i in self.range_all_data:
-            d = reaxff_calculator.set_data_index(i)
-            reaxff_calculator.process_data_for_parameter_values(0, self.x_best)
+        pass
+
+        #for i in self.range_all_data:
+        #    d = reaxff_calculator.set_data_index(i)
+        #    reaxff_calculator.process_data_for_parameter_values(0, self.x_best)
 
 
         #all_data = reaxff_calculator.pt.fitsnap_dict["Data"]

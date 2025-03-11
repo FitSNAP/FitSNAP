@@ -15,7 +15,7 @@ class Solver(Section):
 
         if self.solver == "CMAES":
             self.allowedkeys.extend(['popsize','sigma'])
-            self.popsize = self.get_value("SOLVER", "popsize", "10", "int")
+            self.popsize = self.get_value("SOLVER", "popsize", "0", "int")
             self.sigma = self.get_value("SOLVER", "sigma", "0.1", "float")
 
         self._check_section()

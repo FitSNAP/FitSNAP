@@ -5,6 +5,7 @@ from pickle import HIGHEST_PROTOCOL
 from fitsnap3lib.io.sections.section_factory import new_section
 from pathlib import Path
 import random
+from math import log
 
 
 class Config():
@@ -170,6 +171,10 @@ class Config():
                 self.sections["REFERENCE"] = new_section("REFERENCE", tmp_config, self.pt, self.infile, self.args)
             self.sections["REFERENCE"].units = "real"
             self.sections["REFERENCE"].atom_style = "charge"
+
+        if "REAXFF" in sections and self.sections["SOLVER"].popsize==0:
+            num_parameters = len(self.sections["REAXFF"].parameters)
+            self.sections["SOLVER"].popsize = round(4+3*log(num_parameters))
 
 
     def view_state(self, sections: list | str = [], original_input = False):

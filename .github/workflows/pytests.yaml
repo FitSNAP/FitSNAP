@@ -46,7 +46,12 @@ jobs:
         python -m pip install --upgrade sympy # for ACE
         python -m pip install --upgrade pyyaml # for ACE
         python -m pip install --upgrade cma # for REAXFF
-        python -m pip install --upgrade --no-binary=h5py h5py # for HD5(Scraper)
+
+        # for HD5(Scraper)
+        export CC=mpicc
+        export HDF5_MPI="ON"
+        export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
+        python -m pip install --upgrade --no-binary=h5py h5py
 
     - name: Lint with flake8
       run: |

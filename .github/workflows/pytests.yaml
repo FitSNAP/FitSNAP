@@ -31,7 +31,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt install -y openmpi-bin libopenmpi-dev
+        sudo apt install -y openmpi-bin libopenmpi-dev libhdf5-mpi-dev
     - name: Install dependencies
       run: |
         python --version
@@ -46,6 +46,8 @@ jobs:
         python -m pip install --upgrade sympy # for ACE
         python -m pip install --upgrade pyyaml # for ACE
         python -m pip install --upgrade cma # for REAXFF
+        python -m pip install --upgrade --no-binary=h5py h5py # for HD5(Scraper)
+
     - name: Lint with flake8
       run: |
         python -m pip install --upgrade flake8

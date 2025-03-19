@@ -3,6 +3,7 @@ from fitsnap3lib.scrapers.scrape import Scraper
 from fitsnap3lib.scrapers.json_scraper import Json
 from fitsnap3lib.scrapers.xyz_scraper import XYZ
 from fitsnap3lib.scrapers.vasp_scraper import Vasp
+from fitsnap3lib.scrapers.hd5_scraper import HD5
 
 
 #pt = ParallelTools()

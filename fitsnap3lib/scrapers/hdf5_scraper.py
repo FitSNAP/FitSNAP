@@ -87,7 +87,8 @@ class HDF5(Scraper):
                     self._scrape_group(f[g])
 
         print(f"|self.data| {len(self.data)}")
-
+        return self.data
+        
     # ----------------------------------------------------------------
 
     def _scrape_group(self, group):

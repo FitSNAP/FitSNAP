@@ -105,6 +105,8 @@ class HDF5(Scraper):
         scf_dipoles = group["scf_dipole"][()]
         atomic_numbers = group["atomic_numbers"][()]
 
+        print(f"{group.name} {conformations.shape[0]}")
+
         for i in range(conformations.shape[0]):
 
             positions = conformations[i] * BOHR_TO_ANGSTROM
@@ -127,7 +129,7 @@ class HDF5(Scraper):
                 "eweight": 1.0,
                 "fweight": 50.0,
                 "vweight": 0.0,
-                "test_bool": False
+                "test_bool": np.random.rand() < 0.2
             })
 
 # ----------------------------------------------------------------

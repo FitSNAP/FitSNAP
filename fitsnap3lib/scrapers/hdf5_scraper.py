@@ -29,6 +29,7 @@ class HDF5(Scraper):
             self.rank = 0
             self.size = 1
         self.exclude_atomic_numbers = [3, 35, 53]
+        self._lattice_margin = 10
         self.allowed_symbols = {1:"H", 6:"C", 7:"N", 8:"O", 9:"F",
                                 11:"Na", 12:"Mg", 15:"P", 16:"S",
                                 17:"Cl", 19:"K", 20:"Ca"}
@@ -86,9 +87,11 @@ class HDF5(Scraper):
                 for g in self.local_group_names:
                     self._scrape_group(f[g])
 
+
         print(f"|self.data| {len(self.data)}")
+        #pprint(self.data)
         return self.data
-        
+
     # ----------------------------------------------------------------
 
     def _scrape_group(self, group):
@@ -101,13 +104,30 @@ class HDF5(Scraper):
         mbis_charges = group["mbis_charges"][()]
         scf_dipoles = group["scf_dipole"][()]
         atomic_numbers = group["atomic_numbers"][()]
+
         for i in range(conformations.shape[0]):
+
+            positions = conformations[i] * BOHR_TO_ANGSTROM
+            min_bounds = positions.min(axis=0) - self._lattice_margin
+            max_bounds = positions.max(axis=0) + self._lattice_margin
+            ax, bx, cx = max_bounds[0] - min_bounds[0], 0.0, 0.0
+            ay, by, cy = 0.0, max_bounds[1] - min_bounds[1], 0.0
+            az, bz, cz = 0.0, 0.0, max_bounds[2] - min_bounds[2]
+
             self.data.append({
-                "Positions": conformations[i] * BOHR_TO_ANGSTROM,
+                "Group": group.name,
+                "File": f"{group.name}/{i}",
+                "Positions": positions,
                 "Energy": formation_energy[i] * HARTREE_TO_KCAL_MOL,
                 "Forces": dft_total_gradient[i] * FORCE_CONV,
                 "Dipole": scf_dipoles[i] * BOHR_TO_ANGSTROM,
                 "AtomTypes": [atomic_number_to_symbol(n) for n in atomic_numbers],
+                "NumAtoms": len(atomic_numbers),
+                "Lattice": [[ax, bx, cx], [ay, by, cy], [az, bz, cz]],
+                "eweight": 1.0,
+                "fweight": 50.0,
+                "vweight": 0.0,
+                "test_bool": False
             })
 
 # ----------------------------------------------------------------

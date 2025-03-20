@@ -328,7 +328,6 @@ class Calculator:
             if isinstance(self.pt.fitsnap_dict[key], DistributedList):
                 self.pt.gather_fitsnap(key)
                 if self.pt.fitsnap_dict[key] is not None and self.pt.stubs != 1:
-                    print(f"key={key} self.pt.fitsnap_dict[key]={self.pt.fitsnap_dict[key]}", file=sys.stderr)
                     self.pt.fitsnap_dict[key] = [item for sublist in self.pt.fitsnap_dict[key] for item in sublist]
                 elif self.pt.fitsnap_dict[key] is not None:
                     self.pt.fitsnap_dict[key] = self.pt.fitsnap_dict[key].get_list()

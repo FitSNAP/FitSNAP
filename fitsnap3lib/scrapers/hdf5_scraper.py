@@ -103,8 +103,8 @@ class HDF5(Scraper):
         atomic_numbers = group["atomic_numbers"][()]
         formation_energy = group["formation_energy"][()]
         dft_total_gradient = group["dft_total_gradient"][()]
-        scf_dipoles = group["scf_dipole"][()]
         mbis_charges = group["mbis_charges"][()]
+        scf_dipoles = group["scf_dipole"][()]
 
         self.data.append({
             "Group": group.name,
@@ -112,6 +112,7 @@ class HDF5(Scraper):
             "Positions": positions,
             "Energy": formation_energy[i] * HARTREE_TO_KCAL_MOL,
             "Forces": dft_total_gradient[i] * FORCE_CONV,
+            "Charges": mbis_charges[i].squeeze().tolist(),
             "Dipole": scf_dipoles[i] * BOHR_TO_ANGSTROM,
             "AtomTypes": [atomic_number_to_symbol(n) for n in atomic_numbers],
             "NumAtoms": len(atomic_numbers),

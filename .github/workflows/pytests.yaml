@@ -42,21 +42,11 @@ jobs:
         python -m pip install --upgrade tabulate
         python -m pip install --upgrade scipy
         python -m pip install --upgrade psutil
-        python -m pip install --upgrade torch # for nonlinear
-        python -m pip install --upgrade sympy # for ACE
-        python -m pip install --upgrade pyyaml # for ACE
-        python -m pip install --upgrade cma # for REAXFF
-        export CC=mpicc
-        export HDF5_MPI="ON"
-        if [ "$(uname)" == "Darwin" ]; then
-          export HDF5_DIR=$(brew --prefix hdf5-mpi)
-          export LDFLAGS="-L$HDF5_DIR/lib"
-          export CPPFLAGS="-I$HDF5_DIR/include"
-          export HDF5_MPI="ON"
-        else
-          export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
-        fi
-        python -m pip install --upgrade --no-binary=h5py h5py
+        python -m pip install --upgrade torch   # for nonlinear
+        python -m pip install --upgrade sympy   # for ACE
+        python -m pip install --upgrade pyyaml  # for ACE
+        python -m pip install --upgrade cma     # for REAXFF
+        python -m pip install --upgrade h5py    # for HDF5(Scraper)
 
     - name: Lint with flake8
       run: |
@@ -142,6 +132,18 @@ jobs:
         #cd mpi4py-3.1.3
         #python setup.py build
         #python setup.py install
+
+        export CC=mpicc
+        export HDF5_MPI="ON"
+        if [ "$(uname)" == "Darwin" ]; then
+          export HDF5_DIR=$(brew --prefix hdf5-mpi)
+          export LDFLAGS="-L$HDF5_DIR/lib"
+          export CPPFLAGS="-I$HDF5_DIR/include"
+        else
+          export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
+        fi
+        python -m pip install --upgrade --no-binary=h5py h5py
+
     - name: Test basic executable examples
       run: |
         export PYTHONPATH=$(pwd):$PYTHONPATH

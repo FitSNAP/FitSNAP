@@ -56,6 +56,8 @@ class LammpsSnap(LammpsBase):
         radelem = " ".join([f"${{radelem{i}}}" for i in range(1, numtypes + 1)])
         wj = " ".join([f"${{wj{i}}}" for i in range(1, numtypes + 1)])
 
+        print(f"*** self.config.sections['BISPECTRUM'] {self.config.sections['BISPECTRUM']}")
+
         kw_options = {
             k: self.config.sections["BISPECTRUM"].__dict__[v]
             for k, v in
@@ -95,9 +97,7 @@ class LammpsSnap(LammpsBase):
 
         base_snap = "compute snap all snap ${rcutfac} ${rfac0} ${twojmax}"
         command = f"{base_snap} {radelem} {wj} {kwargs}"
-        import sys
         print(f"*** kwargs {kwargs}")
-        print(f"*** kwargs {kwargs}", file=sys.stderr)
         self._lmp.command(command)
 
     def _collect_lammps_nonlinear(self):

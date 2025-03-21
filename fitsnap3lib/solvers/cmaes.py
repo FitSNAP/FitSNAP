@@ -4,7 +4,6 @@ from fitsnap3lib.calculators.lammps_reaxff import LammpsReaxff
 import cma, itertools, functools
 import numpy as np
 from pprint import pprint
-#from mpi4py import MPI
 
 
 def fence_x_arrays(index):
@@ -27,6 +26,10 @@ class CMAES(Solver):
         super().__init__(name, pt, config, linear=False)
         self.popsize = self.config.sections['SOLVER'].popsize
         self.sigma = self.config.sections['SOLVER'].sigma
+
+        if self.pt.stubs == 0:
+            print('ok 1')
+            from mpi4py import MPI
 
 
     def parallel_loss_function(self, x_arrays):
@@ -87,6 +90,7 @@ class CMAES(Solver):
         if self.pt.stubs == 0:
             # SAFER TO USE *MPICommExecutor* INSTEAD OF *MPIPoolExecutor*
             # [https://mpi4py.readthedocs.io/en/stable/mpi4py.futures.html#mpicommexecutor]
+            from mpi4py import MPI
             from mpi4py.futures import MPICommExecutor
 
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:

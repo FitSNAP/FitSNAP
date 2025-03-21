@@ -6,7 +6,6 @@ from fitsnap3lib.io.sections.calculator_sections.calculator import Calculator
 from fitsnap3lib.io.sections.calculator_sections.ace import Ace
 from fitsnap3lib.io.sections.calculator_sections.basic_calculator import Basic
 from fitsnap3lib.io.sections.calculator_sections.custom import Custom
-from fitsnap3lib.io.sections.calculator_sections.inq import INQ
 from fitsnap3lib.io.sections.calculator_sections.reaxff import Reaxff
 from fitsnap3lib.io.sections.eshift import Eshift
 from fitsnap3lib.io.sections.trainshift import Trainshift

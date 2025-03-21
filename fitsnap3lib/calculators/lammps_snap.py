@@ -90,7 +90,8 @@ class LammpsSnap(LammpsBase):
         if kw_options["dgradflag"] == 0:
             kw_options.pop("dgradflag")
         kw_options["rmin0"] = self.config.sections["BISPECTRUM"].rmin0
-        kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
+        # fix stubs test failure with python>=3.10 and iniconfig>=2.1.0
+        kw_substrings = [f"{k} {int(v) if isinstance(v, bool) else v}" for k, v in kw_options.items()]
         kwargs = " ".join(kw_substrings)
 
         # everything is handled by LAMMPS compute snap

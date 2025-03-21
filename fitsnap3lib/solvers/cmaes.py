@@ -4,7 +4,7 @@ from fitsnap3lib.calculators.lammps_reaxff import LammpsReaxff
 import cma, itertools, functools
 import numpy as np
 from pprint import pprint
-from mpi4py import MPI
+#from mpi4py import MPI
 
 
 def fence_x_arrays(index):

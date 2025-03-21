@@ -25,8 +25,8 @@ jobs:
     - name: Load Mac Env
       if: matrix.os == 'macos-latest'
       run: |
-        brew install openmpi
-        brew install cmake
+        brew update
+        brew install cmake openmpi hdf5
     - name: Load Ubuntu Env
       if: matrix.os == 'ubuntu-latest'
       run: |
@@ -46,11 +46,13 @@ jobs:
         python -m pip install --upgrade sympy # for ACE
         python -m pip install --upgrade pyyaml # for ACE
         python -m pip install --upgrade cma # for REAXFF
-
-        # for HD5(Scraper)
         export CC=mpicc
         export HDF5_MPI="ON"
-        export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
+        if [ "$(uname)" == "Darwin" ]; then
+          export HDF5_DIR=$(brew --prefix hdf5)
+        else
+          export HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
+        fi
         python -m pip install --upgrade --no-binary=h5py h5py
 
     - name: Lint with flake8

@@ -591,6 +591,9 @@ class ParallelTools():
 
         Returns number of configs per node, reduced across procs, or just nconfigs if stubs.
         """
+
+        print(f"*** rank {self._rank} get_ncpn() nconfigs {nconfigs}")
+
         if not self.stubs:
             ncpp = np.array([nconfigs]) # Num. configs per proc.
             ncpn = np.array([0]) # Num. configs per node.
@@ -603,9 +606,11 @@ class ParallelTools():
         Slices an array using Python's native `slice` function. Creates an attribute `pt.shared_arrays[name].sliced_array` 
         containing the sliced array.
         """
+
         if name in self.shared_arrays:
             if name != 'a':
                 s = slice(self._sub_rank, None, self._sub_size)
+                print(f"*** rank {self._rank} slice_array({name}) _sub_rank {self._sub_rank} _sub_size {self._sub_size} s {s}")
                 self.shared_arrays[name].sliced_array = self.shared_arrays[name].array[s][:]
             else:
                 raise NotImplementedError("Slice A using new_slice_a")
@@ -857,7 +862,13 @@ class ParallelTools():
         self.pytest = True
 
     def abort(self):
-        self._comm.Abort()
+        import traceback, sys
+        traceback.print_stack(file=sys.stderr)
+        sys.stderr.flush()
+        if self._comm is not None:
+            self._comm.Abort(1)
+        else:
+            sys.exit(1)
 
     def exception(self, err):
         """

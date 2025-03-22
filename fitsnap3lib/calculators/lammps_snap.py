@@ -98,7 +98,6 @@ class LammpsSnap(LammpsBase):
 
         base_snap = "compute snap all snap ${rcutfac} ${rfac0} ${twojmax}"
         command = f"{base_snap} {radelem} {wj} {kwargs}"
-        print(f"*** kwargs {kwargs}")
         self._lmp.command(command)
 
     def _collect_lammps_nonlinear(self):

@@ -610,7 +610,6 @@ class ParallelTools():
         if name in self.shared_arrays:
             if name != 'a':
                 s = slice(self._sub_rank, None, self._sub_size)
-                print(f"*** rank {self._rank} slice_array({name}) _sub_rank {self._sub_rank} _sub_size {self._sub_size} s {s}")
                 self.shared_arrays[name].sliced_array = self.shared_arrays[name].array[s][:]
             else:
                 raise NotImplementedError("Slice A using new_slice_a")

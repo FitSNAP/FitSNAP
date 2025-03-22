@@ -36,10 +36,10 @@ class CMAES(Solver):
 
         self.pt.shared_arrays['x_arrays'].array[:] = x_arrays
         self.pt.shared_arrays['x_arrays'].win.Sync()
-        self.pt.shared_arrays['x_arrays'].win.Flush(MPI.PROC_NULL)
+        # FIXME: no-op ? is it even needed ??
+        #self.pt.shared_arrays['x_arrays'].win.Flush(MPI.PROC_NULL)
         for r in range(1, self.pt.get_size()): self.executor.submit(fence_x_arrays, r)
         self.pt.shared_arrays['x_arrays'].win.Fence()
-
         list(self.executor.map(loss_function_data_index, self.range_all_data, unordered=True))
 
         def sum_weighted_residual(i):
@@ -62,7 +62,7 @@ class CMAES(Solver):
         global reaxff_calculator
         reaxff_calculator = fs.calculator
 
-        x0 = reaxff_calculator.values
+        x0 = self.config.sections['REAXFF'].values
         #print( x0 )
         self.range_all_data = range(len(self.pt.fitsnap_dict["Data"]))
         bounds = np.empty([len(reaxff_calculator.parameters),2])

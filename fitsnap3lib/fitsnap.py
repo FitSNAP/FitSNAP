@@ -133,12 +133,7 @@ class FitSnap:
         def scrape_configs():
             self.scraper.scrape_groups()
             self.scraper.divvy_up_configs()
-
-            if "REAXFF" in self.config.sections:
-                self.data = self.scraper.scrape_configs_reaxff()
-            else:
-                self.data = self.scraper.scrape_configs()
-
+            self.data = self.scraper.scrape_configs()
             if delete_scraper:
                 del self.scraper
         scrape_configs()

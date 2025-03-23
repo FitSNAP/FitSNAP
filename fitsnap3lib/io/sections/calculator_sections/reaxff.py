@@ -1,9 +1,10 @@
 from fitsnap3lib.io.sections.sections import Section
 import re
+import numpy as np
 
 class Reaxff(Section):
 
-    # ----------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------
 
     def __init__(self, name, config, pt, infile, args):
         # let parent hold config and args
@@ -28,12 +29,33 @@ class Reaxff(Section):
         # FIXME: remove later
         # self.delete()
 
-    # ----------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------
 
     def _parse_parameters(self, config_parameters):
 
+        bounds = {
+            # "": (, ),       #
+            "bcut_acks2": (1.0, 6.0), # Start at ~3.0
+            "p_ovun2": (-8.0, +1.0),  # Negative for undercoordination
+            "p_lp2": (0.0, 30.0),     # Tune per atom
+            # FIXME: De_s <= 200
+            "De_s": (50.0, 225.0),    # sigma-bond dissociation energy (kcal/mol)
+            "De_p": (0.0, 150.0),     # pi-bond dissociation energy
+            "De_pp": (0.0, 80.0),     # pipi-bond dissociation energy
+            "p_be1": (-1.5, 0.5),     # Bond energy parameter coefficient
+            "p_be2": (0.1, 10.0),     # Bond energy parameter exponent
+            "p_bo1": (-1.0, 0.2),     # sigma-bond order coefficient
+            "p_bo2": (1.0, 20.0),     # sigma-bond order exponent
+            "p_bo3": (-1.0, 0.2),     # pi-bond order coefficient
+            "p_bo4": (0.1, 20.0),     # pi-bond order exponent
+            "p_bo5": (-1.0, 0.2),     # pipi-bond order coefficient
+            "p_bo6": (0.0, 50.0),     # pipi-bond order exponent
+            "p_ovun1": (0.0, 1.0),    # Overcoordination penalty (lowers BO when overcoord)
+        }
+
         self.parameters = []
         self.values = []
+        self.parameter_bounds = []
         self.parameter_names = config_parameters.split()
         for p in self.parameter_names:
 
@@ -43,17 +65,28 @@ class Reaxff(Section):
             p_block = tokens.pop(0)
             p_block_index = ['GEN','ATM','BND','OFD','ANG','TOR','HBD'].index(p_block)
             _, parameters_list = self.num_atoms_parameters_list(p_block)
-            p_name = tokens.pop(-1).lower()
+            p_name = tokens.pop(-1)
             p_name_index = parameters_list.index(p_name)
             p_atom_types = [self.type_mapping[a] for a in tokens]
             parameter = [p_block_index] + p_atom_types + [p_name_index]
             print(parameter, end=' ')
-            self.parameters.append(parameter)
-            value = self.parameter_value(p_block, tokens, p_name)
-            print(value)
-            self.values.append(value)
 
-    # ----------------------------------------------------------------
+            value = self.parameter_value(p_block, tokens, p_name)
+            print(value, end=' ')
+
+            if p_name in bounds:
+                p_bounds = bounds[p_name]
+            else:
+                delta = max(0.5 * abs(value), 1.0)
+                p_bounds = (value-delta, value+delta)
+
+            print(p_bounds)
+
+            self.parameters.append(parameter)
+            self.values.append(value)
+            self.parameter_bounds.append(p_bounds)
+
+    # --------------------------------------------------------------------------------------------
 
     def num_atoms_parameters_list(self, block):
 
@@ -61,33 +94,33 @@ class Reaxff(Section):
             return 0, ['']*34 + ['bond_softness'] + ['']*7
 
         elif block == 'ATM':
-            return 1, list(map(str.lower, [
+            return 1, [
                 'r_s', 'valency', 'mass', 'r_vdw', 'epsilon', 'gamma', 'r_pi', 'valency_e',
                 'alpha', 'gamma_w', 'valency_boc', 'p_ovun5', 'gauss_exp', 'chi', 'eta', 'p_hbond', 
                 'r_pi_pi', 'p_lp2', '', 'b_o_131', 'b_o_132', 'b_o_133', 'bcut_acks2', '', 
-                'p_ovun2', 'p_val3', '', 'valency_val', 'p_val5', 'rcore2', 'ecore2', 'acore2']))
+                'p_ovun2', 'p_val3', '', 'valency_val', 'p_val5', 'rcore2', 'ecore2', 'acore2']
 
         elif block == 'BND':
-            return 2, list(map(str.lower, [
+            return 2, [
                 'De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1',
-                'p_be2','p_bo3','p_bo4','','p_bo1','p_bo2','ovc','']))
+                'p_be2','p_bo3','p_bo4','','p_bo1','p_bo2','ovc','']
 
         elif block == 'OFD':
-            return 2, list(map(str.lower, ['D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']))
+            return 2, ['D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']
 
         elif block == 'ANG':
-            return 3, list(map(str.lower, ['theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']))
+            return 3, ['theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']
 
         elif block == 'TOR':
-            return 4, list(map(str.lower, ['V1', 'V2', 'V3', 'p_tor1', 'p_cot1', '', '']))
+            return 4, ['V1', 'V2', 'V3', 'p_tor1', 'p_cot1', '', '']
 
         elif block == 'HBD':
-            return 3, list(map(str.lower, ['r0_hb', 'p_hb1', 'p_hb2', 'p_hb3']))
+            return 3, ['r0_hb', 'p_hb1', 'p_hb2', 'p_hb3']
 
         else:
             raise Exception(f"Block {block} not recognized, possible values are GEN, ATM, BND, OFD, ANG, TOR, HBD.")
 
-    # ----------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------
 
     def parameter_block(self, block, atoms):
 
@@ -112,7 +145,7 @@ class Reaxff(Section):
 
         return match.group(0)
 
-    # ----------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------
 
     def parameter_value(self, block, atoms, name):
 
@@ -127,7 +160,7 @@ class Reaxff(Section):
         return float(self.parameter_block(block, atoms).split()[num_atoms+parameter_index])
 
 
-    # ----------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------
 
     def change_general_parameter(self, name_index, value):
 
@@ -139,7 +172,7 @@ class Reaxff(Section):
         else:
             raise NotImplementedError(f"GEN.{name_index} not implemented.")
 
-    # ----------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------
 
     def change_parameter_string(self, block_index, atom_types, name_index, value):
 
@@ -160,7 +193,7 @@ class Reaxff(Section):
         #print(replacement)
         self.potential_string = self.potential_string.replace(parameter_block,replacement)
 
-    # ----------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------
 
     def change_parameters_string(self, x):
 
@@ -172,4 +205,5 @@ class Reaxff(Section):
 
         return self.potential_string
 
+    # --------------------------------------------------------------------------------------------
 

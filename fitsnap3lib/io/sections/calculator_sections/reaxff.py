@@ -38,8 +38,7 @@ class Reaxff(Section):
             "bcut_acks2": (1.0, 6.0), # Start at ~3.0
             "p_ovun2": (-8.0, +1.0),  # Negative for undercoordination
             "p_lp2": (0.0, 30.0),     # Tune per atom
-            # FIXME: De_s <= 200
-            "De_s": (50.0, 225.0),    # sigma-bond dissociation energy (kcal/mol)
+            "De_s": (50.0, 200.0),    # sigma-bond dissociation energy (kcal/mol)
             "De_p": (0.0, 150.0),     # pi-bond dissociation energy
             "De_pp": (0.0, 80.0),     # pipi-bond dissociation energy
             "p_be1": (-1.5, 0.5),     # Bond energy parameter coefficient
@@ -47,7 +46,8 @@ class Reaxff(Section):
             "p_bo1": (-1.0, 0.2),     # sigma-bond order coefficient
             "p_bo2": (1.0, 20.0),     # sigma-bond order exponent
             "p_bo3": (-1.0, 0.2),     # pi-bond order coefficient
-            "p_bo4": (0.1, 20.0),     # pi-bond order exponent
+            # FIXME should p_bo4>0 ?
+            "p_bo4": (0.0, 20.0),     # pi-bond order exponent
             "p_bo5": (-1.0, 0.2),     # pipi-bond order coefficient
             "p_bo6": (0.0, 50.0),     # pipi-bond order exponent
             "p_ovun1": (0.0, 1.0),    # Overcoordination penalty (lowers BO when overcoord)
@@ -59,8 +59,7 @@ class Reaxff(Section):
         self.parameter_names = config_parameters.split()
         for p in self.parameter_names:
 
-            # BND.H.O.p_be2
-            print(p, end=' ')
+            # eg. BND.H.O.p_be2
             tokens = p.split('.')
             p_block = tokens.pop(0)
             p_block_index = ['GEN','ATM','BND','OFD','ANG','TOR','HBD'].index(p_block)
@@ -69,10 +68,7 @@ class Reaxff(Section):
             p_name_index = parameters_list.index(p_name)
             p_atom_types = [self.type_mapping[a] for a in tokens]
             parameter = [p_block_index] + p_atom_types + [p_name_index]
-            print(parameter, end=' ')
-
             value = self.parameter_value(p_block, tokens, p_name)
-            print(value, end=' ')
 
             if p_name in bounds:
                 p_bounds = bounds[p_name]
@@ -80,7 +76,8 @@ class Reaxff(Section):
                 delta = max(0.5 * abs(value), 1.0)
                 p_bounds = (value-delta, value+delta)
 
-            print(p_bounds)
+            value = np.clip(value, p_bounds[0], p_bounds[1])
+            #print(p, parameter, value, p_bounds)
 
             self.parameters.append(parameter)
             self.values.append(value)
@@ -181,7 +178,8 @@ class Reaxff(Section):
         atoms = [self.elements[t-1] for t in atom_types]
         parameter_block = self.parameter_block(block, atoms)
         tokens = parameter_block.split()
-        atoms_formatted = [' {:>2}'.format(a) for a in tokens[:num_atoms]]
+        atom_format = ' {:<2}' if block=='ATM' else ' {:>2}'
+        atoms_formatted = [atom_format.format(a) for a in tokens[:num_atoms]]
         #tokens[num_atoms+name_index] = ' {:8.4f}'.format(value)
         tokens[num_atoms+name_index] = value
         tokens_formatted = [' {:8.4f}'.format(float(v)) for v in tokens[num_atoms:]]

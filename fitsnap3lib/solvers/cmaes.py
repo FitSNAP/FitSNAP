@@ -1,25 +1,23 @@
 from fitsnap3lib.solvers.solver import Solver
 from fitsnap3lib.calculators.lammps_reaxff import LammpsReaxff
-
 import cma, itertools, functools
 import numpy as np
 from pprint import pprint
 
+# ------------------------------------------------------------------------------------------------
 
-def fence_x_arrays(index):
-    reaxff_calculator.pt.shared_arrays['x_arrays'].win.Fence()
+def loss_function(x_arrays):
 
+    print(f"*** rank {reaxff_calculator.pt._rank} x_arrays {x_arrays}")
+    #d = reaxff_calculator.set_data_index(index)
 
-def loss_function_data_index(index):
+    return reaxff_calculator.process_configs_with_values(x_arrays)
 
-    d = reaxff_calculator.set_data_index(index)
-
-    for i, ix in enumerate(reaxff_calculator.pt.shared_arrays['x_arrays'].array):
-        #print(f"index {index} i {i} ix {ix}")
-        reaxff_calculator.process_data_for_parameter_values(i, ix)
-
+# ------------------------------------------------------------------------------------------------
 
 class CMAES(Solver):
+
+    # --------------------------------------------------------------------------------------------
 
     def __init__(self, name, pt, config):
 
@@ -27,20 +25,20 @@ class CMAES(Solver):
         self.popsize = self.config.sections['SOLVER'].popsize
         self.sigma = self.config.sections['SOLVER'].sigma
 
-        if self.pt.stubs == 0:
-            print('ok 1')
-            from mpi4py import MPI
-
+    # --------------------------------------------------------------------------------------------
 
     def parallel_loss_function(self, x_arrays):
 
-        self.pt.shared_arrays['x_arrays'].array[:] = x_arrays
-        self.pt.shared_arrays['x_arrays'].win.Sync()
+        #self.pt.shared_arrays['x_arrays'].array[:] = x_arrays
+        #self.pt.shared_arrays['x_arrays'].win.Sync()
         # FIXME: no-op ? is it even needed ??
         #self.pt.shared_arrays['x_arrays'].win.Flush(MPI.PROC_NULL)
-        for r in range(1, self.pt.get_size()): self.executor.submit(fence_x_arrays, r)
-        self.pt.shared_arrays['x_arrays'].win.Fence()
-        list(self.executor.map(loss_function_data_index, self.range_all_data, unordered=True))
+        #for r in range(1, ): self.executor.submit(fence_x_arrays, r)
+        #self.pt.shared_arrays['x_arrays'].win.Fence()
+
+        futures = [self.executor.submit(loss_function, x_arrays) for _ in self.range_workers]
+        results = [f.result() for f in futures]
+        print(results)
 
         def sum_weighted_residual(i):
             ground_index = self.pt.shared_arrays['ground_index'].array
@@ -54,6 +52,7 @@ class CMAES(Solver):
         #print(answer)
         return answer
 
+    # --------------------------------------------------------------------------------------------
 
     def perform_fit(self, fs):
 
@@ -64,28 +63,15 @@ class CMAES(Solver):
 
         x0 = self.config.sections['REAXFF'].values
         #print( x0 )
-        self.range_all_data = range(len(self.pt.fitsnap_dict["Data"]))
-        bounds = np.empty([len(reaxff_calculator.parameters),2])
-
-        for i, p in enumerate(reaxff_calculator.parameters):
-            if 'range' in p:
-                bounds[i] = p['range'] # FIXME 'range' config parser
-            else:
-                delta = 0.5*np.abs(x0[i])
-                delta = delta if delta>0.0 else 1.0
-                bounds[i] = [x0[i]-delta, x0[i]+delta]
-
-        #pprint(bounds)
+        self.range_workers = range(1, self.pt.get_size())
 
         import warnings
         warnings.simplefilter("ignore", category=UserWarning)
 
         options={
           'popsize': self.popsize, 'seed': 12345, 'maxiter': 3,
-          'bounds': list(np.transpose(bounds))
+          'bounds': list(np.transpose(self.config.sections['REAXFF'].parameter_bounds))
         }
-
-        self.pt.create_shared_array('x_arrays', self.popsize, len(reaxff_calculator.parameters))
 
         if self.pt.stubs == 0:
             # SAFER TO USE *MPICommExecutor* INSTEAD OF *MPIPoolExecutor*
@@ -111,6 +97,7 @@ class CMAES(Solver):
                 print(f"{p:<20} {x0i:9.4f} {xbi:9.4f}")
             print("----------------------------------------")
 
+    # --------------------------------------------------------------------------------------------
 
     def error_analysis(self):
 
@@ -127,6 +114,7 @@ class CMAES(Solver):
         #      reaxff_calculator.process_configs(c, 99)
         #self.errors = all_data
 
+    # --------------------------------------------------------------------------------------------
 
 
 

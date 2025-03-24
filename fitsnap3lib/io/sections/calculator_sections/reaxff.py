@@ -35,9 +35,36 @@ class Reaxff(Section):
 
         bounds = {
             # "": (, ),       #
-            "bcut_acks2": (1.0, 6.0), # Start at ~3.0
-            "p_ovun2": (-8.0, +1.0),  # Negative for undercoordination
-            "p_lp2": (0.0, 30.0),     # Tune per atom
+            # ATM
+
+            "r_s": (0.3, 1.5),        # Covalent sigma-bond radius (Å)
+            "r_pi": (0.3, 1.5),       # Covalent π-bond radius (Å)
+            "r_pi_pi": (0.5, 2.0),    # π–π bond radius
+
+            "r_vdw": (0.5, 3.5),      # van der Waals radius (Å)
+            "epsilon": (0.01, 0.50),  # vdW dissociation energy (kcal/mol)
+            "alpha": (0.0, 10.0),     # van der Waals alpha parameter
+            "gamma_w": (0.0, 3.0),    # van der Waals shielding width
+
+            "gamma": (0.5, 20.0),     # Valence orbital exponent for QEq/ACKS2
+            "chi": (-10.0, +10.0),    # Electronegativity (ACKS2, eV)
+            "eta": (0.0, 20.0),       # Hardness (ACKS2, eV)
+            "bcut_acks2": (1.0, 6.0), # ACKS2 atomic softness cutoff
+
+            "p_val3": (-3.0, 3.0),    # Valence angle penalty term
+            "p_val5": (-3.0, 3.0),    # Valence angle penalty term
+            "b_o_131": (-1.0, 1.0),   # BO correction term 131
+            "b_o_132": (-1.0, 1.0),   # BO correction term 132
+            "b_o_133": (-1.0, 1.0),   # BO correction term 133
+            "p_ovun2": (-8.0, +1.0),  # Angle-based undercoordination penalty
+            "p_ovun5": (-10.0, 0.0),  # Undercoordination energy penalty
+            "p_lp2": (0.0, 30.0),     # Lone pair penalty, atom-specific
+
+            "rcore2": (0.1, 2.0),     # Inner core vdW repulsion radius (Å)
+            "ecore2": (0.0, 0.5),     # Inner core vdW repulsion energy (kcal/mol)
+            "acore2": (0.0, 10.0),    # Inner core vdW exponential factor
+
+            # BND
             "De_s": (50.0, 200.0),    # sigma-bond dissociation energy (kcal/mol)
             "De_p": (0.0, 150.0),     # pi-bond dissociation energy
             "De_pp": (0.0, 80.0),     # pipi-bond dissociation energy
@@ -46,11 +73,13 @@ class Reaxff(Section):
             "p_bo1": (-1.0, 0.2),     # sigma-bond order coefficient
             "p_bo2": (1.0, 20.0),     # sigma-bond order exponent
             "p_bo3": (-1.0, 0.2),     # pi-bond order coefficient
-            # FIXME should p_bo4>0 ?
-            "p_bo4": (0.0, 20.0),     # pi-bond order exponent
+            "p_bo4": (1.0, 20.0),     # pi-bond order exponent
             "p_bo5": (-1.0, 0.2),     # pipi-bond order coefficient
             "p_bo6": (0.0, 50.0),     # pipi-bond order exponent
             "p_ovun1": (0.0, 1.0),    # Overcoordination penalty (lowers BO when overcoord)
+
+            # OFD
+
         }
 
         self.parameters = []

@@ -1,6 +1,6 @@
 from fitsnap3lib.io.outputs.outputs import Output, optional_open
 import os
-
+from datetime import datetime
 
 class Reaxff(Output):
 

@@ -1,0 +1,42 @@
+[REAXFF]
+potential      = reaxff-wood2014.ff
+parameters     =
+  #GEN.p_vdW1
+  GEN.bond_softness
+  ATM.H.r_vdW ATM.H.epsilon
+  ATM.H.chi ATM.H.eta ATM.H.bcut_acks2 ATM.H.gamma
+  #ATM.H.rcore2 ATM.H.ecore2 ATM.H.acore2
+  ATM.F.r_vdW ATM.F.epsilon
+  ATM.F.chi ATM.F.eta ATM.F.bcut_acks2 ATM.F.gamma
+  #ATM.F.rcore2 ATM.F.ecore2 ATM.F.acore2
+  BND.H.F.De_s BND.H.F.p_be1 BND.H.F.p_be2
+  BND.H.F.p_bo1 BND.H.F.p_bo2 BND.H.F.p_bo3 BND.H.F.p_bo4
+  OFD.H.F.D OFD.H.F.r_vdW OFD.H.F.alpha OFD.H.F.r_s OFD.H.F.r_p
+
+
+[CALCULATOR]
+calculator     = LAMMPSREAXFF
+fix_charge     = fix 1 all acks2/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 1000
+energy         = 1
+force          = 0
+stress         = 0
+dipole         = 0
+
+[SOLVER]
+solver         = CMAES
+sigma          = 0.1
+
+[SCRAPER]
+scraper        = JSON
+
+[PATH]
+dataPath       = JSON
+
+[OUTFILE]
+potential      = HF_ReaxFF_acks2.ff
+
+[GROUPS]
+group_sections = name training_size
+group_types    = str float
+HF      = 1.0
+

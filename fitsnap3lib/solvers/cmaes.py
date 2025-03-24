@@ -8,9 +8,6 @@ from pprint import pprint
 
 def loss_function(x_arrays):
 
-    print(f"*** rank {reaxff_calculator.pt._rank} x_arrays {x_arrays}")
-    #d = reaxff_calculator.set_data_index(index)
-
     return reaxff_calculator.process_configs_with_values(x_arrays)
 
 # ------------------------------------------------------------------------------------------------
@@ -29,27 +26,15 @@ class CMAES(Solver):
 
     def parallel_loss_function(self, x_arrays):
 
-        #self.pt.shared_arrays['x_arrays'].array[:] = x_arrays
-        #self.pt.shared_arrays['x_arrays'].win.Sync()
-        # FIXME: no-op ? is it even needed ??
-        #self.pt.shared_arrays['x_arrays'].win.Flush(MPI.PROC_NULL)
-        #for r in range(1, ): self.executor.submit(fence_x_arrays, r)
-        #self.pt.shared_arrays['x_arrays'].win.Fence()
+        # print(f"*** rank {self.pt._rank} ok 2a")
 
         futures = [self.executor.submit(loss_function, x_arrays) for _ in self.range_workers]
         results = [f.result() for f in futures]
-        print(results)
+        np.set_printoptions(precision=2, linewidth=2000)
+        #pprint(results, width=200, compact=True)
 
-        def sum_weighted_residual(i):
-            ground_index = self.pt.shared_arrays['ground_index'].array
-            reference_energy = self.pt.shared_arrays['reference_energy'].array
-            predicted_energy = self.pt.shared_arrays['predicted_energy'].array[i]
-            weights = self.pt.shared_arrays['weights'].array
-            residual = np.square(predicted_energy - predicted_energy[ground_index] - reference_energy)
-            return np.sum(weights * np.nan_to_num(residual,99))
-
-        answer = [sum_weighted_residual(i) for i in range(len(x_arrays))]
-        #print(answer)
+        answer = np.sum(np.vstack([np.nan_to_num(r, nan=1e99) for r in results]), axis=0).tolist()
+        #print(f"*** answer {answer}")
         return answer
 
     # --------------------------------------------------------------------------------------------
@@ -60,8 +45,8 @@ class CMAES(Solver):
         # no way around this sorry
         global reaxff_calculator
         reaxff_calculator = fs.calculator
-
-        x0 = self.config.sections['REAXFF'].values
+        reaxf_io = self.config.sections['REAXFF']
+        x0 = reaxf_io.values
         #print( x0 )
         self.range_workers = range(1, self.pt.get_size())
 
@@ -69,7 +54,7 @@ class CMAES(Solver):
         warnings.simplefilter("ignore", category=UserWarning)
 
         options={
-          'popsize': self.popsize, 'seed': 12345, 'maxiter': 3,
+          'popsize': self.popsize, 'seed': 12345, 'maxiter': 1,
           'bounds': list(np.transpose(self.config.sections['REAXFF'].parameter_bounds))
         }
 
@@ -88,12 +73,12 @@ class CMAES(Solver):
                 parallel_objective=self.parallel_loss_function, options=options)
 
         if self.pt._rank == 0:
-            self.fit = reaxff_calculator.change_parameters_string(self.x_best)
+            self.fit = reaxf_io.change_parameters_string(self.x_best)
 
             print("----------------------------------------")
             print(self.config.sections['CALCULATOR'].charge_fix)
             print("PARAMETER_NAME          BEFORE     AFTER")
-            for p, x0i, xbi in zip(reaxff_calculator.parameter_names, x0, self.x_best):
+            for p, x0i, xbi in zip(reaxf_io.parameter_names, x0, self.x_best):
                 print(f"{p:<20} {x0i:9.4f} {xbi:9.4f}")
             print("----------------------------------------")
 

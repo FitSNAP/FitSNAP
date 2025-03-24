@@ -1,5 +1,5 @@
 from fitsnap3lib.io.outputs.outputs import Output, optional_open
-"""Methods you may or must override in new output"""
+import os
 
 
 class Reaxff(Output):
@@ -14,7 +14,9 @@ class Reaxff(Output):
 
         @self.pt.rank_zero
         def write_ff():
-            with optional_open(self.config.sections["OUTFILE"].potential_name, 'wt') as file:
+            base, ext = os.path.splitext(self.config.sections["OUTFILE"].potential_name)
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+            with optional_open(f"{base}-{timestamp}{ext}", 'wt') as file:
                 file.write(coeffs)
 
         write_ff()

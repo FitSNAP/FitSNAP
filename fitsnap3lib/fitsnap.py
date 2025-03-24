@@ -39,9 +39,6 @@ from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
 import random
 
-from cProfile import Profile
-from pstats import SortKey, Stats
-
 
 class FitSnap:
     """ 
@@ -202,17 +199,11 @@ class FitSnap:
             if not self.config.args.perform_fit:
                 return
             elif self.fit is None:
-                if self.solver.linear:
-                    self.solver.perform_fit()
-                elif "REAXFF" in self.config.sections:
-
-                  self.calculator.allocate_per_config(self.data)
-                  #self.solver.perform_fit(self)
-
-                  with Profile() as profile:
+                if "REAXFF" in self.config.sections:
+                    self.calculator.allocate_per_config(self.data)
                     self.solver.perform_fit(self)
-                    Stats(profile).dump_stats(f"stats{self.pt._rank}")
-
+                elif self.solver.linear:
+                    self.solver.perform_fit()
                 else:
                     # Perform nonlinear fitting on 1 proc only.
                     if(self.pt._rank==0): self.solver.perform_fit()
@@ -230,7 +221,15 @@ class FitSnap:
         def error_analysis():
             self.solver.error_analysis()
 
-        fit()
+        if "EXTRAS" in self.config.sections and self.config.sections["EXTRAS"].profile:
+            from cProfile import Profile
+            from pstats import SortKey, Stats
+            with Profile() as profile:
+                fit()
+                Stats(profile).dump_stats(f"stats{self.pt._rank}")
+        else:
+            fit()
+
         fit_gather()
         error_analysis()
 

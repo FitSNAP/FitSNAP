@@ -1,5 +1,6 @@
 # ignoring run example files
-examples/*
+examples/*/*_standard/
+examples/*/outcmaes/
 examples/library/genetic_algorithm/__pycache__
 
 # ignoring built test docs
@@ -31,6 +32,7 @@ doc/fasthtml/
 
 # ignore MacOS generated files
 *.DS_Store
+*.dylib
 
 # ignore PACE library files
 fitsnap3lib/lib/sym_ACE/lib/*.pickle

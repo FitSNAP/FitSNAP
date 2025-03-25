@@ -16,6 +16,7 @@ class Reaxff(Output):
         def write_ff():
             base, ext = os.path.splitext(self.config.sections["OUTFILE"].potential_name)
             timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+            #timestamp = ""
             with optional_open(f"{base}-{timestamp}{ext}", 'wt') as file:
                 file.write(coeffs)
 

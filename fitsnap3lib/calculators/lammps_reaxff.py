@@ -45,7 +45,7 @@ class LammpsReaxff(LammpsBase):
 
     def allocate_per_config(self, configs: list):
 
-        if self.pt._rank == 0:
+        if self.pt.stubs==0 and self.pt._rank==0:
             ncpn = self.pt.get_ncpn(0)
             return
 
@@ -58,6 +58,7 @@ class LammpsReaxff(LammpsBase):
         #self.pt.create_shared_array('weights', ncpn, 1)
 
         self.sum_energy_residuals = np.zeros(popsize)
+        self.sum_forces_residuals = np.zeros(popsize)
 
         if self.energy:
             #self.pt.create_shared_array('energy', len_all_data, 1)
@@ -75,7 +76,8 @@ class LammpsReaxff(LammpsBase):
 
     def process_configs_with_values(self, values):
 
-        self.sum_energy_residuals[:] = 0
+        self.sum_energy_residuals[:] = 0.0
+        self.sum_forces_residuals[:] = 0.0
 
         for config_index, c in enumerate(self._configs):
             self._data = c

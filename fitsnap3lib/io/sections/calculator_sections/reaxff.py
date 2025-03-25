@@ -27,7 +27,7 @@ class Reaxff(Section):
         self.bounds = {
 
             # GEN
-            "bond_softness": (200.0, 800.0),     # ACKS2 bond softness
+            "bond_softness": (200.0, 800.0),      # ACKS2 bond softness
 
             # ATM
             "r_s":           (0.4, 1.1),          # Covalent sigma-bond radius (Å)
@@ -39,7 +39,7 @@ class Reaxff(Section):
             "gamma_w":       (0.0, 3.0),          # vdW shielding width
 
             "gamma":         (0.5, 20.0),         # Valence orbital exponent for QEq/ACKS2
-            "chi":           (-10.0, 10.0),      # Electronegativity (ACKS2, eV)
+            "chi":           (-10.0, 10.0),       # Electronegativity (ACKS2, eV)
             "eta":           (0.0, 20.0),         # Hardness (ACKS2, eV)
             "bcut_acks2":    (1.0, 6.0),          # ACKS2 atomic softness cutoff
 
@@ -48,7 +48,7 @@ class Reaxff(Section):
             "b_o_131":       (-1.0, 1.0),         # BO correction term 131
             "b_o_132":       (-1.0, 1.0),         # BO correction term 132
             "b_o_133":       (-1.0, 1.0),         # BO correction term 133
-            "p_ovun2":       (-8.0, 1.0),        # Angle-based undercoordination penalty
+            "p_ovun2":       (-8.0, 1.0),         # Angle-based undercoordination penalty
             "p_ovun5":       (-10.0, 0.0),        # Undercoordination energy penalty
             "p_lp2":         (0.0, 30.0),         # Lone pair penalty, atom-specific
 
@@ -68,13 +68,13 @@ class Reaxff(Section):
             "p_bo4":         (1.0, 20.0),         # pi-bond order exponent
             "p_bo5":         (-1.0, 0.2),         # pipi-bond order coefficient
             "p_bo6":         (0.0, 50.0),         # pipi-bond order exponent
-            "p_ovun1":       (1.0, 1.0),          # Overcoordination penalty
+            "p_ovun1":       (0.8, 1.2),          # Overcoordination penalty
 
             # OFD
             "D":             (0.01, 0.5),         # van der Waals well depth (kcal/mol)
             "r_vdW":         (0.5, 3.5),          # van der Waals contact distance (Å)
             "alpha":         (0.0, 10.0),         # vdW decay sharpness
-            "r_s":           (0.4, 1.2),          # σ-bond cutoff radius (Å)
+            "r_s":           (0.4, 1.1),          # σ-bond cutoff radius (Å)
             "r_p":           (1.1, 2.0),          # π-bond cutoff radius (Å)
             "r_pp":          (2.0, 3.5),          # π–π bond cutoff radius (Å)
 
@@ -234,21 +234,6 @@ class Reaxff(Section):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     # --------------------------------------------------------------------------------------------
 
     def num_atoms_parameters_list(self, block):
@@ -289,25 +274,37 @@ class Reaxff(Section):
 
         num_atoms, parameters_list = self.num_atoms_parameters_list(block)
 
-        if( num_atoms != len(atoms) ):
-            raise Exception(f"Block {block} expected {num_atoms} atoms, but {atoms} has {len(atoms)}.")
-        
-        if block == 'ATM':
-            atoms_string = r'\s*' + atoms[0]
-            extra_indent = '\n   '
-        else:
-            atoms_string = ''.join([r'\s*'+str(self.elements.index(a)+1) for a in atoms])
-            extra_indent = '\n      '
+        if num_atoms != len(atoms):
+            raise Exception(f"Block {block} expected {num_atoms} atoms, but got {atoms} ({len(atoms)} atoms)")
 
-        pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+\.[0-9]+){{{len(parameters_list)}}}$'
+        def atoms_to_pattern(atoms):
+            indices = []
+            for a in atoms:
+                if a == '0':
+                    if block != 'TOR':
+                        raise Exception(f"Wildcard atom type (0) not allowed in block {block}")
+                    indices.append(r'\d+')
+                else:
+                    indices.append(str(self.elements.index(a) + 1))
+            return ''.join([r'\s*' + i for i in indices])
 
-        if( not (match := re.search(pattern, self.potential_string, flags=re.MULTILINE|re.DOTALL)) ):
-            print("pattern...", pattern)
-            print(f"--------\nself.potential_string...\n{self.potential_string}\n--------\n")
+        atoms_string = atoms_to_pattern(atoms)
+        pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+(?:\.[0-9]+)?){{{len(parameters_list)}}}$'
+
+        match = re.search(pattern, self.potential_string, flags=re.MULTILINE)
+
+        if not match and block == 'TOR':
+            wildcard_atoms = ['0' if a != '0' else '0' for a in atoms]
+            atoms_string = atoms_to_pattern(wildcard_atoms)
+            pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+(?:\.[0-9]+)?){{{len(parameters_list)}}}$'
+            match = re.search(pattern, self.potential_string, flags=re.MULTILINE)
+
+        if not match:
+            print(f"*** block {block} atoms {atoms} pattern {pattern}")
+            print("--------\nself.potential_string...\n" + self.potential_string + "\n--------\n")
             raise Exception("Unable to match text to replace")
 
-        return match.group(0)
-
+        return match.group(0)        
     # --------------------------------------------------------------------------------------------
 
     def parameter_value(self, block, atoms, name):
@@ -321,7 +318,6 @@ class Reaxff(Section):
         num_atoms, parameters_list = self.num_atoms_parameters_list(block)
         parameter_index = parameters_list.index(name)
         return float(self.parameter_block(block, atoms).split()[num_atoms+parameter_index])
-
 
     # --------------------------------------------------------------------------------------------
 

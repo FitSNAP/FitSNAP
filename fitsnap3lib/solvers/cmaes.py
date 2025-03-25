@@ -29,12 +29,16 @@ class CMAES(Solver):
 
         # print(f"*** rank {self.pt._rank} ok 2a")
 
-        futures = [self.executor.submit(_loss_function, x_arrays) for _ in self.range_workers]
-        results = [f.result() for f in futures]
+        if self.pt.stubs==1:
+            print("ok 1")
+            results = [_loss_function(x) for x in x_arrays]
+        else:
+            futures = [self.executor.submit(_loss_function, x_arrays) for _ in self.range_workers]
+            results = [f.result() for f in futures]
+
         np.set_printoptions(precision=2, linewidth=2000)
         pprint(results, width=200, compact=True)
-
-        answer = np.sum(np.vstack([np.nan_to_num(r, nan=9e9) for r in results]), axis=0).tolist()
+        answer = np.sum(np.vstack([np.nan_to_num(r, nan=8e8) for r in results]), axis=0).tolist()
         print(f"*** answer {answer}")
         return answer
 
@@ -58,7 +62,9 @@ class CMAES(Solver):
           'bounds': list(np.transpose(self.config.sections['REAXFF'].parameter_bounds))
         }
 
-        if self.pt.stubs == 0:
+        print(f"*** self.pt.stubs {self.pt.stubs}")
+
+        if self.pt.stubs==0:
             # SAFER TO USE *MPICommExecutor* INSTEAD OF *MPIPoolExecutor*
             # [https://mpi4py.readthedocs.io/en/stable/mpi4py.futures.html#mpicommexecutor]
             from mpi4py import MPI
@@ -66,10 +72,10 @@ class CMAES(Solver):
 
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
                 if self.executor is not None:
-                    es = cma.fmin2( None, x0, self.sigma, callback=self._log_progress,
+                    _, es = cma.fmin2( None, x0, self.sigma, callback=self._log_progress,
                         parallel_objective=self._parallel_loss_function, options=options)
         else:
-            es = cma.fmin2( None, x0, self.sigma,
+            _, es = cma.fmin2( None, x0, self.sigma,
                 parallel_objective=self._parallel_loss_function, options=options)
 
         if self.pt._rank == 0:
@@ -86,7 +92,7 @@ class CMAES(Solver):
 
     def _log_best(self, es):
 
-        print(f"------------------------ {es.countiter:<7} {es.best.f:9.2f} ------------------------")
+        print(f"------------------------ {es.countiter:<7} {es.best.f:9.2g} ------------------------")
         print(self.config.sections['CALCULATOR'].charge_fix)
         print("PARAMETER_NAME        INITIAL  LOWER_BOUND           NOW UPPER_BOUND")
         for p, x0i, xbi in zip(self.reaxff_io.parameter_names, es.x0, es.best.x):

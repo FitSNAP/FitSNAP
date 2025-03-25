@@ -155,30 +155,24 @@ class ParallelTools():
 
     def __init__(self, comm=None):
         self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
-        if comm is None:
-            self.stubs = 1
-        else:
-            self.stubs = 0
 
-        if self.stubs == 0:
+        try:
             from mpi4py import MPI
             self.MPI = MPI
             if comm is None:
-                comm = self.MPI.COMM_WORLD
+                comm = MPI.COMM_WORLD
             self._comm = comm
-            self._rank = self._comm.Get_rank()
-            self._size = self._comm.Get_size()
-            #print(f">>> Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
-            # Set this to False if want to avoid shared arrays. This is helpful when using the library
-            # to loop over functions that create shared arrays, to avoid mem leaks.
-            self.create_shared_bool = True
-
-            self.double_size = self.MPI.DOUBLE.Get_size()
-
-        if self.stubs == 1:
+            self._size = comm.Get_size()
+            self._rank = comm.Get_rank()
+            self.stubs = 0 if self._size > 1 else 1
+        except ModuleNotFoundError:
+            self.MPI = None
+            self._comm = None
             self._rank = 0
             self._size = 1
-            self._comm = None
+            self.stubs = 1
+
+        if self.stubs == 1:
             self._sub_rank = 0
             self._sub_size = 1
             self._sub_comm = None
@@ -186,6 +180,12 @@ class ParallelTools():
             self._node_index = 0
             self._number_of_nodes = 1
             self.double_size = ctypes.sizeof(ctypes.c_double)
+        else:
+            #print(f">>> Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
+            # Set this to False if want to avoid shared arrays. This is helpful when using the library
+            # to loop over functions that create shared arrays, to avoid mem leaks.
+            self.create_shared_bool = True
+            self.double_size = self.MPI.DOUBLE.Get_size()
 
         self.killer = GracefulKiller(self._comm)
 

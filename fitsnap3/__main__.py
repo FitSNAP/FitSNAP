@@ -32,10 +32,10 @@
 from fitsnap3lib.fitsnap import FitSnap
 
 try:
-    # stubs = 0 MPI is active
-    stubs = 0
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
+    # fix stubs logic if mpi4py is installed in venv but running in serial
+    stubs = 0 if comm.Get_size() > 1 else 1
 except ModuleNotFoundError:
     stubs = 1
     comm = None

@@ -6,7 +6,7 @@ from pprint import pprint
 
 # ------------------------------------------------------------------------------------------------
 
-def loss_function(x_arrays):
+def _loss_function(x_arrays):
 
     return reaxff_calculator.process_configs_with_values(x_arrays)
 
@@ -21,20 +21,21 @@ class CMAES(Solver):
         super().__init__(name, pt, config, linear=False)
         self.popsize = self.config.sections['SOLVER'].popsize
         self.sigma = self.config.sections['SOLVER'].sigma
+        self.reaxff_io = self.config.sections['REAXFF']
 
     # --------------------------------------------------------------------------------------------
 
-    def parallel_loss_function(self, x_arrays):
+    def _parallel_loss_function(self, x_arrays):
 
         # print(f"*** rank {self.pt._rank} ok 2a")
 
-        futures = [self.executor.submit(loss_function, x_arrays) for _ in self.range_workers]
+        futures = [self.executor.submit(_loss_function, x_arrays) for _ in self.range_workers]
         results = [f.result() for f in futures]
         np.set_printoptions(precision=2, linewidth=2000)
-        #pprint(results, width=200, compact=True)
+        pprint(results, width=200, compact=True)
 
-        answer = np.sum(np.vstack([np.nan_to_num(r, nan=1e99) for r in results]), axis=0).tolist()
-        #print(f"*** answer {answer}")
+        answer = np.sum(np.vstack([np.nan_to_num(r, nan=9e9) for r in results]), axis=0).tolist()
+        print(f"*** answer {answer}")
         return answer
 
     # --------------------------------------------------------------------------------------------
@@ -45,8 +46,7 @@ class CMAES(Solver):
         # no way around this sorry
         global reaxff_calculator
         reaxff_calculator = fs.calculator
-        reaxf_io = self.config.sections['REAXFF']
-        x0 = reaxf_io.values
+        x0 = self.reaxff_io.values
         #print( x0 )
         self.range_workers = range(1, self.pt.get_size())
 
@@ -54,7 +54,7 @@ class CMAES(Solver):
         warnings.simplefilter("ignore", category=UserWarning)
 
         options={
-          'popsize': self.popsize, 'seed': 12345, 'maxiter': 1,
+          'popsize': self.popsize, 'seed': 12345, #'maxiter': 1,
           'bounds': list(np.transpose(self.config.sections['REAXFF'].parameter_bounds))
         }
 
@@ -66,21 +66,33 @@ class CMAES(Solver):
 
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
                 if self.executor is not None:
-                    self.x_best, es = cma.fmin2( None, x0, self.sigma,
-                        parallel_objective=self.parallel_loss_function, options=options)
+                    es = cma.fmin2( None, x0, self.sigma, callback=self._log_progress,
+                        parallel_objective=self._parallel_loss_function, options=options)
         else:
-            self.x_best, es = cma.fmin2( None, x0, self.sigma,
-                parallel_objective=self.parallel_loss_function, options=options)
+            es = cma.fmin2( None, x0, self.sigma,
+                parallel_objective=self._parallel_loss_function, options=options)
 
         if self.pt._rank == 0:
-            self.fit = reaxf_io.change_parameters_string(self.x_best)
+            self.fit = self.reaxff_io.change_parameters_string(es.best.x)
+            self._log_best(es)
 
-            print("----------------------------------------")
-            print(self.config.sections['CALCULATOR'].charge_fix)
-            print("PARAMETER_NAME          BEFORE     AFTER")
-            for p, x0i, xbi in zip(reaxf_io.parameter_names, x0, self.x_best):
-                print(f"{p:<20} {x0i:9.4f} {xbi:9.4f}")
-            print("----------------------------------------")
+    # --------------------------------------------------------------------------------------------
+
+    def _log_progress(self, es):
+
+        if es.countiter % 1 == 0: self._log_best(es)
+
+    # --------------------------------------------------------------------------------------------
+
+    def _log_best(self, es):
+
+        print(f"------------------------ {es.countiter:<7} {es.best.f:9.2f} ------------------------")
+        print(self.config.sections['CALCULATOR'].charge_fix)
+        print("PARAMETER_NAME        INITIAL  LOWER_BOUND           NOW UPPER_BOUND")
+        for p, x0i, xbi in zip(self.reaxff_io.parameter_names, es.x0, es.best.x):
+            p_bounds = self.reaxff_io.bounds[p.split('.')[-1]]
+            print(f"{p:<19} {x0i: > 9.4f}  [  {p_bounds[0]: > 8.2f} {xbi: > 13.8f} {p_bounds[1]: > 8.2f}  ]")
+        print("--------------------------------------------------------------------")
 
     # --------------------------------------------------------------------------------------------
 

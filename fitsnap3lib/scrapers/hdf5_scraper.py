@@ -2,8 +2,8 @@ from fitsnap3lib.scrapers.scrape import Scraper
 import numpy as np
 import h5py
 import logging
+from os import path
 from scipy.special import logsumexp
-
 
 # ------------------------------------------------------------------------------------------------
 
@@ -19,10 +19,16 @@ class HDF5(Scraper):
 
     # --------------------------------------------------------------------------------------------
 
-    def __init__(self, name, pt, config, filename="/Users/mitch/Dropbox/github/hmx/spice/spice500.hd5"):
+    def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
         self.data = []
-        self.filename = filename
+        logging.getLogger("h5py._conv").setLevel(logging.WARNING)
+        self._lattice_margin = 10
+        allowed_elements = self.config.sections["REAXFF"].elements
+        self.allowed_atomic_numbers = set(atomic_symbol_to_number(e) for e in allowed_elements)
+        self.hdf5_path = path.join(self.config.sections["PATH"].dataPath, \
+          self.config.sections["SCRAPER"].filename)
+
         if self.pt.stubs == 0:
             from mpi4py import MPI
             self.comm = MPI.COMM_WORLD
@@ -32,12 +38,6 @@ class HDF5(Scraper):
             self.rank = 0
             self.size = 1
 
-        self._lattice_margin = 10
-        allowed_elements = self.config.sections["REAXFF"].elements
-        self.allowed_atomic_numbers = set(atomic_symbol_to_number(e) for e in allowed_elements)
-
-        logging.getLogger("h5py._conv").setLevel(logging.WARNING)
-
     # --------------------------------------------------------------------------------------------
 
     def scrape_groups(self):
@@ -46,11 +46,11 @@ class HDF5(Scraper):
 
         file_kwargs = {"driver": "mpio", "comm": self.comm} if self.pt.stubs == 0 else {}
 
-        with h5py.File(self.filename, "r", **file_kwargs) as f:
+        with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
             if self.pt.stubs == 1:
                 all_group_names = list(f.keys())
             else:
-                groups = list(f.keys()) if self.rank == 0 else None
+                groups = list(f.keys())[:3] if self.rank == 0 else None
                 all_group_names = self.comm.bcast(groups, root=0)
 
             for i in range(self.rank, len(all_group_names), self.size):
@@ -61,9 +61,9 @@ class HDF5(Scraper):
                 if not np.all(np.isin(atomic_numbers, list(self.allowed_atomic_numbers))):
                     continue
 
-                if atomic_symbol_to_number('S') not in atomic_numbers:
-                    continue
-                    
+                #if atomic_symbol_to_number('S') not in atomic_numbers:
+                #    continue
+
                 conformations = group["conformations"][()]
                 formation_energy = group["formation_energy"][()]
                 subset = group["subset"].asstr()[0]
@@ -102,7 +102,7 @@ class HDF5(Scraper):
                 }
 
                 #print(f"*** {group_name} formation_energy {formation_energy} weights {weights} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
-                print(f"*** {group_name} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
+                #print(f"*** {group_name} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
 
                 for j in range(conformations.shape[0]):
                     self.local_configs.append((group_name, j))
@@ -132,6 +132,8 @@ class HDF5(Scraper):
     def scrape_configs(self):
         self.data = []
 
+        #print(f"*** self.my_configs {self.my_configs}")
+
         file_kwargs = {"driver": "mpio", "comm": self.comm} if self.pt.stubs == 0 else {}
 
         from collections import defaultdict
@@ -143,7 +145,7 @@ class HDF5(Scraper):
         HARTREE_TO_KCAL_MOL = 627.509474
         FORCE_CONV = HARTREE_TO_KCAL_MOL / BOHR_TO_ANGSTROM
 
-        with h5py.File(self.filename, "r", **file_kwargs) as f:
+        with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
             for group_name in sorted(grouped):
                 group = f[group_name]
                 meta = self.group_metadata[group_name]

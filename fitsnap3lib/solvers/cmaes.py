@@ -30,15 +30,14 @@ class CMAES(Solver):
         # print(f"*** rank {self.pt._rank} ok 2a")
 
         if self.pt.stubs==1:
-            print("ok 1")
-            results = [_loss_function(x) for x in x_arrays]
+            results = _loss_function(x_arrays)
         else:
             futures = [self.executor.submit(_loss_function, x_arrays) for _ in self.range_workers]
             results = [f.result() for f in futures]
 
         np.set_printoptions(precision=2, linewidth=2000)
         pprint(results, width=200, compact=True)
-        answer = np.sum(np.vstack([np.nan_to_num(r, nan=8e8) for r in results]), axis=0).tolist()
+        answer = np.sum(np.vstack([np.nan_to_num(r, nan=1e99) for r in results]), axis=0).tolist()
         print(f"*** answer {answer}")
         return answer
 
@@ -52,6 +51,7 @@ class CMAES(Solver):
         reaxff_calculator = fs.calculator
         x0 = self.reaxff_io.values
         #print( x0 )
+        self.output = fs.output
         self.range_workers = range(1, self.pt.get_size())
 
         import warnings
@@ -61,8 +61,6 @@ class CMAES(Solver):
           'popsize': self.popsize, 'seed': 12345, #'maxiter': 1,
           'bounds': list(np.transpose(self.config.sections['REAXFF'].parameter_bounds))
         }
-
-        print(f"*** self.pt.stubs {self.pt.stubs}")
 
         if self.pt.stubs==0:
             # SAFER TO USE *MPICommExecutor* INSTEAD OF *MPIPoolExecutor*
@@ -86,7 +84,13 @@ class CMAES(Solver):
 
     def _log_progress(self, es):
 
-        if es.countiter % 1 == 0: self._log_best(es)
+        if es.countiter % 1 == 0:
+            self._log_best(es)
+
+        if es.countiter % 10 == 0:
+            current_fit = self.reaxff_io.change_parameters_string(es.best.x)
+            self.output.output(current_fit, None)
+
 
     # --------------------------------------------------------------------------------------------
 
@@ -94,10 +98,10 @@ class CMAES(Solver):
 
         print(f"------------------------ {es.countiter:<7} {es.best.f:9.2g} ------------------------")
         print(self.config.sections['CALCULATOR'].charge_fix)
-        print("PARAMETER_NAME        INITIAL  LOWER_BOUND           NOW UPPER_BOUND")
+        print("PARAMETER_NAME        INITIAL  LOWER_BOUND       NOW     UPPER_BOUND")
         for p, x0i, xbi in zip(self.reaxff_io.parameter_names, es.x0, es.best.x):
             p_bounds = self.reaxff_io.bounds[p.split('.')[-1]]
-            print(f"{p:<19} {x0i: > 9.4f}  [  {p_bounds[0]: > 8.2f} {xbi: > 13.8f} {p_bounds[1]: > 8.2f}  ]")
+            print(f"{p:<19} {x0i: > 9.4f}  [  {p_bounds[0]: > 6.2f} {xbi: > 13.8f} {p_bounds[1]: > 8.2f}  ]")
         print("--------------------------------------------------------------------")
 
     # --------------------------------------------------------------------------------------------
@@ -184,29 +188,4 @@ class CMAES(Solver):
 
         return constraints
 
-
-
-def loss_function_subgroup(i_x_j):
-
-    subgroup = reaxff_calculator.pt.fitsnap_dict["Data"][i_x_j[2]]
-    reaxff_calculator.change_parameters(i_x_j[1])
-    configs = subgroup['configs']
-    for c in configs: reaxff_calculator.process_configs(c, i_x_j[0])
-
-    if reaxff_calculator.energy:
-        ground_predicted_energy = configs[subgroup['ground_index']]['predicted_energy']
-        for c in configs: c['predicted_energy'] -= ground_predicted_energy
-        predicted_energy = np.array([c['predicted_energy'] for c in configs])
-        #pprint(predicted_energy)
-        residuals = np.nan_to_num(predicted_energy - subgroup['reference_energy'], nan=99)
-        weighted_residuals = subgroup['weights'] * np.square(residuals)
-
-    if reaxff_calculator.dipole:
-        predicted_dipole = np.array(c['predicted_dipole'])
-        reference_dipole = np.array(c["Dipole"])
-        #print(f"predicted_dipole {predicted_dipole} reference_dipole {reference_dipole}")
-        dipole_residuals = np.nan_to_num([predicted_dipole - reference_dipole for c in configs], nan=99)
-        #print(f"dipole_residuals {dipole_residuals}")
-
-    return (i_x_j[0], float(np.sum(weighted_residuals) + np.sum(np.square(dipole_residuals))))
 

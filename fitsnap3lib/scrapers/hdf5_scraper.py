@@ -107,27 +107,32 @@ class HDF5(Scraper):
                 for j in range(conformations.shape[0]):
                     self.local_configs.append((group_name, j))
 
-        all_meta = self.comm.allgather(self.group_metadata)
-        self.group_metadata = {k: v for d in all_meta for k, v in d.items()}
+        if self.pt.stubs==0:
+            all_meta = self.comm.allgather(self.group_metadata)
+            self.group_metadata = {k: v for d in all_meta for k, v in d.items()}
+
+    # --------------------------------------------------------------------------------------------
 
     def divvy_up_configs(self):
-        all_configs = self.comm.allgather(self.local_configs)
-        flat_configs = [cfg for sub in all_configs for cfg in sub]
-        flat_configs.sort()
 
-        total = len(flat_configs)
-        base = total // self.size
-        remainder = total % self.size
+        if self.pt.stubs==1:
+            self.my_configs = self.local_configs
+        else:
+            all_configs = self.comm.allgather(self.local_configs)
+            flat_configs = [cfg for sub in all_configs for cfg in sub]
+            flat_configs.sort()
+            total = len(flat_configs)
+            base = total // self.size
+            remainder = total % self.size
+            start = self.rank * base + min(self.rank, remainder)
+            stop = start + base + (1 if self.rank < remainder else 0)
+            self.my_configs = flat_configs[start:stop]
+            expected = base + (1 if self.rank < remainder else 0)
+            actual = len(self.my_configs)
+            if actual != expected:
+                raise RuntimeError(f"[Rank {self.rank}] Expected {expected} configs, got {actual}")
 
-        start = self.rank * base + min(self.rank, remainder)
-        stop = start + base + (1 if self.rank < remainder else 0)
-
-        self.my_configs = flat_configs[start:stop]
-
-        expected = base + (1 if self.rank < remainder else 0)
-        actual = len(self.my_configs)
-        if actual != expected:
-            raise RuntimeError(f"[Rank {self.rank}] Expected {expected} configs, got {actual}")
+    # --------------------------------------------------------------------------------------------
 
     def scrape_configs(self):
         self.data = []
@@ -170,7 +175,7 @@ class HDF5(Scraper):
                         "Lattice": meta["lattice"],
                         "Region": meta["region"],
                         "eweight": float(meta["weights"][i] * 100),
-                        "fweight": 50.0,
+                        "fweight": 99.0 / (len(atomic_numbers)*3),
                         "vweight": 0.0,
                         "cweight": meta["cweight"],
                         "dweight": meta["dweight"],

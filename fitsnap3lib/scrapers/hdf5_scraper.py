@@ -48,9 +48,9 @@ class HDF5(Scraper):
 
         with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
             if self.pt.stubs == 1:
-                all_group_names = list(f.keys())
+                all_group_names = list(f.keys())[:1]
             else:
-                groups = list(f.keys())[:3] if self.rank == 0 else None
+                groups = list(f.keys()) if self.rank == 0 else None
                 all_group_names = self.comm.bcast(groups, root=0)
 
             for i in range(self.rank, len(all_group_names), self.size):

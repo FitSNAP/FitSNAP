@@ -271,40 +271,52 @@ class Reaxff(Section):
     # --------------------------------------------------------------------------------------------
 
     def parameter_block(self, block, atoms):
-
         num_atoms, parameters_list = self.num_atoms_parameters_list(block)
 
         if num_atoms != len(atoms):
-            raise Exception(f"Block {block} expected {num_atoms} atoms, but got {atoms} ({len(atoms)} atoms)")
+            raise Exception(f"Block {block} expected {num_atoms} atoms, got {atoms} ({len(atoms)} atoms)")
 
-        def atoms_to_pattern(atoms):
-            indices = []
-            for a in atoms:
-                if a == '0':
-                    if block != 'TOR':
-                        raise Exception(f"Wildcard atom type (0) not allowed in block {block}")
-                    indices.append(r'\d+')
-                else:
-                    indices.append(str(self.elements.index(a) + 1))
-            return ''.join([r'\s*' + i for i in indices])
+        whitespace = r'\s+'
+        float_pattern = r'-?\d+\.\d+'  # fixed-point only, no exponent
 
-        atoms_string = atoms_to_pattern(atoms)
-        pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+(?:\.[0-9]+)?){{{len(parameters_list)}}}$'
+        def atom_symbol_to_index(a):
+            if a == '0':
+                return r'\d+'
+            try:
+                return str(self.elements.index(a) + 1)
+            except ValueError:
+                raise Exception(f"Atom type '{a}' not in self.elements: {self.elements}")
+
+        def atoms_to_pattern(block, atoms):
+            if block == 'ATM':
+                return whitespace.join([a for a in atoms])
+            else:
+                return whitespace.join([atom_symbol_to_index(a) for a in atoms])
+
+        atoms_string = atoms_to_pattern(block, atoms)
+        pattern = fr'^\s*{atoms_string}(?:{whitespace}{float_pattern}){{{len(parameters_list)}}}\s*$'
 
         match = re.search(pattern, self.potential_string, flags=re.MULTILINE)
 
         if not match and block == 'TOR':
             wildcard_atoms = ['0' if a != '0' else '0' for a in atoms]
-            atoms_string = atoms_to_pattern(wildcard_atoms)
-            pattern = fr'^{atoms_string}(?:\s+\-?[0-9]+(?:\.[0-9]+)?){{{len(parameters_list)}}}$'
+            atoms_string = atoms_to_pattern(block, wildcard_atoms)
+            pattern = fr'^\s*{atoms_string}(?:{whitespace}{float_pattern}){{{len(parameters_list)}}}\s*$'
             match = re.search(pattern, self.potential_string, flags=re.MULTILINE)
 
         if not match:
-            print(f"*** block {block} atoms {atoms} pattern {pattern}")
-            print("--------\nself.potential_string...\n" + self.potential_string + "\n--------\n")
+            print(f"*** parameter_block failed for block {block}")
+            print(f"*** atoms: {atoms}")
+            print(f"*** regex: {pattern}")
+            print("----- potential_string lines matching first atom ------")
+            for line in self.potential_string.splitlines():
+                if atoms[0] in line or atom_symbol_to_index(atoms[0]) in line:
+                    print(">>>", line)
+            print("--------------------------------------------------------")
             raise Exception("Unable to match text to replace")
 
-        return match.group(0)        
+        return match.group(0)
+
     # --------------------------------------------------------------------------------------------
 
     def parameter_value(self, block, atoms, name):
@@ -316,8 +328,10 @@ class Reaxff(Section):
                 raise NotImplementedError(f"GEN.{name} not implemented.")
 
         num_atoms, parameters_list = self.num_atoms_parameters_list(block)
+        parameter_block = self.parameter_block(block, atoms)
         parameter_index = parameters_list.index(name)
-        return float(self.parameter_block(block, atoms).split()[num_atoms+parameter_index])
+        #print(f"*** parameter_block {parameter_block} parameter_index {parameter_index}")
+        return float(parameter_block.split()[num_atoms+parameter_index])
 
     # --------------------------------------------------------------------------------------------
 

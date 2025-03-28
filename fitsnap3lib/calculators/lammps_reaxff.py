@@ -7,6 +7,7 @@ import numpy as np
 from itertools import chain, groupby
 from pprint import pprint
 
+from lammps import LAMMPS_DOUBLE, LAMMPS_DOUBLE_2D
 from lammps import LMP_STYLE_GLOBAL, LMP_STYLE_ATOM, LMP_STYLE_LOCAL, LMP_TYPE_SCALAR, LMP_TYPE_VECTOR, LMP_TYPE_ARRAY
 
 class LammpsReaxff(LammpsBase):
@@ -32,7 +33,6 @@ class LammpsReaxff(LammpsBase):
 
         self._lmp = None
         self.pt.check_lammps()
-        self._initialize_lammps(0)
 
     # --------------------------------------------------------------------------------------------
 
@@ -73,23 +73,48 @@ class LammpsReaxff(LammpsBase):
 
         for config_index, c in enumerate(self._configs):
             self._data = c
-            self._prepare_lammps()
 
             for pop_index, v in enumerate(values):
                 try:
-                    self._lmp.set_reaxff_parameters(self.parameters, v)
-                    self._lmp.command("run 0 post no")
-                    self._collect_lammps(config_index, pop_index)
+                
+                    if True:
+                        logfile = f"{c['File']}".replace('/','').replace(' ','-')
+                        with open(f"acks2/{logfile}.in","w") as f:
+                            self._initialize_lammps(1,printfile=f)
+                            self._lmp.command(f"variable config string {logfile}")
+                            self._lmp.command("info variables")
+                            self._prepare_lammps()
+                            self._lmp.set_reaxff_parameters(self.parameters, v)
+                            self._lmp.command("run 0 post no")
+                            self._collect_lammps(config_index, pop_index)
+                            self._lmp.command("unfix 1")
+                            self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 1000")
+                            self._lmp.command("run 0 post no")
+                    else:
+                        self._initialize_lammps(0, lammpsscreen=0)
+                        self._prepare_lammps()
+                        self._lmp.set_reaxff_parameters(self.parameters, v)
+                        self._lmp.command("run 0 post no")
+                        self._collect_lammps(config_index, pop_index)
+
+                    self._lmp = self.pt.close_lammps()
+
                 except Exception as e:
                     print(f"*** rank {self.pt._rank} exception {e}")
                     raise e
 
+            #if self.force: self.sum_residuals += self.sum_forces_residuals
+
         #print(f"*** sum_energy_residuals {self.sum_energy_residuals}")
         #sum_forces_residuals {self.sum_forces_residuals} ")
-        if self.energy: self.sum_residuals += self._data["eweight"] * self.sum_energy_residuals
-        if self.force: self.sum_residuals += self._data["fweight"] * self.sum_forces_residuals
+        #if self.energy: self.sum_residuals += self._data["eweight"] * self.sum_energy_residuals
+        #if self.force: self.sum_residuals += self._data["fweight"] * self.sum_forces_residuals
         #if self.charge: self.sum_residuals += self._data["cweight"] * self.sum_charges_residuals
         #if self.dipole: self.sum_residuals += self._data["dweight"] * self.sum_dipole_residuals
+
+        #print(f"*** sum_residuals {self.sum_residuals} sum_energy_residuals {self.sum_energy_residuals}")
+        if self.energy: self.sum_residuals += self.sum_energy_residuals
+        if self.force: self.sum_residuals += self.sum_forces_residuals
         return self.sum_residuals
 
     # --------------------------------------------------------------------------------------------
@@ -99,12 +124,16 @@ class LammpsReaxff(LammpsBase):
         if self.energy:
             pe = self._lmp.get_thermo('pe')
             energy_residual = pe - self._data["Energy"]
-            self.sum_energy_residuals[pop_index] += np.square(energy_residual)
+            net_charge = round(np.sum(self._data["Charges"]))
+            #print(f"*** rank {self.pt._rank} config {self._data['File']} (q={net_charge}) pop_index {pop_index} energy_residual {energy_residual}")
+            self.sum_energy_residuals[pop_index] += energy_residual*energy_residual
 
         if self.force:
-            forces = self._lmp.numpy.extract_atom(name='f')
+            forces = self._lmp.numpy.extract_atom(name='f', \
+                dtype=LAMMPS_DOUBLE_2D, nelem=self._data["NumAtoms"], dim=3)
             #print(f"*** rank {self.pt._rank} forces {forces}")
             forces_residual = forces - self._data["Forces"]
+            print(f"*** rank {self.pt._rank} config {self._data['File']} (q={net_charge}) pop_index {pop_index} energy_residual {energy_residual} np.sum(forces_residual ** 2) {np.sum(forces_residual ** 2)}")
             self.sum_forces_residuals[pop_index] += np.sum(forces_residual ** 2)
 
         if self.charge:
@@ -142,7 +171,7 @@ class LammpsReaxff(LammpsBase):
     def _prepare_lammps(self):
 
         self._lmp.command("clear")
-        self._lmp.command("boundary p p p")
+        self._lmp.command("boundary f f f")
         reference = self.config.sections["REFERENCE"]
         if reference.units != "real" or reference.atom_style != "charge":
             raise NotImplementedError("FitSNAP-ReaxFF only supports 'units real' and 'atom_style charge'.")
@@ -152,12 +181,22 @@ class LammpsReaxff(LammpsBase):
         self._lmp.command(self._data["Region"])
         self._lmp.command(f"create_box {len(self.elements)} box")
         #self._lmp.command("delete_atoms group all")
-        self._create_atoms_helper(type_mapping=self.type_mapping)
-        self._lmp.commands_list([f"mass {i+1} {self.masses[i]}" for i in range(len(self.masses))])
+
+        if False:
+            self._create_atoms_helper(type_mapping=self.type_mapping)
+            self._lmp.commands_list([f"mass {i+1} {self.masses[i]}" for i in range(len(self.masses))])
+        else:
+            for i in range(len(self.masses)): self._lmp.command(f"mass {i+1} {self.masses[i]}")
+            types = [self.type_mapping[a_t] for a_t in self._data["AtomTypes"]]
+            for t, p in zip(types, self._data["Positions"]):
+                self._lmp.command(f"create_atoms {t} single {p[0]} {p[1]} {p[2]}")
+
         self._lmp.command("pair_style reaxff NULL")
         self._lmp.command(f"pair_coeff * * {self.potential} {' '.join(self.elements)}")
         self._create_charge()
-        self._lmp.command(self.charge_fix)
+        sum_charges = round(np.sum(self._data["Charges"]))
+        #self._lmp.command(self.charge_fix)
+        self._lmp.command(self.charge_fix + f" target_charge {sum_charges}")
         if self.dipole: self._lmp.command("compute dipole all dipole")
 
     # --------------------------------------------------------------------------------------------

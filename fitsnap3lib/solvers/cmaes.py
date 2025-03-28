@@ -29,17 +29,18 @@ class CMAES(Solver):
 
         # print(f"*** rank {self.pt._rank} ok 2a")
 
+        np.set_printoptions(precision=4, linewidth=2000)
+        
         if self.pt.stubs==1:
-            results = _loss_function(x_arrays)
+            answer = _loss_function(x_arrays)
         else:
             futures = [self.executor.submit(_loss_function, x_arrays) for _ in self.range_workers]
-            results = [f.result() for f in futures]
+            results = np.vstack([np.nan_to_num(f.result()) for f in futures])
+            answer = np.sum(results, axis=0)
+            print(f"*** rank {self.pt._rank} results {results}")
 
-        np.set_printoptions(precision=2, linewidth=2000)
-        pprint(results, width=200, compact=True)
-        answer = np.sum(np.vstack([np.nan_to_num(r, nan=1e99) for r in results]), axis=0).tolist()
-        print(f"*** answer {answer}")
-        return answer
+        print(f"*** rank {self.pt._rank} answer {answer}")
+        return answer.tolist()
 
     # --------------------------------------------------------------------------------------------
 

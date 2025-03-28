@@ -133,7 +133,10 @@ class Reaxff(Section):
                 p_bounds = (value - delta, value + delta)
             warning = "" if p_bounds[0] <= value <= p_bounds[1] else "WARNING value outside bounds"
             self.pt.single_print(p, parameter, value, p_bounds, warning)
-            value = np.clip(value, p_bounds[0], p_bounds[1])
+
+            #value = np.clip(value, p_bounds[0], p_bounds[1])
+            if value<p_bounds[0] or p_bounds[1] < value: value = (p_bounds[0]+p_bounds[1])/2.0
+
             self.parameter_names.append(p)
             self.parameters.append(parameter)
             self.values.append(value)

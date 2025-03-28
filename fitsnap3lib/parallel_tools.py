@@ -136,9 +136,9 @@ def stub_check(method):
 """
 
 
-def print_lammps(method):
+def print_lammps(method, file=None):
     def new_method(*args, **kw):
-        printf(*args)
+        printf(*args, file=file)
         return method(*args, **kw)
     return new_method
 
@@ -550,8 +550,9 @@ class ParallelTools():
             except:
                 pass
                 
-    def initialize_lammps(self, lammpslog=0, printlammps=0):
-        cmds = ["-screen", "none"]
+    def initialize_lammps(self, lammpslog=0, printlammps=0, lammpsscreen=0, printfile=None):
+
+        cmds = [] if lammpsscreen else ["-screen", "none"]
 
         # super hack to workaround lammps repo admin
         if self.reaxff:
@@ -571,7 +572,7 @@ class ParallelTools():
             self.initialize_mliap()
 
         if printlammps == 1:
-            self._lmp.command = print_lammps(self._lmp.command)
+            self._lmp.command = print_lammps(self._lmp.command, file=printfile)
         return self._lmp
 
     def close_lammps(self):

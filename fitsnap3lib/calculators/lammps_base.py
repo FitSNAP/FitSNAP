@@ -139,8 +139,8 @@ class LammpsBase(Calculator):
     def _set_computes(self):
         raise NotImplementedError
 
-    def _initialize_lammps(self, printlammps=0):
-        self._lmp = self.pt.initialize_lammps(self.config.args.lammpslog, printlammps)
+    def _initialize_lammps(self, printlammps=0, lammpsscreen=0, printfile=None):
+        self._lmp = self.pt.initialize_lammps(self.config.args.lammpslog, printlammps, lammpsscreen, printfile)
 
     def _set_structure(self):
         self._lmp.command("clear")

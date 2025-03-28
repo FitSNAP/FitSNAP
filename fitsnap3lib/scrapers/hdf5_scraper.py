@@ -48,7 +48,7 @@ class HDF5(Scraper):
 
         with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
             if self.pt.stubs == 1:
-                all_group_names = list(f.keys())[:1]
+                all_group_names = list(f.keys())[:2]
             else:
                 groups = list(f.keys()) if self.rank == 0 else None
                 all_group_names = self.comm.bcast(groups, root=0)
@@ -161,6 +161,13 @@ class HDF5(Scraper):
                 scf_dipoles = group["scf_dipole"][()] * BOHR_TO_ANGSTROM
                 atomic_numbers = group["atomic_numbers"][()]
                 for i in grouped[group_name]:
+
+                    charges = mbis_charges[i]
+                    sum_charges = np.sum(charges)
+                    charges[0,0] += (np.round(sum_charges) - sum_charges)
+
+                    # if np.round(sum_charges) != 0.0: continue
+
                     self.data.append({
                         "Group": group.name,
                         "File": f"{group.name}/{i}",
@@ -168,7 +175,7 @@ class HDF5(Scraper):
                         "Positions": conformations[i],
                         "Energy": formation_energy[i],
                         "Forces": dft_total_gradient[i],
-                        "Charges": mbis_charges[i],
+                        "Charges": charges,
                         "Dipole": scf_dipoles[i],
                         "AtomTypes": [atomic_number_to_symbol(n) for n in atomic_numbers],
                         "NumAtoms": len(atomic_numbers),

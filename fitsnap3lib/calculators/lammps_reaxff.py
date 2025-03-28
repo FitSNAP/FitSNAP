@@ -77,7 +77,7 @@ class LammpsReaxff(LammpsBase):
             for pop_index, v in enumerate(values):
                 try:
                 
-                    if True:
+                    if False:
                         logfile = f"{c['File']}".replace('/','').replace(' ','-')
                         with open(f"acks2/{logfile}.in","w") as f:
                             self._initialize_lammps(1,printfile=f)
@@ -133,7 +133,7 @@ class LammpsReaxff(LammpsBase):
                 dtype=LAMMPS_DOUBLE_2D, nelem=self._data["NumAtoms"], dim=3)
             #print(f"*** rank {self.pt._rank} forces {forces}")
             forces_residual = forces - self._data["Forces"]
-            print(f"*** rank {self.pt._rank} config {self._data['File']} (q={net_charge}) pop_index {pop_index} energy_residual {energy_residual} np.sum(forces_residual ** 2) {np.sum(forces_residual ** 2)}")
+            #print(f"*** rank {self.pt._rank} config {self._data['File']} (q={net_charge}) pop_index {pop_index} energy_residual {energy_residual} np.sum(forces_residual ** 2) {np.sum(forces_residual ** 2)}")
             self.sum_forces_residuals[pop_index] += np.sum(forces_residual ** 2)
 
         if self.charge:

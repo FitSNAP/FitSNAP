@@ -35,7 +35,7 @@ class CMAES(Solver):
             answer = _loss_function(x_arrays)
         else:
             futures = [self.executor.submit(_loss_function, x_arrays) for _ in self.range_workers]
-            results = np.vstack([np.nan_to_num(f.result()) for f in futures])
+            results = np.vstack([np.nan_to_num(f.result(), nan=8e8) for f in futures])
             answer = np.sum(results, axis=0)
             print(f"*** rank {self.pt._rank} results {results}")
 

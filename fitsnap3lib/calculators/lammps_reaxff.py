@@ -121,46 +121,69 @@ class LammpsReaxff(LammpsBase):
 
     def _collect_lammps(self, config_index, pop_index):
 
+        def pseudo_huber(x, delta=1.0):
+            #x = np.nan_to_num(x, nan=np.inf)
+            return delta**2 * (np.sqrt(1 + (x / delta)**2) - 1)
+
+        def cauchy_loss(x, c=1.0):
+            #x = np.nan_to_num(x, nan=np.inf)
+            return c**2 * np.log1p((x / c)**2)
+
+        def huber_loss(x, delta=1.0):
+            #x = np.nan_to_num(x, nan=np.inf)
+            abs_x = np.abs(x)
+            return np.where(abs_x <= delta, 0.5 * x**2, delta * (abs_x - 0.5 * delta))
+
         if self.energy:
             pe = self._lmp.get_thermo('pe')
-            energy_residual = pe - self._data["Energy"]
-            net_charge = round(np.sum(self._data["Charges"]))
-            #print(f"*** rank {self.pt._rank} config {self._data['File']} (q={net_charge}) pop_index {pop_index} energy_residual {energy_residual}")
-            self.sum_energy_residuals[pop_index] += energy_residual*energy_residual
+            loss_energy = pseudo_huber(pe - self._data["Energy"], delta=1.0)
+            energy_residual = self._data['eweight'] * loss_energy
+            self.sum_energy_residuals[pop_index] += energy_residual
 
         if self.force:
-            forces = self._lmp.numpy.extract_atom(name='f', \
-                dtype=LAMMPS_DOUBLE_2D, nelem=self._data["NumAtoms"], dim=3)
-            #print(f"*** rank {self.pt._rank} forces {forces}")
-            forces_residual = forces - self._data["Forces"]
-            #print(f"*** rank {self.pt._rank} config {self._data['File']} (q={net_charge}) pop_index {pop_index} energy_residual {energy_residual} np.sum(forces_residual ** 2) {np.sum(forces_residual ** 2)}")
-            self.sum_forces_residuals[pop_index] += np.sum(forces_residual ** 2)
+            forces = self._lmp.numpy.extract_atom(
+                name='f',
+                dtype=LAMMPS_DOUBLE_2D,
+                nelem=self._data["NumAtoms"],
+                dim=3
+            )
+            loss_forces = pseudo_huber(forces - self._data["Forces"], delta=0.5)
+            forces_residual = self._data['fweight'] * np.sum(loss_forces)
+            self.sum_forces_residuals[pop_index] += forces_residual
 
         if self.charge:
-            charges = self._lmp.numpy.extract_atom(name='q')
-            #print(f"*** rank {self.pt._rank} charges {charges}")
-            charge_residual = charges - self._data["Charges"]
-            self.sum_charges_residuals[pop_index] += np.mean(charge_residual ** 2)
+            charges = self._lmp.numpy.extract_atom(
+                name='q',
+                dtype=LAMMPS_DOUBLE,
+                nelem=self._data["NumAtoms"],
+                dim=1
+            )
+            loss_charges = pseudo_huber(charges - self._data["Charges"], delta=0.05)
+            charge_residual = self._data['cweight']*np.sum(loss_charges)
+            self.sum_charges_residuals[pop_index] += charge_residual
 
         if self.dipole:
-            dipole = _extract_compute_np(self._lmp, 'dipole', LMP_STYLE_GLOBAL, LMP_TYPE_VECTOR)
-            #print(f"*** rank {self.pt._rank} dipole {dipole}")
-            dipole_residual = dipole - self._data["Dipole"]
-            self.sum_dipole_residuals[pop_index] += np.mean(dipole_residual ** 2)
+            dipole = self._lmp.numpy.extract_compute(
+                'dipole',
+                LMP_STYLE_GLOBAL,
+                LMP_TYPE_VECTOR
+            )
+            loss_dipole = pseudo_huber(dipole - self._data["Dipole"], delta=0.1)
+            dipole_residual = self._data['dweight']*np.sum(loss_dipole)
+            self.sum_dipole_residuals[pop_index] += dipole_residual
 
+        def signed_fmt(x, width=2, prec=0):
+            if abs(x) < .01:
+                return f"{0:>{width}}"
+            elif x > 0:
+                return f"+{x:>{width - 1}.{prec}f}"
+            else:
+                return f"{x:>{width}.{prec}f}"
 
-
-
-
-
-
-
-
-
-
-
-
-
+        print(f"*** rank {self.pt._rank} {self._data['File']:<12s} "
+            f"({signed_fmt(np.sum(self._data['Charges']))}) pop_index {pop_index:<2} "
+            f"| energy {energy_residual:12g} | force {forces_residual:12g} "
+            f"| charge {charge_residual:12g} | dipole {dipole_residual:12g}")
 
 
 
@@ -182,14 +205,14 @@ class LammpsReaxff(LammpsBase):
         self._lmp.command(f"create_box {len(self.elements)} box")
         #self._lmp.command("delete_atoms group all")
 
-        if False:
-            self._create_atoms_helper(type_mapping=self.type_mapping)
-            self._lmp.commands_list([f"mass {i+1} {self.masses[i]}" for i in range(len(self.masses))])
-        else:
+        if True:
             for i in range(len(self.masses)): self._lmp.command(f"mass {i+1} {self.masses[i]}")
             types = [self.type_mapping[a_t] for a_t in self._data["AtomTypes"]]
             for t, p in zip(types, self._data["Positions"]):
                 self._lmp.command(f"create_atoms {t} single {p[0]} {p[1]} {p[2]}")
+        else:
+            self._create_atoms_helper(type_mapping=self.type_mapping)
+            self._lmp.commands_list([f"mass {i+1} {self.masses[i]}" for i in range(len(self.masses))])
 
         self._lmp.command("pair_style reaxff NULL")
         self._lmp.command(f"pair_coeff * * {self.potential} {' '.join(self.elements)}")

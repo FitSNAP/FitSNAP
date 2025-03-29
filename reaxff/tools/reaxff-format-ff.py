@@ -1,5 +1,5 @@
 
-import re
+import re, sys
 
 atm_parameters_list = [
     ['r_s', 'valency', 'mass', 'r_vdw', 'epsilon', 'gamma', 'r_pi', 'valency_e'],
@@ -24,17 +24,21 @@ hbd_parameters_list = ['r0_hb', 'p_hb1', 'p_hb2', 'p_hb3']
 # /Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-due2023.ff 
 # /Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-niefind2023.ff
 
-with open('/Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-due2023.ff', 'r') as f:
+#with open('/Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-due2023.ff', 'r') as f:
 
-    # HEADER LINE (AS IS)
-    print( f.readline().rstrip('\n') )
+def main():
+
+    f = sys.stdin
+    full_text = f.read()
+    lines = full_text.splitlines()
+    print(lines[0].rstrip('\n'))
+    ff_string = '\n'.join(lines[1:])
 
     # GEN BLOCK
-    ff_string = f.read()
-    num_general_parameters = int(ff_string.lstrip().split(' ',1)[0])
+    num_general_parameters = int(ff_string.strip().split(' ', 1)[0])
     print(f'{num_general_parameters:2}       ! Number of general parameters')
     re_gen = r'^(\s*[0-9]+)\s*(!?[^!]*?)'
-    re_gen += ''.join([r'\s+(\-?[0-9]++\.[0-9]+\s*)(!?[^!]*?)']*num_general_parameters)
+    re_gen += ''.join([r'\s+(\-?[0-9]++\.[0-9]+\s*)(!?[^!]*?)'] * num_general_parameters)
     re_gen += r'\s*(?=[0-9]+ )'
 
     if( not (match := re.match( re_gen, ff_string, flags=re.MULTILINE|re.DOTALL)) ):
@@ -51,7 +55,7 @@ with open('/Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-due202
     re_atm = r'^\s*([A-Za-z]+)(?:\s+\-?[0-9]+\.[0-9]+){32}\s*'
     num_atoms = int(ff_string[:10].split()[0])
     ff_string = ff_string.split('\n', 4)[4]
-    print('{:<3}  ! NUM_ATOMS {}, {}, {}, {}, {}, {}, {}, {}'.format(num_atoms, *atm_parameters_list[0]))
+    print('{:<3}  ! ATM {}, {}, {}, {}, {}, {}, {}, {}'.format(num_atoms, *atm_parameters_list[0]))
     print('                 {}, {}, {}, {}, {}, {}, {}, {}'.format(*atm_parameters_list[1]))
     print('                 {}, {}, {}, {}, {}, {}, {}, {}'.format(*atm_parameters_list[2]))
     print('                 {}, {}, {}, {}, {}, {}, {}, {}'.format(*atm_parameters_list[3]))
@@ -76,7 +80,7 @@ with open('/Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-due202
     # BND BLOCK
     re_bnd = r'^\s*([0-9]+)\s+([0-9]+)(?:\s+\-?[0-9]+\.[0-9]+){16}\s*'
     num_bonds = int(ff_string[:10].split()[0])
-    print('{:<4} ! NUM_BONDS {}, {}, {}, {}, {}, {}, {}, {}'.format(num_bonds, *bnd_parameters_list[0]))
+    print('{:<4} ! BND {}, {}, {}, {}, {}, {}, {}, {}'.format(num_bonds, *bnd_parameters_list[0]))
     print('                 {}, {}, {}, {}, {}, {}, {}, {}'.format(*bnd_parameters_list[1]))
     ff_string = ff_string.split('\n', 2)[2]
 
@@ -95,7 +99,7 @@ with open('/Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-due202
     # OFD BLOCK
     re_ofd = r'^\s*([0-9]+)\s+([0-9]+)(?:\s+\-?[0-9]+\.[0-9]+){6}\s*'
     num_ofd = int(ff_string[:10].split()[0])
-    print('{:<5} ! NUM_OFF_DIAGONALS {}, {}, {}, {}, {}, {}'.format(num_ofd, *ofd_parameters_list))
+    print('{:<5} ! OFD {}, {}, {}, {}, {}, {}'.format(num_ofd, *ofd_parameters_list))
     ff_string = ff_string.split('\n', 1)[1]
     
     for i in range(num_ofd):
@@ -112,7 +116,7 @@ with open('/Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-due202
     # ANG BLOCK
     re_ang = r'^\s*([0-9]+)\s+([0-9]+)\s+([0-9]+)(?:\s+\-?[0-9]+\.[0-9]+){7}\s*'
     num_ang = int(ff_string[:10].split()[0])
-    print('{:<5} ! NUM_ANGLES {}, {}, {}, {}, {}, {}, {}'.format(num_ang, *ang_parameters_list))
+    print('{:<5} ! ANG {}, {}, {}, {}, {}, {}, {}'.format(num_ang, *ang_parameters_list))
     ff_string = ff_string.split('\n', 1)[1]
     
     for i in range(num_ang):
@@ -129,7 +133,7 @@ with open('/Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-due202
     # TOR BLOCK
     re_tor = r'^\s*([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)(?:\s+\-?[0-9]+\.[0-9]+){7}\s*'
     num_tor = int(ff_string[:10].split()[0])
-    print('{:<5} ! NUM_TORSIONS {}, {}, {}, {}, {}, {}, {}'.format(num_tor, *tor_parameters_list))
+    print('{:<5} ! TOR {}, {}, {}, {}, {}, {}, {}'.format(num_tor, *tor_parameters_list))
     ff_string = ff_string.split('\n', 1)[1]
     
     for i in range(num_tor):
@@ -146,7 +150,7 @@ with open('/Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-due202
     # HBD BLOCK
     re_hbd = r'^\s*([0-9]+)\s+([0-9]+)\s+([0-9]+)(?:\s+\-?[0-9]+\.[0-9]+){4}\s*'
     num_hbd = int(ff_string[:10].split()[0])
-    print('{:<5} ! NUM_HYDROGEN_BONDS {}, {}, {}, {}'.format(num_hbd, *hbd_parameters_list))
+    print('{:<5} ! HBD {}, {}, {}, {}'.format(num_hbd, *hbd_parameters_list))
     ff_string = ff_string.split('\n', 1)[1]
     
     for i in range(num_hbd):
@@ -160,4 +164,4 @@ with open('/Users/mitch/Dropbox/lammps/fitsnap/reaxff-force-fields/reaxff-due202
         print( ''.join(tokens_formatted))
         ff_string = ff_string[len(match.group(0)):]
 
-
+main()

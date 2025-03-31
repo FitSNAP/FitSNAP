@@ -36,6 +36,7 @@ Get & build LAMMPS with Python library::
     cd $LAMMPS_DIR/build-fitsnap
     cmake ../cmake -DBUILD_SHARED_LIBS=yes \
                    -DMLIAP_ENABLE_PYTHON=yes \
+                   -DMLIAP_ENABLE_ACE=yes \
                    -DPKG_PYTHON=yes \
                    -DPKG_ML-SNAP=yes \
                    -DPKG_ML-IAP=yes \

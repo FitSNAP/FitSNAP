@@ -96,9 +96,9 @@ class Reaxff(Section):
 
             # HBD
             "r0_hb":         (1.5, 2.5),          # H-bond distance (Å)
-            "p_hb1":         (0.0, 20.0),         # H-bond strength (kcal/mol)
-            "p_hb2":         (0.1, 5.0),          # H-bond decay with BO
-            "p_hb3":         (0.0, 1.0),          # Angular penalty shaping
+            "p_hb1":         (-10.0, 0.0),         # H-bond strength (kcal/mol)
+            "p_hb2":         (0.8, 3.0),          # H-bond decay with BO
+            "p_hb3":         (0.0, 40.0),          # Angular penalty shaping
 
         }
 

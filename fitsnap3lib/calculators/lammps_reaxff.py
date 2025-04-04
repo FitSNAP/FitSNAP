@@ -1,7 +1,7 @@
 from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np
 from fitsnap3lib.parallel_tools import DistributedList
 
-import json, sys
+import json, sys, gc
 import numpy as np
 #from functools import reduce
 from itertools import chain, groupby
@@ -33,13 +33,16 @@ class LammpsReaxff(LammpsBase):
 
         self._lmp = None
         self.pt.check_lammps()
+        self._initialize_lammps(0, lammpsscreen=0)
 
     # --------------------------------------------------------------------------------------------
 
     def __del__(self):
 
-        self._lmp = self.pt.close_lammps()
-        del self
+        if hasattr(self, '_lmp') and self._lmp is not None:
+            self.pt.close_lammps()
+            del self._lmp
+            gc.collect()
 
     # --------------------------------------------------------------------------------------------
 
@@ -73,6 +76,7 @@ class LammpsReaxff(LammpsBase):
 
         for config_index, c in enumerate(self._configs):
             self._data = c
+            self._prepare_lammps()
 
             for pop_index, v in enumerate(values):
                 try:
@@ -80,7 +84,7 @@ class LammpsReaxff(LammpsBase):
                     if False:
                         logfile = f"{c['File']}".replace('/','').replace(' ','-')
                         with open(f"acks2/{logfile}.in","w") as f:
-                            self._initialize_lammps(1,printfile=f)
+                            #self._initialize_lammps(1,printfile=f)
                             self._lmp.command(f"variable config string {logfile}")
                             self._lmp.command("info variables")
                             self._prepare_lammps()
@@ -91,13 +95,9 @@ class LammpsReaxff(LammpsBase):
                             self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 1000")
                             self._lmp.command("run 0 post no")
                     else:
-                        self._initialize_lammps(0, lammpsscreen=0)
-                        self._prepare_lammps()
                         self._lmp.set_reaxff_parameters(self.parameters, v)
                         self._lmp.command("run 0 post no")
                         self._collect_lammps(config_index, pop_index)
-
-                    self._lmp = self.pt.close_lammps()
 
                 except Exception as e:
                     print(f"*** rank {self.pt._rank} exception {e}")

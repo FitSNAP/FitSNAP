@@ -88,6 +88,13 @@ class LammpsSnap(LammpsBase):
         if kw_options["dgradflag"] == 0:
             kw_options.pop("dgradflag")
         kw_options["rmin0"] = self.config.sections["BISPECTRUM"].rmin0
+        
+        # cast bools "True, False" to integer equivalents for LAMMPS compatibility
+
+        kw_options = {k:(int(v) if type(v) == bool else v) for k, v in kw_options.items()}
+
+        # collect substrings
+
         kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
         kwargs = " ".join(kw_substrings)
 

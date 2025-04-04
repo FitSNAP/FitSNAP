@@ -73,7 +73,7 @@ class Reaxff(Section):
             # OFD
             "D":             (0.01, 0.5),         # van der Waals well depth (kcal/mol)
             "r_vdW":         (0.5, 3.5),          # van der Waals contact distance (Å)
-            "alpha":         (0.0, 12.0),         # vdW decay sharpness
+            "alpha":         (9.0, 12.0),         # vdW decay sharpness
             "r_s":           (0.4, 1.1),          # σ-bond cutoff radius (Å)
             "r_p":           (1.1, 2.0),          # π-bond cutoff radius (Å)
             "r_pp":          (2.0, 3.5),          # π–π bond cutoff radius (Å)

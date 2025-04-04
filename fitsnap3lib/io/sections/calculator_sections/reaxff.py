@@ -53,7 +53,7 @@ class Reaxff(Section):
             "p_lp2":         (0.0, 30.0),         # Lone pair penalty, atom-specific
 
             "rcore2":        (0.1, 2.0),          # Inner core vdW repulsion radius (Å)
-            "ecore2":        (0.0, 0.5),          # Inner core vdW repulsion energy (kcal/mol)
+            "ecore2":        (0.1, 5.0),          # Inner core vdW repulsion energy (kcal/mol)
             "acore2":        (0.0, 10.0),         # Inner core vdW exponential factor
 
             # BND
@@ -73,7 +73,7 @@ class Reaxff(Section):
             # OFD
             "D":             (0.01, 0.5),         # van der Waals well depth (kcal/mol)
             "r_vdW":         (0.5, 3.5),          # van der Waals contact distance (Å)
-            "alpha":         (0.0, 10.0),         # vdW decay sharpness
+            "alpha":         (0.0, 12.0),         # vdW decay sharpness
             "r_s":           (0.4, 1.1),          # σ-bond cutoff radius (Å)
             "r_p":           (1.1, 2.0),          # π-bond cutoff radius (Å)
             "r_pp":          (2.0, 3.5),          # π–π bond cutoff radius (Å)
@@ -83,7 +83,7 @@ class Reaxff(Section):
             "p_val1":        (-1.0, 10.0),        # Angular stiffness term
             "p_val2":        (-2.0, 2.0),         # Angular curvature term
             "p_coa1":        (-1.0, 1.0),         # π-conjugation energy
-            "p_val7":        (-10.0, 0.0),        # Undercoordination angular penalty
+            "p_val7":        (-5.0, 5.0),        # Undercoordination angular penalty
             "p_pen1":        (0.0, 100.0),        # Angular distortion penalty (kcal/mol)
             "p_val4":        (-2.0, 2.0),         # Angular modulation parameter
 
@@ -134,8 +134,8 @@ class Reaxff(Section):
             warning = "" if p_bounds[0] <= value <= p_bounds[1] else "WARNING value outside bounds"
             self.pt.single_print(p, parameter, value, p_bounds, warning)
 
-            #value = np.clip(value, p_bounds[0], p_bounds[1])
-            if value<p_bounds[0] or p_bounds[1] < value: value = (p_bounds[0]+p_bounds[1])/2.0
+            value = np.clip(value, p_bounds[0], p_bounds[1])
+            #if value<p_bounds[0] or p_bounds[1] < value: value = (p_bounds[0]+p_bounds[1])/2.0
 
             self.parameter_names.append(p)
             self.parameters.append(parameter)

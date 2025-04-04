@@ -593,7 +593,7 @@ class ParallelTools():
         Returns number of configs per node, reduced across procs, or just nconfigs if stubs.
         """
 
-        print(f"*** rank {self._rank} get_ncpn() nconfigs {nconfigs}")
+        print(f"*** rank {self._rank} get_ncpn() nconfigs {nconfigs}", flush=True)
 
         if not self.stubs:
             ncpp = np.array([nconfigs]) # Num. configs per proc.

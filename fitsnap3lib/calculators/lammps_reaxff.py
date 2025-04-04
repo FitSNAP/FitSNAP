@@ -122,15 +122,15 @@ class LammpsReaxff(LammpsBase):
     def _collect_lammps(self, config_index, pop_index):
 
         def pseudo_huber(x, delta=1.0):
-            #x = np.nan_to_num(x, nan=np.inf)
+            x = np.nan_to_num(x, nan=8e8)
             return delta**2 * (np.sqrt(1 + (x / delta)**2) - 1)
 
         def cauchy_loss(x, c=1.0):
-            #x = np.nan_to_num(x, nan=np.inf)
+            x = np.nan_to_num(x, nan=8e8)
             return c**2 * np.log1p((x / c)**2)
 
         def huber_loss(x, delta=1.0):
-            #x = np.nan_to_num(x, nan=np.inf)
+            x = np.nan_to_num(x, nan=8e8)
             abs_x = np.abs(x)
             return np.where(abs_x <= delta, 0.5 * x**2, delta * (abs_x - 0.5 * delta))
 
@@ -180,10 +180,10 @@ class LammpsReaxff(LammpsBase):
             else:
                 return f"{x:>{width}.{prec}f}"
 
-        print(f"*** rank {self.pt._rank} {self._data['File']:<12s} "
-            f"({signed_fmt(np.sum(self._data['Charges']))}) pop_index {pop_index:<2} "
-            f"| energy {energy_residual:12g} | force {forces_residual:12g} "
-            f"| charge {charge_residual:12g} | dipole {dipole_residual:12g}")
+        # print(f"*** rank {self.pt._rank} {self._data['File']:<12s} "
+        #    f"({signed_fmt(np.sum(self._data['Charges']))}) pop_index {pop_index:<2} "
+        #    f"| energy {energy_residual:12g} | force {forces_residual:12g} "
+        #    f"| charge {charge_residual:12g} | dipole {dipole_residual:12g}")
 
 
 

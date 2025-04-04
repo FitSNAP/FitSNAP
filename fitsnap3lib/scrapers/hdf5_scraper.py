@@ -40,21 +40,23 @@ class HDF5(Scraper):
 
     # --------------------------------------------------------------------------------------------
 
-    def scrape_groups(self):
+    def scrape_groups(self, group_names=None):
         self.group_metadata = {}
         self.local_configs = []
 
         file_kwargs = {"driver": "mpio", "comm": self.comm} if self.pt.stubs == 0 else {}
 
         with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
-            if self.pt.stubs == 1:
-                all_group_names = list(f.keys())[:2]
-            else:
-                groups = list(f.keys()) if self.rank == 0 else None
-                all_group_names = self.comm.bcast(groups, root=0)
 
-            for i in range(self.rank, len(all_group_names), self.size):
-                group_name = all_group_names[i]
+            if group_names is None:
+                if self.pt.stubs == 1:
+                    group_names = list(f.keys())[:2]
+                else:
+                    groups = list(f.keys()) if self.rank == 0 else None
+                    group_names = self.comm.bcast(groups, root=0)
+
+            for i in range(self.rank, len(group_names), self.size):
+                group_name = group_names[i]
                 group = f[group_name]
                 atomic_numbers = group["atomic_numbers"][()]
 
@@ -104,7 +106,7 @@ class HDF5(Scraper):
                 #print(f"*** {group_name} formation_energy {formation_energy} weights {weights} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
                 #print(f"*** {group_name} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
 
-                for j in range(conformations.shape[0]):
+                for j in range(int(conformations.shape[0]*0.8)):
                     self.local_configs.append((group_name, j))
 
         if self.pt.stubs==0:
@@ -122,13 +124,20 @@ class HDF5(Scraper):
             flat_configs = [cfg for sub in all_configs for cfg in sub]
             flat_configs.sort()
             total = len(flat_configs)
-            base = total // self.size
-            remainder = total % self.size
-            start = self.rank * base + min(self.rank, remainder)
-            stop = start + base + (1 if self.rank < remainder else 0)
+            base = total // (self.size-1)
+            #remainder = total % (self.size-1)
+            remainder = 0
+            if self.rank==0:
+                start = 0
+                stop = 0
+                expected = 0
+            else:
+                start = (self.rank-1) * base + min((self.rank-1), remainder)
+                stop = start + base + (1 if (self.rank-1) < remainder else 0)
+                expected = base + (1 if (self.rank-1) < remainder else 0)
             self.my_configs = flat_configs[start:stop]
-            expected = base + (1 if self.rank < remainder else 0)
             actual = len(self.my_configs)
+            #print(f"[Rank {self.rank}] Expected {expected} configs, got {actual}. total {total} base {base}, remainder {remainder}")
             if actual != expected:
                 raise RuntimeError(f"[Rank {self.rank}] Expected {expected} configs, got {actual}")
 
@@ -181,7 +190,7 @@ class HDF5(Scraper):
                         "NumAtoms": len(atomic_numbers),
                         "Lattice": meta["lattice"],
                         "Region": meta["region"],
-                        "eweight": float(meta["weights"][i] * 1),
+                        "eweight": float(meta["weights"][i] * 99.0),
                         "fweight": 99.0 / len(atomic_numbers),
                         "vweight": 0.0,
                         "cweight": meta["cweight"],

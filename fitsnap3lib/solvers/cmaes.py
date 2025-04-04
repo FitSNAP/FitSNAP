@@ -85,10 +85,10 @@ class CMAES(Solver):
 
     def _log_progress(self, es):
 
-        if es.countiter % 1 == 0:
+        if es.countiter % 10 == 0:
             self._log_best(es)
 
-        if es.countiter % 10 == 0:
+        if es.countiter % 100 == 0:
             current_fit = self.reaxff_io.change_parameters_string(es.best.x)
             self.output.output(current_fit, None)
 

@@ -102,9 +102,9 @@ class CMAES(Solver):
         print("PARAMETER_NAME        INITIAL  LOWER_BOUND       NOW     UPPER_BOUND")
         for p, x0i, xbi in zip(self.reaxff_io.parameter_names, es.x0, es.best.x):
             p_bounds = self.reaxff_io.bounds[p.split('.')[-1]]
-            print(f"{p:<19} {x0i: > 9.4f}  [  {p_bounds[0]: > 6.2f} {xbi: > 13.8f} {p_bounds[1]: > 8.2f}  ]")
-        print(f"------------------------ {es.countiter:<7} {es.best.f:9.4g} ------------------------")
-
+            print(f"{p:<19} {x0i: > 9.4f}  [  {p_bounds[0]: > 8.2f} {xbi: > 13.8f}  {p_bounds[1]: > 8.2f} ]")
+        print(f"------------------------ {es.countiter:<7} {es.best.f:10.4g} ------------------------")
+                
     # --------------------------------------------------------------------------------------------
 
     def error_analysis(self):

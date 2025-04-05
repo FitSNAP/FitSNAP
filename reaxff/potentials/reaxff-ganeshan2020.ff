@@ -39,9 +39,9 @@ Reactive MD-force field: Ti3C2(O,OH)2 MXene + 2D-TiO2 + water+{Li,K,Na} 2020
   5.0000 !Molecular energy (not used)
   0.0000 !Molecular energy (not used)
   0.7903 !Valency angle conjugation parameter
-14   ! ATM r_s, valency, mass, r_vdw, epsilon, gamma, r_pi, valency_e
+14   ! ATM r_s, valency, mass, r_vdw, epsilon, gamma, r_p, valency_e
                  alpha, gamma_w, valency_boc, p_ovun5, not_used, chi, eta, p_hbond
-                 r_pi_pi, p_lp2, not_used, b_o_131, b_o_132, b_o_133, bcut_acks2, not_used
+                 r_pp, p_lp2, not_used, b_o_131, b_o_132, b_o_133, bcut_acks2, not_used
                  p_ovun2, p_val3, not_used, valency_val, p_val5, rcore2, ecore2, acore2
 C    1.3674   4.0000  12.0000   2.0453   0.1444   0.8485   1.1706   4.0000
      9.0000   1.5000   4.0000  30.0000  79.5548   4.8446   7.0000   0.0000
@@ -243,7 +243,7 @@ X   -0.1000   2.0000   1.0080   2.0000   0.0000   0.0100  -0.1000   6.0000
         1.7161   0.0000  12.0000   1.0000  -0.1015   4.0000   0.0000   0.0000
 9  13   0.0000   0.0000   0.0000   0.3228   0.3000   0.0000  26.0000   0.6003
         1.7161   0.0000  12.0000   1.0000  -0.1015   4.0000   0.0000   0.0000
-36    ! OFD D, r_vdW, alpha, r_s, r_p, r_pp
+36    ! OFD D, r_vdw, alpha, r_s, r_p, r_pp
 1  2    0.1200   1.3861   9.8561   1.1254  -1.0000  -1.0000
 2  3    0.0283   1.2885  10.9190   0.9215  -1.0000  -1.0000
 2  4    0.0687   1.5130  10.0094   0.9412  -1.0000  -1.0000

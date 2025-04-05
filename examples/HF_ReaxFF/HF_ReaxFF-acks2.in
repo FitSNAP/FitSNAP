@@ -3,15 +3,12 @@ potential      = reaxff-wood2014.ff
 parameters     =
   #GEN.p_vdW1
   GEN.bond_softness
-  ATM.H.r_vdW ATM.H.epsilon
-  ATM.H.chi ATM.H.eta ATM.H.bcut_acks2 ATM.H.gamma
-  #ATM.H.rcore2 ATM.H.ecore2 ATM.H.acore2
-  ATM.F.r_vdW ATM.F.epsilon
-  ATM.F.chi ATM.F.eta ATM.F.bcut_acks2 ATM.F.gamma
-  #ATM.F.rcore2 ATM.F.ecore2 ATM.F.acore2
+  ATM.*.r_vdw ATM.*.epsilon
+  ATM.*.gamma ATM.*.chi ATM.*.eta ATM.*.bcut_acks2
+  #ATM.*.rcore2 ATM.*.ecore2 ATM.*.acore2
   BND.H.F.De_s BND.H.F.p_be1 BND.H.F.p_be2
   BND.H.F.p_bo1 BND.H.F.p_bo2 BND.H.F.p_bo3 BND.H.F.p_bo4
-  OFD.H.F.D OFD.H.F.r_vdW OFD.H.F.alpha OFD.H.F.r_s OFD.H.F.r_p
+  OFD.H.F.D OFD.H.F.r_vdw OFD.H.F.alpha OFD.H.F.r_s OFD.H.F.r_p
 
 
 [CALCULATOR]

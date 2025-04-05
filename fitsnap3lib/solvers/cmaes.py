@@ -124,40 +124,102 @@ class CMAES(Solver):
 
     # --------------------------------------------------------------------------------------------
 
+    def build_constraints_lambda(self):
+        idx = self.reaxff_io.name_to_index
+        elements = reaxff_calculator.elements
+        constraints = []
+        constraint_desc = []
 
+        # 1. ATM radius hierarchy: r_s ≥ r_p ≥ r_pp
+        for element in elements:
+            keys = {
+                'r_s': f'ATM.{element}.r_s',
+                'r_p': f'ATM.{element}.r_p',
+                'r_pp': f'ATM.{element}.r_pp'
+            }
+            present = {k: idx[v] for k, v in keys.items() if v in idx}
+            if 'r_s' in present and 'r_p' in present:
+                constraints.append(lambda x, i1=present['r_s'], i2=present['r_p']: x[i1] - x[i2])
+                constraint_desc.append(f'1. ATM {element}: r_s ≥ r_p')
+            if 'r_p' in present and 'r_pp' in present:
+                constraints.append(lambda x, i1=present['r_p'], i2=present['r_pp']: x[i1] - x[i2])
+                constraint_desc.append(f'1. ATM {element}: r_p ≥ r_pp')
 
+        # 2. OFD radius hierarchy: r_s ≥ r_p ≥ r_pp
+        for element in elements:
+            keys = {
+                'r_s': f'OFD.{element}.r_s',
+                'r_p': f'OFD.{element}.r_p',
+                'r_pp': f'OFD.{element}.r_pp'
+            }
+            present = {k: idx[v] for k, v in keys.items() if v in idx}
+            if 'r_s' in present and 'r_p' in present:
+                constraints.append(lambda x, i1=present['r_s'], i2=present['r_p']: x[i1] - x[i2])
+                constraint_desc.append(f'2. OFD {element}: r_s ≥ r_p')
+            if 'r_p' in present and 'r_pp' in present:
+                constraints.append(lambda x, i1=present['r_p'], i2=present['r_pp']: x[i1] - x[i2])
+                constraint_desc.append(f'2. OFD {element}: r_p ≥ r_pp')
 
+        # 3. Bond energy hierarchy: De_s ≥ De_p ≥ De_pp
+        for triplet in [('De_s', 'De_p'), ('De_p', 'De_pp')]:
+            keys = [f'BND.{p}' for p in triplet]
+            if all(k in idx for k in keys):
+                i1, i2 = idx[keys[0]], idx[keys[1]]
+                constraints.append(lambda x, i1=i1, i2=i2: x[i1] - x[i2])
+                constraint_desc.append(f'3. BND: {triplet[0]} ≥ {triplet[1]}')
 
+        # 4. Bond order exponents: p_bo2 ≥ p_bo4 ≥ p_bo6
+        for triplet in [('p_bo2', 'p_bo4'), ('p_bo4', 'p_bo6')]:
+            keys = [f'BND.{p}' for p in triplet]
+            if all(k in idx for k in keys):
+                i1, i2 = idx[keys[0]], idx[keys[1]]
+                constraints.append(lambda x, i1=i1, i2=i2: x[i1] - x[i2])
+                constraint_desc.append(f'4. BND: {triplet[0]} ≥ {triplet[1]}')
 
+        # 5. p_be2 ≥ p_bo2
+        if 'BND.p_be2' in idx and 'BND.p_bo2' in idx:
+            i1, i2 = idx['BND.p_be2'], idx['BND.p_bo2']
+            constraints.append(lambda x, i1=i1, i2=i2: x[i1] - x[i2])
+            constraint_desc.append('5. BND: p_be2 ≥ p_bo2')
 
+        # 6. r_vdw ≥ r_s (ATM)
+        for element in elements:
+            k1, k2 = f'ATM.{element}.r_vdw', f'ATM.{element}.r_s'
+            if k1 in idx and k2 in idx:
+                constraints.append(lambda x, i1=idx[k1], i2=idx[k2]: x[i1] - x[i2])
+                constraint_desc.append(f'6. ATM {element}: r_vdw ≥ r_s')
 
+        # 7. ecore2 ≥ epsilon
+        if 'ATM.ecore2' in idx and 'ATM.epsilon' in idx:
+            constraints.append(lambda x, i1=idx['ATM.ecore2'], i2=idx['ATM.epsilon']: x[i1] - x[i2])
+            constraint_desc.append('7. ATM: ecore2 ≥ epsilon')
 
+        # 8. r_vdw ≥ rcore2
+        if 'ATM.r_vdw' in idx and 'ATM.rcore2' in idx:
+            constraints.append(lambda x, i1=idx['ATM.r_vdw'], i2=idx['ATM.rcore2']: x[i1] - x[i2])
+            constraint_desc.append('8. ATM: r_vdw ≥ rcore2')
 
+        # 9. chi_H ≤ chi_C ≤ chi_N ≤ chi_O ≤ chi_F
+        chi_order = ['H', 'C', 'N', 'O', 'F']
+        for a, b in zip(chi_order[:-1], chi_order[1:]):
+            k1, k2 = f'ATM.{a}.chi', f'ATM.{b}.chi'
+            if k1 in idx and k2 in idx:
+                constraints.append(lambda x, i1=idx[k2], i2=idx[k1]: x[i1] - x[i2])
+                constraint_desc.append(f'9. ATM: chi_{a} ≤ chi_{b}')
 
+        # 10. bcut_acks2 ≥ r_s
+        for element in elements:
+            k1, k2 = f'ATM.{element}.bcut_acks2', f'ATM.{element}.r_s'
+            if k1 in idx and k2 in idx:
+                constraints.append(lambda x, i1=idx[k1], i2=idx[k2]: x[i1] - x[i2])
+                constraint_desc.append(f'10. ATM {element}: bcut_acks2 ≥ r_s')
 
+        print(f'\n[CONSTRAINTS] Applied {len(constraint_desc)} cross-parameter constraints:')
+        for desc in constraint_desc:
+            print(f'  - {desc}')
+        print()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return lambda x: [f(x) for f in constraints]
 
 
 
@@ -166,8 +228,6 @@ class CMAES(Solver):
 
 
 ################################ SCRATCH ################################
-
-
 
     def cmaes_constraints(self, x):
 

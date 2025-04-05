@@ -27,15 +27,15 @@ class Reaxff(Section):
         self.bounds = {
 
             # GEN
-            "bond_softness": (200.0, 800.0),      # ACKS2 bond softness
+            "bond_softness": (400.0, 600.0),      # ACKS2 bond softness
 
             # ATM
             "r_s":           (0.4, 1.1),          # Covalent sigma-bond radius (Å)
-            "r_pi":          (1.1, 2.0),          # Covalent π-bond radius (Å)
-            "r_pi_pi":       (2.0, 3.5),          # π–π bond radius
+            "r_p":          (1.1, 2.0),          # Covalent π-bond radius (Å)
+            "r_pp":       (2.0, 3.5),          # π–π bond radius
             "r_vdw":         (0.5, 3.5),          # vdW radius (Å)
             "epsilon":       (0.01, 0.50),        # vdW dissociation energy (kcal/mol)
-            "alpha":         (0.0, 10.0),         # vdW alpha parameter
+            "alpha":         (7.0, 12.0),         # vdW alpha parameter
             "gamma_w":       (0.0, 3.0),          # vdW shielding width
 
             "gamma":         (0.5, 20.0),         # Valence orbital exponent for QEq/ACKS2
@@ -48,7 +48,7 @@ class Reaxff(Section):
             "b_o_131":       (-1.0, 1.0),         # BO correction term 131
             "b_o_132":       (-1.0, 1.0),         # BO correction term 132
             "b_o_133":       (-1.0, 1.0),         # BO correction term 133
-            "p_ovun2":       (-8.0, 1.0),         # Angle-based undercoordination penalty
+            "p_ovun2":       (-8.0, 0.0),         # Angle-based undercoordination penalty
             "p_ovun5":       (-10.0, 0.0),        # Undercoordination energy penalty
             "p_lp2":         (0.0, 30.0),         # Lone pair penalty, atom-specific
 
@@ -58,33 +58,33 @@ class Reaxff(Section):
 
             # BND
             "De_s":          (50.0, 200.0),       # sigma-bond dissociation energy (kcal/mol)
-            "De_p":          (0.0, 150.0),        # pi-bond dissociation energy
+            "De_p":          (0.0, 100.0),        # pi-bond dissociation energy
             "De_pp":         (0.0, 80.0),         # pipi-bond dissociation energy
             "p_be1":         (-1.5, 0.5),         # Bond energy parameter coefficient
             "p_be2":         (1.0, 10.0),         # Bond energy parameter exponent
-            "p_bo1":         (-1.0, 0.2),         # sigma-bond order coefficient
+            "p_bo1":         (-1.0, 0.0),         # sigma-bond order coefficient
             "p_bo2":         (1.0, 20.0),         # sigma-bond order exponent
-            "p_bo3":         (-1.0, 0.2),         # pi-bond order coefficient
+            "p_bo3":         (-1.0, 0.0),         # pi-bond order coefficient
             "p_bo4":         (1.0, 20.0),         # pi-bond order exponent
-            "p_bo5":         (-1.0, 0.2),         # pipi-bond order coefficient
+            "p_bo5":         (-1.0, 0.0),         # pipi-bond order coefficient
             "p_bo6":         (0.0, 50.0),         # pipi-bond order exponent
             "p_ovun1":       (0.8, 1.2),          # Overcoordination penalty
 
             # OFD
             "D":             (0.01, 0.5),         # van der Waals well depth (kcal/mol)
-            "r_vdW":         (0.5, 3.5),          # van der Waals contact distance (Å)
-            "alpha":         (9.0, 12.0),         # vdW decay sharpness
+            "r_vdw":         (0.5, 3.5),          # van der Waals contact distance (Å)
+            "alpha":         (7.0, 12.0),         # vdW decay sharpness
             "r_s":           (0.4, 1.1),          # σ-bond cutoff radius (Å)
             "r_p":           (1.1, 2.0),          # π-bond cutoff radius (Å)
             "r_pp":          (2.0, 3.5),          # π–π bond cutoff radius (Å)
 
             # ANG
-            "theta_00":      (0.0, 180.0),        # θ_eq = 180 - theta_00 (deg)
+            "theta_00":      (5.0, 175.0),        # θ_eq = 180 - theta_00 (deg)
             "p_val1":        (-1.0, 10.0),        # Angular stiffness term
             "p_val2":        (-2.0, 2.0),         # Angular curvature term
             "p_coa1":        (-1.0, 1.0),         # π-conjugation energy
             "p_val7":        (-5.0, 5.0),        # Undercoordination angular penalty
-            "p_pen1":        (0.0, 100.0),        # Angular distortion penalty (kcal/mol)
+            "p_pen1":        (0.0, 30.0),        # Angular distortion penalty (kcal/mol)
             "p_val4":        (-2.0, 2.0),         # Angular modulation parameter
 
             # TOR
@@ -98,7 +98,7 @@ class Reaxff(Section):
             "r0_hb":         (1.5, 2.5),          # H-bond distance (Å)
             "p_hb1":         (-10.0, 0.0),         # H-bond strength (kcal/mol)
             "p_hb2":         (0.8, 3.0),          # H-bond decay with BO
-            "p_hb3":         (0.0, 40.0),          # Angular penalty shaping
+            "p_hb3":         (10.0, 40.0),          # Angular penalty shaping
 
         }
 
@@ -246,9 +246,9 @@ class Reaxff(Section):
 
         elif block == 'ATM':
             return 1, [
-                'r_s', 'valency', 'mass', 'r_vdw', 'epsilon', 'gamma', 'r_pi', 'valency_e',
+                'r_s', 'valency', 'mass', 'r_vdw', 'epsilon', 'gamma', 'r_p', 'valency_e',
                 'alpha', 'gamma_w', 'valency_boc', 'p_ovun5', 'gauss_exp', 'chi', 'eta', 'p_hbond', 
-                'r_pi_pi', 'p_lp2', '', 'b_o_131', 'b_o_132', 'b_o_133', 'bcut_acks2', '', 
+                'r_pp', 'p_lp2', '', 'b_o_131', 'b_o_132', 'b_o_133', 'bcut_acks2', '',
                 'p_ovun2', 'p_val3', '', 'valency_val', 'p_val5', 'rcore2', 'ecore2', 'acore2']
 
         elif block == 'BND':
@@ -257,7 +257,7 @@ class Reaxff(Section):
                 'p_be2','p_bo3','p_bo4','','p_bo1','p_bo2','ovc','']
 
         elif block == 'OFD':
-            return 2, ['D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']
+            return 2, ['D', 'r_vdw', 'alpha', 'r_s', 'r_p', 'r_pp']
 
         elif block == 'ANG':
             return 3, ['theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']

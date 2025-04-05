@@ -343,8 +343,8 @@ class Reaxff(Section):
         # GEN.bond_softness
         if name_index == 34:
             potential_string_lines = self.potential_string.splitlines(True)
-            potential_string_lines[name_index+2] = self.number_format + \
-              ' ! GEN.bond_softness\n'.format(value)
+            potential_string_lines[name_index+2] = self.number_format.format(value) + \
+              ' ! GEN.bond_softness\n'
             self.potential_string = ''.join(potential_string_lines)
         else:
             raise NotImplementedError(f"GEN.{name_index} not implemented.")

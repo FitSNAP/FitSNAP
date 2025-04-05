@@ -2,16 +2,16 @@
 import re, sys
 
 atm_parameters_list = [
-    ['r_s', 'valency', 'mass', 'r_vdw', 'epsilon', 'gamma', 'r_pi', 'valency_e'],
+    ['r_s', 'valency', 'mass', 'r_vdw', 'epsilon', 'gamma', 'r_p', 'valency_e'],
     ['alpha', 'gamma_w', 'valency_boc', 'p_ovun5', 'not_used', 'chi', 'eta', 'p_hbond'], 
-    ['r_pi_pi', 'p_lp2', 'not_used', 'b_o_131', 'b_o_132', 'b_o_133', 'bcut_acks2', 'not_used'], 
+    ['r_pp', 'p_lp2', 'not_used', 'b_o_131', 'b_o_132', 'b_o_133', 'bcut_acks2', 'not_used'], 
     ['p_ovun2', 'p_val3', 'not_used', 'valency_val', 'p_val5', 'rcore2', 'ecore2', 'acore2']]
 
 bnd_parameters_list = [
     ['De_s','De_p','De_pp','p_be1','p_bo5','v13cor','p_bo6','p_ovun1'], 
     ['p_be2','p_bo3','p_bo4','not_used','p_bo1','p_bo2','ovc','not_used']]
 
-ofd_parameters_list = ['D', 'r_vdW', 'alpha', 'r_s', 'r_p', 'r_pp']
+ofd_parameters_list = ['D', 'r_vdw', 'alpha', 'r_s', 'r_p', 'r_pp']
 
 ang_parameters_list = ['theta_00', 'p_val1', 'p_val2', 'p_coa1', 'p_val7', 'p_pen1', 'p_val4']
 

@@ -6,7 +6,7 @@ class Eshift(Section):
 
     def __init__(self, name, config, pt, infile, args):
         super().__init__(name, config, pt, infile, args)
-        types = []
+        self.types = []
         if config.has_section("BISPECTRUM"):
             self.types = self.get_value("BISPECTRUM", "type", "H").split()
         elif config.has_section("ACE"):
@@ -14,7 +14,7 @@ class Eshift(Section):
         elif config.has_section("CUSTOM"):
             self.types = self.get_value("CUSTOM", "type", "H").split()
             
-        if config.has_section("ESHIFT"):
+        if( config.has_section("ESHIFT") and not config.has_section("REAXFF") ):
             self.eshift = {}
         else:
             return

@@ -108,7 +108,7 @@ class Scraper:
             if training_size is None:
                 raise ValueError("Please set training size for {}".format(key))
 
-            folder = path.join(self.config.sections["PATH"].datapath, key)
+            folder = path.join(self.config.sections["PATH"].dataPath, key)
 
             # ignore anything in folder that is not a file
             # each scraper type can decide what to do with "bad" filetypes

@@ -3,6 +3,7 @@ from fitsnap3lib.io.outputs.outputs import Output
 from fitsnap3lib.io.outputs.pace import Pace
 from fitsnap3lib.io.outputs.snap import Snap
 from fitsnap3lib.io.outputs.custom import Custom
+from fitsnap3lib.io.outputs.reaxff import Reaxff
 
 
 #pt = ParallelTools()

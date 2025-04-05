@@ -8,5 +8,5 @@ class Template(Output):
         super().__init__(name, pt, config)
 
     # You must override this method
-    def output(self):
+    def output(self, coeffs, errors):
         pass

@@ -27,7 +27,7 @@ ReaxFF in LAMMPS :footcite:p:`aktulga2012` supports three charge equilibration m
 
   - Charge Transfer and Polarization in Equilibrium (QTPIE) :footcite:p:`chen2007`
 
-while fixed partial charges in classical force fields (eg. CHARMM) do not. **FitSNAP-ReaxFF enables retraining of legacy ReaxFF QEq potentials for ACKS2 and QTPIE**, including optimization of the bond_softness, chi, eta, gamma, bcut_acks2, and gauss_exp parameters.
+while fixed partial charges in classical force fields (eg. CHARMM) do not. **FitSNAP-ReaxFF enables retraining of legacy ReaxFF QEq potentials for ACKS2 and QTPIE**, including optimization of the bond_softness, chi, eta, gamma, bcut_acks2 parameters. bond_softness and bcut_acks2 only apply to ACKS2. QTPIE gauss_exp parameters cannot be optimized since they are stored externally not in the force field file, but sensible values can be chosen and then the other relevant chi, eta, gamma parameters optimized.
 
 
 |
@@ -68,7 +68,7 @@ Details for each term:
 
 are presented in the `Supporting Information <https://doi.org/10.1021/jp709896w>`_ of *A ReaxFF Reactive Force Field for Molecular Dynamics Simulations of Hydrocarbon Oxidation* by Chenoweth, van Duin, Goddard (2008).
 
-In the context of the ReaxFF (Reactive Force Field) method, overcoordination and undercoordination refer to the situation where atoms are either bonded with more or fewer neighbors than expected, based on the bond formation rules of the force field.
+In the context of the ReaxFF (Reactive Force Field) method, *overcoordination* and *undercoordination* refer to the situation where atoms are either bonded with more or fewer neighbors than expected, based on the bond formation rules of the force field.
 
 ## Overcoordination:
 
@@ -77,6 +77,20 @@ This occurs when an atom forms more bonds than what is typical for its valence. 
 ## Undercoordination:
 
 This happens when an atom has fewer bonds or neighbors than expected based on its chemical environment. In ReaxFF, undercoordination can occur when bond orders are too low, leading to atoms having fewer connections than would be expected, which can make the structure unrealistic or energetically unfavorable. Both overcoordination and undercoordination can affect the accuracy and reliability of molecular simulations using ReaxFF, as the force field needs to accurately reflect the real atomic bonding patterns to give realistic results. These issues can arise during simulations involving bond breaking and formation, such as during chemical reactions or phase transitions.
+
+
+Fitting Constraints
+^^^^^^^^^^^^^^^^^^^
+
+The following constraints are enforced during fitting with FitSNAP-Reaxff:
+
+  - for all elements X in force field,
+
+      - ATM.X.r_s >= ATM.X.r_p >= ATM.X.r_pp
+
+      - ATM.X.r_vdw <= ATM.X.
+
+
 
 |
 

@@ -6,8 +6,10 @@ from pprint import pprint
 
 # ------------------------------------------------------------------------------------------------
 
-def _loss_function(x_arrays):
+def _loss_function_value(x):
+    return reaxff_calculator.process_configs_with_values([x])
 
+def _loss_function_values(x_arrays):
     return reaxff_calculator.process_configs_with_values(x_arrays)
 
 # ------------------------------------------------------------------------------------------------
@@ -34,12 +36,12 @@ class CMAES(Solver):
         if self.pt.stubs==1:
             answer = _loss_function(x_arrays)
         else:
-            futures = [self.executor.submit(_loss_function, x_arrays) for _ in self.range_workers]
+            futures = [self.executor.submit(_loss_function_values, x_arrays) for _ in self.range_workers]
             results = np.vstack([np.nan_to_num(f.result(), nan=8e8) for f in futures])
             answer = np.sum(results, axis=0)
             #print(f"*** rank {self.pt._rank} results {results}")
 
-        print(f"*** rank {self.pt._rank} answer {answer}")
+        #print(f"*** rank {self.pt._rank} answer {answer}")
         return answer.tolist()
 
     # --------------------------------------------------------------------------------------------
@@ -63,6 +65,13 @@ class CMAES(Solver):
           'bounds': list(np.transpose(self.config.sections['REAXFF'].parameter_bounds))
         }
 
+        from concurrent.futures import ThreadPoolExecutor
+        self.io_executor = ThreadPoolExecutor(max_workers=1)
+
+        if self.pt._rank == 0:
+            self.constraints_function = self.build_constraints_lambda()
+            cfun = cma.ConstrainedFitnessAL( _loss_function_value, self.constraints_function )
+
         if self.pt.stubs==0:
             # SAFER TO USE *MPICommExecutor* INSTEAD OF *MPIPoolExecutor*
             # [https://mpi4py.readthedocs.io/en/stable/mpi4py.futures.html#mpicommexecutor]
@@ -81,17 +90,19 @@ class CMAES(Solver):
             self.fit = self.reaxff_io.change_parameters_string(es.best.x)
             self._log_best(es)
 
+        self.io_executor.shutdown(wait=True)
+
     # --------------------------------------------------------------------------------------------
 
     def _log_progress(self, es):
 
-        if es.countiter % 10 == 0:
+        if es.countiter == 1 or es.countiter % 100 == 0:
             self._log_best(es)
 
-        if es.countiter % 100 == 0:
+        if es.countiter % 10 == 0:
             current_fit = self.reaxff_io.change_parameters_string(es.best.x)
-            self.output.output(current_fit, None)
-
+            # offload i/o to a background thread and keep optimization loop going without stalling
+            self.io_executor.submit(self.output.output, current_fit, None)
 
     # --------------------------------------------------------------------------------------------
 
@@ -125,128 +136,307 @@ class CMAES(Solver):
     # --------------------------------------------------------------------------------------------
 
     def build_constraints_lambda(self):
-        idx = self.reaxff_io.name_to_index
+        param_idx = {p: i for i, p in enumerate(self.config.sections["REAXFF"].parameter_names)}
+        print(f"*** param_idx {param_idx}")
         elements = reaxff_calculator.elements
         constraints = []
-        constraint_desc = []
+        constraints_desc = []
 
-        # 1. ATM radius hierarchy: r_s ≥ r_p ≥ r_pp
-        for element in elements:
-            keys = {
-                'r_s': f'ATM.{element}.r_s',
-                'r_p': f'ATM.{element}.r_p',
-                'r_pp': f'ATM.{element}.r_pp'
-            }
-            present = {k: idx[v] for k, v in keys.items() if v in idx}
-            if 'r_s' in present and 'r_p' in present:
-                constraints.append(lambda x, i1=present['r_s'], i2=present['r_p']: x[i1] - x[i2])
-                constraint_desc.append(f'1. ATM {element}: r_s ≥ r_p')
-            if 'r_p' in present and 'r_pp' in present:
-                constraints.append(lambda x, i1=present['r_p'], i2=present['r_pp']: x[i1] - x[i2])
-                constraint_desc.append(f'1. ATM {element}: r_p ≥ r_pp')
+        # -------- 1. ATM r_s ≥ r_p ≥ r_pp --------
+        # -------- 2. ATM r_vdw ≥ r_s --------
 
-        # 2. OFD radius hierarchy: r_s ≥ r_p ≥ r_pp
-        for element in elements:
-            keys = {
-                'r_s': f'OFD.{element}.r_s',
-                'r_p': f'OFD.{element}.r_p',
-                'r_pp': f'OFD.{element}.r_pp'
-            }
-            present = {k: idx[v] for k, v in keys.items() if v in idx}
-            if 'r_s' in present and 'r_p' in present:
-                constraints.append(lambda x, i1=present['r_s'], i2=present['r_p']: x[i1] - x[i2])
-                constraint_desc.append(f'2. OFD {element}: r_s ≥ r_p')
-            if 'r_p' in present and 'r_pp' in present:
-                constraints.append(lambda x, i1=present['r_p'], i2=present['r_pp']: x[i1] - x[i2])
-                constraint_desc.append(f'2. OFD {element}: r_p ≥ r_pp')
+        for e in elements:
 
-        # 3. Bond energy hierarchy: De_s ≥ De_p ≥ De_pp
-        for triplet in [('De_s', 'De_p'), ('De_p', 'De_pp')]:
-            keys = [f'BND.{p}' for p in triplet]
-            if all(k in idx for k in keys):
-                i1, i2 = idx[keys[0]], idx[keys[1]]
-                constraints.append(lambda x, i1=i1, i2=i2: x[i1] - x[i2])
-                constraint_desc.append(f'3. BND: {triplet[0]} ≥ {triplet[1]}')
+            key_r_s = f'ATM.{e}.r_s'
+            key_r_p = f'ATM.{e}.r_p'
+            key_r_pp = f'ATM.{e}.r_pp'
+            key_r_vdw = f'ATM.{e}.r_vdw'
 
-        # 4. Bond order exponents: p_bo2 ≥ p_bo4 ≥ p_bo6
-        for triplet in [('p_bo2', 'p_bo4'), ('p_bo4', 'p_bo6')]:
-            keys = [f'BND.{p}' for p in triplet]
-            if all(k in idx for k in keys):
-                i1, i2 = idx[keys[0]], idx[keys[1]]
-                constraints.append(lambda x, i1=i1, i2=i2: x[i1] - x[i2])
-                constraint_desc.append(f'4. BND: {triplet[0]} ≥ {triplet[1]}')
+            if key_r_s in param_idx and key_r_p in param_idx:
+                i1, i2 = param_idx[key_r_s], param_idx[key_r_p]
+                constraints.append((lambda i1=i1, i2=i2: (lambda x: x[i1] - x[i2]))())
+                constraints_desc.append(f"(1a) {key_r_s} ≥ {key_r_p}")
 
-        # 5. p_be2 ≥ p_bo2
-        if 'BND.p_be2' in idx and 'BND.p_bo2' in idx:
-            i1, i2 = idx['BND.p_be2'], idx['BND.p_bo2']
-            constraints.append(lambda x, i1=i1, i2=i2: x[i1] - x[i2])
-            constraint_desc.append('5. BND: p_be2 ≥ p_bo2')
+            if key_r_p in param_idx and key_r_pp in param_idx:
+                i1, i2 = param_idx[key_r_p], param_idx[key_r_pp]
+                constraints.append((lambda i1=i1, i2=i2: (lambda x: x[i1] - x[i2]))())
+                constraints_desc.append(f"(1b) {key_r_p} ≥ {key_r_pp}")
 
-        # 6. r_vdw ≥ r_s (ATM)
-        for element in elements:
-            k1, k2 = f'ATM.{element}.r_vdw', f'ATM.{element}.r_s'
-            if k1 in idx and k2 in idx:
-                constraints.append(lambda x, i1=idx[k1], i2=idx[k2]: x[i1] - x[i2])
-                constraint_desc.append(f'6. ATM {element}: r_vdw ≥ r_s')
+            if key_r_p not in param_idx and key_r_s in param_idx and key_r_pp in param_idx:
+                i1, i2 = param_idx[key_r_s], param_idx[key_r_pp]
+                constraints.append((lambda i1=i1, i2=i2: (lambda x: x[i1] - x[i2]))())
+                constraints_desc.append(f"(1c) {key_r_s} ≥ {key_r_pp}")
 
-        # 7. ecore2 ≥ epsilon
-        if 'ATM.ecore2' in idx and 'ATM.epsilon' in idx:
-            constraints.append(lambda x, i1=idx['ATM.ecore2'], i2=idx['ATM.epsilon']: x[i1] - x[i2])
-            constraint_desc.append('7. ATM: ecore2 ≥ epsilon')
+            if key_r_s in param_idx and key_r_vdw in param_idx:
+                i1, i2 = param_idx[key_r_s], param_idx[key_r_vdw]
+                constraints.append((lambda i1=i1, i2=i2: (lambda x: x[i2] - x[i1]))())
+                constraints_desc.append(f"(2) {key_r_vdw} ≥ {key_r_s}")
 
-        # 8. r_vdw ≥ rcore2
-        if 'ATM.r_vdw' in idx and 'ATM.rcore2' in idx:
-            constraints.append(lambda x, i1=idx['ATM.r_vdw'], i2=idx['ATM.rcore2']: x[i1] - x[i2])
-            constraint_desc.append('8. ATM: r_vdw ≥ rcore2')
+        # -------- 3. ATM r_vdw > rcore2 --------
+        # -------- 4. ATM ecore2 > epsilon --------
 
-        # 9. chi_H ≤ chi_C ≤ chi_N ≤ chi_O ≤ chi_F
-        chi_order = ['H', 'C', 'N', 'O', 'F']
-        for a, b in zip(chi_order[:-1], chi_order[1:]):
-            k1, k2 = f'ATM.{a}.chi', f'ATM.{b}.chi'
-            if k1 in idx and k2 in idx:
-                constraints.append(lambda x, i1=idx[k2], i2=idx[k1]: x[i1] - x[i2])
-                constraint_desc.append(f'9. ATM: chi_{a} ≤ chi_{b}')
+        for e in elements:
+            key_rcore2 = f'ATM.{e}.rcore2'
+            key_r_vdw = f'ATM.{e}.r_vdw'
+            key_ecore2 = f'ATM.{e}.ecore2'
+            key_epsilon = f'ATM.{e}.epsilon'
 
-        # 10. bcut_acks2 ≥ r_s
-        for element in elements:
-            k1, k2 = f'ATM.{element}.bcut_acks2', f'ATM.{element}.r_s'
-            if k1 in idx and k2 in idx:
-                constraints.append(lambda x, i1=idx[k1], i2=idx[k2]: x[i1] - x[i2])
-                constraint_desc.append(f'10. ATM {element}: bcut_acks2 ≥ r_s')
+            if key_rcore2 in param_idx and key_r_vdw in param_idx:
+                i1, i2 = param_idx[key_rcore2], param_idx[key_r_vdw]
+                constraints.append((lambda i1=i1, i2=i2: lambda x: x[i2] - x[i1] - 0.01)())
+                constraints_desc.append(f"(3) {key_r_vdw} > {key_rcore2}")
 
-        print(f'\n[CONSTRAINTS] Applied {len(constraint_desc)} cross-parameter constraints:')
-        for desc in constraint_desc:
-            print(f'  - {desc}')
-        print()
+            if key_ecore2 in param_idx and key_epsilon in param_idx:
+                i3, i4 = param_idx[key_ecore2], param_idx[key_epsilon]
+                constraints.append((lambda i3=i3, i4=i4: lambda x: x[i3] - x[i4])())
+                constraints_desc.append(f"(4) {key_ecore2} > {key_epsilon}")
 
+        # -------- 5. ATM eta > 7.2*gamma (QEQ), eta > 8.13*gamma (ACKS2) --------
+
+        factor = 8.13 if "acks2" in reaxff_calculator.charge_fix else 7.2
+
+        for e in elements:
+
+            key_gamma = f'ATM.{e}.gamma'
+            key_eta   = f'ATM.{e}.eta'
+
+            if key_gamma in param_idx and key_eta in param_idx:
+                i_gamma = param_idx[key_gamma]
+                i_eta   = param_idx[key_eta]
+                constraints.append(lambda x, i1=i_gamma, i2=i_eta: x[i2] - factor * x[i1])
+                constraints_desc.append(f"(5) {key_eta} >= {factor} * {key_gamma}")
+
+        # -------- 6. ATM bcut_acks2 ≥ max(r_s) --------
+
+        if "acks2" in reaxff_calculator.charge_fix:
+
+            rs = [f'ATM.{e}.r_s' for e in elements if f'ATM.{e}.r_s' in param_idx]
+
+            if rs:
+
+                rs_indices = [param_idx[r] for r in rs]
+
+                def max_rs_constraint(i_bcut, rs_indices=rs_indices):
+                    return lambda x: x[i_bcut] - max(x[i] for i in rs_indices)
+
+                for e in elements:
+                    key_bcut = f'ATM.{e}.bcut_acks2'
+                    if key_bcut in param_idx:
+                        i_bcut = param_idx[key_bcut]
+                        constraints.append(max_rs_constraint(i_bcut))
+                        constraints_desc.append(f"(6) {key_bcut} ≥ max({', '.join(rs)})")
+
+        # -------- 7. electronegativity hierarchy (FIXME EXTEND TO ALL ATOMS) --------
+        # -------- example: chi(O) > chi(N) > chi(C) > chi(H) --------
+
+        hierarchy = ['F', 'O', 'Cl', 'N', 'S', 'C', 'P', 'H', 'Mg', 'Ca', 'Na', 'K']
+        present = [e for e in hierarchy if f'ATM.{e}.chi' in param_idx]
+
+        for e1, e2 in zip(present[:-1], present[1:]):
+            k1 = f'ATM.{e1}.chi'
+            k2 = f'ATM.{e2}.chi'
+            if k1 in param_idx and k2 in param_idx:
+                i1, i2 = param_idx[k1], param_idx[k2]
+                constraints.append(lambda x, i1=i1, i2=i2: x[i1] - x[i2] - 0.01)
+                constraints_desc.append(f"(7) {k1} > {k2}")
+
+        # -------- 8. BND De_s ≥ De_p ≥ De_pp --------
+
+        bnd_De = {}  # BND.H.O: {"De_s": idx, "De_p": idx, "De_pp": idx}
+        for pname in param_idx:
+            if pname.startswith("BND.") and (".De_s" in pname or ".De_p" in pname or ".De_pp" in pname):
+                base = ".".join(pname.split(".")[:3])
+                if base not in bnd_De:
+                    bnd_De[base] = {}
+                if pname.endswith(".De_s"):
+                    bnd_De[base]["De_s"] = param_idx[pname]
+                elif pname.endswith(".De_p"):
+                    bnd_De[base]["De_p"] = param_idx[pname]
+                elif pname.endswith(".De_pp"):
+                    bnd_De[base]["De_pp"] = param_idx[pname]
+
+        for base, idxs in bnd_De.items():
+
+            if "De_s" in idxs and "De_p" in idxs:
+                i1, i2 = idxs["De_s"], idxs["De_p"]
+                constraints.append((lambda i1=i1, i2=i2: lambda x: x[i1] - x[i2])())
+                constraints_desc.append(f"(8a) {base}.De_s ≥ {base}.De_p")
+
+            if "De_p" in idxs and "De_pp" in idxs:
+                i1, i2 = idxs["De_p"], idxs["De_pp"]
+                constraints.append((lambda i1=i1, i2=i2: lambda x: x[i1] - x[i2])())
+                constraints_desc.append(f"(8b) {base}.De_p ≥ {base}.De_pp")
+
+            if "De_p" not in idxs and "De_s" in idxs and "De_pp" in idxs:
+                i1, i2 = idxs["De_s"], idxs["De_pp"]
+                constraints.append((lambda i1=i1, i2=i2: lambda x: x[i1] - x[i2])())
+                constraints_desc.append(f"(8c) {base}.De_s ≥ {base}.De_pp")
+
+        # -------- 9. BND p_be2 ≥ p_bo2, p_bo4, p_bo6 --------
+
+        for pname in param_idx:
+            if pname.endswith(".p_be2"):
+                base = ".".join(pname.split(".")[:3])
+                key_be2 = f"{base}.p_be2"
+                key_bo2 = f"{base}.p_bo2"
+                key_bo4 = f"{base}.p_bo4"
+                key_bo6 = f"{base}.p_bo6"
+
+                if key_bo2 in param_idx:
+                    i1 = param_idx[key_be2]
+                    i2 = param_idx[key_bo2]
+                    constraints.append((lambda i1=i1, i2=i2: lambda x: x[i1] - x[i2])())
+                    constraints_desc.append(f"(9a) {key_be2} ≥ {key_bo2}")
+
+                if key_bo4 in param_idx:
+                    i1 = param_idx[key_be2]
+                    i2 = param_idx[key_bo4]
+                    constraints.append((lambda i1=i1, i2=i2: lambda x: x[i1] - x[i2])())
+                    constraints_desc.append(f"(9b) {key_be2} ≥ {key_bo4}")
+
+                if key_bo6 in param_idx:
+                    i1 = param_idx[key_be2]
+                    i2 = param_idx[key_bo6]
+                    constraints.append((lambda i1=i1, i2=i2: lambda x: x[i1] - x[i2])())
+                    constraints_desc.append(f"(9c) {key_be2} ≥ {key_bo6}")
+
+        # -------- 10. BND p_bo6 ≥ p_bo4 ≥ p_bo2 --------
+
+        for pname in param_idx:
+            if pname.endswith(".p_bo2") or pname.endswith(".p_bo4") or pname.endswith(".p_bo6"):
+                base = ".".join(pname.split(".")[:3])
+                key_bo2 = f"{base}.p_bo2"
+                key_bo4 = f"{base}.p_bo4"
+                key_bo6 = f"{base}.p_bo6"
+
+                if key_bo4 in param_idx and key_bo2 in param_idx:
+                    i1 = param_idx[key_bo4]
+                    i2 = param_idx[key_bo2]
+                    constraints.append((lambda i1=i1, i2=i2: lambda x: x[i1] - x[i2])())
+                    constraints_desc.append(f"(10a) {key_bo4} ≥ {key_bo2}")
+
+                if key_bo6 in param_idx and key_bo4 in param_idx:
+                    i1 = param_idx[key_bo6]
+                    i2 = param_idx[key_bo4]
+                    constraints.append((lambda i1=i1, i2=i2: lambda x: x[i1] - x[i2])())
+                    constraints_desc.append(f"(10b) {key_bo6} ≥ {key_bo4}")
+
+                if key_bo4 not in param_idx and key_bo6 in param_idx and key_bo2 in param_idx:
+                    i1 = param_idx[key_bo6]
+                    i2 = param_idx[key_bo2]
+                    constraints.append((lambda i1=i1, i2=i2: lambda x: x[i1] - x[i2])())
+                    constraints_desc.append(f"(10c) {key_bo6} ≥ {key_bo2}")
+
+        # -------- 11. OFD r_pp ≥ r_p ≥ r_s --------
+
+        ofd_keys = {}
+        for pname in param_idx:
+            if pname.startswith("OFD."):
+                base = ".".join(pname.split('.')[:3])
+                if base not in ofd_keys:
+                    ofd_keys[base] = {}
+                suffix = pname.split('.')[-1]
+                if suffix in ("r_s", "r_p", "r_pp"):
+                    ofd_keys[base][suffix] = param_idx[pname]
+
+        for base, idxs in ofd_keys.items():
+
+            if "r_pp" in idxs and "r_p" in idxs:
+                constraints.append(lambda x, i1=idxs["r_pp"], i2=idxs["r_p"]: x[i1] - x[i2])
+                constraints_desc.append(f"(11a) {base}.r_pp >= {base}.r_p")
+
+            if "r_p" in idxs and "r_s" in idxs:
+                constraints.append(lambda x, i1=idxs["r_p"], i2=idxs["r_s"]: x[i1] - x[i2])
+                constraints_desc.append(f"(11b) {base}.r_p >= {base}.r_s")
+
+            if "r_p" not in idxs and "r_pp" in idxs and "r_s" in idxs:
+                constraints.append(lambda x, i1=idxs["r_pp"], i2=idxs["r_s"]: x[i1] - x[i2])
+                constraints_desc.append(f"(11c) {base}.r_p >= {base}.r_s")
+
+        # -------- 12. OFD.X.Y.alpha ≥ max(ATM.X.alpha, ATM.Y.alpha) --------
+
+        for pname in param_idx:
+            if pname.startswith("OFD.") and pname.endswith(".alpha"):
+                parts = pname.split('.')
+                if len(parts) >= 4:
+                    atom1 = parts[1]
+                    atom2 = parts[2]
+                    ofd_idx = param_idx[pname]
+
+                    atm1_key = f"ATM.{atom1}.alpha"
+                    atm2_key = f"ATM.{atom2}.alpha"
+
+                    if atm1_key in param_idx and atm2_key in param_idx:
+                        atm1_idx = param_idx[atm1_key]
+                        atm2_idx = param_idx[atm2_key]
+
+                        constraints.append(
+                            (lambda ofd_idx=ofd_idx, atm1_idx=atm1_idx, atm2_idx=atm2_idx:
+                                lambda x: x[ofd_idx] - max(x[atm1_idx], x[atm2_idx])
+                            )()
+                        )
+                        constraints_desc.append(f"(12) {pname} ≥ max({atm1_key}, {atm2_key})")
+
+        # -------- 13. ANG p_pen1 ≥ |p_val1| --------
+        # -------- 14. ANG p_pen1 ≥ |p_val2| --------
+
+        for pname in param_idx:
+            if pname.startswith("ANG.") and pname.endswith(".p_pen1"):
+                base = ".".join(pname.split(".")[:-1])
+                k_pen = pname
+                k_val1 = f"{base}.p_val1"
+                k_val2 = f"{base}.p_val2"
+                if k_val1 in param_idx and k_val2 in param_idx:
+                    i_pen = param_idx[k_pen]
+                    i_val1 = param_idx[k_val1]
+                    i_val2 = param_idx[k_val2]
+                    constraints.append(lambda x, i_pen=i_pen, i_val1=i_val1, i_val2=i_val2: x[i_pen] - abs(x[i_val1]))
+                    constraints_desc.append(f"(13) {k_pen} >= |{k_val1}|")
+                    constraints.append(lambda x, i_pen=i_pen, i_val2=i_val2: x[i_pen] - abs(x[i_val2]))
+                    constraints_desc.append(f"(14) {k_pen} >= |{k_val2}|")
+
+        # -------- 15. TOR abs(V2) ≤ V1 --------
+
+        for pname in param_idx:
+            if pname.startswith("TOR.") and pname.endswith(".V1"):
+                i_v1 = param_idx[pname]
+                pname_v2 = pname[:-2] + "V2"
+                if pname_v2 in param_idx:
+                    i_v2 = param_idx[pname_v2]
+                    constraints.append(lambda x, i_v1=i_v1, i_v2=i_v2: x[i_v1] - abs(x[i_v2]))
+                    constraints_desc.append(f"(15) |{k_pen} >= |{k_val2}|")
+
+        # -------- 16. TOR abs(V3) ≤ V1 --------
+
+        for pname in param_idx:
+            if pname.startswith("TOR.") and pname.endswith(".V1"):
+                i_v1 = param_idx[pname]
+                pname_v3 = pname[:-2] + "V3"
+                if pname_v3 in param_idx:
+                    i_v3 = param_idx[pname_v3]
+                    constraints.append(lambda x, i_v1=i_v1, i_v3=i_v3: x[i_v1] - abs(x[i_v3]))
+                    constraints_desc.append(f"(16) |{k_pen} >= |{k_val2}|")
+
+        # -------- 17. HBD r0_hb > r_s (ensure H-bond length exceeds σ-bond radius) --------
+
+        for pname in param_idx:
+            if pname.startswith("HBD.") and pname.endswith(".r0_hb"):
+                i_r0 = param_idx[pname]
+                # parse donor atom from e.g., HBD.H.O.H.r0_hb
+                parts = pname.split('.')
+                if len(parts) >= 4:
+                    donor = parts[1]
+                    key_rs = f'ATM.{donor}.r_s'
+                    if key_rs in param_idx:
+                        i_rs = param_idx[key_rs]
+                        constraints.append(lambda x, i_r0=i_r0, i_rs=i_rs: x[i_r0] - x[i_rs] - 0.01)
+                        constraints_desc.append(f"(17) {pname} > {key_rs}")
+
+
+
+        # -------- PRINT CONSTRAINTS --------
+
+        print(f"*** CONSTRAINTS APPLIED: {len(constraints)} total")
+        for d in constraints_desc: print(f"*** {d}")
+        print(f"***")
         return lambda x: [f(x) for f in constraints]
-
-
-
-
-
-
-
-################################ SCRATCH ################################
-
-    def cmaes_constraints(self, x):
-
-        #print("cmaes_constraints... self=" ,self)
-        #print(type(args))
-        #print(f'cmaes_constraints... {x}\nargs... {args}')
-
-        #cfun = cma.ConstrainedFitnessAL(self.loss_function, self.cmaes_constraints)
-        #x, es = cma.fmin2( cfun, x0, self.sigma, options=options, callback=cfun.update)
-
-        #c = es.countiter
-        #x = cfun.find_feasible(es)
-        #print("find_feasible took {} iterations".format(es.countiter - c))
-        #print(x,self.cmaes_constraints(x))
-
-        constraints = []
-        constraints.append(x[1]-x[0])
-        constraints.append(x[2]-x[1])
-
-        return constraints
-
-

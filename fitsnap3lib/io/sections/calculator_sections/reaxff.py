@@ -355,11 +355,11 @@ class Reaxff(Section):
         atoms = [self.elements[t-1] for t in atom_types]
         parameter_block = self.parameter_block(block, atoms)
         tokens = parameter_block.split()
-        atom_format = '{:<2}' if block=='ATM' else '{:>2}'
+        atom_format = '{:<2}   ' if block=='ATM' else '{:>2}'
         atoms_formatted = [atom_format.format(a) for a in tokens[:num_atoms]]
         tokens[num_atoms+name_index] = value
         tokens_formatted = [self.number_format.format(float(v)) for v in tokens[num_atoms:]]
-        extra_indent = '\n  ' if block == 'ATM' else '\n      '
+        extra_indent = '\n     ' if block == 'ATM' else '\n     '
         if( len(parameters_list)>8 ): tokens_formatted.insert(8, extra_indent)
         if( len(parameters_list)>16 ): tokens_formatted.insert(17, extra_indent)
         if( len(parameters_list)>24 ): tokens_formatted.insert(26, extra_indent)

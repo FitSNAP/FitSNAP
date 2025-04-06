@@ -30,10 +30,10 @@ class Reaxff(Section):
             "bond_softness": (400.0, 600.0),      # ACKS2 bond softness
 
             # ATM
-            "r_s":           (0.4, 1.1),          # Covalent sigma-bond radius (Å)
-            "r_p":          (1.1, 2.0),          # Covalent π-bond radius (Å)
-            "r_pp":       (2.0, 3.5),          # π–π bond radius
-            "r_vdw":         (0.5, 3.5),          # vdW radius (Å)
+            "r_s":           (0.3, 2.0),          # Covalent sigma-bond radius (Å)
+            "r_p":           (0.4, 2.5),          # Covalent π-bond radius (Å)
+            "r_pp":          (0.5, 3.0),          # π–π bond radius
+            "r_vdw":         (1.0, 3.5),          # vdW radius (Å)
             "epsilon":       (0.01, 0.50),        # vdW dissociation energy (kcal/mol)
             "alpha":         (7.0, 12.0),         # vdW alpha parameter
             "gamma_w":       (0.0, 3.0),          # vdW shielding width
@@ -74,12 +74,9 @@ class Reaxff(Section):
             "D":             (0.01, 0.5),         # van der Waals well depth (kcal/mol)
             "r_vdw":         (0.5, 3.5),          # van der Waals contact distance (Å)
             "alpha":         (7.0, 12.0),         # vdW decay sharpness
-            "r_s":           (0.4, 1.1),          # σ-bond cutoff radius (Å)
-            "r_p":           (1.1, 2.0),          # π-bond cutoff radius (Å)
-            "r_pp":          (2.0, 3.5),          # π–π bond cutoff radius (Å)
 
             # ANG
-            "theta_00":      (5.0, 175.0),        # θ_eq = 180 - theta_00 (deg)
+            "theta_00":      (0.0, 180.0),        # θ_eq = 180 - theta_00 (deg)
             "p_val1":        (-1.0, 10.0),        # Angular stiffness term
             "p_val2":        (-2.0, 2.0),         # Angular curvature term
             "p_coa1":        (-1.0, 1.0),         # π-conjugation energy
@@ -134,8 +131,15 @@ class Reaxff(Section):
             warning = "" if p_bounds[0] <= value <= p_bounds[1] else "WARNING value outside bounds"
             self.pt.single_print(p, parameter, value, p_bounds, warning)
 
-            value = np.clip(value, p_bounds[0], p_bounds[1])
+            # CLIP
+            # value = np.clip(value, p_bounds[0], p_bounds[1])
+
+            # MIDPOINT
             #if value<p_bounds[0] or p_bounds[1] < value: value = (p_bounds[0]+p_bounds[1])/2.0
+
+            # PERCENTILE
+            if value < p_bounds[0]: value = p_bounds[0] + .1 * (p_bounds[1] - p_bounds[0])
+            if value > p_bounds[1]: value = p_bounds[1] - .1 * (p_bounds[1] - p_bounds[0])
 
             self.parameter_names.append(p)
             self.parameters.append(parameter)
@@ -229,13 +233,6 @@ class Reaxff(Section):
             else:
                 raise ValueError(f"Wildcard not supported for block: {p_block}")
         return expanded
-
-
-
-
-
-
-
 
     # --------------------------------------------------------------------------------------------
 

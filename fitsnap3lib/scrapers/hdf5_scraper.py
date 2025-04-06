@@ -63,16 +63,10 @@ class HDF5(Scraper):
                 if not np.all(np.isin(atomic_numbers, list(self.allowed_atomic_numbers))):
                     continue
 
-                #if atomic_symbol_to_number('S') not in atomic_numbers:
-                #    continue
-
                 conformations = group["conformations"][()]
                 formation_energy = group["formation_energy"][()]
                 subset = group["subset"].asstr()[0]
-
                 is_solvated = "solvated" in subset.lower() or "water" in subset.lower()
-                cweight_val = 60.0 if is_solvated else 0.0
-                dweight_val = 20.0 if is_solvated else 0.0
 
                 bounds_min = conformations.min(axis=(0, 1)) - 10.0
                 bounds_max = conformations.max(axis=(0, 1)) + 10.0
@@ -83,24 +77,35 @@ class HDF5(Scraper):
                     [0.0, 0.0, bounds_max[2] - bounds_min[2]],
                 ]
 
-                min_energy = formation_energy.min()
-                delta_E = formation_energy.max() - min_energy
-                kbT = max(delta_E / 5, 0.5)  # adaptive smoothing to avoid flat weights
-                exponents = -(formation_energy - min_energy) / kbT
-                log_weights = exponents - logsumexp(exponents)
-                weights = np.exp(log_weights)
-                # Optional: zero out very small weights and re-normalize
-                # weights[weights < 1e-8] = 0.0
-                weights /= weights.sum()
+                # Scale all to ~comparable range using expected magnitude
+                norm = {
+                    "energy":     1.0 / 100.0,     # normalize ~100 kcal/mol
+                    "force":      1.0 / 5000.0,    # normalize ~5000 kcal/mol/Å
+                    "charge":     1.0 / 250.0,     # normalize large sum(q_i)^2
+                    "dipole":     1.0 / 30.0,      # normalize ~30 e·Å
+                    "quadrupole": 1.0 / 600.0,     # normalize ~600 e·Å²
+                }
+
+                importance = {
+                    "energy":     0.1,
+                    "force":      100.0,
+                    "charge":     0.05,
+                    "dipole":     50.0,
+                    "quadrupole": 20.0,
+                }
+
+                weights = {k: norm[k] * importance[k] for k in norm}
 
                 self.group_metadata[group_name] = {
                     "subset": subset,
                     "is_solvated": is_solvated,
-                    "cweight": cweight_val,
-                    "dweight": dweight_val,
+                    "eweight": weights["energy"],
+                    "fweight": weights["force"],
+                    "cweight": weights["charge"] if is_solvated else 0.0,
+                    "dweight": weights["dipole"] if is_solvated else 0.0,
+                    "qweight": weights["quadrupole"] if is_solvated else 0.0,
                     "region": region,
-                    "lattice": lattice,
-                    "weights": weights.tolist()
+                    "lattice": lattice
                 }
 
                 #print(f"*** {group_name} formation_energy {formation_energy} weights {weights} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
@@ -123,10 +128,17 @@ class HDF5(Scraper):
             all_configs = self.comm.allgather(self.local_configs)
             flat_configs = [cfg for sub in all_configs for cfg in sub]
             flat_configs.sort()
+
             total = len(flat_configs)
+            #total = self.size-1
+
             base = total // (self.size-1)
+
+            # make sure that all ranks have same number of configs
+            # remainder extra configs can be used for validation testing
             #remainder = total % (self.size-1)
             remainder = 0
+
             if self.rank==0:
                 start = 0
                 stop = 0
@@ -168,6 +180,8 @@ class HDF5(Scraper):
                 dft_total_gradient = group["dft_total_gradient"][()] * FORCE_CONV
                 mbis_charges = group["mbis_charges"][()]
                 scf_dipoles = group["scf_dipole"][()] * BOHR_TO_ANGSTROM
+                scf_quadrupole = group["scf_quadrupole"][()]  * BOHR_TO_ANGSTROM * BOHR_TO_ANGSTROM
+                mayer_indices = group["mayer_indices"][()]
                 atomic_numbers = group["atomic_numbers"][()]
                 for i in grouped[group_name]:
 
@@ -186,16 +200,18 @@ class HDF5(Scraper):
                         "Forces": dft_total_gradient[i],
                         "Charges": charges,
                         "Dipole": scf_dipoles[i],
+                        "Quadrupole": scf_quadrupole[i],
+                        "BondOrder": mayer_indices[i],
                         "AtomTypes": [atomic_number_to_symbol(n) for n in atomic_numbers],
                         "NumAtoms": len(atomic_numbers),
                         "Lattice": meta["lattice"],
                         "Region": meta["region"],
-                        "eweight": float(meta["weights"][i] * 99.0),
-                        "fweight": 99.0 / len(atomic_numbers),
+                        "eweight": meta["eweight"],
+                        "fweight": meta["fweight"] / len(atomic_numbers),
                         "vweight": 0.0,
                         "cweight": meta["cweight"],
                         "dweight": meta["dweight"],
-                        "test_bool": np.random.rand() < 0.2
+                        "qweight": meta["qweight"]
                     })
 
         return self.data

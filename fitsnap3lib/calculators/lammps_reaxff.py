@@ -30,6 +30,8 @@ class LammpsReaxff(LammpsBase):
         self.stress = self.config.sections["CALCULATOR"].stress
         self.charge = self.config.sections["CALCULATOR"].charge
         self.dipole = self.config.sections["CALCULATOR"].dipole
+        self.quadrupole = self.config.sections["CALCULATOR"].quadrupole
+        self.bond_order = self.config.sections["CALCULATOR"].bond_order
 
         self._lmp = None
         self.pt.check_lammps()
@@ -59,9 +61,11 @@ class LammpsReaxff(LammpsBase):
         ncpn = self.pt.get_ncpn(len(configs))
         popsize = self.config.sections['SOLVER'].popsize
         if self.energy: self.sum_energy_residuals = np.zeros(popsize)
-        if self.force: self.sum_forces_residuals = np.zeros(popsize)
-        if self.charge: self.sum_charges_residuals = np.zeros(popsize)
+        if self.force: self.sum_force_residuals = np.zeros(popsize)
+        if self.charge: self.sum_charge_residuals = np.zeros(popsize)
         if self.dipole: self.sum_dipole_residuals = np.zeros(popsize)
+        if self.quadrupole: self.sum_quadrupole_residuals = np.zeros(popsize)
+        if self.bond_order: self.sum_bond_order_residuals = np.zeros(popsize)
         self.sum_residuals = np.zeros(popsize)
 
     # --------------------------------------------------------------------------------------------
@@ -69,9 +73,11 @@ class LammpsReaxff(LammpsBase):
     def process_configs_with_values(self, values):
 
         if self.energy: self.sum_energy_residuals[:] = 0.0
-        if self.force: self.sum_forces_residuals[:] = 0.0
-        if self.charge: self.sum_charges_residuals[:] = 0.0
+        if self.force: self.sum_force_residuals[:] = 0.0
+        if self.charge: self.sum_charge_residuals[:] = 0.0
         if self.dipole: self.sum_dipole_residuals[:] = 0.0
+        if self.quadrupole: self.sum_quadrupole_residuals[:] = 0.0
+        if self.bond_order: self.bond_order_residuals[:] = 0.0
         self.sum_residuals[:] = 0.0
 
         for config_index, c in enumerate(self._configs):
@@ -103,18 +109,12 @@ class LammpsReaxff(LammpsBase):
                     print(f"*** rank {self.pt._rank} exception {e}")
                     raise e
 
-            #if self.force: self.sum_residuals += self.sum_forces_residuals
-
-        #print(f"*** sum_energy_residuals {self.sum_energy_residuals}")
-        #sum_forces_residuals {self.sum_forces_residuals} ")
-        #if self.energy: self.sum_residuals += self._data["eweight"] * self.sum_energy_residuals
-        #if self.force: self.sum_residuals += self._data["fweight"] * self.sum_forces_residuals
-        #if self.charge: self.sum_residuals += self._data["cweight"] * self.sum_charges_residuals
-        #if self.dipole: self.sum_residuals += self._data["dweight"] * self.sum_dipole_residuals
-
-        #print(f"*** sum_residuals {self.sum_residuals} sum_energy_residuals {self.sum_energy_residuals}")
         if self.energy: self.sum_residuals += self.sum_energy_residuals
-        if self.force: self.sum_residuals += self.sum_forces_residuals
+        if self.force: self.sum_residuals += self.sum_force_residuals
+        if self.charge: self.sum_residuals += self.sum_charge_residuals
+        if self.dipole: self.sum_residuals += self.sum_dipole_residuals
+        if self.quadrupole: self.sum_residuals += self.sum_quadrupole_residuals
+        if self.bond_order: self.sum_residuals += self.sum_bond_order_residuals
         return self.sum_residuals
 
     # --------------------------------------------------------------------------------------------
@@ -147,9 +147,9 @@ class LammpsReaxff(LammpsBase):
                 nelem=self._data["NumAtoms"],
                 dim=3
             )
-            loss_forces = pseudo_huber(forces - self._data["Forces"], delta=0.5)
-            forces_residual = self._data['fweight'] * np.sum(loss_forces)
-            self.sum_forces_residuals[pop_index] += forces_residual
+            loss_force = pseudo_huber(forces - self._data["Forces"], delta=0.5)
+            force_residual = self._data['fweight'] * np.sum(loss_force)
+            self.sum_force_residuals[pop_index] += force_residual
 
         if self.charge:
             charges = self._lmp.numpy.extract_atom(
@@ -158,19 +158,28 @@ class LammpsReaxff(LammpsBase):
                 nelem=self._data["NumAtoms"],
                 dim=1
             )
-            loss_charges = pseudo_huber(charges - self._data["Charges"], delta=0.05)
-            charge_residual = self._data['cweight']*np.sum(loss_charges)
-            self.sum_charges_residuals[pop_index] += charge_residual
+            loss_charge = pseudo_huber(charges - self._data["Charges"], delta=0.05)
+            charge_residual = self._data['cweight']*np.sum(loss_charge)
+            self.sum_charge_residuals[pop_index] += charge_residual
 
         if self.dipole:
-            dipole = self._lmp.numpy.extract_compute(
-                'dipole',
-                LMP_STYLE_GLOBAL,
-                LMP_TYPE_VECTOR
-            )
+            dipole = self._lmp.numpy.extract_compute('dipole', LMP_STYLE_GLOBAL, LMP_TYPE_VECTOR)
             loss_dipole = pseudo_huber(dipole - self._data["Dipole"], delta=0.1)
             dipole_residual = self._data['dweight']*np.sum(loss_dipole)
             self.sum_dipole_residuals[pop_index] += dipole_residual
+
+        if self.quadrupole:
+            quadrupole = self._lmp.numpy.extract_compute('quadrupole', LMP_STYLE_GLOBAL, LMP_TYPE_VECTOR)
+            #quadrupole = np.asarray(quadrupole, dtype=np.float64)
+
+            # Convert full 3×3 SCF quadrupole to 6-vector matching LAMMPS order
+            Q = self._data["Quadrupole"]
+            # Q_xx Q_yy Q_zz Q_xy Q_xz Q_yz
+            Q_ref = np.array([Q[0, 0], Q[1, 1], Q[2, 2], Q[0, 1], Q[0, 2], Q[1, 2]], dtype=np.float64)
+
+            loss_quadrupole = pseudo_huber(quadrupole - Q_ref, delta=0.1)
+            quadrupole_residual = self._data['qweight'] * np.sum(loss_quadrupole)
+            self.sum_quadrupole_residuals[pop_index] += quadrupole_residual
 
         def signed_fmt(x, width=2, prec=0):
             if abs(x) < .01:
@@ -180,10 +189,11 @@ class LammpsReaxff(LammpsBase):
             else:
                 return f"{x:>{width}.{prec}f}"
 
-        # print(f"*** rank {self.pt._rank} {self._data['File']:<12s} "
-        #    f"({signed_fmt(np.sum(self._data['Charges']))}) pop_index {pop_index:<2} "
-        #    f"| energy {energy_residual:12g} | force {forces_residual:12g} "
-        #    f"| charge {charge_residual:12g} | dipole {dipole_residual:12g}")
+        #print(f"*** rank {self.pt._rank} {self._data['File']:<12s} "
+        #    f"({signed_fmt(np.sum(self._data['Charges']))}) pop_index {pop_index:<3} "
+        #    f"| energy {energy_residual:12g} | force {force_residual:12g} "
+        #    f"| charge {charge_residual:12g} "
+        #    f"| dipole {dipole_residual:12g} | quadrupole {quadrupole_residual:12g}")
 
 
 
@@ -220,7 +230,8 @@ class LammpsReaxff(LammpsBase):
         sum_charges = round(np.sum(self._data["Charges"]))
         #self._lmp.command(self.charge_fix)
         self._lmp.command(self.charge_fix + f" target_charge {sum_charges}")
-        if self.dipole: self._lmp.command("compute dipole all dipole")
+        if self.dipole: self._lmp.command("compute dipole all dipole fixedorigin")
+        if self.quadrupole: self._lmp.command("compute quadrupole all quadrupole")
 
     # --------------------------------------------------------------------------------------------
 

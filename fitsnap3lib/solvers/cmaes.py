@@ -60,9 +60,12 @@ class CMAES(Solver):
         import warnings
         warnings.simplefilter("ignore", category=UserWarning)
 
+        bounds = self.config.sections['REAXFF'].parameter_bounds
+        cma_stds = np.array([self.sigma * (hi - lo) for lo, hi in bounds])
+
         options={
           'popsize': self.popsize, 'seed': 12345, #'maxiter': 1,
-          'bounds': list(np.transpose(self.config.sections['REAXFF'].parameter_bounds))
+          'bounds': list(np.transpose(bounds)), 'CMA_stds': cma_stds
         }
 
         from concurrent.futures import ThreadPoolExecutor
@@ -99,7 +102,7 @@ class CMAES(Solver):
         if es.countiter == 1 or es.countiter % 100 == 0:
             self._log_best(es)
 
-        if es.countiter % 10 == 0:
+        if es.countiter % 1000 == 0:
             current_fit = self.reaxff_io.change_parameters_string(es.best.x)
             # offload i/o to a background thread and keep optimization loop going without stalling
             self.io_executor.submit(self.output.output, current_fit, None)
@@ -204,7 +207,7 @@ class CMAES(Solver):
                 i_gamma = param_idx[key_gamma]
                 i_eta   = param_idx[key_eta]
                 constraints.append(lambda x, i1=i_gamma, i2=i_eta: x[i2] - factor * x[i1])
-                constraints_desc.append(f"(5) {key_eta} >= {factor} * {key_gamma}")
+                constraints_desc.append(f"(5) {key_eta} ≥ {factor} * {key_gamma}")
 
         # -------- 6. ATM bcut_acks2 ≥ max(r_s) --------
 
@@ -343,15 +346,15 @@ class CMAES(Solver):
 
             if "r_pp" in idxs and "r_p" in idxs:
                 constraints.append(lambda x, i1=idxs["r_pp"], i2=idxs["r_p"]: x[i1] - x[i2])
-                constraints_desc.append(f"(11a) {base}.r_pp >= {base}.r_p")
+                constraints_desc.append(f"(11a) {base}.r_pp ≥ {base}.r_p")
 
             if "r_p" in idxs and "r_s" in idxs:
                 constraints.append(lambda x, i1=idxs["r_p"], i2=idxs["r_s"]: x[i1] - x[i2])
-                constraints_desc.append(f"(11b) {base}.r_p >= {base}.r_s")
+                constraints_desc.append(f"(11b) {base}.r_p ≥ {base}.r_s")
 
             if "r_p" not in idxs and "r_pp" in idxs and "r_s" in idxs:
                 constraints.append(lambda x, i1=idxs["r_pp"], i2=idxs["r_s"]: x[i1] - x[i2])
-                constraints_desc.append(f"(11c) {base}.r_p >= {base}.r_s")
+                constraints_desc.append(f"(11c) {base}.r_p ≥ {base}.r_s")
 
         # -------- 12. OFD.X.Y.alpha ≥ max(ATM.X.alpha, ATM.Y.alpha) --------
 
@@ -391,31 +394,31 @@ class CMAES(Solver):
                     i_val1 = param_idx[k_val1]
                     i_val2 = param_idx[k_val2]
                     constraints.append(lambda x, i_pen=i_pen, i_val1=i_val1, i_val2=i_val2: x[i_pen] - abs(x[i_val1]))
-                    constraints_desc.append(f"(13) {k_pen} >= |{k_val1}|")
+                    constraints_desc.append(f"(13) {k_pen} ≥ |{k_val1}|")
                     constraints.append(lambda x, i_pen=i_pen, i_val2=i_val2: x[i_pen] - abs(x[i_val2]))
-                    constraints_desc.append(f"(14) {k_pen} >= |{k_val2}|")
+                    constraints_desc.append(f"(14) {k_pen} ≥ |{k_val2}|")
 
-        # -------- 15. TOR abs(V2) ≤ V1 --------
-
-        for pname in param_idx:
-            if pname.startswith("TOR.") and pname.endswith(".V1"):
-                i_v1 = param_idx[pname]
-                pname_v2 = pname[:-2] + "V2"
-                if pname_v2 in param_idx:
-                    i_v2 = param_idx[pname_v2]
-                    constraints.append(lambda x, i_v1=i_v1, i_v2=i_v2: x[i_v1] - abs(x[i_v2]))
-                    constraints_desc.append(f"(15) |{k_pen} >= |{k_val2}|")
-
-        # -------- 16. TOR abs(V3) ≤ V1 --------
+        # -------- 15. TOR V1 ≥ |V2| --------
+        # -------- 16. TOR V1 ≥ |V3| --------
 
         for pname in param_idx:
             if pname.startswith("TOR.") and pname.endswith(".V1"):
-                i_v1 = param_idx[pname]
-                pname_v3 = pname[:-2] + "V3"
-                if pname_v3 in param_idx:
-                    i_v3 = param_idx[pname_v3]
-                    constraints.append(lambda x, i_v1=i_v1, i_v3=i_v3: x[i_v1] - abs(x[i_v3]))
-                    constraints_desc.append(f"(16) |{k_pen} >= |{k_val2}|")
+                key_v1 = pname
+                base = ".".join(pname.split(".")[:-1])
+                key_v2 = f"{base}.V2"
+                key_v3 = f"{base}.V3"
+
+                if key_v2 in param_idx:
+                    i_v1 = param_idx[key_v1]
+                    i_v2 = param_idx[key_v2]
+                    constraints.append((lambda i_v1=i_v1, i_v2=i_v2: lambda x: x[i_v1] - abs(x[i_v2]))())
+                    constraints_desc.append(f"(15) {key_v1} ≥ |{key_v2}|")
+
+                if key_v3 in param_idx:
+                    i_v1 = param_idx[key_v1]
+                    i_v3 = param_idx[key_v3]
+                    constraints.append((lambda i_v1=i_v1, i_v3=i_v3: lambda x: x[i_v1] - abs(x[i_v3]))())
+                    constraints_desc.append(f"(16) {key_v1} ≥ |{key_v3}|")
 
         # -------- 17. HBD r0_hb > r_s (ensure H-bond length exceeds σ-bond radius) --------
 
@@ -431,8 +434,6 @@ class CMAES(Solver):
                         i_rs = param_idx[key_rs]
                         constraints.append(lambda x, i_r0=i_r0, i_rs=i_rs: x[i_r0] - x[i_rs] - 0.01)
                         constraints_desc.append(f"(17) {pname} > {key_rs}")
-
-
 
         # -------- PRINT CONSTRAINTS --------
 

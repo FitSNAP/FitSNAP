@@ -7,7 +7,7 @@ class Solver(Section):
         super().__init__(name, config, pt, infile, args)
         self.allowedkeys = ['solver', 'normalweight', 'normratio', \
                             'compute_testerrs', 'detailed_errors', \
-                            'nsam', 'cov_nugget', \
+                            'nsam', 'cov_nugget', 'hsic', \
                             'mcmc_num', 'mcmc_gamma', \
                             'merr_mult', 'merr_method', "merr_cfs"]
 
@@ -17,6 +17,7 @@ class Solver(Section):
             self.allowedkeys.extend(['popsize','sigma'])
             self.popsize = self.get_value("SOLVER", "popsize", "0", "int")
             self.sigma = self.get_value("SOLVER", "sigma", "0.1", "float")
+            self.hsic = self.get_value("SOLVER", "hsic", "0", "bool")
 
         self._check_section()
 

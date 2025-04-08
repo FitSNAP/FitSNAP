@@ -18,20 +18,20 @@ class LammpsReaxff(LammpsBase):
 
         super().__init__(name, pt, config)
 
-        self.potential = self.config.sections["REAXFF"].potential
-        self.elements = self.config.sections["REAXFF"].elements
-        self.masses = self.config.sections["REAXFF"].masses
-        self.type_mapping = self.config.sections["REAXFF"].type_mapping
-        self.parameters = self.config.sections["REAXFF"].parameters
-        self.charge_fix = self.config.sections["CALCULATOR"].charge_fix
+        self.potential = config.sections["REAXFF"].potential
+        self.elements = config.sections["REAXFF"].elements
+        self.masses = config.sections["REAXFF"].masses
+        self.type_mapping = config.sections["REAXFF"].type_mapping
+        self.parameters = config.sections["REAXFF"].parameters
+        self.charge_fix = config.sections["CALCULATOR"].charge_fix
 
-        self.energy = self.config.sections["CALCULATOR"].energy
-        self.force = self.config.sections["CALCULATOR"].force
-        self.stress = self.config.sections["CALCULATOR"].stress
-        self.charge = self.config.sections["CALCULATOR"].charge
-        self.dipole = self.config.sections["CALCULATOR"].dipole
-        self.quadrupole = self.config.sections["CALCULATOR"].quadrupole
-        self.bond_order = self.config.sections["CALCULATOR"].bond_order
+        self.energy = config.sections["CALCULATOR"].energy
+        self.force = config.sections["CALCULATOR"].force
+        self.stress = config.sections["CALCULATOR"].stress
+        self.charge = config.sections["CALCULATOR"].charge
+        self.dipole = config.sections["CALCULATOR"].dipole
+        self.quadrupole = config.sections["CALCULATOR"].quadrupole
+        self.bond_order = config.sections["CALCULATOR"].bond_order
 
         self._lmp = None
         self.pt.check_lammps()
@@ -59,67 +59,59 @@ class LammpsReaxff(LammpsBase):
 
         self._configs = configs
         ncpn = self.pt.get_ncpn(len(configs))
-        popsize = self.config.sections['SOLVER'].popsize
-        if self.energy: self.sum_energy_residuals = np.zeros(popsize)
-        if self.force: self.sum_force_residuals = np.zeros(popsize)
-        if self.charge: self.sum_charge_residuals = np.zeros(popsize)
-        if self.dipole: self.sum_dipole_residuals = np.zeros(popsize)
-        if self.quadrupole: self.sum_quadrupole_residuals = np.zeros(popsize)
-        if self.bond_order: self.sum_bond_order_residuals = np.zeros(popsize)
-        self.sum_residuals = np.zeros(popsize)
 
     # --------------------------------------------------------------------------------------------
 
     def process_configs_with_values(self, values):
 
-        if self.energy: self.sum_energy_residuals[:] = 0.0
-        if self.force: self.sum_force_residuals[:] = 0.0
-        if self.charge: self.sum_charge_residuals[:] = 0.0
-        if self.dipole: self.sum_dipole_residuals[:] = 0.0
-        if self.quadrupole: self.sum_quadrupole_residuals[:] = 0.0
-        if self.bond_order: self.bond_order_residuals[:] = 0.0
-        self.sum_residuals[:] = 0.0
+        if self.energy: self.sum_energy_residuals = 0.0
+        if self.force: self.sum_force_residuals = 0.0
+        if self.charge: self.sum_charge_residuals = 0.0
+        if self.dipole: self.sum_dipole_residuals = 0.0
+        if self.quadrupole: self.sum_quadrupole_residuals = 0.0
+        if self.bond_order: self.bond_order_residuals = 0.0
 
         for config_index, c in enumerate(self._configs):
             self._data = c
             self._prepare_lammps()
 
-            for pop_index, v in enumerate(values):
-                try:
+            try:
                 
-                    if False:
-                        logfile = f"{c['File']}".replace('/','').replace(' ','-')
-                        with open(f"acks2/{logfile}.in","w") as f:
-                            #self._initialize_lammps(1,printfile=f)
-                            self._lmp.command(f"variable config string {logfile}")
-                            self._lmp.command("info variables")
-                            self._prepare_lammps()
-                            self._lmp.set_reaxff_parameters(self.parameters, v)
-                            self._lmp.command("run 0 post no")
-                            self._collect_lammps(config_index, pop_index)
-                            self._lmp.command("unfix 1")
-                            self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 1000")
-                            self._lmp.command("run 0 post no")
-                    else:
+                if False:
+                    logfile = f"{c['File']}".replace('/','').replace(' ','-')
+                    with open(f"acks2/{logfile}.in","w") as f:
+                        #self._initialize_lammps(1,printfile=f)
+                        self._lmp.command(f"variable config string {logfile}")
+                        self._lmp.command("info variables")
+                        self._prepare_lammps()
                         self._lmp.set_reaxff_parameters(self.parameters, v)
                         self._lmp.command("run 0 post no")
                         self._collect_lammps(config_index, pop_index)
+                        self._lmp.command("unfix 1")
+                        self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 1000")
+                        self._lmp.command("run 0 post no")
+                else:
+                    self._lmp.set_reaxff_parameters(self.parameters, values)
+                    self._lmp.command("run 0 post no")
+                    self._collect_lammps(config_index)
 
-                except Exception as e:
-                    print(f"*** rank {self.pt._rank} exception {e}")
-                    raise e
+            except Exception as e:
+                print(f"*** rank {self.pt._rank} exception {e}")
+                raise e
 
-        if self.energy: self.sum_residuals += self.sum_energy_residuals
-        if self.force: self.sum_residuals += self.sum_force_residuals
-        if self.charge: self.sum_residuals += self.sum_charge_residuals
-        if self.dipole: self.sum_residuals += self.sum_dipole_residuals
-        if self.quadrupole: self.sum_residuals += self.sum_quadrupole_residuals
-        if self.bond_order: self.sum_residuals += self.sum_bond_order_residuals
-        return self.sum_residuals
+        answer = []
+        if self.energy: answer.append(self.sum_energy_residuals)
+        if self.force: answer.append(self.sum_force_residuals)
+        if self.charge: answer.append(self.sum_charge_residuals)
+        if self.dipole: answer.append(self.sum_dipole_residuals)
+        if self.quadrupole: answer.append(self.sum_quadrupole_residuals)
+        if self.bond_order: answer.append(self.sum_bond_order_residuals)
+        answer.append(sum(answer))
+        return answer
 
     # --------------------------------------------------------------------------------------------
 
-    def _collect_lammps(self, config_index, pop_index):
+    def _collect_lammps(self, config_index):
 
         def pseudo_huber(x, delta=1.0):
             x = np.nan_to_num(x, nan=8e8)
@@ -138,7 +130,7 @@ class LammpsReaxff(LammpsBase):
             pe = self._lmp.get_thermo('pe')
             loss_energy = pseudo_huber(pe - self._data["Energy"], delta=1.0)
             energy_residual = self._data['eweight'] * loss_energy
-            self.sum_energy_residuals[pop_index] += energy_residual
+            self.sum_energy_residuals += energy_residual
 
         if self.force:
             forces = self._lmp.numpy.extract_atom(
@@ -149,7 +141,7 @@ class LammpsReaxff(LammpsBase):
             )
             loss_force = pseudo_huber(forces - self._data["Forces"], delta=0.5)
             force_residual = self._data['fweight'] * np.sum(loss_force)
-            self.sum_force_residuals[pop_index] += force_residual
+            self.sum_force_residuals += force_residual
 
         if self.charge:
             charges = self._lmp.numpy.extract_atom(
@@ -160,13 +152,13 @@ class LammpsReaxff(LammpsBase):
             )
             loss_charge = pseudo_huber(charges - self._data["Charges"], delta=0.05)
             charge_residual = self._data['cweight']*np.sum(loss_charge)
-            self.sum_charge_residuals[pop_index] += charge_residual
+            self.sum_charge_residuals += charge_residual
 
         if self.dipole:
             dipole = self._lmp.numpy.extract_compute('dipole', LMP_STYLE_GLOBAL, LMP_TYPE_VECTOR)
             loss_dipole = pseudo_huber(dipole - self._data["Dipole"], delta=0.1)
             dipole_residual = self._data['dweight']*np.sum(loss_dipole)
-            self.sum_dipole_residuals[pop_index] += dipole_residual
+            self.sum_dipole_residuals += dipole_residual
 
         if self.quadrupole:
             quadrupole = self._lmp.numpy.extract_compute('quadrupole', LMP_STYLE_GLOBAL, LMP_TYPE_VECTOR)
@@ -179,7 +171,7 @@ class LammpsReaxff(LammpsBase):
 
             loss_quadrupole = pseudo_huber(quadrupole - Q_ref, delta=0.1)
             quadrupole_residual = self._data['qweight'] * np.sum(loss_quadrupole)
-            self.sum_quadrupole_residuals[pop_index] += quadrupole_residual
+            self.sum_quadrupole_residuals += quadrupole_residual
 
         def signed_fmt(x, width=2, prec=0):
             if abs(x) < .01:

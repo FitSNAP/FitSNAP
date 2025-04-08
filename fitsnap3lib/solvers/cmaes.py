@@ -1,6 +1,6 @@
 from fitsnap3lib.solvers.solver import Solver
 from fitsnap3lib.calculators.lammps_reaxff import LammpsReaxff
-import cma, itertools, functools
+import time, cma, itertools, functools
 import numpy as np
 import pandas as pd
 from pprint import pprint
@@ -24,15 +24,16 @@ class CMAES(Solver):
         self.reaxff_io = self.config.sections['REAXFF']
 
         calculator = config.sections["CALCULATOR"]
-        self.hsic_header=['iteration', *self.reaxff_io.parameter_names]
-        if calculator.energy: self.hsic_header.append('energy')
-        if calculator.force: self.hsic_header.append('force')
-        if calculator.charge: self.hsic_header.append('charge')
-        if calculator.dipole: self.hsic_header.append('dipole')
-        if calculator.quadrupole: self.hsic_header.append('quadrupole')
-        if calculator.bond_order: self.hsic_header.append('bond_order')
-        self.hsic_header.append('total')
-        self.hsic_data = []
+        self._hsic_header=['iteration', *self.reaxff_io.parameter_names]
+        if calculator.energy: self._hsic_header.append('energy')
+        if calculator.force: self._hsic_header.append('force')
+        if calculator.charge: self._hsic_header.append('charge')
+        if calculator.dipole: self._hsic_header.append('dipole')
+        if calculator.quadrupole: self._hsic_header.append('quadrupole')
+        if calculator.bond_order: self._hsic_header.append('bond_order')
+        self._hsic_header.append('total')
+        self._hsic_data = []
+        self._last_log_time = time.time()
 
     # --------------------------------------------------------------------------------------------
 
@@ -50,8 +51,8 @@ class CMAES(Solver):
             answer = np.sum(results, axis=0).tolist()
             #print(f"*** rank {self.pt._rank} results {results}")
 
-        self.hsic_data.append([self.iteration, *x, *answer])
-        print(f"*** rank {self.pt._rank} iteration {self.iteration} answer {answer}")
+        self._hsic_data.append([self._iteration, *x, *answer])
+        #print(f"*** rank {self.pt._rank} iteration {self._iteration} answer {answer}")
         return answer[-1]
 
     # --------------------------------------------------------------------------------------------
@@ -74,13 +75,13 @@ class CMAES(Solver):
         cma_stds = np.array([self.sigma * (hi - lo) for lo, hi in bounds])
 
         options={
-          'popsize': self.popsize, 'seed': 12345, 'maxiter': 10,
+          'popsize': self.popsize, 'seed': 12345, #'maxiter': 5,
           'bounds': list(np.transpose(bounds)), 'CMA_stds': cma_stds
         }
 
         from concurrent.futures import ThreadPoolExecutor
         self.io_executor = ThreadPoolExecutor(max_workers=1)
-        self.iteration = 1
+        self._iteration = 1
 
         if self.pt._rank == 0:
             constraints_function = self.build_constraints_lambda()
@@ -102,7 +103,7 @@ class CMAES(Solver):
 
         if self.pt._rank == 0:
             self.fit = self.reaxff_io.change_parameters_string(es.best.x)
-            #self.errors = pd.DataFrame(self.hsic_data, columns=self.hsic_header)
+            #self.errors = pd.DataFrame(self._hsic_data, columns=self._hsic_header)
             self._log_best(es)
 
         self.io_executor.shutdown(wait=True)
@@ -111,17 +112,20 @@ class CMAES(Solver):
 
     def _log(self, es):
 
-        self.iteration = es.countiter + 1
+        self._iteration = es.countiter + 1
+        now = time.time()
 
-        if es.countiter == 1 or es.countiter % 100 == 0:
+        if es.countiter==1:
             self._log_best(es)
 
-        if es.countiter % 10 == 0:
+        if (now - self._last_log_time) >= 120:
+            self._log_best(es)
             current_fit = self.reaxff_io.change_parameters_string(es.best.x)
             # offload i/o to a background thread and keep optimization loop going without stalling
-            df = pd.DataFrame(self.hsic_data, columns=self.hsic_header)
+            df = pd.DataFrame(self._hsic_data, columns=self._hsic_header)
             self.io_executor.submit(self.output.output, current_fit, df)
-            self.hsic_data = []
+            self._hsic_data = []
+            self._last_log_time = now
 
     # --------------------------------------------------------------------------------------------
 

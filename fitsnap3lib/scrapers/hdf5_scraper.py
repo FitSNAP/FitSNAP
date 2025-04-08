@@ -130,7 +130,7 @@ class HDF5(Scraper):
             flat_configs.sort()
 
             #total = len(flat_configs)
-            total = self.size-1
+            total = 2*(self.size-1)
 
             base = total // (self.size-1)
 

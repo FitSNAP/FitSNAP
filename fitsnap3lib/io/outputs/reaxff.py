@@ -11,6 +11,7 @@ class Reaxff(Output):
         super().__init__(name, pt, config)
         self._io_lock = threading.Lock()
         dataPath = self.config.sections["PATH"].dataPath
+        os.makedirs(dataPath, exist_ok=True)
         potential_name = self.config.sections["OUTFILE"].potential_name
         self.base = f"{dataPath}/{os.path.splitext(os.path.basename(potential_name))[0]}"
         self.ext  = os.path.splitext(potential_name)[1]

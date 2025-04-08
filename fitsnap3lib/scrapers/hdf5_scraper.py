@@ -129,8 +129,8 @@ class HDF5(Scraper):
             flat_configs = [cfg for sub in all_configs for cfg in sub]
             flat_configs.sort()
 
-            total = len(flat_configs)
-            #total = self.size-1
+            #total = len(flat_configs)
+            total = self.size-1
 
             base = total // (self.size-1)
 

@@ -1,12 +1,7 @@
 from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np
 from fitsnap3lib.parallel_tools import DistributedList
-
-import json, sys, gc
+import json, sys, gc, ctypes
 import numpy as np
-#from functools import reduce
-from itertools import chain, groupby
-from pprint import pprint
-
 from lammps import LAMMPS_DOUBLE, LAMMPS_DOUBLE_2D
 from lammps import LMP_STYLE_GLOBAL, LMP_STYLE_ATOM, LMP_STYLE_LOCAL, LMP_TYPE_SCALAR, LMP_TYPE_VECTOR, LMP_TYPE_ARRAY
 
@@ -35,7 +30,7 @@ class LammpsReaxff(LammpsBase):
 
         self._lmp = None
         self.pt.check_lammps()
-        self._initialize_lammps(0, lammpsscreen=0)
+        self._initialize_lammps(printlammps=0, lammpsscreen=0)
 
     # --------------------------------------------------------------------------------------------
 
@@ -59,6 +54,14 @@ class LammpsReaxff(LammpsBase):
 
         self._configs = configs
         ncpn = self.pt.get_ncpn(len(configs))
+        #self._lmp.command(self._data["Region"])
+        self._lmp.command(self._configs[0]["Region"])
+        self._lmp.command(f"create_box {len(self.elements)} box")
+        for i in range(len(self.masses)): self._lmp.command(f"mass {i+1} {self.masses[i]}")
+        self._lmp.command("pair_style reaxff NULL")
+        self._lmp.command(f"pair_coeff * * {self.potential} {' '.join(self.elements)}")
+        if self.dipole: self._lmp.command("compute dipole all dipole fixedorigin")
+        if self.quadrupole: self._lmp.command("compute quadrupole all quadrupole")
 
     # --------------------------------------------------------------------------------------------
 
@@ -70,6 +73,7 @@ class LammpsReaxff(LammpsBase):
         if self.dipole: self.sum_dipole_residuals = 0.0
         if self.quadrupole: self.sum_quadrupole_residuals = 0.0
         if self.bond_order: self.bond_order_residuals = 0.0
+        self._lmp.set_reaxff_parameters(self.parameters, values)
 
         for config_index, c in enumerate(self._configs):
             self._data = c
@@ -83,17 +87,17 @@ class LammpsReaxff(LammpsBase):
                         #self._initialize_lammps(1,printfile=f)
                         self._lmp.command(f"variable config string {logfile}")
                         self._lmp.command("info variables")
-                        self._prepare_lammps()
                         self._lmp.set_reaxff_parameters(self.parameters, v)
                         self._lmp.command("run 0 post no")
-                        self._collect_lammps(config_index, pop_index)
+                        self._collect_lammps(config_index)
                         self._lmp.command("unfix 1")
                         self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 1000")
                         self._lmp.command("run 0 post no")
                 else:
-                    self._lmp.set_reaxff_parameters(self.parameters, values)
+
                     self._lmp.command("run 0 post no")
                     self._collect_lammps(config_index)
+                    self._lmp.command("unfix 1")
 
             except Exception as e:
                 print(f"*** rank {self.pt._rank} exception {e}")
@@ -158,19 +162,16 @@ class LammpsReaxff(LammpsBase):
             dipole = self._lmp.numpy.extract_compute('dipole', LMP_STYLE_GLOBAL, LMP_TYPE_VECTOR)
             loss_dipole = pseudo_huber(dipole - self._data["Dipole"], delta=0.1)
             dipole_residual = self._data['dweight']*np.sum(loss_dipole)
+            #print(f"*** dipole {dipole} loss_dipole {loss_dipole} dipole_residual {dipole_residual}")
             self.sum_dipole_residuals += dipole_residual
 
         if self.quadrupole:
             quadrupole = self._lmp.numpy.extract_compute('quadrupole', LMP_STYLE_GLOBAL, LMP_TYPE_VECTOR)
-            #quadrupole = np.asarray(quadrupole, dtype=np.float64)
-
-            # Convert full 3×3 SCF quadrupole to 6-vector matching LAMMPS order
-            Q = self._data["Quadrupole"]
-            # Q_xx Q_yy Q_zz Q_xy Q_xz Q_yz
+            Q = self._data["Quadrupole"] # Q_xx Q_yy Q_zz Q_xy Q_xz Q_yz
             Q_ref = np.array([Q[0, 0], Q[1, 1], Q[2, 2], Q[0, 1], Q[0, 2], Q[1, 2]], dtype=np.float64)
-
             loss_quadrupole = pseudo_huber(quadrupole - Q_ref, delta=0.1)
             quadrupole_residual = self._data['qweight'] * np.sum(loss_quadrupole)
+            #print(f"*** quadrupole {quadrupole} loss_quadrupole {loss_quadrupole} quadrupole_residual {quadrupole_residual}")
             self.sum_quadrupole_residuals += quadrupole_residual
 
         def signed_fmt(x, width=2, prec=0):
@@ -181,12 +182,29 @@ class LammpsReaxff(LammpsBase):
             else:
                 return f"{x:>{width}.{prec}f}"
 
+        # pop_index {pop_index:<3}
+
         #print(f"*** rank {self.pt._rank} {self._data['File']:<12s} "
-        #    f"({signed_fmt(np.sum(self._data['Charges']))}) pop_index {pop_index:<3} "
+        #    f"({signed_fmt(np.sum(self._data['Charges']))})  "
         #    f"| energy {energy_residual:12g} | force {force_residual:12g} "
         #    f"| charge {charge_residual:12g} "
         #    f"| dipole {dipole_residual:12g} | quadrupole {quadrupole_residual:12g}")
 
+
+
+
+    # --------------------------------------------------------------------------------------------
+
+    def _initialize_lammps(self, **kwargs):
+
+        super()._initialize_lammps(**kwargs)
+        self._lmp.command("boundary f f f")
+        reference = self.config.sections["REFERENCE"]
+        if reference.units != "real" or reference.atom_style != "charge":
+            raise NotImplementedError("FitSNAP-ReaxFF only supports 'units real' and 'atom_style charge'.")
+        self._lmp.command("units real")
+        self._lmp.command("atom_style charge")
+        self._lmp.command("atom_modify map array sort 0 2.0")
 
 
 
@@ -195,35 +213,24 @@ class LammpsReaxff(LammpsBase):
 
     def _prepare_lammps(self):
 
-        self._lmp.command("clear")
-        self._lmp.command("boundary f f f")
-        reference = self.config.sections["REFERENCE"]
-        if reference.units != "real" or reference.atom_style != "charge":
-            raise NotImplementedError("FitSNAP-ReaxFF only supports 'units real' and 'atom_style charge'.")
-        self._lmp.command("units real")
-        self._lmp.command("atom_style charge")
-        self._lmp.command("atom_modify map array sort 0 2.0")
-        self._lmp.command(self._data["Region"])
-        self._lmp.command(f"create_box {len(self.elements)} box")
-        #self._lmp.command("delete_atoms group all")
+        self._lmp.command("delete_atoms group all")
+        positions = self._data["Positions"].flatten()
+        elem_all = [self.type_mapping[a_t] for a_t in self._data["AtomTypes"]]
+        self._lmp.create_atoms(
+            n=self._data["NumAtoms"],
+            id=None,
+            type=(len(elem_all) * ctypes.c_int)(*elem_all),
+            x=(len(positions) * ctypes.c_double)(*positions),
+            v=None,
+            image=None,
+            shrinkexceed=False
+        )
 
-        if True:
-            for i in range(len(self.masses)): self._lmp.command(f"mass {i+1} {self.masses[i]}")
-            types = [self.type_mapping[a_t] for a_t in self._data["AtomTypes"]]
-            for t, p in zip(types, self._data["Positions"]):
-                self._lmp.command(f"create_atoms {t} single {p[0]} {p[1]} {p[2]}")
-        else:
-            self._create_atoms_helper(type_mapping=self.type_mapping)
-            self._lmp.commands_list([f"mass {i+1} {self.masses[i]}" for i in range(len(self.masses))])
-
-        self._lmp.command("pair_style reaxff NULL")
-        self._lmp.command(f"pair_coeff * * {self.potential} {' '.join(self.elements)}")
         self._create_charge()
         sum_charges = round(np.sum(self._data["Charges"]))
         #self._lmp.command(self.charge_fix)
         self._lmp.command(self.charge_fix + f" target_charge {sum_charges}")
-        if self.dipole: self._lmp.command("compute dipole all dipole fixedorigin")
-        if self.quadrupole: self._lmp.command("compute quadrupole all quadrupole")
+
 
     # --------------------------------------------------------------------------------------------
 

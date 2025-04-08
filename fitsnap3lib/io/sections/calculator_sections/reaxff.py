@@ -113,6 +113,10 @@ class Reaxff(Section):
 
         expanded_parameters = self._expand_parameter_wildcards(config_parameters, existing_tuples)
 
+        if self.pt._rank==0:
+            print("-----------------------------------------------------------------------------")
+            print("PARAMETER_NAME         PARAMETER_INDEX        INITIAL_VALUE BOUNDS ")
+
         for p in expanded_parameters:
             tokens = p.split('.')
             p_block = tokens.pop(0)
@@ -129,7 +133,8 @@ class Reaxff(Section):
                 delta = max(0.5 * abs(value), 1.0)
                 p_bounds = (value - delta, value + delta)
             warning = "" if p_bounds[0] <= value <= p_bounds[1] else "WARNING value outside bounds"
-            self.pt.single_print(p, parameter, value, p_bounds, warning)
+            if self.pt._rank==0: print(f"{p:22s} {str(parameter):22s} {value:13.8f} {p_bounds} {warning}")
+
 
             # CLIP
             # value = np.clip(value, p_bounds[0], p_bounds[1])
@@ -145,6 +150,9 @@ class Reaxff(Section):
             self.parameters.append(parameter)
             self.values.append(value)
             self.parameter_bounds.append(p_bounds)
+
+        if self.pt._rank==0:
+            print("-----------------------------------------------------------------------------")
 
     # --------------------------------------------------------------------------------------------
 

@@ -2,15 +2,13 @@ from fitsnap3lib.solvers.solver import Solver
 from fitsnap3lib.calculators.lammps_reaxff import LammpsReaxff
 import cma, itertools, functools
 import numpy as np
+import pandas as pd
 from pprint import pprint
 
 # ------------------------------------------------------------------------------------------------
 
-def _loss_function_value(x):
-    return reaxff_calculator.process_configs_with_values([x])
-
-def _loss_function_values(x_arrays):
-    return reaxff_calculator.process_configs_with_values(x_arrays)
+def _loss_function_values(x):
+    return reaxff_calculator.process_configs_with_values(x)
 
 # ------------------------------------------------------------------------------------------------
 
@@ -25,24 +23,36 @@ class CMAES(Solver):
         self.sigma = self.config.sections['SOLVER'].sigma
         self.reaxff_io = self.config.sections['REAXFF']
 
+        calculator = config.sections["CALCULATOR"]
+        self.hsic_header=['iteration', *self.reaxff_io.parameter_names]
+        if calculator.energy: self.hsic_header.append('energy')
+        if calculator.force: self.hsic_header.append('force')
+        if calculator.charge: self.hsic_header.append('charge')
+        if calculator.dipole: self.hsic_header.append('dipole')
+        if calculator.quadrupole: self.hsic_header.append('quadrupole')
+        if calculator.bond_order: self.hsic_header.append('bond_order')
+        self.hsic_header.append('total')
+        self.hsic_data = []
+
     # --------------------------------------------------------------------------------------------
 
-    def _parallel_loss_function(self, x_arrays):
+    def _loss_function(self, x):
 
         # print(f"*** rank {self.pt._rank} ok 2a")
 
         np.set_printoptions(precision=4, linewidth=2000)
         
         if self.pt.stubs==1:
-            answer = _loss_function(x_arrays)
+            answer = _loss_function_values(x).tolist()
         else:
-            futures = [self.executor.submit(_loss_function_values, x_arrays) for _ in self.range_workers]
-            results = np.vstack([np.nan_to_num(f.result(), nan=8e8) for f in futures])
-            answer = np.sum(results, axis=0)
+            futures = [self.executor.submit(_loss_function_values, x) for _ in self.range_workers]
+            results = np.vstack([f.result() for f in futures])
+            answer = np.sum(results, axis=0).tolist()
             #print(f"*** rank {self.pt._rank} results {results}")
 
-        #print(f"*** rank {self.pt._rank} answer {answer}")
-        return answer.tolist()
+        self.hsic_data.append([self.iteration, *x, *answer])
+        print(f"*** rank {self.pt._rank} iteration {self.iteration} answer {answer}")
+        return answer[-1]
 
     # --------------------------------------------------------------------------------------------
 
@@ -64,16 +74,17 @@ class CMAES(Solver):
         cma_stds = np.array([self.sigma * (hi - lo) for lo, hi in bounds])
 
         options={
-          'popsize': self.popsize, 'seed': 12345, #'maxiter': 1,
+          'popsize': self.popsize, 'seed': 12345, 'maxiter': 10,
           'bounds': list(np.transpose(bounds)), 'CMA_stds': cma_stds
         }
 
         from concurrent.futures import ThreadPoolExecutor
         self.io_executor = ThreadPoolExecutor(max_workers=1)
+        self.iteration = 1
 
         if self.pt._rank == 0:
-            self.constraints_function = self.build_constraints_lambda()
-            cfun = cma.ConstrainedFitnessAL( _loss_function_value, self.constraints_function )
+            constraints_function = self.build_constraints_lambda()
+            cfun = cma.ConstrainedFitnessAL(self._loss_function, constraints_function )
 
         if self.pt.stubs==0:
             # SAFER TO USE *MPICommExecutor* INSTEAD OF *MPIPoolExecutor*
@@ -83,47 +94,50 @@ class CMAES(Solver):
 
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as self.executor:
                 if self.executor is not None:
-                    _, es = cma.fmin2( None, x0, self.sigma, callback=self._log_progress,
-                        parallel_objective=self._parallel_loss_function, options=options)
+                    # parallel_objective=self._parallel_loss_function
+                    _, es = cma.fmin2( cfun, x0, self.sigma, callback=self._log, options=options)
         else:
             _, es = cma.fmin2( None, x0, self.sigma,
                 parallel_objective=self._parallel_loss_function, options=options)
 
         if self.pt._rank == 0:
             self.fit = self.reaxff_io.change_parameters_string(es.best.x)
+            #self.errors = pd.DataFrame(self.hsic_data, columns=self.hsic_header)
             self._log_best(es)
 
         self.io_executor.shutdown(wait=True)
 
     # --------------------------------------------------------------------------------------------
 
-    def _log_progress(self, es):
+    def _log(self, es):
+
+        self.iteration = es.countiter + 1
 
         if es.countiter == 1 or es.countiter % 100 == 0:
             self._log_best(es)
 
-        if es.countiter % 1000 == 0:
+        if es.countiter % 10 == 0:
             current_fit = self.reaxff_io.change_parameters_string(es.best.x)
             # offload i/o to a background thread and keep optimization loop going without stalling
-            self.io_executor.submit(self.output.output, current_fit, None)
+            df = pd.DataFrame(self.hsic_data, columns=self.hsic_header)
+            self.io_executor.submit(self.output.output, current_fit, df)
+            self.hsic_data = []
 
     # --------------------------------------------------------------------------------------------
 
     def _log_best(self, es):
 
-        print("--------------------------------------------------------------------")
+        print("-----------------------------------------------------------------------")
         print(self.config.sections['CALCULATOR'].charge_fix)
-        print("PARAMETER_NAME        INITIAL  LOWER_BOUND       NOW     UPPER_BOUND")
+        print("PARAMETER_NAME           INITIAL  LOWER_BOUND        NOW    UPPER_BOUND")
         for p, x0i, xbi in zip(self.reaxff_io.parameter_names, es.x0, es.best.x):
             p_bounds = self.reaxff_io.bounds[p.split('.')[-1]]
-            print(f"{p:<19} {x0i: > 9.4f}  [  {p_bounds[0]: > 8.2f} {xbi: > 13.8f}  {p_bounds[1]: > 8.2f} ]")
-        print(f"------------------------ {es.countiter:<7} {es.best.f:10.4g} ------------------------")
-                
+            print(f"{p:<22} {x0i: > 9.4f}  [  {p_bounds[0]: > 8.2f} {xbi: > 13.8f}  {p_bounds[1]: > 8.2f} ]")
+        print(f"------------------------- {es.countiter:<7} {es.best.f:11.9g} -------------------------")
+
     # --------------------------------------------------------------------------------------------
 
     def error_analysis(self):
-
-        pass
 
         #for i in self.range_all_data:
         #    d = reaxff_calculator.set_data_index(i)
@@ -136,11 +150,12 @@ class CMAES(Solver):
         #      reaxff_calculator.process_configs(c, 99)
         #self.errors = all_data
 
+        pass
+
     # --------------------------------------------------------------------------------------------
 
     def build_constraints_lambda(self):
         param_idx = {p: i for i, p in enumerate(self.config.sections["REAXFF"].parameter_names)}
-        print(f"*** param_idx {param_idx}")
         elements = reaxff_calculator.elements
         constraints = []
         constraints_desc = []
@@ -437,7 +452,10 @@ class CMAES(Solver):
 
         # -------- PRINT CONSTRAINTS --------
 
-        print(f"*** CONSTRAINTS APPLIED: {len(constraints)} total")
-        for d in constraints_desc: print(f"*** {d}")
-        print(f"***")
+        if self.pt._rank==0:
+            print("-----------------------------------------------------------------------------")
+            print(f"PARAMETER CONSTRAINTS APPLIED: {len(constraints)} total")
+            for d in constraints_desc: print(f"{d}")
+            print("-----------------------------------------------------------------------------")
+
         return lambda x: [f(x) for f in constraints]

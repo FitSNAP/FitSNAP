@@ -119,13 +119,18 @@ class CMAES(Solver):
             self._log_best(es)
 
         if (now - self._last_log_time) >= 120:
-            self._log_best(es)
-            current_fit = self.reaxff_io.change_parameters_string(es.best.x)
-            # offload i/o to a background thread and keep optimization loop going without stalling
-            df = pd.DataFrame(self._hsic_data, columns=self._hsic_header)
-            self.io_executor.submit(self.output.output, current_fit, df)
+            x = es.best.x.copy()
+            hsic_data_copy = self._hsic_data
             self._hsic_data = []
             self._last_log_time = now
+
+            def do_logging():
+                self._log_best(es)
+                current_fit = self.reaxff_io.change_parameters_string(x)
+                df = pd.DataFrame(hsic_data_copy, columns=self._hsic_header)
+                self.output.output(current_fit, df)
+
+            self.io_executor.submit(do_logging)
 
     # --------------------------------------------------------------------------------------------
 

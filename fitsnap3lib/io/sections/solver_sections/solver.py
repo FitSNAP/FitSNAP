@@ -7,14 +7,14 @@ class Solver(Section):
         super().__init__(name, config, pt, infile, args)
         self.allowedkeys = ['solver', 'normalweight', 'normratio', \
                             'compute_testerrs', 'detailed_errors', \
-                            'nsam', 'cov_nugget', 'hsic', \
-                            'mcmc_num', 'mcmc_gamma', \
-                            'merr_mult', 'merr_method', "merr_cfs"]
+                            'nsam', 'cov_nugget', \
+                            'mcmc_num', 'mcmc_gamma', 'mcmc_sigma', \
+                            'merr_mult', 'merr_method', 'merr_cfs] 
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
 
         if self.solver == "CMAES":
-            self.allowedkeys.extend(['popsize','sigma'])
+            self.allowedkeys.extend(['popsize','sigma','hsic'])
             self.popsize = self.get_value("SOLVER", "popsize", "0", "int")
             self.sigma = self.get_value("SOLVER", "sigma", "0.1", "float")
             self.hsic = self.get_value("SOLVER", "hsic", "0", "bool")
@@ -36,6 +36,7 @@ class Solver(Section):
         self.cov_nugget = self.get_value("SOLVER", "cov_nugget", "0.0", "float")
         self.mcmc_num = self.get_value("SOLVER", "mcmc_num", "10000", "int")
         self.mcmc_gamma = self.get_value("SOLVER", "mcmc_gamma", "0.01", "float")
+        self.mcmc_sigma = self.get_value("SOLVER", "mcmc_sigma", "0.1", "float")
         self.merr_mult = self.get_value("SOLVER", "merr_mult", "0", "bool")
         self.merr_method = self.get_value("SOLVER", "merr_method", "abc", "str")
         self.merr_cfs = self.get_value("SOLVER", "merr_cfs", "all", "str")

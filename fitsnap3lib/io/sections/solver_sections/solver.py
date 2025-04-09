@@ -9,7 +9,7 @@ class Solver(Section):
                             'compute_testerrs', 'detailed_errors', \
                             'nsam', 'cov_nugget', \
                             'mcmc_num', 'mcmc_gamma', 'mcmc_sigma', \
-                            'merr_mult', 'merr_method', 'merr_cfs] 
+                            'merr_mult', 'merr_method', 'merr_cfs'] 
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
 

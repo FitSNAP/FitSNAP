@@ -70,7 +70,6 @@ class HDF5(Scraper):
 
                 bounds_min = conformations.min(axis=(0, 1)) - 10.0
                 bounds_max = conformations.max(axis=(0, 1)) + 10.0
-                region = f"region box block {bounds_min[0]} {bounds_max[0]} {bounds_min[1]} {bounds_max[1]} {bounds_min[2]} {bounds_max[2]}"
                 lattice = [
                     [bounds_max[0] - bounds_min[0], 0.0, 0.0],
                     [0.0, bounds_max[1] - bounds_min[1], 0.0],
@@ -104,7 +103,7 @@ class HDF5(Scraper):
                     "cweight": weights["charge"] if is_solvated else 0.0,
                     "dweight": weights["dipole"] if is_solvated else 0.0,
                     "qweight": weights["quadrupole"] if is_solvated else 0.0,
-                    "region": region,
+                    "bounds": (bounds_min, bounds_max),
                     "lattice": lattice
                 }
 
@@ -130,7 +129,7 @@ class HDF5(Scraper):
             flat_configs.sort()
 
             #total = len(flat_configs)
-            total = 3*(self.size-1)
+            total = 1*(self.size-1)
 
             base = total // (self.size-1)
 
@@ -205,7 +204,7 @@ class HDF5(Scraper):
                         "AtomTypes": [atomic_number_to_symbol(n) for n in atomic_numbers],
                         "NumAtoms": len(atomic_numbers),
                         "Lattice": meta["lattice"],
-                        "Region": meta["region"],
+                        "Bounds": meta["bounds"],
                         "eweight": meta["eweight"],
                         "fweight": meta["fweight"] / len(atomic_numbers),
                         "vweight": 0.0,

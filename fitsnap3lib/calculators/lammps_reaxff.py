@@ -73,7 +73,7 @@ class LammpsReaxff(LammpsBase):
         if self.quadrupole: answer.append(self.sum_quadrupole_residuals)
         if self.bond_order: answer.append(self.sum_bond_order_residuals)
         answer.append(sum(answer))
-        return answer
+        return np.array(answer)
 
     # --------------------------------------------------------------------------------------------
 
@@ -99,10 +99,6 @@ class LammpsReaxff(LammpsBase):
         #pprint(configs, width=99, compact=True)
 
     def allocate_per_config(self, configs: list):
-
-        if self.pt.stubs == 0 and self.pt._rank == 0:
-            ncpn = self.pt.get_ncpn(0)
-            return
 
         self._configs = configs
         ncpn = self.pt.get_ncpn(len(configs))

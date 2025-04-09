@@ -1,7 +1,8 @@
 from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np
 from fitsnap3lib.parallel_tools import DistributedList
-import json, sys, gc, ctypes
+import json, sys, gc
 import numpy as np
+from ctypes import c_int, c_double
 from lammps import LAMMPS_DOUBLE, LAMMPS_DOUBLE_2D
 from lammps import LMP_STYLE_GLOBAL, LMP_STYLE_ATOM, LMP_STYLE_LOCAL, LMP_TYPE_SCALAR, LMP_TYPE_VECTOR, LMP_TYPE_ARRAY
 
@@ -30,7 +31,8 @@ class LammpsReaxff(LammpsBase):
 
         self._lmp = None
         self.pt.check_lammps()
-        self._initialize_lammps(printlammps=0, lammpsscreen=0)
+        #f = open(f"water.in","w")
+        self._initialize_lammps(printlammps=0, lammpsscreen=0) # printfile=f
 
     # --------------------------------------------------------------------------------------------
 
@@ -40,28 +42,6 @@ class LammpsReaxff(LammpsBase):
             self.pt.close_lammps()
             del self._lmp
             gc.collect()
-
-    # --------------------------------------------------------------------------------------------
-
-        #np.set_printoptions(threshold=5, edgeitems=1)
-        #pprint(configs, width=99, compact=True)
-
-    def allocate_per_config(self, configs: list):
-
-        if self.pt.stubs == 0 and self.pt._rank == 0:
-            ncpn = self.pt.get_ncpn(0)
-            return
-
-        self._configs = configs
-        ncpn = self.pt.get_ncpn(len(configs))
-        #self._lmp.command(self._data["Region"])
-        self._lmp.command(self._configs[0]["Region"])
-        self._lmp.command(f"create_box {len(self.elements)} box")
-        for i in range(len(self.masses)): self._lmp.command(f"mass {i+1} {self.masses[i]}")
-        self._lmp.command("pair_style reaxff NULL")
-        self._lmp.command(f"pair_coeff * * {self.potential} {' '.join(self.elements)}")
-        if self.dipole: self._lmp.command("compute dipole all dipole fixedorigin")
-        if self.quadrupole: self._lmp.command("compute quadrupole all quadrupole")
 
     # --------------------------------------------------------------------------------------------
 
@@ -78,27 +58,9 @@ class LammpsReaxff(LammpsBase):
         for config_index, c in enumerate(self._configs):
             self._data = c
             self._prepare_lammps()
-
             try:
-                
-                if False:
-                    logfile = f"{c['File']}".replace('/','').replace(' ','-')
-                    with open(f"acks2/{logfile}.in","w") as f:
-                        #self._initialize_lammps(1,printfile=f)
-                        self._lmp.command(f"variable config string {logfile}")
-                        self._lmp.command("info variables")
-                        self._lmp.set_reaxff_parameters(self.parameters, v)
-                        self._lmp.command("run 0 post no")
-                        self._collect_lammps(config_index)
-                        self._lmp.command("unfix 1")
-                        self._lmp.command("fix 1 all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff maxiter 1000")
-                        self._lmp.command("run 0 post no")
-                else:
-
-                    self._lmp.command("run 0 post no")
-                    self._collect_lammps(config_index)
-                    self._lmp.command("unfix 1")
-
+                self._lmp.command("run 0 post no")
+                self._collect_lammps(config_index)
             except Exception as e:
                 print(f"*** rank {self.pt._rank} exception {e}")
                 raise e
@@ -112,6 +74,72 @@ class LammpsReaxff(LammpsBase):
         if self.bond_order: answer.append(self.sum_bond_order_residuals)
         answer.append(sum(answer))
         return answer
+
+    # --------------------------------------------------------------------------------------------
+
+    def _initialize_lammps(self, **kwargs):
+
+        super()._initialize_lammps(**kwargs)
+        self._lmp.command("boundary f f f")
+        reference = self.config.sections["REFERENCE"]
+        if reference.units != "real" or reference.atom_style != "charge":
+            raise NotImplementedError("FitSNAP-ReaxFF only supports 'units real' and 'atom_style charge'.")
+        self._lmp.command("units real")
+        self._lmp.command("atom_style charge")
+        self._lmp.command("atom_modify map array sort 0 2.0")
+        self._lmp.command("region box block -99 99 -99 99 -99 99")
+        self._lmp.command(f"create_box {len(self.elements)} box")
+        for i in range(len(self.masses)): self._lmp.command(f"mass {i+1} {self.masses[i]}")
+        self._lmp.command("pair_style reaxff NULL")
+        self._lmp.command(f"pair_coeff * * {self.potential} {' '.join(self.elements)}")
+
+    # --------------------------------------------------------------------------------------------
+
+        #np.set_printoptions(threshold=5, edgeitems=1)
+        #pprint(configs, width=99, compact=True)
+
+    def allocate_per_config(self, configs: list):
+
+        if self.pt.stubs == 0 and self.pt._rank == 0:
+            ncpn = self.pt.get_ncpn(0)
+            return
+
+        self._configs = configs
+        ncpn = self.pt.get_ncpn(len(configs))
+        #sum_charges = round(np.sum(self._data["Charges"]))
+        sum_charges = 0.0
+        #self._lmp.command(self.charge_fix)
+        self._lmp.command(self.charge_fix + f" target_charge {sum_charges}")
+        if self.dipole: self._lmp.command("compute dipole all dipole fixedorigin")
+        if self.quadrupole: self._lmp.command("compute quadrupole all quadrupole")
+
+        max_atoms = max(c["NumAtoms"] for c in configs)
+        self._lmp.create_atoms( n=max_atoms, id=None,
+            type=(max_atoms * c_int)(*([1] * max_atoms)),
+            x=(max_atoms * 3 * c_double)(*([0.0] * max_atoms * 3))
+        )
+
+        self._nlocal = self._lmp.extract_global("nlocal")
+        self._natoms = self._lmp.extract_global("natoms")
+        self._boxlo = self._lmp.extract_global("boxlo")
+        self._boxhi = self._lmp.extract_global("boxhi")
+        self._type = self._lmp.extract_atom("type")
+        self._x = self._lmp.extract_atom("x")
+        self._q = self._lmp.extract_atom("q")
+
+
+    # --------------------------------------------------------------------------------------------
+
+    def _prepare_lammps(self):
+
+      self._nlocal = self._data["NumAtoms"]
+      self._boxlo[:] = self._data["Bounds"][0]
+      self._boxhi[:] = self._data["Bounds"][1]
+
+      for i, (x, y, z) in enumerate(self._data["Positions"]):
+          self._type[i] = self.type_mapping[self._data["AtomTypes"][i]]
+          self._x[i][0], self._x[i][1], self._x[i][2] = x, y, z
+          self._q[i] = self._data["Charges"][i][0]
 
     # --------------------------------------------------------------------------------------------
 
@@ -191,48 +219,5 @@ class LammpsReaxff(LammpsBase):
         #    f"| dipole {dipole_residual:12g} | quadrupole {quadrupole_residual:12g}")
 
 
-
-
     # --------------------------------------------------------------------------------------------
-
-    def _initialize_lammps(self, **kwargs):
-
-        super()._initialize_lammps(**kwargs)
-        self._lmp.command("boundary f f f")
-        reference = self.config.sections["REFERENCE"]
-        if reference.units != "real" or reference.atom_style != "charge":
-            raise NotImplementedError("FitSNAP-ReaxFF only supports 'units real' and 'atom_style charge'.")
-        self._lmp.command("units real")
-        self._lmp.command("atom_style charge")
-        self._lmp.command("atom_modify map array sort 0 2.0")
-
-
-
-
-    # --------------------------------------------------------------------------------------------
-
-    def _prepare_lammps(self):
-
-        self._lmp.command("delete_atoms group all")
-        positions = self._data["Positions"].flatten()
-        elem_all = [self.type_mapping[a_t] for a_t in self._data["AtomTypes"]]
-        self._lmp.create_atoms(
-            n=self._data["NumAtoms"],
-            id=None,
-            type=(len(elem_all) * ctypes.c_int)(*elem_all),
-            x=(len(positions) * ctypes.c_double)(*positions),
-            v=None,
-            image=None,
-            shrinkexceed=False
-        )
-
-        self._create_charge()
-        sum_charges = round(np.sum(self._data["Charges"]))
-        #self._lmp.command(self.charge_fix)
-        self._lmp.command(self.charge_fix + f" target_charge {sum_charges}")
-
-
-    # --------------------------------------------------------------------------------------------
-
-
 

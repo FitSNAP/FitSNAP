@@ -552,7 +552,7 @@ class ParallelTools():
                 
     def initialize_lammps(self, lammpslog=0, printlammps=0, lammpsscreen=0, printfile=None):
 
-        cmds = [] if lammpsscreen else ["-screen", "none"]
+        cmds = ["-nocite"] if lammpsscreen else ["-screen", "none", "-nocite"]
 
         # super hack to workaround lammps repo admin
         if self.reaxff:

@@ -122,30 +122,25 @@ class HDF5(Scraper):
     def divvy_up_configs(self):
 
         if self.pt.stubs==1:
-            self.my_configs = self.local_configs
+            self.my_configs = self.local_configs[:3]
         else:
             all_configs = self.comm.allgather(self.local_configs)
             flat_configs = [cfg for sub in all_configs for cfg in sub]
             flat_configs.sort()
 
             #total = len(flat_configs)
-            total = 1*(self.size-1)
+            total = 1*(self.size)
 
-            base = total // (self.size-1)
+            base = total // (self.size)
 
             # make sure that all ranks have same number of configs
             # remainder extra configs can be used for validation testing
             #remainder = total % (self.size-1)
             remainder = 0
 
-            if self.rank==0:
-                start = 0
-                stop = 0
-                expected = 0
-            else:
-                start = (self.rank-1) * base + min((self.rank-1), remainder)
-                stop = start + base + (1 if (self.rank-1) < remainder else 0)
-                expected = base + (1 if (self.rank-1) < remainder else 0)
+            start = self.rank * base + min(self.rank, remainder)
+            stop = start + base + (1 if self.rank < remainder else 0)
+            expected = base + (1 if self.rank < remainder else 0)
             self.my_configs = flat_configs[start:stop]
             actual = len(self.my_configs)
             #print(f"[Rank {self.rank}] Expected {expected} configs, got {actual}. total {total} base {base}, remainder {remainder}")

@@ -89,7 +89,7 @@ class CMAES(Solver):
         if es.countiter==1:
             self._log_best(es)
 
-        if (now - self._last_log_time) >= 120:
+        if (now - self._last_log_time) >= 15*60:
             x = es.best.x.copy()
             hsic_data_copy = self._hsic_data
             self._hsic_data = []

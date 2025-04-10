@@ -60,7 +60,7 @@ class CMAES(Solver):
             bounds = self.config.sections['REAXFF'].parameter_bounds
             cma_stds = np.array([self.sigma * (hi - lo) for lo, hi in bounds])
             options={
-                'popsize': self.popsize, 'seed': 12345, 'maxiter': 5,
+                'popsize': self.popsize, 'seed': 12345, #'maxiter': 5,
                 'bounds': list(np.transpose(bounds)), 'CMA_stds': cma_stds
             }
             import warnings

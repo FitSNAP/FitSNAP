@@ -171,11 +171,6 @@ class Config():
             self.sections["REFERENCE"].units = "real"
             self.sections["REFERENCE"].atom_style = "charge"
 
-        if "REAXFF" in sections and self.sections["SOLVER"].popsize==0:
-            num_parameters = len(self.sections["REAXFF"].parameters)
-            self.sections["SOLVER"].popsize = 4*num_parameters
-
-
     def view_state(self, sections: list | str = [], original_input = False):
         """
         Print a view to screen of the sections contained in the FitSNAP configuration object in its current state. 

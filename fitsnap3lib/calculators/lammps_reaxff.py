@@ -54,13 +54,15 @@ class LammpsReaxff(LammpsBase):
         if self.quadrupole: self.sum_quadrupole_residuals = 0.0
         if self.bond_order: self.bond_order_residuals = 0.0
         self._lmp.set_reaxff_parameters(self.parameters, values)
+        self._charge_fix()
 
         for config_index, c in enumerate(self._configs):
             self._data = c
             self._prepare_lammps()
             try:
-                self._lmp.command("run 0 post no")
+                self._run_lammps()
                 self._collect_lammps(config_index)
+                self._lmp.command("unfix 1")
             except Exception as e:
                 print(f"*** rank {self.pt._rank} exception {e}")
                 raise e
@@ -74,6 +76,12 @@ class LammpsReaxff(LammpsBase):
         if self.bond_order: answer.append(self.sum_bond_order_residuals)
         answer.append(sum(answer))
         return np.array(answer)
+
+    def _charge_fix(self):
+        #sum_charges = round(np.sum(self._data["Charges"]))
+        sum_charges = 0.0
+        #self._lmp.command(self.charge_fix)
+        self._lmp.command(self.charge_fix + f" target_charge {sum_charges}")
 
     # --------------------------------------------------------------------------------------------
 
@@ -102,10 +110,6 @@ class LammpsReaxff(LammpsBase):
 
         self._configs = configs
         ncpn = self.pt.get_ncpn(len(configs))
-        #sum_charges = round(np.sum(self._data["Charges"]))
-        sum_charges = 0.0
-        #self._lmp.command(self.charge_fix)
-        self._lmp.command(self.charge_fix + f" target_charge {sum_charges}")
         if self.dipole: self._lmp.command("compute dipole all dipole fixedorigin")
         if self.quadrupole: self._lmp.command("compute quadrupole all quadrupole")
 
@@ -116,13 +120,13 @@ class LammpsReaxff(LammpsBase):
         )
 
         self._nlocal = self._lmp.extract_global("nlocal")
-        self._natoms = self._lmp.extract_global("natoms")
         self._boxlo = self._lmp.extract_global("boxlo")
         self._boxhi = self._lmp.extract_global("boxhi")
+        self._sublo = self._lmp.extract_global("sublo")
+        self._subhi = self._lmp.extract_global("subhi")
         self._type = self._lmp.extract_atom("type")
         self._x = self._lmp.extract_atom("x")
         self._q = self._lmp.extract_atom("q")
-
 
     # --------------------------------------------------------------------------------------------
 
@@ -131,6 +135,8 @@ class LammpsReaxff(LammpsBase):
       self._nlocal = self._data["NumAtoms"]
       self._boxlo[:] = self._data["Bounds"][0]
       self._boxhi[:] = self._data["Bounds"][1]
+      self._sublo[:] = self._data["Bounds"][0]
+      self._subhi[:] = self._data["Bounds"][1]
 
       for i, (x, y, z) in enumerate(self._data["Positions"]):
           self._type[i] = self.type_mapping[self._data["AtomTypes"][i]]

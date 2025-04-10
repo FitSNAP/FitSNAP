@@ -13,9 +13,10 @@ class CMAES(Solver):
 
         super().__init__(name, pt, config, linear=False)
         #if pt.stubs==0: from mpi4py import MPI
-        self.popsize = self.config.sections['SOLVER'].popsize
-        self.sigma = self.config.sections['SOLVER'].sigma
         self.reaxff_io = self.config.sections['REAXFF']
+        self.popsize = self.config.sections['SOLVER'].popsize
+        if self.popsize==0: self.popsize = 8 * len(self.reaxff_io.parameters) # default if 0
+        self.sigma = self.config.sections['SOLVER'].sigma
 
         calculator = config.sections["CALCULATOR"]
         self._hsic_header=['iteration', *self.reaxff_io.parameter_names]
@@ -61,8 +62,10 @@ class CMAES(Solver):
             cma_stds = np.array([self.sigma * (hi - lo) for lo, hi in bounds])
             options={
                 'popsize': self.popsize, 'seed': 12345, #'maxiter': 5,
-                'bounds': list(np.transpose(bounds)), 'CMA_stds': cma_stds
+                'bounds': list(np.transpose(bounds)), 'CMA_stds': cma_stds,
+                'max_restarts': 3, 'tolstagnation': 999, 'restart_strategy': "IPOP"
             }
+
             import warnings
             warnings.simplefilter("ignore", category=UserWarning)
             from concurrent.futures import ThreadPoolExecutor

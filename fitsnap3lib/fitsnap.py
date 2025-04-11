@@ -54,7 +54,7 @@ class FitSnap:
         pt (:obj:`class` ParallelTools): Instance of the ParallelTools class for helping MPI 
                                          communication and shared arrays.
         config (:obj:`class` Config): Instance of the Config class for initializing settings, 
-                                      initialized with a ParallelTools instance.
+                                      initialized with a Config instance.
         scraper (:obj:`class` Scraper): Instance of the Scraper class for gathering configs.
         data (:obj:`list`): List of dictionaries, where each configuration of atoms has its own 
             dictionary.
@@ -70,6 +70,7 @@ class FitSnap:
         self.pt = ParallelTools(comm=comm)
         self.pt.all_barrier()
         self.config = Config(self.pt, input, arguments_lst=arglist)
+        self.pt.reaxff = "REAXFF" in self.config.sections
         if self.config.args.verbose:
             self.pt.single_print(f"FitSNAP instance hash: {self.config.hash}")
         # Instantiate other backbone attributes.
@@ -82,6 +83,9 @@ class FitSnap:
         self.output = output(self.config.sections["OUTFILE"].output_style, self.pt, self.config) \
             if "OUTFILE" in self.config.sections else None
 
+        if self.pt.reaxff:
+            self.output = output("REAXFF", self.pt, self.config) 
+
         self.fit = None
         self.multinode = 0
 
@@ -92,12 +96,12 @@ class FitSnap:
         if (hasattr(self.pt, "lammps_version")):
             if (self.config.sections['CALCULATOR'].nonlinear and (self.pt.lammps_version < 20220915) ):
                 raise Exception(f"Please upgrade LAMMPS to 2022-09-15 or later to use nonlinear solvers.")
-        
-        if (self.pt._number_of_nodes > 1 and self.config.sections["EXTRAS"].multinode_testing):
-            self.pt.single_print(f"WARNING: multinode testing toggled on!\nWARNING: this feature is currently only useful for the 'transpose_trick' example.\nWARNING: Otherwise, must use ScaLAPACK solver when using > 1 node or you'll fit to 1/nodes of data.\nWARNING: use 'multinode_testing' at your own risk.\n")
 
-        if (self.pt._number_of_nodes > 1 and not self.config.sections["SOLVER"].true_multinode) and not self.config.sections["EXTRAS"].multinode_testing:
-            raise Exception(f"Must use ScaLAPACK solver when using > 1 node or you'll fit to 1/nodes of data.")
+        if "EXTRAS" in self.config.sections:
+            if (self.pt._number_of_nodes > 1 and self.config.sections["EXTRAS"].multinode_testing):
+                self.pt.single_print(f"WARNING: multinode testing toggled on!\nWARNING: this feature is currently only useful for the 'transpose_trick' example.\nWARNING: Otherwise, must use ScaLAPACK solver when using > 1 node or you'll fit to 1/nodes of data.\nWARNING: use 'multinode_testing' at your own risk.\n")
+            if (self.pt._number_of_nodes > 1 and not self.config.sections["SOLVER"].true_multinode) and not self.config.sections["EXTRAS"].multinode_testing:
+                raise Exception(f"Must use ScaLAPACK solver when using > 1 node or you'll fit to 1/nodes of data.")
     
     def __del__(self):
         """Override deletion statement to free shared arrays owned by this instance."""
@@ -195,12 +199,14 @@ class FitSnap:
             if not self.config.args.perform_fit:
                 return
             elif self.fit is None:
-                if self.solver.linear:
+                if "REAXFF" in self.config.sections:
+                    self.calculator.allocate_per_config(self.data)
+                    self.solver.perform_fit(self)
+                elif self.solver.linear:
                     self.solver.perform_fit()
                 else:
                     # Perform nonlinear fitting on 1 proc only.
-                    if(self.pt._rank==0):
-                        self.solver.perform_fit()
+                    if(self.pt._rank==0): self.solver.perform_fit()
             else:
                 self.solver.fit = self.fit
                 
@@ -215,7 +221,15 @@ class FitSnap:
         def error_analysis():
             self.solver.error_analysis()
 
-        fit()
+        if "EXTRAS" in self.config.sections and self.config.sections["EXTRAS"].profile:
+            from cProfile import Profile
+            from pstats import SortKey, Stats
+            with Profile() as profile:
+                fit()
+                Stats(profile).dump_stats(f"stats{self.pt._rank}")
+        else:
+            fit()
+
         fit_gather()
         error_analysis()
 

@@ -10,14 +10,22 @@ class Calculator(Section):
     def __init__(self, name, config, pt, infile, args):
         super().__init__(name, config, pt, infile, args)
         #self.pt = ParallelTools()
-        self.allowedkeys = ['calculator', 'energy', 'per_atom_energy', 'force', 'stress', \
-                            'nonlinear', 'per_atom_scalar']
+        self.allowedkeys = ['calculator', 'nonlinear', 'per_atom_scalar', 'per_atom_energy', \
+                            'energy', 'force', 'stress', 'charge', 'dipole', 'quadrupole', 'bond_order', \
+                            'fix_charge']
         self._check_section()
 
         self.calculator = self.get_value("CALCULATOR", "calculator", "LAMMPSSNAP")
         self.energy = self.get_value("CALCULATOR", "energy", "True", "bool")
         self.per_atom_energy = self.get_value("CALCULATOR", "per_atom_energy", "False", "bool")
         self.per_atom_scalar = self.get_value("CALCULATOR", "per_atom_scalar", "False", "bool")
+
+        # REAXFF
+        self.charge_fix = self.get_value("CALCULATOR", "fix_charge", "None", "str")
+        self.charge = self.get_value("CALCULATOR", "charge", "False", "bool")
+        self.dipole = self.get_value("CALCULATOR", "dipole", "False", "bool")
+        self.quadrupole = self.get_value("CALCULATOR", "quadrupole", "False", "bool")
+        self.bond_order = self.get_value("CALCULATOR", "bond_order", "False", "bool")
 
         self.dee = self.check_path(self.get_value("CALCULATOR", "dee", "detailed_energy_errors.dat"))
         self.pt.add_2_fitsnap("energy", self.energy)

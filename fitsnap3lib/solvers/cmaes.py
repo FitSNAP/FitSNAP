@@ -63,7 +63,7 @@ class CMAES(Solver):
             options={
                 'popsize': self.popsize, 'seed': 12345, #'maxiter': 5,
                 'bounds': list(np.transpose(bounds)), 'CMA_stds': cma_stds,
-                'max_restarts': 3, 'tolstagnation': 999, 'restart_strategy': "IPOP"
+                'tolstagnation': 999
             }
 
             import warnings
@@ -73,7 +73,8 @@ class CMAES(Solver):
             self._iteration = 1
             constraints_function = self.build_constraints_lambda()
             cfun = cma.ConstrainedFitnessAL(self._loss_function, constraints_function)
-            _, es = cma.fmin2(cfun, x0, self.sigma, callback=self._log, options=options)
+            _, es = cma.fmin2(cfun, x0, self.sigma, callback=self._log, options=options,
+                restarts=5, bipop=True )
             self.fit = self.reaxff_io.change_parameters_string(es.best.x)
             #self.errors = pd.DataFrame(self._hsic_data, columns=self._hsic_header)
             self._log_best(es)

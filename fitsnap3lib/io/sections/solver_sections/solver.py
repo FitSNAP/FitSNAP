@@ -13,7 +13,7 @@ class Solver(Section):
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
 
-        if self.solver == "CMAES":
+        if self.solver == "CMAES" or self.solver == "NGOpt":
             self.allowedkeys.extend(['popsize','sigma','hsic'])
             self.popsize = self.get_value("SOLVER", "popsize", "0", "int")
             self.sigma = self.get_value("SOLVER", "sigma", "0.1", "float")

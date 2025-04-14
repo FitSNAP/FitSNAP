@@ -28,7 +28,6 @@ class Reaxff(Output):
                     errors.to_csv(f"{self.base}-{timestamp}.csv", index=False)
                     #errors.to_feather("{base}-{timestamp}.feather", index=False)
 
-
         if self.pt._rank == 0:
             thread_safe_write()
 

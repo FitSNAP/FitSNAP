@@ -54,12 +54,11 @@ class NGOpt(Solver):
             return
 
         self.output = fs.output
-        x0 = np.array(self.reaxff_io.values)
+        self.initial_x = np.array(self.reaxff_io.values)
         bounds = self.config.sections['REAXFF'].parameter_bounds
         lb, ub = map(np.array, zip(*bounds))
         self._iteration = 1
         self.io_executor = ThreadPoolExecutor(max_workers=1)
-
         self.constraints = self._build_constraints()
 
         def feasible(x): return all(c(x) >= 0 for c in self.constraints)
@@ -81,14 +80,66 @@ class NGOpt(Solver):
 
         def safe_loss(x): return self._loss_function(project(np.array(x)))
 
-        p = ng.p.Array(init=x0).set_bounds(lb, ub)
-        opt = ng.optimizers.NGOpt(parametrization=p, budget=500, num_workers=1)
-        rec = opt.minimize(safe_loss)
-        x_best = project(rec.value)
-        self.fit = self.reaxff_io.change_parameters_string(x_best)
-        self._log_best(x0, x_best, self._loss_function(x_best), opt.num_ask)
+        import logging
+        logging.getLogger("nevergrad").setLevel(logging.INFO)
+
+        #param = ng.p.Array(init=self.initial_x, mutable_sigma=True)
+        #param.set_mutation(sigma=((ub-lb)/3).astype(float))
+        #param.set_bounds(lb, ub)
+
+        #param = ng.p.Array(init=self.initial_x, mutable_sigma=True).set_bounds(lb, ub)
+        #sigma = (ub - lb) / 3
+        #param.sigma.value = sigma.astype(float)  # must be 1D float array
+
+        # Create Array with fixed sigma first
+        param = ng.p.Array(init=self.initial_x).set_bounds(lb, ub)
+        # Overwrite the sigma with a vector-valued parameter
+        sigma = (ub - lb) / 3
+        param.parameters["sigma"] = ng.p.Array(init=sigma, mutable_sigma=False)
+
+        opt = ng.optimizers.NGOpt(parametrization=param, budget=1000000, num_workers=1)
+        opt.register_callback("tell", self._log)
+        rec = opt.minimize(self._loss_function, verbosity=0)
+        best = project(rec.value)
+        best_x = best._value
+        best_loss = best.loss
+        self.fit = self.reaxff_io.change_parameters_string(best_x)
+        self._log_best(self.initial_x, best_x, best_loss, opt.num_ask)
         self.io_executor.shutdown(wait=True)
         self.pt._comm.bcast(None, root=0)
+
+    # --------------------------------------------------------------------------------------------
+
+    def _log(self, opt, candidate, loss):
+
+        self._iteration = opt.num_ask + 1
+        now = time.time()
+
+        from pprint import pprint
+        #print(f"*** num_ask {opt.num_ask} num_tell {opt.num_tell}")
+        #print(f"*** {type(opt.recommend())}")
+        #pprint(vars(opt.recommend()))
+        #print(f"***")
+
+        if opt.num_tell==1:
+            best = opt.recommend()
+            self._log_best(self.initial_x, best._value, best.loss, opt.num_ask)
+
+        if (now - self._last_log_time) >= 1*60:
+            best = opt.recommend()
+            best_x = best._value.copy()
+            best_loss = best.loss
+            hsic_data_copy = self._hsic_data
+            self._hsic_data = []
+            self._last_log_time = now
+
+            def do_logging():
+                self._log_best(self.initial_x, best_x, best_loss, opt.num_ask)
+                current_fit = self.reaxff_io.change_parameters_string(best_x)
+                df = pd.DataFrame(hsic_data_copy, columns=self._hsic_header)
+                self.output.output(current_fit, df)
+
+            self.io_executor.submit(do_logging)
 
     # --------------------------------------------------------------------------------------------
 

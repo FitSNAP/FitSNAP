@@ -62,7 +62,6 @@ class LammpsReaxff(LammpsBase):
             try:
                 self._run_lammps()
                 self._collect_lammps(config_index)
-                self._lmp.command("unfix 1")
             except Exception as e:
                 print(f"*** rank {self.pt._rank} exception {e}")
                 raise e
@@ -76,6 +75,8 @@ class LammpsReaxff(LammpsBase):
         if self.bond_order: answer.append(self.sum_bond_order_residuals)
         answer.append(sum(answer))
         return np.array(answer)
+
+    # --------------------------------------------------------------------------------------------
 
     def _charge_fix(self):
         #sum_charges = round(np.sum(self._data["Charges"]))

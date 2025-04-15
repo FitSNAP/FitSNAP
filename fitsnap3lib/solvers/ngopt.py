@@ -49,7 +49,7 @@ class NGOpt(Solver):
 
     def perform_fit(self, fs):
         self.reaxff_calculator = fs.calculator
-        if self.pt._rank != 0:
+        if self.pt._size > 1 and self.pt._rank != 0:
             while self._loss_function(None): pass
             return
 
@@ -83,23 +83,25 @@ class NGOpt(Solver):
         import logging
         logging.getLogger("nevergrad").setLevel(logging.INFO)
 
-        #param = ng.p.Array(init=self.initial_x, mutable_sigma=True)
-        #param.set_mutation(sigma=((ub-lb)/3).astype(float))
-        #param.set_bounds(lb, ub)
+        param = ng.p.Array(init=self.initial_x, mutable_sigma=False)
+        param.set_mutation(sigma=((ub-lb)/3))
+        param.set_bounds(lb, ub)
 
         #param = ng.p.Array(init=self.initial_x, mutable_sigma=True).set_bounds(lb, ub)
         #sigma = (ub - lb) / 3
         #param.sigma.value = sigma.astype(float)  # must be 1D float array
 
         # Create Array with fixed sigma first
-        param = ng.p.Array(init=self.initial_x).set_bounds(lb, ub)
+        #param = ng.p.Array(init=self.initial_x).set_bounds(lb, ub)
         # Overwrite the sigma with a vector-valued parameter
-        sigma = (ub - lb) / 3
-        param.parameters["sigma"] = ng.p.Array(init=sigma, mutable_sigma=False)
+        #sigma = (ub - lb) / 3
+        #param.parameters["sigma"] = ng.p.Array(init=sigma, mutable_sigma=False)
 
-        opt = ng.optimizers.NGOpt(parametrization=param, budget=1000000, num_workers=1)
+        opt = ng.optimizers.NGOpt(parametrization=param, budget=2**31-1, num_workers=1)
+        hsic_logger = ng.callbacks.HSICLoggerCallback()
+        opt.register_callback("tell", hsic_logger)
         opt.register_callback("tell", self._log)
-        rec = opt.minimize(self._loss_function, verbosity=0)
+        rec = opt.minimize(self._loss_function, verbosity=1)
         best = project(rec.value)
         best_x = best._value
         best_loss = best.loss
@@ -115,11 +117,14 @@ class NGOpt(Solver):
         self._iteration = opt.num_ask + 1
         now = time.time()
 
-        from pprint import pprint
-        #print(f"*** num_ask {opt.num_ask} num_tell {opt.num_tell}")
-        #print(f"*** {type(opt.recommend())}")
-        #pprint(vars(opt.recommend()))
-        #print(f"***")
+        def format_duration(seconds):
+            d, r = divmod(int(seconds), 86400)
+            h, m = divmod(r, 3600)
+            return f"{d:02}-{h:02}:{m//60:02}"
+
+        # Example
+        # elapsed = 93784  # seconds
+        # print(format_duration(elapsed))  # e.g. "01-02:03" for 1 day, 2 hours, 3 minutes
 
         if opt.num_tell==1:
             best = opt.recommend()

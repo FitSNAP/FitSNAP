@@ -97,13 +97,14 @@ class NGOpt(Solver):
         #sigma = (ub - lb) / 3
         #param.parameters["sigma"] = ng.p.Array(init=sigma, mutable_sigma=False)
 
-        opt = ng.optimizers.NGOpt(parametrization=param, budget=2**31-1, num_workers=1)
-        hsic_logger = ng.callbacks.HSICLoggerCallback()
-        opt.register_callback("tell", hsic_logger)
-        opt.register_callback("tell", self._log)
-        rec = opt.minimize(self._loss_function, verbosity=1)
+        optimizer = ng.optimizers.NGOpt(parametrization=param, budget=2**31-1, num_workers=1)
+        optimizer.parametrization.random_state = np.random.RandomState(12345)
+        self.hsic_logger = ng.callbacks.HSICLoggerCallback()
+        optimizer.register_callback("tell", self.hsic_logger)
+        optimizer.register_callback("tell", self._log)
+        rec = optimizer.minimize(self._loss_function, verbosity=0)
         best = project(rec.value)
-        best_x = best._value
+        best_x = best.value
         best_loss = best.loss
         self.fit = self.reaxff_io.change_parameters_string(best_x)
         self._log_best(self.initial_x, best_x, best_loss, opt.num_ask)
@@ -112,7 +113,7 @@ class NGOpt(Solver):
 
     # --------------------------------------------------------------------------------------------
 
-    def _log(self, opt, candidate, loss):
+    def _log(self, optimizer, candidate, loss):
 
         self._iteration = opt.num_ask + 1
         now = time.time()
@@ -127,19 +128,20 @@ class NGOpt(Solver):
         # print(format_duration(elapsed))  # e.g. "01-02:03" for 1 day, 2 hours, 3 minutes
 
         if opt.num_tell==1:
-            best = opt.recommend()
-            self._log_best(self.initial_x, best._value, best.loss, opt.num_ask)
+            best = optimizer.recommend()
+            self._log_best(self.initial_x, best.value, best.loss, optimizer.num_ask)
 
         if (now - self._last_log_time) >= 1*60:
-            best = opt.recommend()
-            best_x = best._value.copy()
+            print(self.hsic_logger.summary())
+            best = optimizer.recommend()
+            best_x = best.value.copy()
             best_loss = best.loss
             hsic_data_copy = self._hsic_data
             self._hsic_data = []
             self._last_log_time = now
 
             def do_logging():
-                self._log_best(self.initial_x, best_x, best_loss, opt.num_ask)
+                self._log_best(self.initial_x, best_x, best_loss, optimizer.num_ask)
                 current_fit = self.reaxff_io.change_parameters_string(best_x)
                 df = pd.DataFrame(hsic_data_copy, columns=self._hsic_header)
                 self.output.output(current_fit, df)

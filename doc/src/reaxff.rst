@@ -1,3 +1,32 @@
+        # -------- 1. ATM r_s ≥ r_p ≥ r_pp --------
+        # -------- 2. ATM r_vdw ≥ r_s --------
+
+        # -------- 3. ATM r_vdw > rcore2 --------
+        # -------- 4. ATM ecore2 > epsilon --------
+
+        # -------- 5. ATM eta ≥ 7.2*gamma (QEQ), eta ≥ 8.13*gamma (ACKS2) --------
+
+        # -------- 6. ATM bcut_acks2 ≥ max(r_s) --------
+
+        # -------- 7. electronegativity hierarchy --------
+        # -------- example: chi(O) > chi(N) > chi(C) > chi(H) --------
+
+        # -------- 8. BND De_s ≥ De_p ≥ De_pp --------
+
+        # -------- 9. BND p_be2 ≥ p_bo2, p_bo4, p_bo6 --------
+
+        # -------- 10. BND p_bo6 ≥ p_bo4 ≥ p_bo2 --------
+        # -------- 11. OFD r_pp ≥ r_p ≥ r_s --------
+        # -------- 12. OFD.X.Y.alpha ≥ max(ATM.X.alpha, ATM.Y.alpha) --------
+
+        # -------- 13. ANG p_pen1 ≥ |p_val1| --------
+        # -------- 14. ANG p_pen1 ≥ |p_val2| --------
+
+        # -------- 15. TOR V1 ≥ |V2| --------
+        # -------- 16. TOR V1 ≥ |V3| --------
+
+        # -------- 17. HBD r0_hb > r_s (ensure H-bond length exceeds σ-bond radius) --------
+
 ReaxFF Models
 =============
 

@@ -66,6 +66,7 @@ class LammpsReaxff(LammpsBase):
                 print(f"*** rank {self.pt._rank} exception {e}")
                 raise e
 
+        self._lmp.command(f"unfix {self.charge_fix.split()[1]}")
         answer = []
         if self.energy: answer.append(self.sum_energy_residuals)
         if self.force: answer.append(self.sum_force_residuals)
@@ -151,6 +152,7 @@ class LammpsReaxff(LammpsBase):
         def pseudo_huber(x, delta=1.0):
             x = np.nan_to_num(x, nan=8e8)
             return delta**2 * (np.sqrt(1 + (x / delta)**2) - 1)
+            #return x
 
         def cauchy_loss(x, c=1.0):
             x = np.nan_to_num(x, nan=8e8)

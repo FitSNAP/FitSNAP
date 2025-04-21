@@ -30,6 +30,7 @@ class NGOpt(Solver):
     # --------------------------------------------------------------------------------------------
 
     def _loss_function(self, x):
+
         if self.pt.stubs == 1 or self.pt._size == 1:
             loss = self.reaxff_calculator.process_configs_with_values(x)
             self._hsic_data.append([self._iteration, *x, *loss])
@@ -40,10 +41,58 @@ class NGOpt(Solver):
         local = self.reaxff_calculator.process_configs_with_values(x)
         total = np.zeros_like(local) if self.pt._rank == 0 else None
         self.pt._comm.Reduce(local, total, root=0)
+        #print(f"*** rank {self.pt._rank} local {local} total {total}")
+
         if self.pt._rank == 0:
             self._hsic_data.append([self._iteration, *x, *total.tolist()])
             return total[-1]
         return True
+
+    # --------------------------------------------------------------------------------------------
+
+    def _transform(self, x):
+        """Forward transform: full physical array → transformed optimization space (13D)."""
+        return np.array([
+            x[0],                          # GEN.bond_softness
+            x[1],                          # ATM.H.r_s
+            x[2],                          # ATM.H.gamma
+            x[3],                          # ATM.H.chi
+            x[4] - 8.13 * x[2],            # delta_eta_H
+            x[6],                          # ATM.O.gamma
+            x[8] - 8.13 * x[6],            # delta_eta_O
+            x[7] - x[3],                   # delta_chi_O
+            x[5],                          # ATM.O.r_s
+            x[9] - x[1],                   # delta_rhb_H
+            x[11] - x[5],                  # delta_rhb_O
+            x[10],                         # HBD.H.H.O.p_hb1
+            x[12]                          # HBD.O.H.O.p_hb1
+        ], dtype=np.float64)
+
+    def _inverse_transform(self, y):
+        """Inverse transform: transformed optimization vector → full physical parameter array (13D)."""
+        x = np.array([
+            y[0],                          # GEN.bond_softness
+            y[1],                          # ATM.H.r_s
+            y[2],                          # ATM.H.gamma
+            y[3],                          # ATM.H.chi
+            8.13 * y[2] + y[4],            # ATM.H.eta
+            y[8],                          # ATM.O.r_s
+            y[5],                          # ATM.O.gamma
+            y[3] + y[7],                   # ATM.O.chi
+            8.13 * y[5] + y[6],            # ATM.O.eta
+            y[1] + y[9],                   # HBD.H.H.O.r0_hb
+            y[10],                         # HBD.H.H.O.p_hb1
+            y[8] + y[10],                  # HBD.O.H.O.r0_hb
+            y[12]                          # HBD.O.H.O.p_hb1
+        ], dtype=np.float64)
+
+        np.set_printoptions(precision=4, suppress=True, linewidth=2000)
+
+        if np.any(np.isnan(x)) or np.any(np.isinf(x)):
+            print("*** _inverse_transform WARNING: NaN or inf detected in x")
+        #print(f"*** y {y}")
+        #print(f"*** x {x}")
+        return x
 
     # --------------------------------------------------------------------------------------------
 
@@ -59,63 +108,82 @@ class NGOpt(Solver):
         lb, ub = map(np.array, zip(*bounds))
         self._iteration = 1
         self.io_executor = ThreadPoolExecutor(max_workers=1)
-        self.constraints = self._build_constraints()
-
-        def feasible(x): return all(c(x) >= 0 for c in self.constraints)
-
-        def project(x):
-            x = np.clip(x, lb, ub)
-            if feasible(x): return x
-            xf = lb + np.random.rand(*x.shape) * (ub - lb)
-            while not feasible(xf):
-                xf = lb + np.random.rand(*x.shape) * (ub - lb)
-            lo, hi = 0.0, 1.0
-            for _ in range(50):
-                mid = (lo + hi) / 2.0
-                xmid = np.clip(mid * x + (1 - mid) * xf, lb, ub)
-                if feasible(xmid): hi = mid
-                else: lo = mid
-                if hi - lo < 1e-8: break
-            return np.clip(mid * x + (1 - mid) * xf, lb, ub)
-
-        def safe_loss(x): return self._loss_function(project(np.array(x)))
 
         import logging
-        logging.getLogger("nevergrad").setLevel(logging.INFO)
+        logging.getLogger("nevergrad").setLevel(logging.DEBUG)
 
-        param = ng.p.Array(init=self.initial_x, mutable_sigma=False)
-        param.set_mutation(sigma=((ub-lb)/3))
-        param.set_bounds(lb, ub)
+        lower = np.array([
+            400.0,   # GEN.bond_softness
+            0.3,     # ATM.H.r_s
+            0.5,     # ATM.H.gamma
+           -10.0,    # ATM.H.chi
+            1e-4,    # delta_eta_H
+            0.5,     # ATM.O.gamma
+            1e-4,    # delta_eta_O
+            1e-4,    # delta_chi_O
+            0.3,     # ATM.O.r_s
+            1e-4,    # delta_rhb_H
+            1e-4,    # delta_rhb_O
+           -10.0,    # HBD.H.H.O.p_hb1
+           -10.0     # HBD.O.H.O.p_hb1
+        ])
 
-        #param = ng.p.Array(init=self.initial_x, mutable_sigma=True).set_bounds(lb, ub)
-        #sigma = (ub - lb) / 3
-        #param.sigma.value = sigma.astype(float)  # must be 1D float array
+        upper = np.array([
+            600.0,
+            2.0,
+            20.0,
+            10.0,
+            10.0,
+            20.0,
+            10.0,
+            10.0,
+            2.0,
+            1.5,
+            1.5,
+            0.0,
+            0.0
+        ])
 
-        # Create Array with fixed sigma first
-        #param = ng.p.Array(init=self.initial_x).set_bounds(lb, ub)
-        # Overwrite the sigma with a vector-valued parameter
-        #sigma = (ub - lb) / 3
-        #param.parameters["sigma"] = ng.p.Array(init=sigma, mutable_sigma=False)
+        param = ng.p.Array(init=self._transform(self.initial_x), mutable_sigma=False)
+        sigma=(upper - lower) / 3.0
+        #print(f"*** sigma {sigma}")
+        param.set_mutation(sigma=sigma)
+        param.set_bounds(lower, upper)
 
-        optimizer = ng.optimizers.NGOpt(parametrization=param, budget=2**31-1, num_workers=1)
+        from nevergrad.optimization.optimizerlib import ConfPortfolio, MetaCMA, TBPSA, PSO, MetaModel
+
+        optimizer = ConfPortfolio(
+            optimizers=[MetaCMA, TBPSA, PSO],
+            warmup_ratio=1.0
+        )(parametrization=param, budget=2**31-1, num_workers=1)
         optimizer.parametrization.random_state = np.random.RandomState(12345)
         self.hsic_logger = ng.callbacks.HSICLoggerCallback()
-        optimizer.register_callback("tell", self.hsic_logger)
+        #optimizer.register_callback("tell", self.hsic_logger)
         optimizer.register_callback("tell", self._log)
-        rec = optimizer.minimize(self._loss_function, verbosity=0)
-        best = project(rec.value)
-        best_x = best.value
+        #self._constraints = self._build_constraints()
+        transformed_loss = lambda y: self._loss_function(self._inverse_transform(y))
+
+        def transformed_loss_log(y):
+            x = self._inverse_transform(y)
+            loss = self._loss_function(x)
+            #print(f"*** y {y}")
+            print(f"*** x {x} loss {loss}")
+            return loss
+
+        best = optimizer.minimize(transformed_loss_log, verbosity=0)
+        best_x = self._inverse_transform(best._value)
         best_loss = best.loss
         self.fit = self.reaxff_io.change_parameters_string(best_x)
-        self._log_best(self.initial_x, best_x, best_loss, opt.num_ask)
+        self._log_best(self.initial_x, best_x, best_loss, optimizer.num_ask)
         self.io_executor.shutdown(wait=True)
         self.pt._comm.bcast(None, root=0)
+
 
     # --------------------------------------------------------------------------------------------
 
     def _log(self, optimizer, candidate, loss):
 
-        self._iteration = opt.num_ask + 1
+        self._iteration = optimizer.num_ask + 1
         now = time.time()
 
         def format_duration(seconds):
@@ -127,14 +195,14 @@ class NGOpt(Solver):
         # elapsed = 93784  # seconds
         # print(format_duration(elapsed))  # e.g. "01-02:03" for 1 day, 2 hours, 3 minutes
 
-        if opt.num_tell==1:
+        if optimizer.num_tell==1:
             best = optimizer.recommend()
-            self._log_best(self.initial_x, best.value, best.loss, optimizer.num_ask)
+            self._log_best(self.initial_x, self._inverse_transform(best._value), best.loss, optimizer.num_ask)
 
         if (now - self._last_log_time) >= 1*60:
             print(self.hsic_logger.summary())
             best = optimizer.recommend()
-            best_x = best.value.copy()
+            best_x = self._inverse_transform(best.value.copy())
             best_loss = best.loss
             hsic_data_copy = self._hsic_data
             self._hsic_data = []
@@ -150,11 +218,13 @@ class NGOpt(Solver):
 
     # --------------------------------------------------------------------------------------------
 
-    def _log_best(self, x0, x_best, f_best, iteration):
-        print(f"------------------------- {iteration:<7} {f_best:11.9g} -------------------------")
+    def _log_best(self, x_initial, x_best, f_best, num_ask):
+        #print(f"------------------------- {iteration:<7} {f_best:11.9g} -------------------------")
+
+        print(f"------------------------- {num_ask:<7} {f_best} -------------------------")
         print(self.config.sections['CALCULATOR'].charge_fix)
         print("PARAMETER_NAME           INITIAL  LOWER_BOUND        NOW    UPPER_BOUND")
-        for p, x0i, xbi in zip(self.reaxff_io.parameter_names, x0, x_best):
+        for p, x0i, xbi in zip(self.reaxff_io.parameter_names, x_initial, x_best):
             b = self.reaxff_io.bounds[p.split('.')[-1]]
             print(f"{p:<22} {x0i: >9.4f}  [  {b[0]: >8.2f} {xbi: >13.8f}  {b[1]: >8.2f} ]")
         print("-----------------------------------------------------------------------")
@@ -168,22 +238,22 @@ class NGOpt(Solver):
         constraints_desc = []
 
         def greater_than(lhs_idx, rhs_idx, delta=0.01):
-            return lambda x: x[lhs_idx] - x[rhs_idx] - delta
+            return lambda x: x[rhs_idx] - x[lhs_idx] + delta
 
         def greater_than_or_equal(lhs_idx, rhs_idx):
-            return lambda x: x[lhs_idx] - x[rhs_idx]
+            return lambda x: x[rhs_idx] - x[lhs_idx]
 
         def greater_than_or_equal_factor(lhs_idx, rhs_idx, factor):
-            return lambda x: x[lhs_idx] - factor * x[rhs_idx]
+            return lambda x: factor * x[rhs_idx] - x[lhs_idx]
 
         def greater_than_or_equal_abs(lhs_idx, rhs_idx):
-            return lambda x: x[lhs_idx] - abs(x[rhs_idx])
+            return lambda x: abs(x[rhs_idx]) - x[lhs_idx]
 
         def bcut_acks2_ge_max_rs(i_bcut, rs_indices):
-            return lambda x: x[i_bcut] - max(x[i] for i in rs_indices)
+            return lambda x: max(x[i] for i in rs_indices) - x[i_bcut]
 
         def ofd_alpha_ge_max_atm(ofd_idx, atm1_idx, atm2_idx):
-            return lambda x: x[ofd_idx] - max(x[atm1_idx], x[atm2_idx])
+            return lambda x: max(x[atm1_idx], x[atm2_idx]) - x[ofd_idx]
 
         # -------- 1. ATM r_s ≥ r_p ≥ r_pp --------
         # -------- 2. ATM r_vdw ≥ r_s --------
@@ -237,7 +307,7 @@ class NGOpt(Solver):
 
             if key_gamma in param_idx and key_eta in param_idx:
                 constraints.append(greater_than_or_equal_factor(param_idx[key_eta], param_idx[key_gamma], factor))
-                constraints_desc.append(f"(5) {key_eta} ≥ {factor} * {key_gamma}")
+                constraints_desc.append(f"(constraint type 5) [{param_idx[key_eta]}]{key_eta} ≥ {factor} * [{param_idx[key_gamma]}]{key_gamma}")
 
         # -------- 6. ATM bcut_acks2 ≥ max(r_s) --------
 
@@ -256,6 +326,7 @@ class NGOpt(Solver):
 
         # -------- 7. electronegativity hierarchy (FIXME EXTEND TO ALL ATOMS) --------
         # -------- example: chi(O) > chi(N) > chi(C) > chi(H) --------
+        # chi(F)>chi(O)>chi(Cl)>chi(N)>chi(S)>chi(C)>chi(P)>chi(H)>chi(Mg)>chi(Ca)>chi(Na)>chi(K)
 
         hierarchy = ['F', 'O', 'Cl', 'N', 'S', 'C', 'P', 'H', 'Mg', 'Ca', 'Na', 'K']
         present = [e for e in hierarchy if f'ATM.{e}.chi' in param_idx]
@@ -264,7 +335,7 @@ class NGOpt(Solver):
             k1 = f'ATM.{e1}.chi'
             k2 = f'ATM.{e2}.chi'
             constraints.append(greater_than(param_idx[k1], param_idx[k2]))
-            constraints_desc.append(f"(7) {k1} > {k2}")
+            constraints_desc.append(f"(constraint type 7) [{param_idx[k1]}]{k1} > [{param_idx[k2]}]{k2}")
 
         # -------- 8. BND De_s ≥ De_p ≥ De_pp --------
 
@@ -403,7 +474,7 @@ class NGOpt(Solver):
                     key_rs = f'ATM.{donor}.r_s'
                     if key_rs in param_idx:
                         constraints.append(greater_than(param_idx[pname], param_idx[key_rs]))
-                        constraints_desc.append(f"(17) {pname} > {key_rs}")
+                        constraints_desc.append(f"(constraint type 17) [{param_idx[pname]}]{pname} > [{param_idx[key_rs]}]{key_rs}")
 
         # -------- PRINT CONSTRAINTS --------
         if self.pt._rank == 0:
@@ -465,3 +536,50 @@ class NGOpt(Solver):
                 f.write("\n".join(md_lines))
 
     # --------------------------------------------------------------------------------------------
+
+    def perform_fit_old(self, fs):
+        self.reaxff_calculator = fs.calculator
+        if self.pt._size > 1 and self.pt._rank != 0:
+            while self._loss_function(None): pass
+            return
+
+        self.output = fs.output
+        self.initial_x = np.array(self.reaxff_io.values)
+        bounds = self.config.sections['REAXFF'].parameter_bounds
+        lb, ub = map(np.array, zip(*bounds))
+        self._iteration = 1
+        self.io_executor = ThreadPoolExecutor(max_workers=1)
+
+        import logging
+        logging.getLogger("nevergrad").setLevel(logging.INFO)
+
+        #param = ng.p.Array(init=self.initial_x, mutable_sigma=False)
+        #param.set_mutation(sigma=((ub-lb)/3))
+        #param.set_bounds(lb, ub)
+
+        param = ng.p.Dict(**{
+            name: ng.p.Scalar(init=val, lower=lo, upper=hi)
+            for name, val, (lo, hi) in zip(
+                self.reaxff_io.parameter_names,
+                self.reaxff_io.values,
+                bounds
+            )
+        })
+
+        optimizer = ng.optimizers.NGOpt(parametrization=param, budget=2**31-1, num_workers=1)
+        optimizer.parametrization.random_state = np.random.RandomState(12345)
+        #self.hsic_logger = ng.callbacks.HSICLoggerCallback()
+        #optimizer.register_callback("tell", self.hsic_logger)
+        optimizer.register_callback("tell", self._log)
+        self._constraints = self._build_constraints()
+        best = optimizer.minimize(
+            self._loss_function,
+            constraint_violation=self._constraints,
+            verbosity=0
+        )
+        best_x = best._value
+        best_loss = best.loss
+        self.fit = self.reaxff_io.change_parameters_string(best_x)
+        self._log_best(self.initial_x, best_x, best_loss, optimizer.num_ask)
+        self.io_executor.shutdown(wait=True)
+        self.pt._comm.bcast(None, root=0)

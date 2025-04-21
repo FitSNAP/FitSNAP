@@ -39,7 +39,7 @@ class Reaxff(Section):
             "gamma_w":       (0.0, 3.0),          # vdW shielding width
 
             "gamma":         (0.5, 20.0),         # Valence orbital exponent for QEq/ACKS2
-            "chi":           (-10.0, 10.0),       # Electronegativity (ACKS2, eV)
+            "chi":           (0.0, 10.0),         # Electronegativity (ACKS2, eV)
             "eta":           (0.0, 20.0),         # Hardness (ACKS2, eV)
             "bcut_acks2":    (1.0, 6.0),          # ACKS2 atomic softness cutoff
 

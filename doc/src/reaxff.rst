@@ -1,31 +1,3 @@
-        # -------- 1. ATM r_s ≥ r_p ≥ r_pp --------
-        # -------- 2. ATM r_vdw ≥ r_s --------
-
-        # -------- 3. ATM r_vdw > rcore2 --------
-        # -------- 4. ATM ecore2 > epsilon --------
-
-        # -------- 5. ATM eta ≥ 7.2*gamma (QEQ), eta ≥ 8.13*gamma (ACKS2) --------
-
-        # -------- 6. ATM bcut_acks2 ≥ max(r_s) --------
-
-        # -------- 7. electronegativity hierarchy --------
-        # -------- example: chi(O) > chi(N) > chi(C) > chi(H) --------
-
-        # -------- 8. BND De_s ≥ De_p ≥ De_pp --------
-
-        # -------- 9. BND p_be2 ≥ p_bo2, p_bo4, p_bo6 --------
-
-        # -------- 10. BND p_bo6 ≥ p_bo4 ≥ p_bo2 --------
-        # -------- 11. OFD r_pp ≥ r_p ≥ r_s --------
-        # -------- 12. OFD.X.Y.alpha ≥ max(ATM.X.alpha, ATM.Y.alpha) --------
-
-        # -------- 13. ANG p_pen1 ≥ |p_val1| --------
-        # -------- 14. ANG p_pen1 ≥ |p_val2| --------
-
-        # -------- 15. TOR V1 ≥ |V2| --------
-        # -------- 16. TOR V1 ≥ |V3| --------
-
-        # -------- 17. HBD r0_hb > r_s (ensure H-bond length exceeds σ-bond radius) --------
 
 ReaxFF Models
 =============
@@ -99,11 +71,13 @@ are presented in the `Supporting Information <https://doi.org/10.1021/jp709896w>
 
 In the context of the ReaxFF (Reactive Force Field) method, *overcoordination* and *undercoordination* refer to the situation where atoms are either bonded with more or fewer neighbors than expected, based on the bond formation rules of the force field.
 
-## Overcoordination:
+Overcoordination:
+^^^^^^^^^^^^^^^^^
 
 This occurs when an atom forms more bonds than what is typical for its valence. In ReaxFF, overcoordination can happen when the bond orders are artificially inflated, resulting in an atom being connected to too many neighbors (more than its normal bonding capacity). This can lead to an unrealistic geometry in simulations, as atoms might form bonds that are not physically plausible.
 
-## Undercoordination:
+Undercoordination:
+^^^^^^^^^^^^^^^^^^
 
 This happens when an atom has fewer bonds or neighbors than expected based on its chemical environment. In ReaxFF, undercoordination can occur when bond orders are too low, leading to atoms having fewer connections than would be expected, which can make the structure unrealistic or energetically unfavorable. Both overcoordination and undercoordination can affect the accuracy and reliability of molecular simulations using ReaxFF, as the force field needs to accurately reflect the real atomic bonding patterns to give realistic results. These issues can arise during simulations involving bond breaking and formation, such as during chemical reactions or phase transitions.
 
@@ -115,10 +89,34 @@ The following constraints are enforced during fitting with FitSNAP-Reaxff:
 
   - for all elements X in force field,
 
-      - ATM.X.r_s >= ATM.X.r_p >= ATM.X.r_pp
+      - ATM.X.r_vdw ≥ ATM.X.r_s ≥ ATM.X.r_p ≥ ATM.X.r_pp
 
-      - ATM.X.r_vdw <= ATM.X.
+      - 3. ATM r_vdw > rcore2 --------
 
+      - 4. ATM ecore2 > epsilon --------
+
+      - 5. ATM eta ≥ 7.2*gamma (QEQ), eta ≥ 8.13*gamma (ACKS2) --------
+
+      - 6. ATM bcut_acks2 ≥ max(r_s) --------
+
+      - 7. electronegativity hierarchy --------
+      - example: chi(O) > chi(N) > chi(C) > chi(H) --------
+
+      - 8. BND De_s ≥ De_p ≥ De_pp --------
+
+      - 9. BND p_be2 ≥ p_bo2, p_bo4, p_bo6 --------
+
+      - 10. BND p_bo6 ≥ p_bo4 ≥ p_bo2 --------
+      - 11. OFD r_pp ≥ r_p ≥ r_s --------
+      - 12. OFD.X.Y.alpha ≥ max(ATM.X.alpha, ATM.Y.alpha) --------
+
+      - 13. ANG ``p_pen1 ≥ |p_val1|`` --------
+      - 14. ANG ``p_pen1 ≥ |p_val2|`` --------
+
+      - 15. TOR ``V1 ≥ |V2|`` --------
+      - 16. TOR ``V1 ≥ |V3|`` --------
+
+      - 17. HBD r0_hb > r_s (ensure H-bond length exceeds σ-bond radius) --------
 
 
 |

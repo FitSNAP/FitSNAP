@@ -27,6 +27,7 @@ class LammpsReaxff(LammpsBase):
         self.charge = config.sections["CALCULATOR"].charge
         self.dipole = config.sections["CALCULATOR"].dipole
         self.quadrupole = config.sections["CALCULATOR"].quadrupole
+        self.esp = config.sections["CALCULATOR"].esp
         self.bond_order = config.sections["CALCULATOR"].bond_order
 
         self._lmp = None
@@ -52,6 +53,7 @@ class LammpsReaxff(LammpsBase):
         if self.charge: self.sum_charge_residuals = 0.0
         if self.dipole: self.sum_dipole_residuals = 0.0
         if self.quadrupole: self.sum_quadrupole_residuals = 0.0
+        if self.esp: self.sum_esp_residuals = 0.0
         if self.bond_order: self.bond_order_residuals = 0.0
         self._lmp.set_reaxff_parameters(self.parameters, values)
         self._charge_fix()
@@ -73,6 +75,7 @@ class LammpsReaxff(LammpsBase):
         if self.charge: answer.append(self.sum_charge_residuals)
         if self.dipole: answer.append(self.sum_dipole_residuals)
         if self.quadrupole: answer.append(self.sum_quadrupole_residuals)
+        if self.esp: answer.append(self.sum_esp_residuals)
         if self.bond_order: answer.append(self.sum_bond_order_residuals)
         answer.append(sum(answer))
         return np.array(answer)
@@ -140,6 +143,12 @@ class LammpsReaxff(LammpsBase):
       self._sublo[:] = self._data["Bounds"][0]
       self._subhi[:] = self._data["Bounds"][1]
 
+      if self.esp: 
+          self._lmp.command("compute esp all esp/grid spacing 1.0")
+          self._esp_reference = self._lmp.numpy.extract_compute('esp', 
+              LMP_STYLE_GLOBAL, LMP_TYPE_VECTOR)
+          self._esp_reference[:] = self._data["ESP"][:]
+
       for i, (x, y, z) in enumerate(self._data["Positions"]):
           self._type[i] = self.type_mapping[self._data["AtomTypes"][i]]
           self._x[i][0], self._x[i][1], self._x[i][2] = x, y, z
@@ -206,6 +215,12 @@ class LammpsReaxff(LammpsBase):
             quadrupole_residual = self._data['qweight'] * np.sum(loss_quadrupole)
             #print(f"*** quadrupole {quadrupole} loss_quadrupole {loss_quadrupole} quadrupole_residual {quadrupole_residual}")
             self.sum_quadrupole_residuals += quadrupole_residual
+
+        if self.esp:
+            loss_esp = self._lmp.numpy.extract_compute('esp', LMP_STYLE_GLOBAL, LMP_TYPE_SCALAR)
+            esp_residual = self._data['gweight']*loss_esp
+            #print(f"*** loss_esp {loss_esp} esp_residual {esp_residual}")
+            self.sum_esp_residuals += esp_residual
 
         def signed_fmt(x, width=2, prec=0):
             if abs(x) < .01:

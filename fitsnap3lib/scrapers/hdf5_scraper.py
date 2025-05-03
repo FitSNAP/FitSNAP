@@ -13,6 +13,7 @@ def atomic_number_to_symbol(n):
 def atomic_symbol_to_number(s):
     return {"H":1,"C":6,"N":7,"O":8,"F":9,"Na":11,"Mg":12,"P":15,"S":16,"Cl":17,"K":19,"Ca":20}[s]
 
+
 # ------------------------------------------------------------------------------------------------
 
 class HDF5(Scraper):
@@ -83,6 +84,7 @@ class HDF5(Scraper):
                     "charge":     1.0 / 250.0,     # normalize large sum(q_i)^2
                     "dipole":     1.0 / 30.0,      # normalize ~30 e·Å
                     "quadrupole": 1.0 / 600.0,     # normalize ~600 e·Å²
+                    "esp":        1.0 / 600.0,     # normalize ~600 e·Å²
                 }
 
                 importance = {
@@ -91,6 +93,7 @@ class HDF5(Scraper):
                     "charge":     0.05,
                     "dipole":     50.0,
                     "quadrupole": 20.0,
+                    "esp":        20.0,
                 }
 
                 weights = {k: norm[k] * importance[k] for k in norm}
@@ -103,6 +106,7 @@ class HDF5(Scraper):
                     "cweight": weights["charge"] if is_solvated else 0.0,
                     "dweight": weights["dipole"] if is_solvated else 0.0,
                     "qweight": weights["quadrupole"] if is_solvated else 0.0,
+                    "gweight": weights["esp"] if is_solvated else 0.0,
                     "bounds": (bounds_min, bounds_max),
                     "lattice": lattice
                 }
@@ -173,6 +177,9 @@ class HDF5(Scraper):
                 formation_energy = group["formation_energy"][()] * HARTREE_TO_KCAL_MOL
                 dft_total_gradient = group["dft_total_gradient"][()] * FORCE_CONV
                 mbis_charges = group["mbis_charges"][()]
+                mbis_dipoles = group["mbis_dipoles"][()]
+                mbis_quadrupoles = group["mbis_quadrupoles"][()]
+                mbis_octupoles = group["mbis_octupoles"][()]
                 scf_dipoles = group["scf_dipole"][()] * BOHR_TO_ANGSTROM
                 scf_quadrupole = group["scf_quadrupole"][()]  * BOHR_TO_ANGSTROM * BOHR_TO_ANGSTROM
                 mayer_indices = group["mayer_indices"][()]
@@ -182,6 +189,17 @@ class HDF5(Scraper):
                     charges = mbis_charges[i]
                     sum_charges = np.sum(charges)
                     charges[0,0] += (np.round(sum_charges) - sum_charges)
+
+                    # Calculate ESP grid
+                    esp_grid = self.calculate_esp_grid(
+                        positions=conformations[i],
+                        charges=mbis_charges[i],
+                        dipoles=mbis_dipoles[i] if "mbis_dipoles" in group else None,
+                        quadrupoles=mbis_quadrupoles[i] if "mbis_quadrupoles" in group else None,
+                        octupoles=mbis_octupoles[i] if "mbis_octupoles" in group else None,
+                        bounds=meta["bounds"],
+                        spacing=1.0
+                    )
 
                     # if np.round(sum_charges) != 0.0: continue
 
@@ -195,6 +213,7 @@ class HDF5(Scraper):
                         "Charges": charges,
                         "Dipole": scf_dipoles[i],
                         "Quadrupole": scf_quadrupole[i],
+                        "ESP": esp_grid,
                         "BondOrder": mayer_indices[i],
                         "AtomTypes": [atomic_number_to_symbol(n) for n in atomic_numbers],
                         "NumAtoms": len(atomic_numbers),
@@ -205,9 +224,104 @@ class HDF5(Scraper):
                         "vweight": 0.0,
                         "cweight": meta["cweight"],
                         "dweight": meta["dweight"],
-                        "qweight": meta["qweight"]
+                        "qweight": meta["qweight"],
+                        "gweight": meta["gweight"]
                     })
 
         return self.data
 
     # --------------------------------------------------------------------------------------------
+
+    def calculate_esp_grid(self, positions, charges, dipoles=None, quadrupoles=None,
+                          octupoles=None, bounds=None, spacing=1.0):
+        """Calculate ESP grid from multipole data"""
+        
+        # Use the bounds that already include margin
+        bounds_min, bounds_max = bounds
+        
+        # Create grid with specified spacing
+        nx = max(1, int(np.ceil((bounds_max[0] - bounds_min[0]) / spacing)))
+        ny = max(1, int(np.ceil((bounds_max[1] - bounds_min[1]) / spacing)))
+        nz = max(1, int(np.ceil((bounds_max[2] - bounds_min[2]) / spacing)))
+        
+        # Initialize ESP grid
+        esp_grid = np.zeros((nz, ny, nx))
+        
+        # Unit conversion constants
+        BOHR_TO_ANGSTROM = 0.52917721092
+        
+        # Populate grid with ESP values
+        for iz in range(nz):
+            z = bounds_min[2] + (iz + 0.5) * spacing
+            for iy in range(ny):
+                y = bounds_min[1] + (iy + 0.5) * spacing
+                for ix in range(nx):
+                    x = bounds_min[0] + (ix + 0.5) * spacing
+                    grid_point = np.array([x, y, z])
+                    
+                    # Calculate ESP from multipoles
+                    esp = 0.0
+                    for i, pos in enumerate(positions):
+                        r_vec = grid_point - pos
+                        r = np.linalg.norm(r_vec)
+                        
+                        # Skip points too close to atoms
+                        if r < 1.4: continue
+                        
+                        # Charge contribution
+                        esp += charges[i][0] / r
+                        
+                        # Add dipole contribution if available
+                        if dipoles is not None:
+                            # μ⋅r / r³ with unit conversion
+                            mu = dipoles[i] * BOHR_TO_ANGSTROM  # Convert e·bohr → e·Å
+                            esp += np.dot(mu, r_vec) / (r**3)
+                        
+                        # Add quadrupole contribution if available
+                        if quadrupoles is not None:
+                            # Convert to 3x3 tensor with unit conversion
+                            Q = np.zeros((3, 3))
+                            conversion = BOHR_TO_ANGSTROM**2  # Convert e·bohr² → e·Å²
+                            Q[0, 0] = quadrupoles[i][0, 0] * conversion
+                            Q[1, 1] = quadrupoles[i][1, 1] * conversion
+                            Q[2, 2] = quadrupoles[i][2, 2] * conversion
+                            Q[0, 1] = Q[1, 0] = quadrupoles[i][0, 1] * conversion
+                            Q[0, 2] = Q[2, 0] = quadrupoles[i][0, 2] * conversion
+                            Q[1, 2] = Q[2, 1] = quadrupoles[i][1, 2] * conversion
+                            
+                            # Correct quadrupole formula: 1/2 ∑_αβ Q_αβ (3r_α r_β/r² - δ_αβ) / r³
+                            r_hat = r_vec / r
+                            quad_term = 0
+                            for alpha in range(3):
+                                for beta in range(3):
+                                    delta_ab = 1 if alpha == beta else 0
+                                    quad_term += Q[alpha, beta] * (3 * r_hat[alpha] * r_hat[beta] - delta_ab)
+                            esp += 0.5 * quad_term / (r**3)
+                        
+                        # Add octupole contribution if available
+                        if octupoles is not None:
+                            # Convert with proper units
+                            conversion = BOHR_TO_ANGSTROM**3  # Convert e·bohr³ → e·Å³
+                            O = octupoles[i] * conversion
+                            
+                            # Correct octupole formula
+                            r_hat = r_vec / r
+                            octu_term = 0
+                            for alpha in range(3):
+                                for beta in range(3):
+                                    for gamma in range(3):
+                                        main_term = 5 * r_hat[alpha] * r_hat[beta] * r_hat[gamma]
+                                        
+                                        delta_bg = 1 if beta == gamma else 0
+                                        delta_ag = 1 if alpha == gamma else 0
+                                        delta_ab = 1 if alpha == beta else 0
+                                        
+                                        correction = r_hat[alpha] * delta_bg + r_hat[beta] * delta_ag + r_hat[gamma] * delta_ab
+                                        
+                                        octu_term += O[alpha, beta, gamma] * (main_term - correction)
+                            
+                            esp += octu_term / (6 * r**4)
+                    
+                    esp_grid[iz, iy, ix] = esp
+        
+        return esp_grid

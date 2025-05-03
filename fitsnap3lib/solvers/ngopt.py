@@ -50,7 +50,7 @@ class NGOpt(Solver):
 
     # --------------------------------------------------------------------------------------------
 
-    def _transform(self, x):
+    def _transform_water(self, x):
         """Forward transform: full physical array → transformed optimization space (13D)."""
         return np.array([
             x[0],                          # GEN.bond_softness
@@ -68,7 +68,7 @@ class NGOpt(Solver):
             x[12]                          # HBD.O.H.O.p_hb1
         ], dtype=np.float64)
 
-    def _inverse_transform(self, y):
+    def _inverse_transform_water(self, y):
         """Inverse transform: transformed optimization vector → full physical parameter array (13D)."""
         x = np.array([
             y[0],                          # GEN.bond_softness
@@ -84,6 +84,44 @@ class NGOpt(Solver):
             y[10],                         # HBD.H.H.O.p_hb1
             y[8] + y[10],                  # HBD.O.H.O.r0_hb
             y[12]                          # HBD.O.H.O.p_hb1
+        ], dtype=np.float64)
+
+        np.set_printoptions(precision=4, suppress=True, linewidth=2000)
+
+        if np.any(np.isnan(x)) or np.any(np.isinf(x)):
+            print("*** _inverse_transform WARNING: NaN or inf detected in x")
+        #print(f"*** y {y}")
+        #print(f"*** x {x}")
+        return x
+
+    # --------------------------------------------------------------------------------------------
+
+    def _transform(self, x):
+        """Forward transform: full physical array → transformed optimization space (13D)."""
+        return np.array([
+            x[0],                          # GEN.bond_softness
+            x[1],                          # ATM.N.r_s
+            x[2],                          # ATM.N.gamma
+            x[3],                          # ATM.N.chi
+            x[4] - 8.13 * x[2],            # delta_eta_N
+            x[6],                          # ATM.O.gamma
+            x[8] - 8.13 * x[6],            # delta_eta_O
+            x[7] - x[3],                   # delta_chi_O
+            x[5],                          # ATM.O.r_s
+        ], dtype=np.float64)
+
+    def _inverse_transform(self, y):
+        """Inverse transform: transformed optimization vector → full physical parameter array (13D)."""
+        x = np.array([
+            y[0],                          # GEN.bond_softness
+            y[1],                          # ATM.N.r_s
+            y[2],                          # ATM.N.gamma
+            y[3],                          # ATM.N.chi
+            8.13 * y[2] + y[4],            # ATM.N.eta
+            y[8],                          # ATM.O.r_s
+            y[5],                          # ATM.O.gamma
+            y[3] + y[7],                   # ATM.O.chi
+            8.13 * y[5] + y[6],            # ATM.O.eta
         ], dtype=np.float64)
 
         np.set_printoptions(precision=4, suppress=True, linewidth=2000)
@@ -114,18 +152,18 @@ class NGOpt(Solver):
 
         lower = np.array([
             400.0,   # GEN.bond_softness
-            0.3,     # ATM.H.r_s
-            0.5,     # ATM.H.gamma
-           -10.0,    # ATM.H.chi
-            1e-4,    # delta_eta_H
+            0.3,     # ATM.N.r_s
+            0.5,     # ATM.N.gamma
+           -10.0,    # ATM.N.chi
+            1e-4,    # delta_eta_N
             0.5,     # ATM.O.gamma
             1e-4,    # delta_eta_O
             1e-4,    # delta_chi_O
             0.3,     # ATM.O.r_s
-            1e-4,    # delta_rhb_H
-            1e-4,    # delta_rhb_O
-           -10.0,    # HBD.H.H.O.p_hb1
-           -10.0     # HBD.O.H.O.p_hb1
+        #   1e-4,    # delta_rhb_H
+        #   1e-4,    # delta_rhb_O
+        #  -10.0,    # HBD.H.H.O.p_hb1
+        #  -10.0     # HBD.O.H.O.p_hb1
         ])
 
         upper = np.array([
@@ -138,10 +176,10 @@ class NGOpt(Solver):
             10.0,
             10.0,
             2.0,
-            1.5,
-            1.5,
-            0.0,
-            0.0
+        #    1.5,
+        #    1.5,
+        #    0.0,
+        #    0.0
         ])
 
         param = ng.p.Array(init=self._transform(self.initial_x), mutable_sigma=False)

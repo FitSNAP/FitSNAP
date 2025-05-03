@@ -324,4 +324,4 @@ class HDF5(Scraper):
                     
                     esp_grid[iz, iy, ix] = esp
         
-        return esp_grid
+        return esp_grid.flatten()

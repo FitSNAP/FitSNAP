@@ -84,7 +84,7 @@ class HDF5(Scraper):
                     "charge":     1.0 / 250.0,     # normalize large sum(q_i)^2
                     "dipole":     1.0 / 30.0,      # normalize ~30 e·Å
                     "quadrupole": 1.0 / 600.0,     # normalize ~600 e·Å²
-                    "esp":        1.0 / 600.0,     # normalize ~600 e·Å²
+                    "esp":        1.0,             # normalize later by mean(esp)
                 }
 
                 importance = {
@@ -106,7 +106,7 @@ class HDF5(Scraper):
                     "cweight": weights["charge"] if is_solvated else 0.0,
                     "dweight": weights["dipole"] if is_solvated else 0.0,
                     "qweight": weights["quadrupole"] if is_solvated else 0.0,
-                    "gweight": weights["esp"] if is_solvated else 0.0,
+                    "gweight": weights["esp"], # if is_solvated else 0.0,
                     "bounds": (bounds_min, bounds_max),
                     "lattice": lattice
                 }
@@ -225,7 +225,7 @@ class HDF5(Scraper):
                         "cweight": meta["cweight"],
                         "dweight": meta["dweight"],
                         "qweight": meta["qweight"],
-                        "gweight": meta["gweight"]
+                        "gweight": meta["gweight"] # /np.mean(esp_grid)
                     })
 
         return self.data
@@ -323,5 +323,6 @@ class HDF5(Scraper):
                             esp += octu_term / (6 * r**4)
                     
                     esp_grid[iz, iy, ix] = esp
-        
+                    # print(f"*** esp_grid[{iz}, {iy}, {ix}] {esp}")
+
         return esp_grid.flatten()

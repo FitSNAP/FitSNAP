@@ -33,7 +33,7 @@ class LammpsReaxff(LammpsBase):
         self._lmp = None
         self.pt.check_lammps()
         #f = open(f"water.in","w")
-        self._initialize_lammps(printlammps=0, lammpsscreen=0) # printfile=f
+        self._initialize_lammps(printlammps=0, lammpsscreen=1) # printfile=f
 
     # --------------------------------------------------------------------------------------------
 
@@ -64,6 +64,7 @@ class LammpsReaxff(LammpsBase):
             try:
                 self._run_lammps()
                 self._collect_lammps(config_index)
+                if self.esp: self._lmp.command(f"uncompute esp")
             except Exception as e:
                 print(f"*** rank {self.pt._rank} exception {e}")
                 raise e
@@ -83,8 +84,8 @@ class LammpsReaxff(LammpsBase):
     # --------------------------------------------------------------------------------------------
 
     def _charge_fix(self):
-        #sum_charges = round(np.sum(self._data["Charges"]))
-        sum_charges = 0.0
+        sum_charges = round(np.sum(self._configs[0]["Charges"]))
+        #sum_charges = 0.0
         #self._lmp.command(self.charge_fix)
         self._lmp.command(self.charge_fix + f" target_charge {sum_charges}")
 
@@ -105,6 +106,7 @@ class LammpsReaxff(LammpsBase):
         for i in range(len(self.masses)): self._lmp.command(f"mass {i+1} {self.masses[i]}")
         self._lmp.command("pair_style reaxff NULL")
         self._lmp.command(f"pair_coeff * * {self.potential} {' '.join(self.elements)}")
+        self._lmp.command("thermo_style custom step temp epair emol etotal press xlo xhi ylo yhi zlo zhi")
 
     # --------------------------------------------------------------------------------------------
 
@@ -125,10 +127,6 @@ class LammpsReaxff(LammpsBase):
         )
 
         self._nlocal = self._lmp.extract_global("nlocal")
-        self._boxlo = self._lmp.extract_global("boxlo")
-        self._boxhi = self._lmp.extract_global("boxhi")
-        self._sublo = self._lmp.extract_global("sublo")
-        self._subhi = self._lmp.extract_global("subhi")
         self._type = self._lmp.extract_atom("type")
         self._x = self._lmp.extract_atom("x")
         self._q = self._lmp.extract_atom("q")
@@ -138,14 +136,11 @@ class LammpsReaxff(LammpsBase):
     def _prepare_lammps(self):
 
       self._nlocal = self._data["NumAtoms"]
-      self._boxlo[:] = self._data["Bounds"][0]
-      self._boxhi[:] = self._data["Bounds"][1]
-      self._sublo[:] = self._data["Bounds"][0]
-      self._subhi[:] = self._data["Bounds"][1]
+      self._lmp.reset_box_single(self._data["Bounds"][0], self._data["Bounds"][1], 0.0, 0.0, 0.0)
 
-      if self.esp: 
+      if self.esp:
           self._lmp.command("compute esp all esp/grid spacing 1.0")
-          self._esp_reference = self._lmp.numpy.extract_compute('esp', 
+          self._esp_reference = self._lmp.numpy.extract_compute('esp',
               LMP_STYLE_GLOBAL, LMP_TYPE_VECTOR)
           self._esp_reference[:] = self._data["ESP"][:]
 

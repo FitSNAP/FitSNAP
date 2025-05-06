@@ -3,7 +3,8 @@ import numpy as np
 import h5py
 import logging
 from os import path
-from scipy.special import logsumexp
+import numba as nb
+from scipy.spatial import KDTree
 
 # ------------------------------------------------------------------------------------------------
 
@@ -191,7 +192,7 @@ class HDF5(Scraper):
                     charges[0,0] += (np.round(sum_charges) - sum_charges)
 
                     # Calculate ESP grid
-                    esp_grid = self.calculate_esp_grid(
+                    esp_grid = self.calculate_esp_grid_optimized(
                         positions=conformations[i],
                         charges=mbis_charges[i],
                         dipoles=mbis_dipoles[i] if "mbis_dipoles" in group else None,
@@ -327,3 +328,144 @@ class HDF5(Scraper):
 
         return esp_grid.flatten()
 
+
+
+
+
+
+
+
+
+
+    def calculate_esp_grid_optimized(self, positions, charges, dipoles=None, quadrupoles=None,
+                          octupoles=None, bounds=None, spacing=0.3):
+        """Calculate ESP grid from multipole data - optimized version"""
+        
+        # Use the bounds that already include margin
+        bounds_min, bounds_max = bounds
+        
+        # Create grid with specified spacing
+        nx = max(1, int(np.ceil((bounds_max[0] - bounds_min[0]) / spacing)))
+        ny = max(1, int(np.ceil((bounds_max[1] - bounds_min[1]) / spacing)))
+        nz = max(1, int(np.ceil((bounds_max[2] - bounds_min[2]) / spacing)))
+        
+        # Convert input data to more efficient formats
+        positions_array = np.array(positions, dtype=np.float32)
+        charges_array = np.array([c[0] for c in charges], dtype=np.float32)
+        
+        # Precompute unit conversions
+        BOHR_TO_ANGSTROM = 0.52917721092
+        
+        # Prepare dipoles in optimized format
+        dipoles_array = None
+        if dipoles is not None:
+            dipoles_array = np.array(dipoles, dtype=np.float32) * BOHR_TO_ANGSTROM
+        
+        # Prepare quadrupoles in optimized format
+        quad_tensors = None
+        if quadrupoles is not None:
+            conversion = BOHR_TO_ANGSTROM**2
+            quad_tensors = np.zeros((len(quadrupoles), 3, 3), dtype=np.float32)
+            for i, q in enumerate(quadrupoles):
+                quad_tensors[i, 0, 0] = q[0, 0] * conversion
+                quad_tensors[i, 1, 1] = q[1, 1] * conversion
+                quad_tensors[i, 2, 2] = q[2, 2] * conversion
+                quad_tensors[i, 0, 1] = quad_tensors[i, 1, 0] = q[0, 1] * conversion
+                quad_tensors[i, 0, 2] = quad_tensors[i, 2, 0] = q[0, 2] * conversion
+                quad_tensors[i, 1, 2] = quad_tensors[i, 2, 1] = q[1, 2] * conversion
+        
+        # Prepare octupoles in optimized format
+        octu_tensors = None
+        if octupoles is not None:
+            conversion = BOHR_TO_ANGSTROM**3
+            octu_tensors = np.array(octupoles, dtype=np.float32) * conversion
+        
+        # Create grid points
+        grid_points = np.zeros((nx * ny * nz, 3), dtype=np.float32)
+        idx = 0
+        for iz in range(nz):
+            z = bounds_min[2] + (iz + 0.5) * spacing
+            for iy in range(ny):
+                y = bounds_min[1] + (iy + 0.5) * spacing
+                for ix in range(nx):
+                    x = bounds_min[0] + (ix + 0.5) * spacing
+                    grid_points[idx] = [x, y, z]
+                    idx += 1
+        
+        # Calculate ESP values using numba-optimized function
+        esp_values = self._compute_esp_numba(grid_points, positions_array, charges_array, 
+                                       dipoles_array, quad_tensors, octu_tensors)
+        
+        return esp_values.reshape(nz, ny, nx).flatten()
+
+    @staticmethod
+    @nb.jit(nopython=True, cache=True)
+    def _compute_esp_numba(grid_points, positions, charges, dipoles, quadrupoles, octupoles):
+        """Numba-optimized ESP calculation"""
+        esp_values = np.zeros(len(grid_points), dtype=np.float32)
+        cutoff_dist = 1.4  # Minimum distance cutoff
+        
+        for i in range(len(grid_points)):
+            grid_point = grid_points[i]
+            esp = 0.0
+            
+            # Calculate ESP from all atoms (Numba will optimize this loop)
+            for j in range(len(positions)):
+                pos = positions[j]
+                r_vec = grid_point - pos
+                r2 = r_vec[0]**2 + r_vec[1]**2 + r_vec[2]**2
+                r = np.sqrt(r2)
+                
+                # Skip points too close to atoms
+                if r < cutoff_dist:
+                    continue
+                
+                # Charge contribution
+                esp += charges[j] / r
+                
+                # Add dipole contribution if available
+                if dipoles is not None:
+                    # μ⋅r / r³
+                    mu = dipoles[j]
+                    esp += (mu[0] * r_vec[0] + mu[1] * r_vec[1] + mu[2] * r_vec[2]) / (r**3)
+                
+                # Add quadrupole contribution if available
+                if quadrupoles is not None:
+                    Q = quadrupoles[j]
+                    r_inv = 1.0 / r
+                    r_hat = r_vec * r_inv
+                    
+                    # Quadrupole formula: 1/2 ∑_αβ Q_αβ (3r_α r_β/r² - δ_αβ) / r³
+                    quad_term = 0.0
+                    for alpha in range(3):
+                        for beta in range(3):
+                            delta_ab = 1.0 if alpha == beta else 0.0
+                            quad_term += Q[alpha, beta] * (3.0 * r_hat[alpha] * r_hat[beta] - delta_ab)
+                    
+                    esp += 0.5 * quad_term / (r**3)
+                
+                # Add octupole contribution if available
+                if octupoles is not None:
+                    O = octupoles[j]
+                    r_hat = r_vec / r
+                    
+                    # Octupole formula
+                    octu_term = 0.0
+                    for alpha in range(3):
+                        for beta in range(3):
+                            for gamma in range(3):
+                                main_term = 5.0 * r_hat[alpha] * r_hat[beta] * r_hat[gamma]
+                                
+                                delta_bg = 1.0 if beta == gamma else 0.0
+                                delta_ag = 1.0 if alpha == gamma else 0.0
+                                delta_ab = 1.0 if alpha == beta else 0.0
+                                
+                                correction = r_hat[alpha] * delta_bg + r_hat[beta] * delta_ag + r_hat[gamma] * delta_ab
+                                
+                                octu_term += O[alpha, beta, gamma] * (main_term - correction)
+                    
+                    esp += octu_term / (6.0 * r**4)
+            
+            esp_values[i] = esp
+        
+        return esp_values

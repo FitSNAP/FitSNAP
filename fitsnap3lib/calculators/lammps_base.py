@@ -214,8 +214,8 @@ class LammpsBase(Calculator):
             self._lmp.command(f"variable {k} equal {v}")
 
     def _run_lammps(self):
-        # small optimization suggested by Stan Moore to avoid
-        # computing timing summary after every run
+        # 'post no' optimization suggested by Stan Moore to
+        # avoid computing timing summary after every run
         self._lmp.command("run 0 post no")
 
     def _extract_atom_ids(self, num_atoms):

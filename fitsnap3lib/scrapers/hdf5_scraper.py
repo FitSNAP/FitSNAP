@@ -198,7 +198,7 @@ class HDF5(Scraper):
                         quadrupoles=mbis_quadrupoles[i] if "mbis_quadrupoles" in group else None,
                         octupoles=mbis_octupoles[i] if "mbis_octupoles" in group else None,
                         bounds=meta["bounds"],
-                        spacing=1.0
+                        spacing=0.3
                     )
 
                     # if np.round(sum_charges) != 0.0: continue
@@ -233,7 +233,7 @@ class HDF5(Scraper):
     # --------------------------------------------------------------------------------------------
 
     def calculate_esp_grid(self, positions, charges, dipoles=None, quadrupoles=None,
-                          octupoles=None, bounds=None, spacing=1.0):
+                          octupoles=None, bounds=None, spacing=0.3):
         """Calculate ESP grid from multipole data"""
         
         # Use the bounds that already include margin
@@ -326,3 +326,4 @@ class HDF5(Scraper):
                     # print(f"*** esp_grid[{iz}, {iy}, {ix}] {esp}")
 
         return esp_grid.flatten()
+

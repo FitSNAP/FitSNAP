@@ -33,6 +33,11 @@ doc/fasthtml/
 # ignore MacOS generated files
 *.DS_Store
 *.dylib
+*~
 
 # ignore PACE library files
 fitsnap3lib/lib/sym_ACE/lib/*.pickle
+
+# ignore numba generated files
+*.nbc
+*.nbi

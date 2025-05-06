@@ -22,6 +22,7 @@ class NGOpt(Solver):
         if calc.charge: self._hsic_header.append('charge')
         if calc.dipole: self._hsic_header.append('dipole')
         if calc.quadrupole: self._hsic_header.append('quadrupole')
+        if calc.esp: self._hsic_header.append('esp')
         if calc.bond_order: self._hsic_header.append('bond_order')
         self._hsic_header.append('total')
         self._hsic_data = []
@@ -167,19 +168,19 @@ class NGOpt(Solver):
         ])
 
         upper = np.array([
-            600.0,
-            2.0,
-            20.0,
-            10.0,
-            10.0,
-            20.0,
-            10.0,
-            10.0,
-            2.0,
-        #    1.5,
-        #    1.5,
-        #    0.0,
-        #    0.0
+            600.0,   # GEN.bond_softness
+            2.0,     # ATM.N.r_s
+            20.0,    # ATM.N.gamma
+            10.0,    # ATM.N.chi
+            10.0,    # delta_eta_N
+            20.0,    # ATM.O.gamma
+            10.0,    # delta_eta_O
+            5.0,    # delta_chi_O
+            2.0,     # ATM.O.r_s
+        #    1.5,    # delta_rhb_H
+        #    1.5,    # delta_rhb_O
+        #    0.0,    # HBD.H.H.O.p_hb1
+        #    0.0     # HBD.O.H.O.p_hb1
         ])
 
         param = ng.p.Array(init=self._transform(self.initial_x), mutable_sigma=False)

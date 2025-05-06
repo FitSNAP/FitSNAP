@@ -204,8 +204,7 @@ class NGOpt(Solver):
         def transformed_loss_log(y):
             x = self._inverse_transform(y)
             loss = self._loss_function(x)
-            #print(f"*** y {y}")
-            print(f"*** x {x} loss {loss}")
+            #print(f"*** x {x} loss {loss}")
             return loss
 
         best = optimizer.minimize(transformed_loss_log, verbosity=0)

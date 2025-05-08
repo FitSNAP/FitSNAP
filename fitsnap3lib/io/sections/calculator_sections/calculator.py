@@ -14,7 +14,8 @@ class Calculator(Section):
         #self.pt = ParallelTools()
         self.allowedkeys = ['calculator', 'nonlinear', 'per_atom_scalar', 'per_atom_energy', \
                             'energy', 'force', 'stress',
-                            'fix_charge', 'charge', 'dipole', 'quadrupole', 'esp', 'bond_order']
+                            'fix_charge',
+                            'charge', 'dipole', 'quadrupole', 'esp', 'spacing', 'bond_order']
         self._check_section()
 
         self.calculator = self.get_value("CALCULATOR", "calculator", "LAMMPSSNAP")
@@ -28,6 +29,7 @@ class Calculator(Section):
         self.dipole = self.get_value("CALCULATOR", "dipole", "False", "bool")
         self.quadrupole = self.get_value("CALCULATOR", "quadrupole", "False", "bool")
         self.esp = self.get_value("CALCULATOR", "esp", "False", "bool")
+        self.spacing = self.get_value("CALCULATOR", "spacing", "1.0", "float")
         self.bond_order = self.get_value("CALCULATOR", "bond_order", "False", "bool")
 
         self.dee = self.check_path(self.get_value("CALCULATOR", "dee", "detailed_energy_errors.dat"))

@@ -28,12 +28,13 @@ class LammpsReaxff(LammpsBase):
         self.dipole = config.sections["CALCULATOR"].dipole
         self.quadrupole = config.sections["CALCULATOR"].quadrupole
         self.esp = config.sections["CALCULATOR"].esp
+        self.spacing = config.sections["CALCULATOR"].spacing
         self.bond_order = config.sections["CALCULATOR"].bond_order
 
         self._lmp = None
         self.pt.check_lammps()
         #f = open(f"nitrite.in","w")
-        self._initialize_lammps(printlammps=0, lammpsscreen=0) # , printfile=f
+        self._initialize_lammps(printlammps=0, lammpsscreen=1) # , printfile=f
 
     # --------------------------------------------------------------------------------------------
 
@@ -62,13 +63,15 @@ class LammpsReaxff(LammpsBase):
             self._data = c
             self._prepare_lammps()
             try:
-                #self._lmp.command(f"dump 1 all grid 1 nitrite.grid c_esp:esp:data")
+                self._lmp.command(f"dump 1 all grid 1 nitrite.grid3d c_esp:esp:data")
                 # self._run_lammps()
                 self._lmp.command("run 0 post no")
-                #self._lmp.command(f"undump 1")
+                self._lmp.command(f"write_data nitrite.data")
+                self._lmp.command(f"write_dump all custom nitrite.dump id type x y z")
+                self._lmp.command(f"undump 1")
                 self._collect_lammps(config_index)
                 if self.esp: self._lmp.command(f"uncompute esp")
-                # quit()
+                quit()
             except Exception as e:
                 print(f"*** rank {self.pt._rank} exception {e}")
                 raise e
@@ -143,7 +146,7 @@ class LammpsReaxff(LammpsBase):
       self._lmp.reset_box_single(self._data["Bounds"][0], self._data["Bounds"][1], 0.0, 0.0, 0.0)
 
       if self.esp:
-          self._lmp.command("compute esp all esp/grid spacing 0.3")
+          self._lmp.command(f"compute esp all esp/grid spacing {self.spacing}")
           self._esp_reference = self._lmp.numpy.extract_compute('esp',
               LMP_STYLE_GLOBAL, LMP_TYPE_VECTOR)
           self._esp_reference[:] = self._data["ESP"][:]

@@ -170,6 +170,9 @@ class HDF5(Scraper):
         HARTREE_TO_KCAL_MOL = 627.509474
         FORCE_CONV = HARTREE_TO_KCAL_MOL / BOHR_TO_ANGSTROM
 
+        import logging
+        logging.getLogger("numba").setLevel(logging.WARNING)
+
         with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
             for group_name in sorted(grouped):
                 group = f[group_name]
@@ -199,8 +202,8 @@ class HDF5(Scraper):
                         quadrupoles=mbis_quadrupoles[i] if "mbis_quadrupoles" in group else None,
                         octupoles=mbis_octupoles[i] if "mbis_octupoles" in group else None,
                         bounds=meta["bounds"],
-                        spacing=0.3
-                    )
+                        spacing=self.config.sections["CALCULATOR"].spacing
+                    ) if self.config.sections["CALCULATOR"].esp else None
 
                     # if np.round(sum_charges) != 0.0: continue
 

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
-class NGOpt(Solver):
+class NEVERGRAD(Solver):
 
     # --------------------------------------------------------------------------------------------
 
@@ -160,7 +160,7 @@ class NGOpt(Solver):
         
         return normalized
 
-    def inverse_transform(self, y):
+    def _inverse_transform(self, y):
         """Inverse transform: transformed optimization vector → full physical parameter array."""
         # Denormalize parameters from [0,1] to physical space
         x = np.zeros(9, dtype=np.float64)
@@ -211,42 +211,17 @@ class NGOpt(Solver):
 
         self.output = fs.output
         self.initial_x = np.array(self.reaxff_io.values)
-        bounds = self.config.sections['REAXFF'].parameter_bounds
-        lb, ub = map(np.array, zip(*bounds))
+        self.lower, self.upper = map(np.array, zip(*self.config.sections['REAXFF'].parameter_bounds))
         self._iteration = 1
         self.io_executor = ThreadPoolExecutor(max_workers=1)
 
         import logging
         logging.getLogger("nevergrad").setLevel(logging.DEBUG)
 
-        self.lower = np.array([
-            400.0,   # GEN.bond_softness
-            0.3,     # ATM.N.r_s
-            0.5,     # ATM.N.gamma
-            0.0,     # ATM.N.chi
-            0.0,     # delta_eta_N
-            0.5,     # ATM.O.gamma
-            0.0,     # delta_eta_O
-            0.0,     # delta_chi_O
-            0.3,     # ATM.O.r_s
-        ])
-
-        self.upper = np.array([
-            600.0,   # GEN.bond_softness
-            2.0,     # ATM.N.r_s
-            20.0,    # ATM.N.gamma
-            10.0,    # ATM.N.chi
-            20.0,    # delta_eta_N
-            20.0,    # ATM.O.gamma
-            20.0,    # delta_eta_O
-            10.0,    # delta_chi_O
-            2.0,     # ATM.O.r_s
-        ])
-
         param = ng.p.Array(init=self._transform(self.initial_x), mutable_sigma=False)
-        sigma=(upper - lower) / 3.0
+        self.range = self.upper - self.lower
         #print(f"*** sigma {sigma}")
-        param.set_mutation(sigma=sigma)
+        param.set_mutation(sigma = 1.0/3.0)
         #param.set_bounds(lower, upper)
         param.set_bounds(0.0, 1.0)
 
@@ -294,7 +269,7 @@ class NGOpt(Solver):
         # elapsed = 93784  # seconds
         # print(format_duration(elapsed))  # e.g. "01-02:03" for 1 day, 2 hours, 3 minutes
 
-        if optimizer.num_ask==1 or (now - self._last_log_time) >= 1*60:
+        if optimizer.num_ask==1 or (now - self._last_log_time) >= 10*60:
             print(self.hsic_logger.summary())
             best = optimizer.recommend()
             print(f"*** best._value {best._value}")

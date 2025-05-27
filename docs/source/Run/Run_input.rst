@@ -104,7 +104,7 @@ We explain the sections and their keys in more detail below.
 [BISPECTRUM]
 ^^^^^^^^^^^^
 
-This section contains settings for the SNAP bispectrum descriptors from `Thompson et. al. <snappaper_>`_
+This section contains settings for the SNAP bispectrum descriptors from `Thompson et al. (2015) <snappaper_>`_
 
 .. _snappaper: https://www.sciencedirect.com/science/article/pii/S0021999114008353
 
@@ -126,7 +126,7 @@ in our examples, which are often well behaved for other systems.**
   using a :code:`twojmax` of 4, 6, or 8. This corresponds to 14, 30, and 55 bispectrum components, 
   respectively. Default value is 6. 
 
-- :code:`rcutfac` is a cutoff radius parameter. One value is used for all element types. We recommend 
+- :code:`rcutfac` is a cutoff radius parameter. One value is used for all element types. We recommend
   a cutoff between 4 and 5 Angstroms for most systems. Default value is 4.67 Angstroms. 
 
 - :code:`rfac0` is a parameter used in distance to angle conversion, between 0 and 1. Default value 
@@ -173,6 +173,52 @@ info in `PyTorch Models <Pytorch.html>`__
 .. _lammpssnap: https://docs.lammps.org/compute_sna_atom.html 
 .. _quadsnappaper: https://aip.scitation.org/doi/full/10.1063/1.5017641 
 .. _chemsnappaper: https://doi.org/10.1021/acs.jpca.0c02450
+
+[ACE]
+^^^^^
+
+This section contains settings for the Atomic Cluster Expansion (ACE) descriptors from `Drautz (2019) <drautz2019_>`_ available as `pair_style pace <acelammps_>`_ in LAMMPS. ACE descriptor calculations are explained in `Goff, Sievers, Wood, Thompson (2024) <goff2024_>`_ and with more details on hyperparameters in `Bochkarev et al. <bochkarev2022_>`_ .
+
+.. _drautz2019: https://doi.org/10.1103/PhysRevB.99.014104
+.. _pozdnyakov2020: https://doi.org/10.1103/PhysRevLett.125.166001
+.. _bochkarev2022: https://doi.org/10.1103/PhysRevMaterials.6.013804
+.. _acelammps: https://docs.lammps.org/pair_pace.html
+.. _goff2024: https://doi.org/10.1016/j.jcp.2024.113073
+
+- :code:`numTypes` number of atom types in your set of configurations located in `the [PATH] section <Run.html#path>`__
+
+- :code:`type` contains a list of element type symbols, one for each type. Make sure these are 
+  ordered correctly, e.g. if you have a LAMMPS type 1 atom that is :code:`Ga`, and LAMMPS type 2 
+  atoms are :code:`N`, list this as :code:`Ga N`. In ACE, all possible combinations of these types determine the "bond types" spanned by the ACE chemical basis (the chemical basis is the delta function basis used in `Drautz 2019 <drautz2019_>`_). For example, the "bond types" resulting from all possible combinations of :code:`Ga N` are determined with :code:`itertools.product()` in python. They are :code:`(Ga,Ga) (Ga,N) (N,Ga) (N,N)`. While specifying :code:`types` is sufficient to define the chemical basis in ACE descriptors, some hyperparameters (e.g., :code:`rcutfac`) must be specified per "bond type".
+
+- :code:`ranks` The ranks of the ACE descriptors to be enumerated. Rank is often given the symbol 'N', and corresponds to the number of bonds encoded by the descriptor. Rank 1 corresponds to 1 bond with a central atom, encoding 2-body information, rank 2 corresponds to 2 bonds with a central atom, encoding 3-body information, and so on. The minimum rank should generally be 1 and the maximum rank should be truncated based on the systems modeled and the training dataset, or one will not be able to distinguish certain motifs (see `Pozdnyakov et al. <pozdnyakov2020_>`_ and related works).
+
+- :code:`lmax` is the maximum angular momentum quantum number per descriptor rank. Each ACE descriptors angular character described by one or more spherical harmonics. Since the spherical harmonic basis is infinite, it must be truncated. The maximum angular momentum quantum number (and the truncation) of the spherical harmonic(s) per descriptor rank is specified by :code:`lmax`. Larger :code:`lmax` offer a more complete description of angular character, but lead to larger descriptor counts. For rank 1, :code:`lmax` should not excede 0 for rotationally invariant descriptors. If it is, it will automatically be set to 0. There are no other formal restrictions on :code:`lmax` for :code:`ranks` > 1.
+
+- :code:`lmin` is the minimum angular momentum per descriptor rank. These should be 0 if complete ACE descriptor sets are desired. However, :code:`lmin` may be adjusted up to the :code:`lmax` of the corresponding descriptor rank to reduce the number of descriptors, which can be useful in some neural network fits.
+
+- :code:`nmax` is maximum radial basis function index per descriptor rank. Each ACE descriptors radial character is described by a radial basis. In FitSNAP, the default radial basis set is the Chebyshev polynomial basis described in `Drautz 2019 <drautz2019_>`_. As with the angular basis, the radial basis set is, in principle, infinite and must be truncated.  Larger `nmax` offer a more complete description of radial character, but lead to larger descriptor counts.
+
+- :code:`nmaxbase` Maximum value of `nmax` 
+
+- :code:`rcutfac` *(similar to [BISPECTRUM])* is a cutoff radius parameter or a list of cutoff radius parameters. A value of :code:`rcutfac` must be specified per bond type. For example, if :code:`type` is :code:`Ta`, then one :code:`rcutfac` is specified for the :code:`(Ta,Ta)` bond. If :code:`type` is :code:`Ga N`, then four :code:`rcutfac` must be listed, corresponding to each bond type in :code:`(Ga,Ga) (Ga,N) (N,Ga) (N,N)`. Note that you may want to consider the same :code:`rcutfac` for "bond types" that are permutations of another (e.g.,  for :code:`(Ga,N)` and :code:`(N,Ga)`).
+
+- :code:`lambda` exponential factor for scaled radial distance (see `Drautz 2019 <drautz2019_>`_). The :code:`lambda` parameter(s) determine how much to scale short bond lengths in the scaled distance. The scaled distance is fed into the radial basis for ACE. A larger :code:`lambda` provides more sensitivity for small bond lengths compared to larger bond lengths, and does so through an exponential function. As :code:`lambda` approaches 0, the scaled distance approaches the true distance :code:`r`. As with :code:`rcutfac`, a value of :code:`lambda` must be specified per bond type. For example, if :code:`type` is :code:`Ta`, then one :code:`lambda` is specified for the :code:`(Ta,Ta)` bond. If :code:`type` is :code:`Ga N`, then four :code:`lambda` must be listed, corresponding to each bond type in :code:`(Ga,Ga) (Ga,N) (N,Ga) (N,N)`. Note that you may want to consider the same :code:`lambda` for "bond types" that are permutations of another (e.g.,  for :code:`(Ga,N)` and :code:`(N,Ga)`).
+
+- :code:`rcinner` the cutoff(s) for the core repulsions in the ACE descriptors. A core repulsion may be added to ACE models. As with :code:`rcutfac`, :code:`rcinner` must be provided per "bond type". The default is to set this to 0 for each bond type. Note that, if using :code:`rcinner` values greater than 0.0, the :code:`rcinner` must be selected carefully if using ZBL reference potential(s) in LAMMPS. Typically, one will need to make sure that :code:`rcinner` - :code:`drcinner` are less than the inner cutoffs for the respective ZBL potentials.
+
+- :code:`drcinner` the parameter for the scale of the inner cutoff functions. This is the delta for the inner cutoff cuntion in Eq. C12 in `Bochkarev et al. (2022) <bochkarev2022_>`_. As with :code:`rcutfac`, :code:`rcinner` must be provided per "bond type". The default is to set this to 0.01 per "bond type".
+
+- :code:`bzeroflag` *(same as in [BISPECTRUM])* is 0 or 1, determining whether or not B0, the bispectrum components of an atom with no neighbors, are subtracted from the calculated bispectrum components.
+
+- :code:`wigner_flag` is a logical flag to use generalized Wigner symbols to perform ACE couplings. Generalized wigner symbols or generalized Clebsch-Gordan (CG) coefficients may be used to contract products of spherical harmonics in ACE (usually to obtain rotationally invariant descriptors for MLIPs). Either Wigner symbols or CG coefficients may be used to obtain the correct descriptor couplings, but the numerical scale of the descriptors differs (systematically) when Wigner vs CG are used. The default is to use :code:`wigner_flag` set to :code:`1`, but :code:`wigner_flag` set to :code:`0` will use generalized CG coefficients. If comparing to other LAMMPS potentials generated from other codebases with ACE (e.g, those from `Bochkarev et al. (2022) <bochkarev2022_>`_), using :code:`0` (CG coefficients instead) will help provide a more direct comparison.
+
+- :code:`b_basis` ACE basis flags with possible values `pa_tabulated`, `minsub`, `ysg_x_so3`. Linearly independent descriptors are obtained with `pa_tabulated` as described in <goff2024_>. The `minsub` setting is to maintain compatiblity with descriptor sets from the original <drautz2019_> paper, but it does not give a complete set of ACE descriptors. The `ysg_x_so3` setting is for testing with the overcomplete ACE basis, generated by all possible couplings. It is recommended to use `pa_tabulated` only.
+
+
+- :code:`manuallabs` manually listed ACE descriptor labels. Optionally, users may specify a list of ACE descriptors to build a model. The ACE descriptor format is mu0_mu1,mu2,...,muN,n1,n2,...,nN,l1,l2,...,lN_L1-...-L(N-3)-L(N-2). For example, to make a model using only one rank 3 descriptor with mu1=mu2=mu3=0 and n1=n2=n3=1 and l1=l2=l3=0 and L1=0, the setting for :code:`manuallabs` could be :code:`0_0,0,0,1,1,1,0,0,0_0 1_0,0,0,1,1,1,0,0,0_0`, where the descriptors differ by mu0. Scripts in the :code:`tools`. Descriptors listed here will override those enumerated by :code:`ranks`, :code:`nmax`, and :code:`lmax`. It can be useful for neural network models, for retraining models only using descriptors with non-zero coefficients from a sparse regression method like LASSO, etc. Note that some functionality within ML-IAP in LAMMPS and others in FitSNAP/LAMMPS require that the number of descriptors per type (per mu0) must be the same. 
+
+.. WARNING:: Only change ACE basis flags if you know what you are doing!
 
 [CALCULATOR]
 ^^^^^^^^^^^^

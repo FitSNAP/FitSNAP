@@ -34,11 +34,11 @@ class Json(Scraper):
                         self.pt.single_print(f"Trouble parsing training data: {file_name}")
                         self.pt.single_print(f"{e}")
 
-                    assert len(self.data) == 1, "More than one object (dataset) is in this file"
+                    assert len(self.data) == 1, f"More than one object (dataset) is in this file. \nFile name: {file_name}"
 
                     self.data = self.data['Dataset']
 
-                    assert len(self.data['Data']) == 1, "More than one configuration in this dataset"
+                    assert len(self.data['Data']) == 1, f"More than one configuration in this dataset. \nFile name: {file_name}"
                     
                     training_file = file_name.split("/")[-1]
                     self.data['File'] = training_file
@@ -46,7 +46,7 @@ class Json(Scraper):
                     self.data['Group'] = group_name
                     
                     assert all(k not in self.data for k in self.data["Data"][0].keys()), \
-                        "Duplicate keys in dataset and data"
+                        f"Duplicate keys in dataset and data. \nFile name: {file_name}"
 
                     # Move data up one level
                     self.data.update(self.data.pop('Data')[0])  
@@ -96,6 +96,6 @@ class Json(Scraper):
 
                     self.all_data.append(self.data)
             else:
-                self.pt.single_print("Non-json file found: ", file_name)    
+                self.pt.single_print("! WARNING: Non-JSON file found: ", file_name)    
 
         return self.all_data

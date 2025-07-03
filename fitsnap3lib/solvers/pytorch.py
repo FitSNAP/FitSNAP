@@ -104,9 +104,9 @@ try:
                                                                         mode='min',
                                                                         factor=0.5,
                                                                         patience=49,
-                                                                        verbose=True,
                                                                         threshold=0.0001,
                                                                         threshold_mode='abs')
+#                                                                        verbose=True,
 
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             # self.device = "cpu"

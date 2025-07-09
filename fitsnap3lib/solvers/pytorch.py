@@ -51,9 +51,13 @@ try:
                 self.num_elements = self.config.sections["ACE"].numtypes
                 if not self.silence_ace_multi_warning:
                     assert self.multi_element_option == 2, """For ACE (explicit multi-element descriptors) it is best to give a network to each descriptor.
+
 To do this, set multi_element_option = 2 in your input.
-If multi_element_option = 1 is set, you will need to account for the fact that the MLIAP python pairstyle only has one LAMMPS type per MLIAP potential in your input.
-This can be cumbersome to set up, but if it is what you want, you can suppress this warning by setting  silence_ace_multi_warning=1 in your FitSNAP input."""
+
+If multi_element_option = 1, you will need to be extra careful to not run LAMMPS with elements NOT in your fit.
+
+If you are sure this is what you want, you can suppress this warning by setting  silence_ace_multi_warning=1 in your FitSNAP input."""
+
             else:
                 raise Exception("Unsupported calculator for PyTorch solver.")
 

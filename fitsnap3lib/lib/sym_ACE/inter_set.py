@@ -5,7 +5,7 @@ def simple_parity_filt(l, inters, L_R, even = True):
     base_ls = group_vec_by_node(l,nodes,remainder=remainder)
     base_ls = [list(k) for k in base_ls]
     if even:
-        assert (np.sum(l) % 2) == 0, "must have \sum{l_i} = even for even parity definition"
+        assert (np.sum(l) % 2) == 0, "must have sum{l_i} = even for even parity definition"
         if len(l) == 4:
             inters_filt = [i for i in inters if  np.sum([i[0]] + base_ls[0])  % 2 == 0 and np.sum([i[1]] + base_ls[1]) % 2 == 0]
         else:
@@ -15,7 +15,7 @@ def simple_parity_filt(l, inters, L_R, even = True):
                 inters_filt = [i for i in inters if  all([ np.sum([i[ind]] + base_ls[ind]) %2 ==0  for ind in range(len(base_ls))   ]) ] 
             
     else:
-        assert (np.sum(l) % 2) !=0, "must have \sum{l_i} = odd for odd parity definition"
+        assert (np.sum(l) % 2) !=0, "must have sum{l_i} = odd for odd parity definition"
         print ('WARNING! You are using an odd parity tree. Check your labels to make sure this is what you want (this is for fitting vector quantities!)')
         if len(l) == 4:
             inters_filt = [inters[ind] for ind,i in enumerate(base_ls) if  np.sum( [inters[ind][i]] + list(i)  )   % 2   != 0 ]

@@ -28,6 +28,7 @@ Ta = 0.0
 layer_sizes = num_desc 64 64 1 #1000 1000 8 1
 learning_rate = 1e-5 
 num_epochs = 1
+silence_ace_multi_warning = 1
 batch_size = 4 # 363 configs in entire set
 save_state_output = Ta_Pytorch.pt
 energy_weight = 1e-2

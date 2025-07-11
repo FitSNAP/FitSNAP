@@ -72,7 +72,7 @@ jobs:
 
         # Procedure for installing our custom branch with compute pace:
 
-        git clone https://github.com/lammps/lammps.git
+        git clone https://github.com/lammps/lammps.git --branch patch_12Jun2025 --single-branch
         cd lammps/cmake
         mkdir build
         cd build

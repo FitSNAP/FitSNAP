@@ -296,7 +296,7 @@ class Young_Subgroup:
 		# get the full automorphism group including any expansion due to degeneracy
 		G_N = get_auto_part(inds,partitions[0],add_degen_autos=True,part_only=False)
 		applied_perms = [tuple(Permutation(filled_perm(pi,len(inds)))(inds)) for pi in G_N]
-		# collect a group of permutations \sigma \in S_N \notin G_N 
+		# collect a group of permutations sigma in S_N notin G_N 
 		idi = [tuple([ki]) for ki in range(len(inds))]
 		H_N = [tuple(idi) ]
 		for raw_perm in perms_raw:

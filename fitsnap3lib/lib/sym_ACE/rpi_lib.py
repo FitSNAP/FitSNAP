@@ -19,7 +19,7 @@ def permutation_adapted_lL(l,semistandardflag=True):
     # Define the identity l_o based on degeneracy and the coupling 
     # scheme. (This is no longer necessary but it makes for smaller
     # amounts of permutations to sift over to find the full set of
-    #  { \varsigma(l) }
+    #  { varsigma(l) }
     #----------------------------------------------------------------
     N = len(l)
     uniques = list(set(l))
@@ -48,10 +48,10 @@ def permutation_adapted_lL(l,semistandardflag=True):
 
     #----------------------------------------------------------------
     # Use young subgroup fillings to reduce a full search over S_N
-    #  to obtain \varsigma(l) and irrep. The young subgroup used is
-    #  S_2 \otimes S_2 \otimes ... S_2  - for N/2 iterations if N is
+    #  to obtain varsigma(l) and irrep. The young subgroup used is
+    #  S_2 otimes S_2 otimes ... S_2  - for N/2 iterations if N is
     #  even and
-    #  S_2 \otimes S_2 \otimes ... \otimes S_1 - for floor(N/2) 
+    #  S_2 otimes S_2 otimes ... otimes S_1 - for floor(N/2) 
     #  iterations if N is odd.
     #----------------------------------------------------------------
     
@@ -124,14 +124,14 @@ def permutation_adapted_lL(l,semistandardflag=True):
         automorphisms = get_auto_part(tuple(lp),tuple([len(lp)]),add_degen_autos=False,part_only=False)
         conj1, applied_conj,conj_list = ysg.apply_automorphism_conjugation(my_automorphisms=automorphisms)
         # first catch any binary trees that share the same
-        #  leaf structure as the coupling permutation, \sigma_c
+        #  leaf structure as the coupling permutation, sigma_c
         if leafi not in leafids:
             quick_build.append( (lp,Lp_lst[-1]))
             orbids.append(orbi)
             leafids.append(leafi)
             all_autos.extend(conj_list)
         # secondly, catch binary trees that share more symmetry
-        #  even if it has a leaf structure compatible with \sigma_c
+        #  even if it has a leaf structure compatible with sigma_c
         #  as well. (Needed for degenerate l_i)
         if orbi not in orbids:
             quick_build.append( (lp,Lp_lst[-1]))
@@ -168,8 +168,8 @@ def permutation_adapted_nlL(n,l,semistandardflag=True):
     #  when using python-native enumerations (e.g. itertools.permutations)
     ns = unique_perms(n)
     
-    # using the set { \varsigma_l } and the corresponding highest symmetry
-    #  set of orbits used to generate \varsigma_l, find all unique nl
+    # using the set { varsigma_l } and the corresponding highest symmetry
+    #  set of orbits used to generate varsigma_l, find all unique nl
     #  nl trees. (To go from permutation-adapted angular indices to 
     #  permutation-adapted radial + angular indices, we add more leaves to the
     #  tree.
@@ -230,8 +230,8 @@ def permutation_adapted_munlL(mu,n,l,nelements=1,semistandardflag=True):
     ns = unique_perms(n)
     mus = unique_perms(mu)
     
-    # using the set { \varsigma_l } and the corresponding highest symmetry
-    #  set of orbits used to generate \varsigma_l, find all unique nl
+    # using the set { varsigma_l } and the corresponding highest symmetry
+    #  set of orbits used to generate varsigma_l, find all unique nl
     #  nl trees. (To go from permutation-adapted angular indices to 
     #  permutation-adapted radial + angular indices, we add more leaves to the
     #  tree.

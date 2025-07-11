@@ -12,8 +12,7 @@ try:
             super().__init__(name, config, pt, infile, args)
             self.allowedkeys = ['layer_sizes', 'learning_rate', 'num_epochs', 'batch_size', 'save_state_output',
                                 'save_freq', 'save_state_input', 'output_file', 'energy_weight', 'force_weight',
-                                'training_fraction', 'multi_element_option', 'num_elements', 'manual_seed_flag',
-                                'shuffle_flag']
+                                'training_fraction', 'multi_element_option', 'num_elements', 'manual_seed_flag', 'silence_ace_multi_warning', 'shuffle_flag']
             self._check_section()
 
             self._check_if_used("SOLVER", "solver", "SVD")
@@ -35,6 +34,7 @@ try:
             self.training_fraction = self.get_value("PYTORCH", "training_fraction", "NaN", "float")
             self.global_fraction_bool = False
             self.multi_element_option = self.get_value("PYTORCH", "multi_element_option", "1", "int")
+            self.silence_ace_multi_warning = self.get_value("PYTORCH", "silence_ace_multi_warning", "0", "int")
             self.manual_seed_flag = self.get_value("PYTORCH", "manual_seed_flag", "False", "bool")
             self.save_state_output = self.check_path(self.get_value("PYTORCH", "save_state_output", "FitTorchModel"))
             self.save_state_input = self.check_path(self.get_value("PYTORCH", "save_state_input", None))

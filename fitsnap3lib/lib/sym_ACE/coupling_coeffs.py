@@ -24,8 +24,8 @@ def Clebsch_gordan(j1,m1,j2,m2,j3,m3):
     rule4 = np.abs(m3) <= j3
 
     #rules assumed by input
-    #assert np.abs(m1) <= j1, 'm1 must be \in {-j1,j1}'
-    #assert np.abs(m2) <= j2, 'm2 must be \in {-j2,j2}'
+    #assert np.abs(m1) <= j1, 'm1 must be in {-j1,j1}'
+    #assert np.abs(m2) <= j2, 'm2 must be in {-j2,j2}'
 
     if rule1 and rule2 and rule3 and rule4:
         #attempting binomial representation

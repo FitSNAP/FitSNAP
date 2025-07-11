@@ -42,12 +42,22 @@ try:
 
             self.global_fraction_bool = self.config.sections['PYTORCH'].global_fraction_bool
             self.training_fraction = self.config.sections['PYTORCH'].training_fraction
+            self.silence_ace_multi_warning = self.config.sections['PYTORCH'].silence_ace_multi_warning
             self.single_flag = 0
             self.multi_element_option = self.config.sections["PYTORCH"].multi_element_option
             if (self.config.sections["CALCULATOR"].calculator == "LAMMPSSNAP"):
                 self.num_elements = self.config.sections["BISPECTRUM"].numtypes
             elif (self.config.sections["CALCULATOR"].calculator == "LAMMPSPACE"):
                 self.num_elements = self.config.sections["ACE"].numtypes
+                if not self.silence_ace_multi_warning:
+                    assert self.multi_element_option == 2, """For ACE (explicit multi-element descriptors) it is best to give a network to each descriptor.
+
+To do this, set multi_element_option = 2 in your input.
+
+If multi_element_option = 1, you will need to be extra careful to not run LAMMPS with elements NOT in your fit.
+
+If you are sure this is what you want, you can suppress this warning by setting  silence_ace_multi_warning=1 in your FitSNAP input."""
+
             else:
                 raise Exception("Unsupported calculator for PyTorch solver.")
 

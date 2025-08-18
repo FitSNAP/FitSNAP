@@ -15,6 +15,74 @@ def atomic_symbol_to_number(s):
     return {"H":1,"C":6,"N":7,"O":8,"F":9,"Na":11,"Mg":12,"P":15,"S":16,"Cl":17,"K":19,"Ca":20}[s]
 
 
+@staticmethod
+@nb.jit(nopython=True, cache=True)
+def compute_esp_numba(grid_points, positions, charges, dipoles, quadrupoles, octupoles):
+  """Numba-optimized ESP calculation"""
+  esp_values = np.zeros(len(grid_points), dtype=np.float32)
+  cutoff_dist = 1.4  # Minimum distance cutoff
+        
+  for i in range(len(grid_points)):
+    grid_point = grid_points[i]
+    esp = 0.0
+            
+    # Calculate ESP from all atoms (Numba will optimize this loop)
+    for j in range(len(positions)):
+      pos = positions[j]
+      r_vec = grid_point - pos
+      r2 = r_vec[0]**2 + r_vec[1]**2 + r_vec[2]**2
+      r = np.sqrt(r2)
+                
+      # Skip points too close to atoms
+      if r < cutoff_dist: continue
+                
+      # Charge contribution
+      esp += charges[j] / r
+  
+      # Add dipole contribution if available
+      if dipoles is not None:
+        # μ⋅r / r³
+        mu = dipoles[j]
+        esp += (mu[0] * r_vec[0] + mu[1] * r_vec[1] + mu[2] * r_vec[2]) / (r**3)
+                
+      # Add quadrupole contribution if available
+      if quadrupoles is not None:
+        Q = quadrupoles[j]
+        r_inv = 1.0 / r
+        r_hat = r_vec * r_inv
+                    
+        # Quadrupole formula: 1/2 ∑_αβ Q_αβ (3r_α r_β/r² - δ_αβ) / r³
+        quad_term = 0.0
+        for alpha in range(3):
+          for beta in range(3):
+            delta_ab = 1.0 if alpha == beta else 0.0
+            quad_term += Q[alpha, beta] * (3.0 * r_hat[alpha] * r_hat[beta] - delta_ab)
+                    
+        esp += 0.5 * quad_term / (r**3)
+      
+      # Add octupole contribution if available
+      if octupoles is not None:
+        O = octupoles[j]
+        r_hat = r_vec / r
+                    
+        # Octupole formula
+        octu_term = 0.0
+        for alpha in range(3):
+          for beta in range(3):
+            for gamma in range(3):
+              main_term = 5.0 * r_hat[alpha] * r_hat[beta] * r_hat[gamma]
+              delta_bg = 1.0 if beta == gamma else 0.0
+              delta_ag = 1.0 if alpha == gamma else 0.0
+              delta_ab = 1.0 if alpha == beta else 0.0
+              correction = r_hat[alpha] * delta_bg + r_hat[beta] * delta_ag + r_hat[gamma] * delta_ab
+              octu_term += O[alpha, beta, gamma] * (main_term - correction)
+                    
+        esp += octu_term / (6.0 * r**4)
+            
+    esp_values[i] = esp
+  
+  return esp_values
+
 # ------------------------------------------------------------------------------------------------
 
 class HDF5(Scraper):
@@ -396,79 +464,6 @@ class HDF5(Scraper):
                     idx += 1
         
         # Calculate ESP values using numba-optimized function
-        esp_values = self._compute_esp_numba(grid_points, positions_array, charges_array, 
-                                       dipoles_array, quad_tensors, octu_tensors)
-        
+        esp_values = compute_esp_numba(grid_points, positions_array, charges_array, dipoles_array, quad_tensors, octu_tensors)
         return esp_values.reshape(nz, ny, nx).flatten()
 
-    @staticmethod
-    @nb.jit(nopython=True, cache=True)
-    def _compute_esp_numba(grid_points, positions, charges, dipoles, quadrupoles, octupoles):
-        """Numba-optimized ESP calculation"""
-        esp_values = np.zeros(len(grid_points), dtype=np.float32)
-        cutoff_dist = 1.4  # Minimum distance cutoff
-        
-        for i in range(len(grid_points)):
-            grid_point = grid_points[i]
-            esp = 0.0
-            
-            # Calculate ESP from all atoms (Numba will optimize this loop)
-            for j in range(len(positions)):
-                pos = positions[j]
-                r_vec = grid_point - pos
-                r2 = r_vec[0]**2 + r_vec[1]**2 + r_vec[2]**2
-                r = np.sqrt(r2)
-                
-                # Skip points too close to atoms
-                if r < cutoff_dist:
-                    continue
-                
-                # Charge contribution
-                esp += charges[j] / r
-                
-                # Add dipole contribution if available
-                if dipoles is not None:
-                    # μ⋅r / r³
-                    mu = dipoles[j]
-                    esp += (mu[0] * r_vec[0] + mu[1] * r_vec[1] + mu[2] * r_vec[2]) / (r**3)
-                
-                # Add quadrupole contribution if available
-                if quadrupoles is not None:
-                    Q = quadrupoles[j]
-                    r_inv = 1.0 / r
-                    r_hat = r_vec * r_inv
-                    
-                    # Quadrupole formula: 1/2 ∑_αβ Q_αβ (3r_α r_β/r² - δ_αβ) / r³
-                    quad_term = 0.0
-                    for alpha in range(3):
-                        for beta in range(3):
-                            delta_ab = 1.0 if alpha == beta else 0.0
-                            quad_term += Q[alpha, beta] * (3.0 * r_hat[alpha] * r_hat[beta] - delta_ab)
-                    
-                    esp += 0.5 * quad_term / (r**3)
-                
-                # Add octupole contribution if available
-                if octupoles is not None:
-                    O = octupoles[j]
-                    r_hat = r_vec / r
-                    
-                    # Octupole formula
-                    octu_term = 0.0
-                    for alpha in range(3):
-                        for beta in range(3):
-                            for gamma in range(3):
-                                main_term = 5.0 * r_hat[alpha] * r_hat[beta] * r_hat[gamma]
-                                
-                                delta_bg = 1.0 if beta == gamma else 0.0
-                                delta_ag = 1.0 if alpha == gamma else 0.0
-                                delta_ab = 1.0 if alpha == beta else 0.0
-                                
-                                correction = r_hat[alpha] * delta_bg + r_hat[beta] * delta_ag + r_hat[gamma] * delta_ab
-                                
-                                octu_term += O[alpha, beta, gamma] * (main_term - correction)
-                    
-                    esp += octu_term / (6.0 * r**4)
-            
-            esp_values[i] = esp
-        
-        return esp_values

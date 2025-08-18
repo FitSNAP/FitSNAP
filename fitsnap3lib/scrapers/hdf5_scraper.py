@@ -16,7 +16,7 @@ def atomic_symbol_to_number(s):
 
 
 @staticmethod
-@nb.jit(nopython=True, cache=True)
+@nb.jit(nopython=True)
 def compute_esp_numba(grid_points, positions, charges, dipoles, quadrupoles, octupoles):
   """Numba-optimized ESP calculation"""
   esp_values = np.zeros(len(grid_points), dtype=np.float32)

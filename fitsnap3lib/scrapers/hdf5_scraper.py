@@ -94,7 +94,15 @@ class HDF5(Scraper):
         self.data = []
         logging.getLogger("h5py._conv").setLevel(logging.WARNING)
         self._lattice_margin = 10
-        allowed_elements = self.config.sections["REAXFF"].elements
+        
+        if( "REAXFF" in self.config.sections ):
+          allowed_elements = self.config.sections["REAXFF"].elements
+        elif( "ACE" in self.config.sections ):
+          allowed_elements = self.config.sections["ACE"].types
+          
+        print(f"*** allowed_elements {allowed_elements}")
+        
+        
         self.allowed_atomic_numbers = set(atomic_symbol_to_number(e) for e in allowed_elements)
         self.hdf5_path = path.join(self.config.sections["PATH"].dataPath, \
           self.config.sections["SCRAPER"].filename)
@@ -243,6 +251,7 @@ class HDF5(Scraper):
 
         with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
             for group_name in sorted(grouped):
+                print(f"*** group_name {group_name}", flush=True)
                 group = f[group_name]
                 meta = self.group_metadata[group_name]
                 conformations = group["conformations"][()] * BOHR_TO_ANGSTROM
@@ -300,6 +309,7 @@ class HDF5(Scraper):
                         "gweight": meta["gweight"] # /np.mean(esp_grid)
                     })
 
+        print(self.data)
         return self.data
 
     # --------------------------------------------------------------------------------------------

@@ -301,7 +301,7 @@ class HDF5(Scraper):
                         "NumAtoms": len(atomic_numbers),
                         "Lattice": meta["lattice"],
                         "Bounds": meta["bounds"],
-                        "test_bool": random.choices([True, False], weights=[0.7, 0.3])[0],
+                        "test_bool": random.choices([True, False], weights=[0.2, 0.8])[0],
                         "eweight": meta["eweight"],
                         "fweight": meta["fweight"] / len(atomic_numbers),
                         "vweight": 0.0,

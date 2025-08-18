@@ -178,8 +178,12 @@ class ElemwiseModels(torch.nn.Module):
         per_atom_attributes = torch.zeros(elems.size(dim=0), dtype=self.dtype)
         given_elems, elem_indices = torch.unique(elems, return_inverse=True)
         for i, elem in enumerate(given_elems):
-            self.subnets[elem].to(self.dtype)
-            per_atom_attributes[elem_indices == i] = self.subnets[elem](descriptors[elem_indices == i]).flatten()
+            try:
+                self.subnets[elem].to(self.dtype)
+                per_atom_attributes[elem_indices == i] = self.subnets[elem](descriptors[elem_indices == i]).flatten()
+            except IndexError: #NOTE this is to except cases with ACE multi_element_option = 1, mapping all elements back onto the same network. We probably want a more targeted way to handle this..
+                self.subnets[0].to(self.dtype)
+                per_atom_attributes[elem_indices == i] = self.subnets[0](descriptors[elem_indices == i]).flatten()
         return per_atom_attributes
 
 class PairNN(torch.nn.Module):

@@ -153,9 +153,10 @@ def get_default_settings(elems,nshell=1.0,return_range=True,apply_shift=False,me
     lmb_def_str = 'lambda = ' + '  '.join(b for b in lmb_def_lst) % tuple(default_lmbs)
     rcin_def_lst = ['%1.3f']* len(bonds)
     rcin_def_str = 'rcinner = ' + '  '.join(b for b in rcin_def_lst) % tuple(list(rin_def.values()))
+    drcin_def_str = 'drcinner = ' + '  '.join(str(b) for b in [0.01]*len(bonds))
     print (rc_range)
     reference_printer(bonds,list(rin_def.values()), list(rc_def.values()))
-    return rc_range,rc_def_str,lmb_def_str,rcin_def_str
+    return rc_range,rc_def_str,lmb_def_str,rcin_def_str,drcin_def_str
 
 
 #uncomment for different examples
@@ -163,8 +164,9 @@ def get_default_settings(elems,nshell=1.0,return_range=True,apply_shift=False,me
 #elems = ['H','N','W']
 elems = ['N','W']
 #elems = sorted(elems) # sort element types alphabetically
-rc_range,rc_default,lmb_default,rcin_default = get_default_settings(elems,nshell=2.2,return_range=True,apply_shift=False)
+rc_range,rc_default,lmb_default,rcin_default,drcin_default = get_default_settings(elems,nshell=2.2,return_range=True,apply_shift=False)
 print ('recommended starting hyperparameters\n')
 print (rc_default)
 print (lmb_default)
 print (rcin_default)
+print (drcin_default)

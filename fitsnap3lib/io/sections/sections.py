@@ -1,7 +1,14 @@
 from fitsnap3lib.io.error import ExitFunc
-from distutils.util import strtobool
 from os import getcwd, path
 
+def strtobool(val):    #distutils.util strtobool deprecated in python3.12
+    val = val.lower()
+    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+        return 1
+    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+        return 0
+    else:
+        raise ValueError("invalid truth value %r" % (val,))
 
 class Section:
     parameters = []
@@ -50,7 +57,7 @@ class Section:
             Section.add_parameter(section, key, fallback, interpreter)
         if interpreter == "str" or interpreter == "string":
             convert = str
-        elif interpreter == "bool":
+        elif interpreter == "bool": #this formats as 0 or 1, not True / False
             convert = strtobool
         elif interpreter == "float":
             convert = float

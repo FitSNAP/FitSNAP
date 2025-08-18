@@ -13,7 +13,7 @@ pt = ParallelTools(comm = comm)
 @pt.rank_zero
 def get_ms(l,M_R=0):
 
-    # retrieves the set of m_i combinations obeying \sum_i m_i = M_R for an arbitrary l vector
+    # retrieves the set of m_i combinations obeying sum_i m_i = M_R for an arbitrary l vector
     m_ranges={ind:range(-l[ind],l[ind]+1) for ind in range(len(l))}
     m_range_arrays = [list(m_ranges[ind]) for ind in range(len(l))]
     m_combos = list(itertools.product(*m_range_arrays))

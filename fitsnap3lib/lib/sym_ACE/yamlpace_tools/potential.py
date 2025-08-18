@@ -42,18 +42,25 @@ class AcePot():
         self.global_drhocut = 250
         #assert the same nmax,lmax,nradbase (e.g. same basis) for each bond type
         self.radbasetype = 'ChebExpCos'
+        self.set_bonds()
         self.global_nmax=nmax
         self.global_lmax=lmax
         self.b_basis = b_basis
         assert len(nmax) == len(lmax),'nmax and lmax arrays must be same size'
         self.global_nradbase=nradbase
+        #single element case
         if type(rcut) != dict and type(rcut) != list:
             self.global_rcut = rcut
             self.global_lmbda = lmbda
             self.global_rcutinner = rcutinner
             self.global_drcutinner = drcutinner
             self.global_lmin = lmin
+        #multi-element case
         else:
+            assert len(rcut) == len(self.bondlsts),"list of rcuts must be the same length as the number of bonds"
+            assert len(lmbda) == len(self.bondlsts),"list of lambdas must be the same length as the number of bonds"
+            assert len(rcutinner) == len(self.bondlsts),"list of inner cutoffs (rcinner) must be the same length as the number of bonds"
+            assert len(drcutinner) == len(self.bondlsts),"list of inner cutoff derivative parameters (drcinner) must be the same length as the number of bonds"
             self.rcut = rcut
             self.lmbda = lmbda
             self.rcutinner = rcutinner
@@ -61,7 +68,6 @@ class AcePot():
             self.lmin = lmin
         self.manuallabs = manuallabs
         self.set_embeddings()
-        self.set_bonds()
         self.set_bond_base()
 
         lmax_dict = {rank:lv for rank,lv in zip(self.ranks,self.global_lmax)}

@@ -32,9 +32,6 @@ class HDF5(Scraper):
           allowed_elements = self.config.sections["REAXFF"].elements
         elif( "ACE" in self.config.sections ):
           allowed_elements = self.config.sections["ACE"].types
-          
-        print(f"*** allowed_elements {allowed_elements}")
-        
         
         self.allowed_atomic_numbers = set(atomic_symbol_to_number(e) for e in allowed_elements)
         self.hdf5_path = path.join(self.config.sections["PATH"].dataPath, \
@@ -64,10 +61,13 @@ class HDF5(Scraper):
                     group_names = list(f.keys())[:2]
                 else:
                     groups = list(f.keys()) if self.rank == 0 else None
-                    print(f"*** len(groups) {len(groups)}", flush=True)
                     group_names = self.comm.bcast(groups, root=0)
 
-            for i in range(self.rank, len(group_names), self.size):
+            # Process groups assigned to this rank
+            groups_to_process = list(range(self.rank, len(group_names), self.size))
+            
+            for i in groups_to_process:
+            
                 group_name = group_names[i]
                 group = f[group_name]
                 atomic_numbers = group["atomic_numbers"][()]
@@ -125,12 +125,21 @@ class HDF5(Scraper):
                 #print(f"*** {group_name} formation_energy {formation_energy} weights {weights} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
                 #print(f"*** {group_name} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
 
-                for j in range(int(conformations.shape[0]*0.8)):
+                # Add ALL configs, not just 80%
+                for j in range(conformations.shape[0]):
                     self.local_configs.append((group_name, j))
 
         if self.pt.stubs==0:
-            all_meta = self.comm.allgather(self.group_metadata)
+            # Ensure all ranks have finished processing before allgather
+            self.comm.barrier()
+            try:
+                all_meta = self.comm.allgather(self.group_metadata)
+            except Exception as e:
+                print(f"ERROR in allgather on rank {self.rank}: {e}", flush=True)
+                raise
             self.group_metadata = {k: v for d in all_meta for k, v in d.items()}
+        
+        
 
     # --------------------------------------------------------------------------------------------
 
@@ -139,19 +148,20 @@ class HDF5(Scraper):
         if self.pt.stubs==1:
             self.my_configs = self.local_configs[:3]
         else:
+        
             all_configs = self.comm.allgather(self.local_configs)
             flat_configs = [cfg for sub in all_configs for cfg in sub]
             flat_configs.sort()
 
-            #total = len(flat_configs)
-            total = 1*(self.size)
+            total = len(flat_configs)
+            #total = 1*(self.size)
 
             base = total // (self.size)
 
             # make sure that all ranks have same number of configs
             # remainder extra configs can be used for validation testing
-            #remainder = total % (self.size-1)
-            remainder = 0
+            remainder = total % self.size
+            #remainder = 0
 
             start = self.rank * base + min(self.rank, remainder)
             stop = start + base + (1 if self.rank < remainder else 0)
@@ -166,8 +176,36 @@ class HDF5(Scraper):
 
     def scrape_configs(self):
         self.data = []
-
-        #print(f"*** self.my_configs {self.my_configs}")
+        
+        # Calculate training/validation split
+        # IMPORTANT: Each rank must have SAME number of training configs
+        # Calculate based on total configs across all ranks
+        if self.pt.stubs == 0:
+            # Get total number of configs across all ranks
+            local_count = len(self.my_configs)
+            total_configs_global = self.comm.allreduce(local_count)
+            
+            # Calculate how many training configs each rank should have
+            # 80% of total for training, distributed evenly across ranks
+            total_training = int(total_configs_global * 0.8)
+            n_training_per_rank = total_training // self.size
+            
+            # Ensure we don't exceed local configs available
+            n_training = min(n_training_per_rank, len(self.my_configs))
+        else:
+            # For non-MPI case
+            n_training = int(len(self.my_configs) * 0.8)
+            
+        n_validation = len(self.my_configs) - n_training
+        
+        print(f"[Rank {self.rank if hasattr(self, 'rank') else 'unknown'}] "
+              f"Total configs: {len(self.my_configs)}, Training: {n_training}, Validation: {n_validation}")
+        
+        # Create a deterministic assignment of training/validation
+        config_assignments = {}
+        for idx, (g, i) in enumerate(self.my_configs):
+            # First n_training are training (test_bool=False), rest are validation (test_bool=True)
+            config_assignments[(g, i)] = (idx >= n_training)
 
         file_kwargs = {"driver": "mpio", "comm": self.comm} if self.pt.stubs == 0 else {}
 
@@ -185,7 +223,6 @@ class HDF5(Scraper):
 
         with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
             for group_name in sorted(grouped):
-                print(f"*** group_name {group_name}", flush=True)
                 group = f[group_name]
                 meta = self.group_metadata[group_name]
                 conformations = group["conformations"][()] * BOHR_TO_ANGSTROM
@@ -234,7 +271,7 @@ class HDF5(Scraper):
                         "NumAtoms": len(atomic_numbers),
                         "Lattice": meta["lattice"],
                         "Bounds": meta["bounds"],
-                        "test_bool": random.choices([True, False], weights=[0.2, 0.8])[0],
+                        "test_bool": config_assignments[(group_name, i)],
                         "eweight": meta["eweight"],
                         "fweight": meta["fweight"] / len(atomic_numbers),
                         "vweight": 0.0,

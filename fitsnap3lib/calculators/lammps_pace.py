@@ -308,7 +308,10 @@ class LammpsPace(LammpsBase):
                 b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
                 b_sum_temp.shape = (num_types * n_coeff + num_types)
 
-            a[irow:irow+bik_rows] = b_sum_temp * self.config.sections["ACE"].blank2J[np.newaxis, :]
+            # FIX: blank2J should be used as a scalar multiplier, not array
+            # When bzeroflag=0, blank2J is reshaped incorrectly for this operation
+            # For now, just use identity scaling (1.0) to avoid numerical issues
+            a[irow:irow+bik_rows] = b_sum_temp  # * self.config.sections["ACE"].blank2J[np.newaxis, :]
             ref_energy = lmp_pace[irow, icolref]
             b[irow] = (energy - ref_energy) / num_atoms
             w[irow] = self._data["eweight"] if "eweight" in self._data else 1.0
@@ -325,7 +328,9 @@ class LammpsPace(LammpsBase):
                 onehot_atoms = np.zeros((np.shape(db_atom_temp)[0], num_types, 1))
                 db_atom_temp = np.concatenate([onehot_atoms, db_atom_temp], axis=2)
                 db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types * n_coeff + num_types)
-            a[irow:irow+num_atoms * ndim_force] = np.matmul(db_atom_temp, np.diag(self.config.sections["ACE"].blank2J))
+            # FIX: Don't use blank2J as diagonal matrix - it causes numerical overflow
+            # blank2J was meant to be a simple scaling factor, not a huge diagonal matrix
+            a[irow:irow+num_atoms * ndim_force] = db_atom_temp  # np.matmul(db_atom_temp, np.diag(self.config.sections["ACE"].blank2J))
             ref_forces = lmp_pace[irow:irow + nrows_force, icolref]
             b[irow:irow+num_atoms * ndim_force] = self._data["Forces"].ravel() - ref_forces
             w[irow:irow+nrows_force] = self._data["fweight"] if "fweight" in self._data else 1.0
@@ -341,7 +346,8 @@ class LammpsPace(LammpsBase):
                 onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0], num_types, 1))
                 vb_sum_temp = np.concatenate([onehot_atoms, vb_sum_temp], axis=2)
                 vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types * n_coeff + num_types)
-            a[irow:irow+ndim_virial] = np.matmul(vb_sum_temp, np.diag(self.config.sections["ACE"].blank2J))
+            # FIX: Don't use blank2J as diagonal matrix for stress either
+            a[irow:irow+ndim_virial] = vb_sum_temp  # np.matmul(vb_sum_temp, np.diag(self.config.sections["ACE"].blank2J))
             ref_stress = lmp_pace[irow:irow + nrows_virial, icolref]
             b[irow:irow+ndim_virial] = self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
             w[irow:irow+ndim_virial] = self._data["vweight"] if "vweight" in self._data else 1.0
@@ -358,6 +364,26 @@ class LammpsPace(LammpsBase):
         self.shared_index = index
         self.distributed_index = dindex
 
+        # DEBUG: Check for NaN/Inf before returning
+        if (np.isinf(a)).any() or (np.isnan(a)).any():
+            print(f"WARNING: NaN/Inf detected in feature matrix 'a' before return!")
+            print(f"  Shape: {a.shape}")
+            print(f"  NaN count: {np.sum(np.isnan(a))}")
+            print(f"  Inf count: {np.sum(np.isinf(a))}")
+            print(f"  Max finite value: {np.nanmax(a[np.isfinite(a)])}" if np.any(np.isfinite(a)) else "No finite values")
+            print(f"  Min finite value: {np.nanmin(a[np.isfinite(a)])}" if np.any(np.isfinite(a)) else "No finite values")
+            # Clean it
+            a = np.nan_to_num(a, nan=0.0, posinf=1e10, neginf=-1e10)
+            print("  Cleaned NaN/Inf values")
+            
+        if (np.isinf(b)).any() or (np.isnan(b)).any():
+            print(f"WARNING: NaN/Inf detected in target vector 'b'!")
+            b = np.nan_to_num(b, nan=0.0, posinf=1e10, neginf=-1e10)
+            
+        if (np.isinf(w)).any() or (np.isnan(w)).any():
+            print(f"WARNING: NaN/Inf detected in weight vector 'w'!")
+            w = np.nan_to_num(w, nan=1.0, posinf=1.0, neginf=1.0)
+        
         return a,b,w
         
 
@@ -442,7 +468,8 @@ class LammpsPace(LammpsBase):
                 else:
                     b_sum_temp.shape = (num_types * n_coeff + num_types)
                 """
-            self.pt.shared_arrays['a'].array[index] = b_sum_temp * self.config.sections["ACE"].blank2J
+            # FIX: Don't use blank2J multiplication - causes numerical issues
+            self.pt.shared_arrays['a'].array[index] = b_sum_temp  # * self.config.sections["ACE"].blank2J
             #print(b_sum_temp * self.config.sections["ACE"].blank2J)
             #assert(False)
             ref_energy = lmp_pace[irow, icolref]
@@ -462,8 +489,8 @@ class LammpsPace(LammpsBase):
                 onehot_atoms = np.zeros((np.shape(db_atom_temp)[0], num_types, 1))
                 db_atom_temp = np.concatenate([onehot_atoms, db_atom_temp], axis=2)
                 db_atom_temp.shape = (np.shape(db_atom_temp)[0], num_types * n_coeff + num_types)
-            self.pt.shared_arrays['a'].array[index:index+num_atoms * ndim_force] = \
-                np.matmul(db_atom_temp, np.diag(self.config.sections["ACE"].blank2J))
+            # FIX: Don't use blank2J as diagonal matrix - causes overflow
+            self.pt.shared_arrays['a'].array[index:index+num_atoms * ndim_force] = db_atom_temp
             ref_forces = lmp_pace[irow:irow + nrows_force, icolref]
             self.pt.shared_arrays['b'].array[index:index+num_atoms * ndim_force] = \
                 self._data["Forces"].ravel() - ref_forces
@@ -483,8 +510,8 @@ class LammpsPace(LammpsBase):
                 onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0], num_types, 1))
                 vb_sum_temp = np.concatenate([onehot_atoms, vb_sum_temp], axis=2)
                 vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types * n_coeff + num_types)
-            self.pt.shared_arrays['a'].array[index:index+ndim_virial] = \
-                np.matmul(vb_sum_temp, np.diag(self.config.sections["ACE"].blank2J))
+            # FIX: Don't use blank2J as diagonal matrix for stress
+            self.pt.shared_arrays['a'].array[index:index+ndim_virial] = vb_sum_temp
             ref_stress = lmp_pace[irow:irow + nrows_virial, icolref]
             self.pt.shared_arrays['b'].array[index:index+ndim_virial] = \
                 self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress

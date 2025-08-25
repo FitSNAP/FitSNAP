@@ -4,6 +4,7 @@ import itertools
 #from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import  *
 from fitsnap3lib.io.sections.sections import Section
 
+
 try:
 
     from fitsnap3lib.lib.sym_ACE.pa_gen import *
@@ -144,7 +145,8 @@ try:
                 bondinds=range(len(self.types))
                 bonds = [b for b in itertools.product(bondinds,bondinds)]
                 bondstrs = ['[%d, %d]' % b for b in bonds]
-                assert len(self.rcutfac) == len(bondstrs), "must provide rc (radial cutoff) for each BOND type" 
+                print(f"*** self.rcutfac {self.rcutfac} bondstrs {bondstrs}")
+                assert len(self.rcutfac) == len(bondstrs), "must provide rc (radial cutoff) for each BOND type"
                 assert len(self.lmbda) == len(bondstrs), "must provide lambda (radial decay parameter) for each BOND type" 
                 assert len(self.rcinner) == len(bondstrs), "must provide rcinner for each BOND type" 
                 assert len(self.drcinner) == len(bondstrs), "must provide drcinner for each BOND type" 
@@ -190,12 +192,31 @@ try:
 
             decorated_write_couple()
 
+
+except ModuleNotFoundError as e:
+    import sys, traceback
+    traceback.print_exc()
+    raise ModuleNotFoundError(
+        f"Import failed: {e}. Interpreter={sys.executable}"
+    ) from e
+except Exception as e:
+    import sys, traceback
+    traceback.print_exc()
+    raise RuntimeError(
+        f"Unexpected import-time failure in ACE: {e}. Interpreter={sys.executable}"
+    ) from e
+    
+"""
 except ModuleNotFoundError:
 
     class Ace(Section):
-        """
-        Dummy class for factory to read if torch is not available for import.
-        """
+        
+        #Dummy class for factory to read if torch is not available for import.
+        
         def __init__(self, name, config, pt, infile, args):
             super().__init__(name, config, pt, infile, args)
             raise ModuleNotFoundError("Missing sympy or pyyaml modules.")
+"""
+
+
+

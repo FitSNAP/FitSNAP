@@ -9,10 +9,17 @@ class Solver(Section):
                             'compute_testerrs', 'detailed_errors', \
                             'nsam', 'cov_nugget', \
                             'mcmc_num', 'mcmc_gamma', 'mcmc_sigma', \
-                            'merr_mult', 'merr_method', "merr_cfs"]
-        self._check_section()
+                            'merr_mult', 'merr_method', 'merr_cfs'] 
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
+
+        if self.solver == "CMAES" or self.solver == "NEVERGRAD":
+            self.allowedkeys.extend(['popsize','sigma','hsic'])
+            self.popsize = self.get_value("SOLVER", "popsize", "0", "int")
+            self.sigma = self.get_value("SOLVER", "sigma", "0.1", "float")
+            self.hsic = self.get_value("SOLVER", "hsic", "0", "bool")
+
+        self._check_section()
 
         self.true_multinode = 0
         if self.solver == "ScaLAPACK":
@@ -33,4 +40,6 @@ class Solver(Section):
         self.merr_mult = self.get_value("SOLVER", "merr_mult", "0", "bool")
         self.merr_method = self.get_value("SOLVER", "merr_method", "abc", "str")
         self.merr_cfs = self.get_value("SOLVER", "merr_cfs", "all", "str")
+
+
         self.delete()

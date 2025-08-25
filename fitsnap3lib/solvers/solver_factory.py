@@ -11,6 +11,8 @@ from fitsnap3lib.solvers.tensorflowsvd import TensorflowSVD
 from fitsnap3lib.solvers.anl import ANL
 from fitsnap3lib.solvers.merr import MERR
 from fitsnap3lib.solvers.network import NETWORK
+from fitsnap3lib.solvers.cmaes import CMAES
+from fitsnap3lib.solvers.nevergrad import NEVERGRAD
 
 #pt = ParallelTools()
 

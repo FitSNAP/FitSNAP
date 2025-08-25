@@ -13,6 +13,6 @@ class Path(Section):
 
         self.infile_directory = Section.get_infile_directory(self)
         self.outfile_directory = Section.get_outfile_directory(self)
-        self.datapath = path.join(self.infile_directory, self.get_value("PATH", "dataPath", "JSON"))
+        self.dataPath = path.join(self.infile_directory, self.get_value("PATH", "dataPath", "JSON"))
         self.group_file = path.join(self.infile_directory, self.get_value("PATH", "groupFile", "grouplist.in"))
         self.delete()

@@ -11,7 +11,7 @@ class Extras(Section):
         super().__init__(name, config, pt, infile, args)
         self.allowedkeys = ['multinode_testing', 'apply_transpose', 'only_test', \
                             'dump_descriptors', 'dump_truth', 'dump_weights', 'dump_dataframe', \
-                            'dump_peratom', 'dump_perconfig', 'dump_configs']
+                            'dump_peratom', 'dump_perconfig', 'dump_configs', 'profile']
         self._check_section()
 
         # Set EXTRAS section file dump flags.
@@ -26,6 +26,7 @@ class Extras(Section):
         self.dump_peratom = self.get_value("EXTRAS", "dump_peratom", "0", "bool")
         self.dump_perconfig = self.get_value("EXTRAS", "dump_perconfig", "0", "bool")
         self.dump_configs = self.get_value("EXTRAS", "dump_configs", "0", "bool")
+        self.profile = self.get_value("EXTRAS", "profile", "0", "bool")
 
         # Set OUTFILE section filenames.
 

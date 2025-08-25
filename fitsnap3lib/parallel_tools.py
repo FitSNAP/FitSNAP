@@ -32,7 +32,6 @@
 import sys
 from time import time, sleep
 import numpy as np
-from lammps import lammps
 from random import randint
 from psutil import virtual_memory
 from itertools import chain
@@ -137,9 +136,9 @@ def stub_check(method):
 """
 
 
-def print_lammps(method):
+def print_lammps(method, file=None):
     def new_method(*args, **kw):
-        printf(*args)
+        printf(*args, file=file)
         return method(*args, **kw)
     return new_method
 
@@ -156,30 +155,24 @@ class ParallelTools():
 
     def __init__(self, comm=None):
         self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
-        if comm is None:
-            self.stubs = 1
-        else:
-            self.stubs = 0
 
-        if self.stubs == 0:
+        try:
             from mpi4py import MPI
             self.MPI = MPI
             if comm is None:
-                comm = self.MPI.COMM_WORLD
+                comm = MPI.COMM_WORLD
             self._comm = comm
-            self._rank = self._comm.Get_rank()
-            self._size = self._comm.Get_size()
-            #print(f">>> Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
-            # Set this to False if want to avoid shared arrays. This is helpful when using the library 
-            # to loop over functions that create shared arrays, to avoid mem leaks.
-            self.create_shared_bool = True
-
-            self.double_size = self.MPI.DOUBLE.Get_size()
-
-        if self.stubs == 1:
+            self._size = comm.Get_size()
+            self._rank = comm.Get_rank()
+            self.stubs = 0 if self._size > 1 else 1
+        except ModuleNotFoundError:
+            self.MPI = None
+            self._comm = None
             self._rank = 0
             self._size = 1
-            self._comm = None
+            self.stubs = 1
+
+        if self.stubs == 1:
             self._sub_rank = 0
             self._sub_size = 1
             self._sub_comm = None
@@ -187,6 +180,12 @@ class ParallelTools():
             self._node_index = 0
             self._number_of_nodes = 1
             self.double_size = ctypes.sizeof(ctypes.c_double)
+        else:
+            #print(f">>> Parallel tools comm rank {self._rank} size {self._size}: {self._comm}")
+            # Set this to False if want to avoid shared arrays. This is helpful when using the library
+            # to loop over functions that create shared arrays, to avoid mem leaks.
+            self.create_shared_bool = True
+            self.double_size = self.MPI.DOUBLE.Get_size()
 
         self.killer = GracefulKiller(self._comm)
 
@@ -200,6 +199,7 @@ class ParallelTools():
         self.fitsnap_dict = {}
         self.logger = None
         self.pytest = False
+        self.reaxff = False
         self._fp = None
 
     """
@@ -423,22 +423,28 @@ class ParallelTools():
             self.fitsnap_dict[name] = self._sub_comm.bcast(self.fitsnap_dict[name])
 
     #@stub_check
-    def gather_fitsnap(self, name, allgather:bool=None):
+    def gather_fitsnap(self, name, allgather:bool=True):
         """
         Gather distributed lists.
         Args:
             allgather: If true then we allgather. When number of procs is large this will use more memory.
         """
+
         if self.stubs == 0:
             if name not in self.fitsnap_dict:
                 raise NameError("Dictionary element not yet in fitsnap_dictionary")
-            # TODO: Make some sort of option to either gather or allgather.
-            #       It saves memory to simply gather, but allgather is useful in 
-            #       scenarios when using multiple instances in parallel, we might need 
-            #       the fitsnap dict on all procs.
+
+            # DONE: allgather option to either gather or allgather (default)
+            # It saves memory to simply gather, but allgather is useful in
+            # scenarios when using multiple instances in parallel, we might
+            # need the fitsnap dict on all procs.
             # NOTE: When number of procs is large, allgather could quickly consume all memory.
-            #self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
-            self.fitsnap_dict[name] = self._sub_comm.allgather(self.fitsnap_dict[name])
+
+            if allgather:
+                self.fitsnap_dict[name] = self._sub_comm.allgather(self.fitsnap_dict[name])
+            else:
+                self.fitsnap_dict[name] = self._sub_comm.gather(self.fitsnap_dict[name], root=0)
+
 
     #@stub_check
     @_sub_rank_zero
@@ -518,6 +524,14 @@ class ParallelTools():
 
     def check_lammps(self, lammps_noexceptions=0):
         cmds = ["-screen", "none", "-log", "none"]
+
+        # super hack to workaround lammps repo admin
+        if self.reaxff:
+            from lammps.reaxff import lammps_reaxff as lammps
+            cmds.extend(['-k','on','t','1','-sf','kk'])
+        else:
+            from lammps import lammps
+
         if self.stubs == 0:
             self._lmp = lammps(comm=self._micro_comm, cmdargs=cmds)
         else:
@@ -536,8 +550,17 @@ class ParallelTools():
             except:
                 pass
                 
-    def initialize_lammps(self, lammpslog=0, printlammps=0):
-        cmds = ["-screen", "none"]
+    def initialize_lammps(self, lammpslog=0, printlammps=0, lammpsscreen=0, printfile=None):
+
+        cmds = ["-nocite"] if lammpsscreen else ["-screen", "none", "-nocite"]
+
+        # super hack to workaround lammps repo admin
+        if self.reaxff:
+            from lammps.reaxff import lammps_reaxff as lammps
+            cmds.extend(['-k','on','t','1','-sf','kk'])
+        else:
+            from lammps import lammps
+
         if not lammpslog:
             cmds.append("-log")
             cmds.append("none")
@@ -549,7 +572,7 @@ class ParallelTools():
             self.initialize_mliap()
 
         if printlammps == 1:
-            self._lmp.command = print_lammps(self._lmp.command)
+            self._lmp.command = print_lammps(self._lmp.command, file=printfile)
         return self._lmp
 
     def close_lammps(self):
@@ -569,6 +592,9 @@ class ParallelTools():
 
         Returns number of configs per node, reduced across procs, or just nconfigs if stubs.
         """
+
+        # print(f"*** rank {self._rank} get_ncpn() nconfigs {nconfigs}", flush=True)
+
         if not self.stubs:
             ncpp = np.array([nconfigs]) # Num. configs per proc.
             ncpn = np.array([0]) # Num. configs per node.
@@ -581,6 +607,7 @@ class ParallelTools():
         Slices an array using Python's native `slice` function. Creates an attribute `pt.shared_arrays[name].sliced_array` 
         containing the sliced array.
         """
+
         if name in self.shared_arrays:
             if name != 'a':
                 s = slice(self._sub_rank, None, self._sub_size)
@@ -835,7 +862,13 @@ class ParallelTools():
         self.pytest = True
 
     def abort(self):
-        self._comm.Abort()
+        import traceback, sys
+        traceback.print_stack(file=sys.stderr)
+        sys.stderr.flush()
+        if self._comm is not None:
+            self._comm.Abort(1)
+        else:
+            sys.exit(1)
 
     def exception(self, err):
         """
@@ -919,7 +952,6 @@ class DistributedList:
     def __setitem__(self, key, value):
         """ Set list element """
         if isinstance(key, int):
-            assert len(value) == 1
             assert key <= self.__len__()
         elif isinstance(key, slice):
             # value must be list
@@ -929,7 +961,7 @@ class DistributedList:
             # slice ending must not exceed Distributed list bound
             assert key.stop <= self.__len__()
         else:
-            raise NotImplementedError("Indexing type {} for Distributed list is not impelemented".format(type(key)))
+            raise NotImplementedError("Indexing type {} for Distributed list is not implemented".format(type(key)))
         self._list.__setitem__(key, value)
 
     def __repr__(self):
@@ -948,6 +980,7 @@ class SharedArray:
     Args:
         size1 (int): First dimension of the array.
         size2 (int): Optional second dimension of the array, defaults to 1.
+        size3 (int): Optional third dimension of the array, defaults to 1.
         dtype (str): Optional data type, defaults to `d` for double.
         multinode (int): Optional multinode flag used for scalapack purposes.
         comms (MPI.Comm): MPI communicator.
@@ -956,8 +989,8 @@ class SharedArray:
         array (np.ndarray): Array of numbers that share memory across processes in the communicator.
     """
 
-    def __init__(self, size1, size2=1, dtype='d', multinode=0, comms=None, MPI=None):
-        
+    def __init__(self, size1, size2=1, size3=1, dtype='d', multinode=0, comms=None, MPI=None):
+
         self.MPI = MPI
 
         # total array for all procs
@@ -974,6 +1007,7 @@ class SharedArray:
         self._total_length = self._length
         self._node_length = None
         self._width = size2
+        self._depth = size3
 
         # These are sub comm and sub rank
         # Comm, sub_com, head_node_comm
@@ -990,7 +1024,7 @@ class SharedArray:
         else:
             raise TypeError("dtype {} has not been implemented yet".format(dtype))
         if self._comms[1][1] == 0:
-            self._nbytes = self._length * self._width * item_size
+            self._nbytes = self._length * self._width * self._depth * item_size
         else:
             self._nbytes = 0
 
@@ -1003,10 +1037,12 @@ class SharedArray:
             assert item_size == self.MPI.DOUBLE.Get_size()
         elif dtype == 'i':
             assert item_size == self.MPI.INT32_T.Get_size()
-        if self._width == 1:
+        if self._width == 1 and self._depth == 1:
             self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, ))
-        else:
+        elif self._depth == 1:
             self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, self._width))
+        else:
+            self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, self._width, self._depth))
 
     def get_memory(self):
         return self._nbytes
@@ -1052,13 +1088,14 @@ class StubsArray:
     Args:
         size1 (int): First dimension of the array.
         size2 (int): Optional second dimension of the array, defaults to 1.
+        size3 (int): Optional third dimension of the array, defaults to 1.
         dtype (str): Optional data type, defaults to `d` for double.
 
     Attributes:
         array (np.ndarray): Array of numbers that share memory across processes in the communicator.
     """
 
-    def __init__(self, size1, size2=1, dtype='d'):
+    def __init__(self, size1, size2=1, size3=1, dtype='d'):
         # total array for all procs
         self.array = None
         # sub array for this proc
@@ -1068,10 +1105,12 @@ class StubsArray:
         self.forces_index = None
         self.strain_index = None
 
-        if size2 == 1:
+        if size2 == 1 and size3 == 1:
             self.array = np.ndarray(shape=(size1, ), dtype=dtype)
-        else:
+        elif size3 == 1:
             self.array = np.ndarray(shape=(size1, size2), dtype=dtype)
+        else:
+            self.array = np.ndarray(shape=(size1, size2, size3), dtype=dtype)
 
     def get_memory(self):
         return self.array.nbytes

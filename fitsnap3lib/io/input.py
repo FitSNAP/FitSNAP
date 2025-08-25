@@ -40,6 +40,8 @@ class Config():
         self.sections = {}
         self.parse_config()
 
+        #self.view_state()
+
         # Generate random 128 bit hash to identify this fit on rank 0.
         if self.pt._rank == 0:
             self.hash = f"{random.getrandbits(128):032x}"
@@ -156,12 +158,19 @@ class Config():
     def _set_sections(self, tmp_config):
         sections = tmp_config.sections()
         for section in sections:
-            if section == "TEMPLATE":
-                section = "DEFAULT"
-            if section == "BASIC_CALCULATOR":
-                section = "BASIC"
+            if section == "TEMPLATE": section = "DEFAULT"
+            if section == "BASIC_CALCULATOR": section = "BASIC"
             self.sections[section] = new_section(section, tmp_config, self.pt, self.infile, self.args)
-    
+
+        # REFERENCE section not applicable in fitsnap-reaxff
+        # only 'units real' and 'atom_style charge' supported
+        # set defaults just to be safe (for INQ also)
+        if "REAXFF" in sections or self.sections["CALCULATOR"].calculator == "INQ":
+            if "REFERENCE" not in sections:
+                self.sections["REFERENCE"] = new_section("REFERENCE", tmp_config, self.pt, self.infile, self.args)
+            self.sections["REFERENCE"].units = "real"
+            self.sections["REFERENCE"].atom_style = "charge"
+
     def view_state(self, sections: list | str = [], original_input = False):
         """
         Print a view to screen of the sections contained in the FitSNAP configuration object in its current state. 
@@ -202,10 +211,10 @@ class Config():
         self.pt.single_print("----> View of FitSNAP settings")
         for sname in chosen_sections:
             if sname not in all_sections:
-                self.pt.single_print(f"    {sname}")
+                self.pt.single_print(f"    [{sname}]")
                 self.pt.single_print("\tERROR: Section not found! Continuing\n")
                 continue
-            self.pt.single_print(f"    {sname}")
+            self.pt.single_print(f"    [{sname}]")
             if original_input:
                 # this preserves the original, raw input as a dictionary (no added sections or altered variables)
                 vars_dict = state_dict[sname]

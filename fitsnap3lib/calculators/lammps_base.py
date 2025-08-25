@@ -139,17 +139,18 @@ class LammpsBase(Calculator):
     def _set_computes(self):
         raise NotImplementedError
 
-    def _initialize_lammps(self, printlammps=0):
-        self._lmp = self.pt.initialize_lammps(self.config.args.lammpslog, printlammps)
+    def _initialize_lammps(self, printlammps=0, lammpsscreen=0, printfile=None):
+        self._lmp = self.pt.initialize_lammps(self.config.args.lammpslog, printlammps, lammpsscreen, printfile)
 
     def _set_structure(self):
         self._lmp.command("clear")
         self._lmp.command("units " + self.config.sections["REFERENCE"].units)
         self._lmp.command("atom_style " + self.config.sections["REFERENCE"].atom_style)
 
+        # "box tilt large" is deprecated in LAMMPS
         lmp_setup = _extract_commands("""
                         atom_modify map array sort 0 2.0
-                        box tilt large""")
+                        """)
         for line in lmp_setup:
             self._lmp.command(line)
 
@@ -213,7 +214,9 @@ class LammpsBase(Calculator):
             self._lmp.command(f"variable {k} equal {v}")
 
     def _run_lammps(self):
-        self._lmp.command("run 0")
+        # 'post no' optimization suggested by Stan Moore to
+        # avoid computing timing summary after every run
+        self._lmp.command("run 0 post no")
 
     def _extract_atom_ids(self, num_atoms):
         # helper function to account for change in LAMMPS numpy_wrapper method name

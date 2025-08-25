@@ -56,6 +56,8 @@ class LammpsSnap(LammpsBase):
         radelem = " ".join([f"${{radelem{i}}}" for i in range(1, numtypes + 1)])
         wj = " ".join([f"${{wj{i}}}" for i in range(1, numtypes + 1)])
 
+        print(f"*** self.config.sections['BISPECTRUM'] {self.config.sections['BISPECTRUM']}")
+
         kw_options = {
             k: self.config.sections["BISPECTRUM"].__dict__[v]
             for k, v in
@@ -88,14 +90,8 @@ class LammpsSnap(LammpsBase):
         if kw_options["dgradflag"] == 0:
             kw_options.pop("dgradflag")
         kw_options["rmin0"] = self.config.sections["BISPECTRUM"].rmin0
-        
-        # cast bools "True, False" to integer equivalents for LAMMPS compatibility
-
-        kw_options = {k:(int(v) if type(v) == bool else v) for k, v in kw_options.items()}
-
-        # collect substrings
-
-        kw_substrings = [f"{k} {v}" for k, v in kw_options.items()]
+        # fix stubs test failure with python>=3.10 and iniconfig>=2.1.0
+        kw_substrings = [f"{k} {int(v) if isinstance(v, bool) else v}" for k, v in kw_options.items()]
         kwargs = " ".join(kw_substrings)
 
         # everything is handled by LAMMPS compute snap

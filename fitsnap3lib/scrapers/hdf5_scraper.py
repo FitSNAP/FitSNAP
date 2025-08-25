@@ -262,11 +262,11 @@ class HDF5(Scraper):
                         "Positions": conformations[i],
                         "Energy": formation_energy[i],
                         "Forces": dft_total_gradient[i],
-                        "Charges": charges,
-                        "Dipole": scf_dipoles[i],
-                        "Quadrupole": scf_quadrupole[i],
-                        "ESP": esp_grid,
-                        "BondOrder": mayer_indices[i],
+                        #"Charges": charges,
+                        #"Dipole": scf_dipoles[i],
+                        #"Quadrupole": scf_quadrupole[i],
+                        #"ESP": esp_grid,
+                        #"BondOrder": mayer_indices[i],
                         "AtomTypes": [atomic_number_to_symbol(n) for n in atomic_numbers],
                         "NumAtoms": len(atomic_numbers),
                         "Lattice": meta["lattice"],
@@ -274,11 +274,11 @@ class HDF5(Scraper):
                         "test_bool": config_assignments[(group_name, i)],
                         "eweight": meta["eweight"],
                         "fweight": meta["fweight"] / len(atomic_numbers),
-                        "vweight": 0.0,
-                        "cweight": meta["cweight"],
-                        "dweight": meta["dweight"],
-                        "qweight": meta["qweight"],
-                        "gweight": meta["gweight"] # /np.mean(esp_grid)
+                        #"vweight": 0.0,
+                        #"cweight": meta["cweight"],
+                        #"dweight": meta["dweight"],
+                        #"qweight": meta["qweight"],
+                        #"gweight": meta["gweight"] # /np.mean(esp_grid)
                     })
 
         #print(self.data)

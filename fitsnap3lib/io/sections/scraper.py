@@ -11,10 +11,11 @@ class Scraper(Section):
 
     def __init__(self, name, config, pt,infile, args):
         super().__init__(name, config, pt, infile,args)
-        self.allowedkeys = ['scraper', 'save_group_scrape', 'read_group_scrape', 'property_array']
+        self.allowedkeys = ['scraper', 'filename', 'save_group_scrape', 'read_group_scrape', 'property_array']
         self._check_section()
 
         self.scraper = self.get_value("SCRAPER", "scraper", "JSON")
+        self.filename = self.get_value("SCRAPER", "filename", "", "str")
         self.save_group_scrape = self.get_value("SCRAPER", "save_group_scrape", "None", "str")
         self.read_group_scrape = self.get_value("SCRAPER", "read_group_scrape", "None", "str")
         self.properties = {"Stress": ["pressure", "Metal", "Metal"],

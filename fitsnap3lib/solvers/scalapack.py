@@ -3,8 +3,8 @@ import numpy as np
 
 
 try:
-    # Import from the scalapack.py file which wraps the Cython module
-    from fitsnap3lib.lib.scalapack_solver.scalapack import lstsq, dummy_lstsq
+    # Import from the module's __init__.py which handles the wrapper imports
+    from fitsnap3lib.lib.scalapack_solver import lstsq, dummy_lstsq
 
     class ScaLAPACK(Solver):
 

@@ -136,7 +136,7 @@ try:
                 self.blank2J = np.reshape(self.blank2J, len(self.blist))
         
         def _write_couple(self):
-            # First, have global rank 0 create pickle files if they don't exist
+            # Process coupling coefficients with proper multinode handling
             ldict = {int(rank):int(lmax) for rank,lmax in zip(self.ranks,self.lmax)}
             L_R = 0 
             M_R = 0
@@ -145,27 +145,33 @@ try:
             lstrlst = ['%s']*len(self.ranks)
             lstr = ''.join(lstrlst) % tuple(self.lmax)
             
-            # Global rank 0 creates pickle files if needed
+            # Global rank 0 loads or creates the coupling coefficients
+            ccs = None
             if self.pt._rank == 0:
                 if not self.wigner_flag:
                     try:
                         with open('cg_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
-                            _ = pickle.load(handle)
+                            ccs = pickle.load(handle)
+                            self.pt.single_print(f"Loaded existing CG coupling coefficients from pickle")
                     except FileNotFoundError:
+                        self.pt.single_print(f"Creating CG coupling coefficients...")
                         ccs = get_cg_coupling(ldict,L_R=L_R)
                         store_generalized(ccs, coupling_type='cg',L_R=L_R)
                 else:
                     try:
                         with open('wig_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
-                            _ = pickle.load(handle)
+                            ccs = pickle.load(handle)
+                            self.pt.single_print(f"Loaded existing Wigner coupling coefficients from pickle")
                     except FileNotFoundError:
+                        self.pt.single_print(f"Creating Wigner coupling coefficients...")
                         ccs = get_wig_coupling(ldict,L_R)
                         store_generalized(ccs, coupling_type='wig',L_R=L_R)
             
-            # Wait for global rank 0 to create pickle files
-            self.pt.all_barrier()
+            # Broadcast coupling coefficients from rank 0 to all ranks
+            if self.pt._comm is not None:
+                ccs = self.pt._comm.bcast(ccs, root=0)
             
-            # Now each node's rank 0 can read pickle and create AcePot
+            # Now all ranks have ccs, so sub_rank_zero on each node can write files
             @self.pt.sub_rank_zero
             def decorated_write_couple():
                 if self.bzeroflag:
@@ -191,15 +197,7 @@ try:
                     rcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcinner)}
                     drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
                 
-                # Load pickle files
-                if not self.wigner_flag:
-                    with open('cg_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
-                        ccs = pickle.load(handle)
-                else:
-                    with open('wig_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
-                        ccs = pickle.load(handle)
-                
-                # Create AcePot and write the potential file
+                # Create AcePot and write the potential file using broadcasted ccs
                 apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.b_basis, **{'ccs':ccs[M_R]})
                 apot.write_pot('coupling_coefficients')
             

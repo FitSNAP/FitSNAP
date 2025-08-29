@@ -1,5 +1,7 @@
 import numpy as np
 import itertools
+import pickle
+import json
 #from fitsnap3lib.lib.sym_ACE.rpi_lib import *
 #from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import  *
 from fitsnap3lib.io.sections.sections import Section
@@ -134,45 +136,46 @@ try:
                 self.blank2J = np.reshape(self.blank2J, len(self.blist))
         
         def _write_couple(self):
-            @self.pt.sub_rank_zero
-            def decorated_write_couple():
-                if self.bzeroflag:
-                    assert len(self.types) ==  len(self.erefs), "must provide reference energy for each atom type"
-                    reference_ens = [float(e0) for e0 in self.erefs]
-                elif not self.bzeroflag:
-                    reference_ens = [0.0] * len(self.types)
-                bondinds=range(len(self.types))
-                bonds = [b for b in itertools.product(bondinds,bondinds)]
-                bondstrs = ['[%d, %d]' % b for b in bonds]
-                assert len(self.rcutfac) == len(bondstrs), "must provide rc (radial cutoff) for each BOND type" 
-                assert len(self.lmbda) == len(bondstrs), "must provide lambda (radial decay parameter) for each BOND type" 
-                assert len(self.rcinner) == len(bondstrs), "must provide rcinner for each BOND type" 
-                assert len(self.drcinner) == len(bondstrs), "must provide drcinner for each BOND type" 
-                if len(self.lmbda) == 1:
-                    lmbdavals = self.lmbda
-                    rcvals = self.rcutfac
-                    rcinnervals = self.rcinner
-                    drcinnervals = self.drcinner
-                if len(self.lmbda) > 1:
-                    lmbdavals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.lmbda)}
-                    rcvals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcutfac)}
-                    rcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcinner)}
-                    drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
+            # Process coupling coefficients on rank 0 and broadcast to all
+            if self.bzeroflag:
+                assert len(self.types) ==  len(self.erefs), "must provide reference energy for each atom type"
+                reference_ens = [float(e0) for e0 in self.erefs]
+            elif not self.bzeroflag:
+                reference_ens = [0.0] * len(self.types)
+            bondinds=range(len(self.types))
+            bonds = [b for b in itertools.product(bondinds,bondinds)]
+            bondstrs = ['[%d, %d]' % b for b in bonds]
+            assert len(self.rcutfac) == len(bondstrs), "must provide rc (radial cutoff) for each BOND type" 
+            assert len(self.lmbda) == len(bondstrs), "must provide lambda (radial decay parameter) for each BOND type" 
+            assert len(self.rcinner) == len(bondstrs), "must provide rcinner for each BOND type" 
+            assert len(self.drcinner) == len(bondstrs), "must provide drcinner for each BOND type" 
+            if len(self.lmbda) == 1:
+                lmbdavals = self.lmbda
+                rcvals = self.rcutfac
+                rcinnervals = self.rcinner
+                drcinnervals = self.drcinner
+            if len(self.lmbda) > 1:
+                lmbdavals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.lmbda)}
+                rcvals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcutfac)}
+                rcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcinner)}
+                drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
 
-                ldict = {int(rank):int(lmax) for rank,lmax in zip(self.ranks,self.lmax)}
-                L_R = 0 
-                M_R = 0
-                rankstrlst = ['%s']*len(self.ranks)
-                rankstr = ''.join(rankstrlst) % tuple(self.ranks)
-                lstrlst = ['%s']*len(self.ranks)
-                lstr = ''.join(lstrlst) % tuple(self.lmax)
+            ldict = {int(rank):int(lmax) for rank,lmax in zip(self.ranks,self.lmax)}
+            L_R = 0 
+            M_R = 0
+            rankstrlst = ['%s']*len(self.ranks)
+            rankstr = ''.join(rankstrlst) % tuple(self.ranks)
+            lstrlst = ['%s']*len(self.ranks)
+            lstr = ''.join(lstrlst) % tuple(self.lmax)
+            
+            # Only rank 0 loads/creates pickle files
+            if self.pt._rank == 0:
                 if not self.wigner_flag:
                     try:
                         with open('cg_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
                             ccs = pickle.load(handle)
                     except FileNotFoundError:
                         ccs = get_cg_coupling(ldict,L_R=L_R)
-                        #print (ccs)
                         #store them for later so they don't need to be recalculated
                         store_generalized(ccs, coupling_type='cg',L_R=L_R)
                 else:
@@ -181,14 +184,15 @@ try:
                             ccs = pickle.load(handle)
                     except FileNotFoundError:
                         ccs = get_wig_coupling(ldict,L_R)
-                        #print (ccs)
                         #store them for later so they don't need to be recalculated
                         store_generalized(ccs, coupling_type='wig',L_R=L_R)
-
+                        
+                # Only rank 0 creates AcePot and writes the potential file
                 apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.b_basis, **{'ccs':ccs[M_R]})
                 apot.write_pot('coupling_coefficients')
-
-            decorated_write_couple()
+            
+            # Ensure all processes wait for rank 0 to finish
+            self.pt.all_barrier()
 
 except ModuleNotFoundError:
 

@@ -1,7 +1,131 @@
 ## FitSNAP ScaLAPACK library
 
 This library will generate a shared object library for multinode solving capabilities.
-Files in this directory are written by Charlie A. Sievers
+Files in this directory are written by Charlie A. Sievers and updated by @alphataubio (2025/08):
+
+
+## ✅ **Fixed NumPy Deprecation Issues**
+
+**In `scalapack.pyx`:**
+- ✅ Added proper NumPy C API initialization: `cnp.import_array()`  
+- ✅ Replaced ALL deprecated `.data` attribute access with modern `cnp.PyArray_DATA()`
+- ✅ Added proper Cython memoryview declarations for better performance
+- ✅ Used explicit Cython NumPy interface (`cimport numpy as cnp`)
+
+## ✅ **Modernized Build System**  
+
+**Created `pyproject.toml`:**
+- ✅ PEP 518 compliant modern Python packaging
+- ✅ Proper build system requirements and dependencies
+- ✅ Modern project metadata
+
+**Updated `setup.py`:**
+- ✅ Replaced deprecated `distutils` with modern `setuptools`  
+- ✅ Used `cythonize()` with modern compiler directives
+- ✅ Added performance optimizations (boundscheck=False, etc.)
+- ✅ Proper dependency management
+
+## 🚀 **How to Build Now**
+
+**Modern way (recommended):**
+```bash
+# Clean previous builds first
+rm -rf build/ dist/ *.egg-info/ scalapack.c *.so
+
+# Modern installation
+pip install -e .
+```
+
+**Legacy way (still works):**
+```bash
+# Clean and rebuild  
+rm -rf build/ scalapack.c *.so
+python setup.py build_ext --inplace
+```
+
+## 🎯 **Results**
+
+- ❌ **No more NumPy deprecation warnings!**
+- ❌ **No more setup.py deprecation warnings** (when using modern methods)
+- ✅ **Better performance** due to optimized Cython compilation
+- ✅ **Future-proof** with modern Python packaging standards
+- ✅ **Fully compatible** with Python 3.8+ and modern NumPy
+
+
+# ScaLAPACK Cython Extension - Modern Build
+
+This ScaLAPACK Cython extension has been modernized to use:
+- Modern setuptools instead of deprecated distutils
+- Current NumPy C API (no deprecated API warnings)
+- Modern Cython compilation with proper memoryviews and type annotations
+- PEP 518 compliant build system with pyproject.toml
+
+## Modern Build Methods (Recommended)
+
+### Method 1: Using pip (recommended)
+```bash
+# Install in development mode
+pip install -e .
+
+# Or build wheel and install
+pip install build
+python -m build
+pip install dist/*.whl
+```
+
+### Method 2: Using build tool
+```bash
+pip install build
+python -m build
+```
+
+## Legacy Build Methods (still supported)
+
+### Clean build
+```bash
+# Clean previous builds
+rm -rf build/ dist/ *.egg-info/ scalapack.c *.so
+
+# Build extension in place
+python setup.py build_ext --inplace
+
+# Install (discouraged, use pip instead)
+python setup.py install
+```
+
+## Key Modernizations Made
+
+### NumPy API
+- ✅ Uses `cnp.PyArray_DATA()` instead of deprecated `.data` attribute
+- ✅ Proper NumPy C API initialization with `cnp.import_array()`
+- ✅ Modern Cython memoryview syntax for better performance
+- ✅ Explicit type declarations for all NumPy arrays
+
+### Build System
+- ✅ Uses `setuptools` instead of deprecated `distutils`
+- ✅ Uses `cythonize()` with modern compiler directives
+- ✅ PEP 518 compliant with `pyproject.toml`
+- ✅ Proper dependency management
+- ✅ Modern Python packaging standards
+
+### Environment Variables (unchanged)
+- `SCALAPACK_PKG`: pkg-config package name (default: "scalapack")
+- `MKLROOT`: Intel MKL root directory for MKL-based builds
+- `MKL_ILP64`: Set to "1" for ILP64 interface
+- `MKL_BLACS`: "openmpi" or "intelmpi" for BLACS implementation
+- `SCALAPACK_EXTRA_LIBS`: Additional libraries to link
+- `SCALAPACK_EXTRA_LDFLAGS`: Additional linker flags
+- `SCALAPACK_EXTRA_CFLAGS`: Additional compiler flags
+
+## Notes
+- No more NumPy deprecation warnings!
+- No more setup.py deprecation warnings when using modern build methods
+- Better performance due to optimized Cython compilation
+- Fully compatible with Python 3.8+ and modern NumPy versions
+
+
+(older readme follows)
+
 
 ### Building this library:
 

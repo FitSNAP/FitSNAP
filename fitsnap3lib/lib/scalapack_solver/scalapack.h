@@ -5,17 +5,37 @@
 #ifndef EXAMPLE_SCALAPACK_H
 #define EXAMPLE_SCALAPACK_H
 
-// void blacs_get_(int*, int*, int*);
-// void blacs_pinfo_(int*, int*);
-// void blacs_gridinit_(int*, char*, int*, int*);
-// void blacs_gridmap_(int*, int*, int*, int*, int*);
-// void blacs_gridinfo_(int*, int*, int*, int*, int*);
-// int blacs_pnum_(int*, int*, int*);
-// void descinit_(int*, int*, int*, int*, int*, int*, int*, int*, int*, int*);
-// void pdpotrf_(char*, int*, double*, int*, int*, int*, int*);
-// void blacs_gridexit_(int*);
-// int numroc_(int*, int*, int*, int*, int*);
-// int ilcm_(int*, int*);
-// int indxg2p_(int*, int*, int*, int*, int*);
+// Use long long to match MKL_INT in Scalapack.pxd
+typedef long long MKL_INT;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// BLACS function declarations
+void blacs_get_(MKL_INT*, MKL_INT*, MKL_INT*);
+void blacs_pinfo_(MKL_INT*, MKL_INT*);
+void blacs_gridinit_(MKL_INT*, char*, MKL_INT*, MKL_INT*);
+void blacs_gridmap_(MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*);
+void blacs_gridinfo_(MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*);
+void blacs_gridexit_(MKL_INT*);
+void blacs_exit_(MKL_INT*);
+MKL_INT blacs_pnum_(MKL_INT*, MKL_INT*, MKL_INT*);
+
+// ScaLAPACK utility functions
+MKL_INT numroc_(MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*);
+MKL_INT ilcm_(MKL_INT*, MKL_INT*);
+MKL_INT indxg2p_(MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*);
+void descinit_(MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*);
+
+// ScaLAPACK computational functions
+void pdpotrf_(char*, MKL_INT*, double*, MKL_INT*, MKL_INT*, MKL_INT*, MKL_INT*);
+void psgels_(char*, MKL_INT*, MKL_INT*, MKL_INT*, double*, MKL_INT*, MKL_INT*, MKL_INT*, double*, MKL_INT*, MKL_INT*, MKL_INT*, double*, MKL_INT*, MKL_INT*);
+void pdgels_(char*, MKL_INT*, MKL_INT*, MKL_INT*, double*, MKL_INT*, MKL_INT*, MKL_INT*, double*, MKL_INT*, MKL_INT*, MKL_INT*, double*, long*, MKL_INT*);
+void pdgesvd_(char*, char*, MKL_INT*, MKL_INT*, double*, MKL_INT*, MKL_INT*, MKL_INT*, double*, double*, MKL_INT*, MKL_INT*, MKL_INT*, double*, MKL_INT*, MKL_INT*, MKL_INT*, double*, MKL_INT*, MKL_INT*);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //EXAMPLE_SCALAPACK_H

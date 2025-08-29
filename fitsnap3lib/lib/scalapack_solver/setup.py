@@ -21,7 +21,7 @@ def try_cmd(cmd):
         return ""
 
 def mpi_flavor():
-    s = try_cmd("mpicc --version").lower()
+    s = try_cmd("mpirun -V").lower()
     if "open mpi" in s or "open-mpi" in s:
         return "openmpi"
     if "mpich" in s or "cray mpich" in s:

@@ -1,4 +1,4 @@
-# distutils: language = c++
+# distutils: language = c
 
 from Scalapack cimport *
 from libc.stdlib cimport calloc
@@ -214,7 +214,9 @@ def pdgesvd(jobu, jobvt, m, n, A, ia, ja, descA, S, U, iu, ju, descU, VT, ivt, j
     cdef MKL_INT cjvt = jvt
     cdef MKL_INT clwork = len(work)
     cdef MKL_INT info = 0
-    cdef MKL_INT desc_A[9], desc_U[9], desc_VT[9]
+    cdef MKL_INT desc_A[9]
+    cdef MKL_INT desc_U[9] 
+    cdef MKL_INT desc_VT[9]
 
     for n, (a, u, vt) in enumerate(zip(descA, descU, descVT)):
         desc_A[n] = a
@@ -241,8 +243,22 @@ def pdgesvd(jobu, jobvt, m, n, A, ia, ja, descA, S, U, iu, ju, descU, VT, ivt, j
 
 
 cdef class Scalapack:
-    cdef MKL_INT ictxt, myrow, mycol, npcol, nprow, rzero, czero, myA_row, myA_col, a_len, a_wid, my_a_len, descA[9]
-    cdef MKL_INT myB_row, myB_col, descB[9]
+    cdef MKL_INT ictxt
+    cdef MKL_INT myrow
+    cdef MKL_INT mycol
+    cdef MKL_INT npcol
+    cdef MKL_INT nprow
+    cdef MKL_INT rzero
+    cdef MKL_INT czero
+    cdef MKL_INT myA_row
+    cdef MKL_INT myA_col
+    cdef MKL_INT a_len
+    cdef MKL_INT a_wid
+    cdef MKL_INT my_a_len
+    cdef MKL_INT descA[9]
+    cdef MKL_INT myB_row
+    cdef MKL_INT myB_col
+    cdef MKL_INT descB[9]
     cdef MKL_INT* usermap_ptr
     cdef np.ndarray usermap
 
@@ -251,7 +267,7 @@ cdef class Scalapack:
         self.npcol = 1
         self.rzero = 0
         self.czero = 0
-        self.usermap = np.ascontiguousarray(np.array([0, 2], dtype=np.MKL_INT), dtype=np.MKL_INT)
+        self.usermap = np.ascontiguousarray(np.array([0, 2], dtype=np.int64), dtype=np.int64)
         self.usermap_ptr = <MKL_INT*> self.usermap.data
         self.initialize_blacs()
 

@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "Cython>=0.29", "numpy>=1.17"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scalapack_ext"
+version = "0.1.1"
+description = "Modern Cython ScaLAPACK extension with pkg-config and MKL support"
+readme = "README.md"
+authors = [
+    {name = "FitSNAP Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.17",
+    "Cython>=0.29",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "build",
+]
+
+[tool.setuptools]
+packages = []
+
+[tool.setuptools.package-data]
+scalapack_ext = ["*.pyx", "*.pxd", "*.h"]

@@ -6,6 +6,9 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 import numpy as np
 cimport numpy as np
 
+# Initialize numpy C API
+np.import_array()
+
 
 cdef class CppList:
     cdef MKL_INT* data
@@ -166,13 +169,13 @@ def pdgels(m, n, rhs, A, descA, B, descB, X, maybe):
     cdef MKL_INT b_wid = rhs
 
     cdef np.ndarray np_buffA = np.asfortranarray(A, dtype=np.double)
-    cdef double* A_ptr = <double*> np_buffA.data
+    cdef double* A_ptr = <double*> np.PyArray_DATA(np_buffA)
 
     cdef np.ndarray np_buffB = np.asfortranarray(B, dtype=np.double)
-    cdef double* B_ptr = <double*> np_buffB.data
+    cdef double* B_ptr = <double*> np.PyArray_DATA(np_buffB)
 
     cdef np.ndarray np_buff_X = np.asfortranarray(X, dtype=np.double)
-    cdef double* X_ptr = <double*> np_buff_X.data
+    cdef double* X_ptr = <double*> np.PyArray_DATA(np_buff_X)
     print(maybe, lwork, yo)
 
     pdgels_(&trans, &cm, &cn, &b_wid, A_ptr, &aone, &aone, desc_A, B_ptr, &bone, &bone, desc_B, X_ptr, &lwork, &info)
@@ -224,19 +227,19 @@ def pdgesvd(jobu, jobvt, m, n, A, ia, ja, descA, S, U, iu, ju, descU, VT, ivt, j
         desc_VT[n] = vt
 
     cdef np.ndarray np_buffA = np.ascontiguousarray(A, dtype=np.double)
-    cdef double* A_ptr = <double*> np_buffA.data
+    cdef double* A_ptr = <double*> np.PyArray_DATA(np_buffA)
 
     cdef np.ndarray np_buffS = np.ascontiguousarray(S, dtype=np.double)
-    cdef double* S_ptr = <double*> np_buffS.data
+    cdef double* S_ptr = <double*> np.PyArray_DATA(np_buffS)
 
     cdef np.ndarray np_buffU = np.ascontiguousarray(U, dtype=np.double)
-    cdef double* U_ptr = <double*> np_buffU.data
+    cdef double* U_ptr = <double*> np.PyArray_DATA(np_buffU)
 
     cdef np.ndarray np_buffVT = np.ascontiguousarray(VT, dtype=np.double)
-    cdef double* VT_ptr = <double*> np_buffVT.data
+    cdef double* VT_ptr = <double*> np.PyArray_DATA(np_buffVT)
 
     cdef np.ndarray np_buffwork = np.ascontiguousarray(work, dtype=np.double)
-    cdef double* work_ptr = <double*> np_buffwork.data
+    cdef double* work_ptr = <double*> np.PyArray_DATA(np_buffwork)
 
     pdgesvd_(cjobu, cjobvt, &cm, &cn, A_ptr, &cia, &cja, desc_A, S_ptr, U_ptr, &ciu, &cju, desc_U, VT_ptr, &civt, &cjvt, desc_VT, work_ptr, &clwork, &info)
 
@@ -268,7 +271,7 @@ cdef class Scalapack:
         self.rzero = 0
         self.czero = 0
         self.usermap = np.ascontiguousarray(np.array([0, 2], dtype=np.int64), dtype=np.int64)
-        self.usermap_ptr = <MKL_INT*> self.usermap.data
+        self.usermap_ptr = <MKL_INT*> np.PyArray_DATA(self.usermap)
         self.initialize_blacs()
 
     def initialize_blacs(self):
@@ -352,7 +355,7 @@ cdef class Scalapack:
         cdef MKL_INT info = 0
 
         cdef np.ndarray np_buff = np.ascontiguousarray(A, dtype=np.double)
-        cdef double* A_ptr = <double*> np_buff.data
+        cdef double* A_ptr = <double*> np.PyArray_DATA(np_buff)
         pdpotrf_(&uplo, &self.a_len, A_ptr, &ione, &ione, self.descA, &info);
 
         # if info != 0:
@@ -370,13 +373,13 @@ cdef class Scalapack:
         cdef long lwork = maybe
 
         cdef np.ndarray np_buffA = np.ascontiguousarray(A, dtype=np.double)
-        cdef double* A_ptr = <double*> np_buffA.data
+        cdef double* A_ptr = <double*> np.PyArray_DATA(np_buffA)
 
         cdef np.ndarray np_buffB = np.ascontiguousarray(B, dtype=np.double)
-        cdef double* B_ptr = <double*> np_buffB.data
+        cdef double* B_ptr = <double*> np.PyArray_DATA(np_buffB)
 
         cdef np.ndarray np_buffX = np.ascontiguousarray(X, dtype=np.double)
-        cdef double* X_ptr = <double*> np_buffX.data
+        cdef double* X_ptr = <double*> np.PyArray_DATA(np_buffX)
 
         pdgels_(&trans, &self.a_len, &self.a_wid, &b_wid, A_ptr, &aone, &aone, self.descA, B_ptr, &bone, &bone, self.descB, X_ptr, &lwork, &info)
 

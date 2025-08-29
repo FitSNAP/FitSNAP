@@ -1,5 +1,32 @@
-from scalapack_funcs import *
+# Import functions from the compiled Cython module
+try:
+    # Try relative import first (when used as a package)
+    from . import scalapack as _scalapack_cython
+except ImportError:
+    try:
+        # Try direct import if running from within the directory
+        import scalapack as _scalapack_cython
+    except ImportError:
+        raise ImportError(
+            "ScaLAPACK Cython module not found. Please build it first using:\n"
+            "  python setup.py build_ext --inplace\n"
+            "or:\n"
+            "  pip install -e ."
+        )
+
+# Import all functions from the Cython module
+blacs_pinfo = _scalapack_cython.blacs_pinfo
+blacs_get = _scalapack_cython.blacs_get
+blacs_gridmap = _scalapack_cython.blacs_gridmap
+blacs_gridinfo = _scalapack_cython.blacs_gridinfo
+blacs_gridexit = _scalapack_cython.blacs_gridexit
+numroc = _scalapack_cython.numroc
+indxg2p = _scalapack_cython.indxg2p
+descinit = _scalapack_cython.descinit
+pdgels = _scalapack_cython.pdgels
+
 import ctypes as ctypes
+import numpy as np
 from fitsnap3lib.parallel_tools import ParallelTools
 
 

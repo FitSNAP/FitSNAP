@@ -1,9 +1,8 @@
 # ScaLAPACK solver module for FitSNAP
 
 try:
-    # Try to import the compiled Cython module
-    from .scalapack import *
-    from .scalapack import lstsq, dummy_lstsq
+    # Try to import from the Python wrapper which wraps the compiled Cython module
+    from .scalapack_wrapper import lstsq, dummy_lstsq
     SCALAPACK_AVAILABLE = True
 except ImportError as e:
     # Module not compiled yet

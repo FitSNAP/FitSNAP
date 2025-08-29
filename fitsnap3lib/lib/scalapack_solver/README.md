@@ -7,10 +7,10 @@ Files in this directory are written by Charlie A. Sievers and updated by @alphat
 ## ✅ **Fixed NumPy Deprecation Issues**
 
 **In `scalapack.pyx`:**
-- ✅ Added proper NumPy C API initialization: `cnp.import_array()`  
-- ✅ Replaced ALL deprecated `.data` attribute access with modern `cnp.PyArray_DATA()`
+- ✅ Added proper NumPy C API initialization: `np.import_array()`  
+- ✅ Replaced ALL deprecated `.data` attribute access with modern `np.PyArray_DATA()`
 - ✅ Added proper Cython memoryview declarations for better performance
-- ✅ Used explicit Cython NumPy interface (`cimport numpy as cnp`)
+- ✅ Used explicit Cython NumPy interface (`cimport numpy as np`)
 
 ## ✅ **Modernized Build System**  
 
@@ -96,8 +96,8 @@ python setup.py install
 ## Key Modernizations Made
 
 ### NumPy API
-- ✅ Uses `cnp.PyArray_DATA()` instead of deprecated `.data` attribute
-- ✅ Proper NumPy C API initialization with `cnp.import_array()`
+- ✅ Uses `np.PyArray_DATA()` instead of deprecated `.data` attribute
+- ✅ Proper NumPy C API initialization with `np.import_array()`
 - ✅ Modern Cython memoryview syntax for better performance
 - ✅ Explicit type declarations for all NumPy arrays
 

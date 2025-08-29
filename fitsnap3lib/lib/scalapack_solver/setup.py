@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from distutils.core import setup
-from distutils.extension import Extension
-from Cython.Distutils import build_ext
-from numpy import get_include
+from setuptools import setup, Extension
+from Cython.Build import cythonize
+import numpy as np
 import subprocess, os, warnings
 
 def run_cmd(cmd):
@@ -80,7 +79,7 @@ def unique(seq):
 mpi_kind = mpi_flavor()
 mpi_cflags, mpi_ldflags = mpi_compile_link_flags()
 
-include_dirs = [get_include()]
+include_dirs = [np.get_include()]
 library_dirs = []
 libraries    = []
 extra_compile_args = []
@@ -145,11 +144,12 @@ else:
         # Ensure basic math/dlopen are present if needed
         extra_link_args += ["-lm", "-ldl"]
 
-# Merge MPI flags (“mpilinkargs” equivalent)
+# Merge MPI flags ("mpilinkargs" equivalent)
 extra_compile_args = unique(mpi_cflags + extra_compile_args)
 extra_link_args    = unique(mpi_ldflags + extra_link_args)
 
-ext_modules = [
+# Define the extension module
+extensions = [
     Extension(
         "scalapack",
         sources=["scalapack.pyx"],
@@ -158,14 +158,29 @@ ext_modules = [
         libraries=unique(libraries),
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
+        define_macros=[('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')],
         language="c",
     )
 ]
 
-setup(
-    name="scalapack_ext",
-    version="0.1.1",
-    description="Cython ScaLAPACK extension (pkg-config first, MKL-compatible fallback)",
-    cmdclass={"build_ext": build_ext},
-    ext_modules=ext_modules,
-)
+# Modern setup using cythonize
+if __name__ == "__main__":
+    setup(
+        name="scalapack_ext",
+        version="0.1.1",
+        description="Modern Cython ScaLAPACK extension with pkg-config and MKL support",
+        author="FitSNAP Team",
+        ext_modules=cythonize(
+            extensions,
+            compiler_directives={
+                'language_level': 3,
+                'embedsignature': True,
+                'boundscheck': False,
+                'wraparound': False,
+                'cdivision': True,
+            },
+            annotate=False,  # Set to True for HTML annotation files
+        ),
+        zip_safe=False,
+        python_requires='>=3.8',
+    )

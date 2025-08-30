@@ -3,8 +3,13 @@ from fitsnap3lib.scrapers.scrape import Scraper
 from fitsnap3lib.scrapers.json_scraper import Json
 from fitsnap3lib.scrapers.xyz_scraper import XYZ
 from fitsnap3lib.scrapers.vasp_scraper import Vasp
-from fitsnap3lib.scrapers.hdf5_scraper import HDF5
 
+# only import HDF5 scraper if python module h5py is available
+import importlib.util
+if importlib.util.find_spec("h5py") is not None:
+    from fitsnap3lib.scrapers.hdf5_scraper import HDF5
+else:
+    HDF5 = None
 
 #pt = ParallelTools()
 

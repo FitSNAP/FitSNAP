@@ -124,14 +124,7 @@ class RidgeSlate(Solver):
         )
         
         return solution
-    
-    def _dummy_slate_solve(self):
-        """Dummy solver for non-head ranks."""
-        # Non-head ranks don't participate in solving
-        return None
             
-
-        
     def _dump_a(self):
         """Save the A matrix to file."""
         np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)

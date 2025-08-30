@@ -11,8 +11,13 @@ np.import_array()
 cdef extern from "slate/slate.hh" namespace "slate":
     void initialize() except +
     void finalize() except +
-    
-cdef extern from "slate_ridge.cpp":
+
+# Declare the C++ function (it's defined in slate_ridge.cpp)
+cdef extern from *:
+    """
+    extern "C" void slate_ridge_solve(double* local_ata, double* local_atb, double* solution,
+                                      int n, double alpha, MPI_Comm comm, int tile_size);
+    """
     void slate_ridge_solve(double* local_ata, double* local_atb, double* solution,
                           int n, double alpha, MPI_Comm comm, int tile_size) except +
 

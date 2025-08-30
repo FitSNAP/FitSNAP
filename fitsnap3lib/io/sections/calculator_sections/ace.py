@@ -57,12 +57,13 @@ try:
             if self.b_basis != 'pa_tabulated':
                 self.pt.single_print('WARNING: Only change ACE basis flags if you know what you are doing!')
             self._generate_b_list()
-            self._write_couple()
-            Section.num_desc = len(self.blist)
-            
+
             # Print detailed statistics about ACE basis and design matrix
             self._print_ace_statistics()
-            
+
+            self._write_couple()
+            Section.num_desc = len(self.blist)
+                        
             self.delete()
         
         def _print_ace_statistics(self):

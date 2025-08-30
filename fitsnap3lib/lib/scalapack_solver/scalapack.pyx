@@ -54,11 +54,10 @@ def blacs_get(ictxt, what):
 
 
 def blacs_gridinit(ictxt, layout, nprow, npcol):
-    # if layout == 'C' and layout != 'R':
-    #     raise ValueError("layout must be C or R")
+    if layout not in ['C', 'R']:
+        raise ValueError("layout must be 'C' or 'R'")
     cdef MKL_INT cictxt = ictxt
-    # cdef char* clayout = <bytes>layout
-    cdef char clayout = 'R'
+    cdef char clayout = ord(layout[0])  # Convert Python string to char
     cdef MKL_INT cnprow = nprow
     cdef MKL_INT cnpcol = npcol
     blacs_gridinit_(&cictxt, &clayout, &cnprow, &cnpcol)
@@ -133,25 +132,48 @@ def indxg2p(indxglob, nb, iproc, nprocs):
     return indxg2p_info
 
 
-def descinit(m, n, mb, nb, ictxt, numroc_info):
+def descinit(m, n, mb, nb, ictxt, lld):
+    """Initialize ScaLAPACK array descriptor.
+    
+    Parameters:
+    m, n: Global dimensions of the matrix
+    mb, nb: Block sizes for distribution
+    ictxt: BLACS context
+    lld: Local leading dimension (must be >= local number of rows)
+    """
     cdef MKL_INT desc[9]
     cdef MKL_INT cm = m
     cdef MKL_INT cn = n
     cdef MKL_INT cmb = mb
     cdef MKL_INT cnb = nb
-    cdef MKL_INT lrsrc = 0
-    cdef MKL_INT lcsrc = 0
+    cdef MKL_INT lrsrc = 0  # Source process row (usually 0)
+    cdef MKL_INT lcsrc = 0  # Source process column (usually 0)
     cdef MKL_INT cictxt = ictxt
-    cdef MKL_INT lddA
-    if numroc_info > 1:
-        lddA = numroc_info
-    else:
-        lddA = 1
-    cdef MKL_INT info
+    cdef MKL_INT clld = max(1, lld)  # Ensure LLD is at least 1
+    cdef MKL_INT info = 0
 
-    descinit_( desc, &cm, &cn, &cmb, &cnb, &lrsrc, &lcsrc, &cictxt, &lddA, &info)
+    descinit_(desc, &cm, &cn, &cmb, &cnb, &lrsrc, &lcsrc, &cictxt, &clld, &info)
+    
     if info != 0:
-            print("Error in descinit, info = {}\n".format(info))
+        if info == -2:
+            raise ValueError(f"DESCINIT error: M ({m}) < 0")
+        elif info == -3:
+            raise ValueError(f"DESCINIT error: N ({n}) < 0")
+        elif info == -4:
+            raise ValueError(f"DESCINIT error: MB ({mb}) < 1")
+        elif info == -5:
+            raise ValueError(f"DESCINIT error: NB ({nb}) < 1")
+        elif info == -6:
+            raise ValueError(f"DESCINIT error: IRSRC ({lrsrc}) not in [0, NPROW-1]")
+        elif info == -7:
+            raise ValueError(f"DESCINIT error: ICSRC ({lcsrc}) not in [0, NPCOL-1]")
+        elif info == -8:
+            raise ValueError(f"DESCINIT error: Invalid context (NPROW = -1)")
+        elif info == -9:
+            raise ValueError(f"DESCINIT error: LLD ({clld}) < local rows")
+        else:
+            raise ValueError(f"DESCINIT error: Parameter {-info} had an illegal value")
+    
     return desc
 
 
@@ -179,9 +201,11 @@ def pdgels(m, n, rhs, A, descA, B, descB, X, maybe):
 
     cdef np.ndarray[np.double_t, ndim=1, mode='c'] np_buff_X = np.asfortranarray(X, dtype=np.double)
     cdef double* X_ptr = <double*> np.PyArray_DATA(np_buff_X)
-    print(maybe, lwork, yo)
 
     pdgels_(&trans, &cm, &cn, &b_wid, A_ptr, &aone, &aone, desc_A, B_ptr, &bone, &bone, desc_B, X_ptr, &lwork, &info)
+    
+    if info != 0:
+        raise RuntimeError(f"PDGELS failed with INFO = {info}")
 
 
 def lstsq(A, b, A_len, A_wid, num_nodes, temp):

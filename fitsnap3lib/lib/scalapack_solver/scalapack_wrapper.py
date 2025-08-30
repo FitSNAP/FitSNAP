@@ -26,10 +26,6 @@ pdgels = _scalapack_cython.pdgels
 
 import ctypes as ctypes
 import numpy as np
-from fitsnap3lib.parallel_tools import ParallelTools
-
-
-pt = ParallelTools()
 
 
 def find_work_space(myrow, mycol, nprow, npcol, m, mb_a, n):
@@ -54,7 +50,7 @@ def find_work_space(myrow, mycol, nprow, npcol, m, mb_a, n):
     return work_length+1
 
 
-def lstsq(A, b, lengths=None):
+def lstsq(A, b, pt, lengths=None):
     # TODO: calculate size of work matrix needed
     if lengths is None:
         raise ValueError("lengths should not be none!")
@@ -92,7 +88,7 @@ def lstsq(A, b, lengths=None):
     return b
 
 
-def dummy_lstsq():
+def dummy_lstsq(pt):
     nprow = pt.get_number_of_nodes()
     npcol = 1
     blacs_pinfo()

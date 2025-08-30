@@ -1,8 +1,8 @@
 from fitsnap3lib.solvers.solver import Solver
 import numpy as np
 
-
 try:
+    from mpi4py import MPI
     # Import from the module's __init__.py which handles the wrapper imports
     from fitsnap3lib.lib.scalapack_solver import lstsq, dummy_lstsq
 
@@ -30,9 +30,34 @@ try:
                 self.pt.split_by_node(self.pt.shared_arrays['b_train'])
                 
                 # Now get the dimensions after redistribution
+                # total_length should be the sum across all nodes
+                # node_length is the data on this specific node
+                # scraped_length is the actual usable data on this node
                 total_length = self.pt.shared_arrays['a_train'].get_total_length()
                 node_length = self.pt.shared_arrays['a_train'].get_node_length()
                 scraped_length = self.pt.shared_arrays['a_train'].get_scraped_length()
+                
+                # Validate that total_length is reasonable
+                if total_length <= 0 or total_length > 1e9:
+                    raise ValueError(f"[Node {self.pt.get_node()}] Invalid total_length: {total_length}")
+                
+                # For ScaLAPACK, we need the actual global size, not per-node
+                # The total_length should already be the global size if properly computed
+                # But let's make sure by using MPI allreduce if needed
+                local_size = len(self.pt.shared_arrays['a_train'].array)
+                global_size = self.pt._comm.allreduce(local_size, op=MPI.SUM)
+                
+                if self.pt.get_subrank() == 0:
+                    print(f"[Node {self.pt.get_node()}] Size validation:", flush=True)
+                    print(f"  local_size = {local_size}", flush=True)
+                    print(f"  global_size (via allreduce) = {global_size}", flush=True)
+                    print(f"  total_length (from get_total_length) = {total_length}", flush=True)
+                
+                # Use the correct global size
+                if abs(global_size - total_length) > 1:
+                    if self.pt.get_subrank() == 0:
+                        print(f"[Node {self.pt.get_node()}] WARNING: total_length mismatch, using global_size", flush=True)
+                    total_length = global_size
                 
                 # Debug output
                 if self.pt.get_subrank() == 0:
@@ -135,8 +160,18 @@ try:
                             print("The Matrix is ill-conditioned for the transpose trick")
                 
                 self.fit = lstsq(aw, bw, self.pt, lengths=lengths)
-                if self.pt.get_subrank() == 0 and self.fit is not None:
-                    self.fit = self.pt.gather_to_head_node(self.fit)[0]
+                # ScaLAPACK returns the result only on rank 0
+                # We need to broadcast it to other ranks if needed
+                if self.pt.get_rank() == 0 and self.fit is not None:
+                    # Head node has the result
+                    if self.pt.get_subrank() == 0:
+                        print(f"[Node {self.pt.get_node()}] Received solution with shape: {self.fit.shape if self.fit is not None else 'None'}", flush=True)
+                else:
+                    # Other ranks don't have the result from ScaLAPACK
+                    self.fit = None
+                
+                # Broadcast the result from rank 0 to all other ranks
+                self.fit = self.pt._comm.bcast(self.fit, root=0)
             else:
                 self.fit = dummy_lstsq(self.pt)
 

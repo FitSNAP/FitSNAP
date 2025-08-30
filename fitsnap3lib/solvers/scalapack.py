@@ -101,9 +101,15 @@ try:
             lengths = [total_length, node_length, scraped_length]
             
             if self.pt.get_subrank() == 0:
+                # Get the data for this node after split_by_node
+                # split_by_node may have redistributed data, so use actual array sizes
                 w = self.pt.shared_arrays['w_train'].array[:]
-                aw = w[:, np.newaxis] * self.pt.shared_arrays['a_train'].array[:]
-                bw = w * self.pt.shared_arrays['b_train'].array[:]
+                a = self.pt.shared_arrays['a_train'].array[:]
+                b = self.pt.shared_arrays['b_train'].array[:]
+                
+                # Apply weights
+                aw = w[:, np.newaxis] * a
+                bw = w * b
                 
                 # Apply transpose trick if configured
                 if 'EXTRAS' in self.config.sections and self.config.sections['EXTRAS'].apply_transpose:
@@ -115,7 +121,7 @@ try:
                             print("The Matrix is ill-conditioned for the transpose trick")
                 
                 self.fit = lstsq(aw, bw, self.pt, lengths=lengths)
-                if self.pt.get_subrank() == 0:
+                if self.pt.get_subrank() == 0 and self.fit is not None:
                     self.fit = self.pt.gather_to_head_node(self.fit)[0]
             else:
                 self.fit = dummy_lstsq(self.pt)

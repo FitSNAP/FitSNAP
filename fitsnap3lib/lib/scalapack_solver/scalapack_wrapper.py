@@ -57,9 +57,30 @@ def lstsq(A, b, pt, lengths=None):
     else:
         total_length, node_length, scraped_length = lengths
     
+    # Debug print the inputs
+    if pt.get_subrank() == 0:
+        print(f"[Node {pt.get_node()}] lstsq called with:", flush=True)
+        print(f"  lengths = {lengths}", flush=True)
+        print(f"  A.shape = {A.shape}", flush=True)
+        print(f"  b.shape = {b.shape}", flush=True)
+    
     # The arrays A and b passed here are already the local portions after split_by_node
     # So we work with their actual sizes
     local_rows = len(A)
+    
+    # Additional validation
+    if local_rows == 0:
+        raise ValueError(f"[Node {pt.get_node()}] No data on this node! A.shape={A.shape}")
+    
+    if node_length <= 0 or node_length > 1e9:  # Sanity check
+        raise ValueError(f"[Node {pt.get_node()}] Invalid node_length={node_length}")
+    
+    # Debug actual array content
+    if pt.get_subrank() == 0:
+        print(f"[Node {pt.get_node()}] Local data:", flush=True)
+        print(f"  local_rows = {local_rows}", flush=True)
+        print(f"  First row of A: {A[0][:5] if len(A) > 0 and len(A[0]) > 0 else 'empty'}...", flush=True)
+        print(f"  First element of b: {b[0] if len(b) > 0 else 'empty'}", flush=True)
     
     nprow = pt.get_number_of_nodes()
     npcol = 1

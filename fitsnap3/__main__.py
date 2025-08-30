@@ -45,6 +45,7 @@ def main():
     # Instantiate single fitsnap instance for traditional flow of control.
     # This will create an internal parallel tools instance which will detect
     # availability of MPI for parallelization.
+    fs = None
     try:
         fs = FitSnap(comm=comm)
         fs.scrape_configs(delete_scraper=True)
@@ -54,7 +55,11 @@ def main():
         fs.perform_fit()
         fs.write_output()
     except Exception as e:
-        fs.pt.exception(e)
+        if fs is not None and hasattr(fs, 'pt'):
+            fs.pt.exception(e)
+        else:
+            # If fs was never created, just raise the exception
+            raise e
 
 
 if __name__ == "__main__":

@@ -845,15 +845,22 @@ class ParallelTools():
             err (str): Error message to exit with.
         """
         self.killer.already_killed = True
+        
+        # Add rank and node information to the exception
+        err_with_rank = f"[Rank {self._rank}, Node {self._node_index}] {err}"
 
         if self.logger is None and self._rank == 0:
-            raise err
+            raise Exception(err_with_rank)
 
         self.close_lammps()
         if self._rank == 0:
-            self.logger.exception(err)
+            if self.logger is not None:
+                self.logger.exception(err_with_rank)
             if self.pytest:
-                raise err
+                raise Exception(err_with_rank)
+        else:
+            # Non-rank-0 processes also print their errors
+            print(f"ERROR: {err_with_rank}", flush=True)
 
         sleep(5)
         if self._comm is not None:

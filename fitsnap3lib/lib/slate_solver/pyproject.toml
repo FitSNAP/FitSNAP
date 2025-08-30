@@ -1,3 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "Cython>=0.29", "numpy", "mpi4py"]
+requires = ["setuptools", "wheel", "Cython>=0.29", "numpy"]
 build-backend = "setuptools.build_meta"
+
+# Note: mpi4py must be loaded as a module on HPC systems

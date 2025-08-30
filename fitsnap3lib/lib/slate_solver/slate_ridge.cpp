@@ -5,7 +5,10 @@
 extern "C" {
 
 void slate_ridge_solve(double* local_ata_data, double* local_atb_data, double* solution,
-                      int n, double alpha, MPI_Comm comm, int tile_size) {
+                      int n, double alpha, void* comm_ptr, int tile_size) {
+    
+    // Cast the void pointer back to MPI_Comm
+    MPI_Comm comm = (MPI_Comm)comm_ptr;
     
     int mpi_rank, mpi_size;
     MPI_Comm_rank(comm, &mpi_rank);

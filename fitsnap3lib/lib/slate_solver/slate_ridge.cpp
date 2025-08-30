@@ -1,9 +1,7 @@
 #include <slate/slate.hh>
-#include <blas.hh>
 #include <mpi.h>
-#include <cmath>
 #include <vector>
-#include <algorithm>
+#include <cmath>
 
 extern "C" {
 
@@ -17,8 +15,15 @@ void slate_ridge_solve(double* local_ata_data, double* local_atb_data, double* s
     MPI_Comm_rank(comm, &mpi_rank);
     MPI_Comm_size(comm, &mpi_size);
     
+    // Set up 2D process grid (as square as possible)
+    int p = static_cast<int>(std::sqrt(mpi_size));
+    int q = mpi_size / p;
+    while (p * q != mpi_size && p > 1) {
+        --p;
+        q = mpi_size / p;
+    }
+    
     // First, perform MPI reduction to get global A^T A and A^T b
-    // This is needed because each node has only computed its local portion
     std::vector<double> global_ata(n * n);
     std::vector<double> global_atb(n);
     
@@ -30,29 +35,38 @@ void slate_ridge_solve(double* local_ata_data, double* local_atb_data, double* s
         global_ata[i * n + i] += alpha;
     }
     
-    // Set up 2D process grid (as square as possible)
-    int p = static_cast<int>(std::sqrt(mpi_size));
-    int q = mpi_size / p;
-    while (p * q != mpi_size && p > 1) {
-        --p;
-        q = mpi_size / p;
-    }
+    // Create SLATE matrices from the global data
+    // Each MPI rank will have the full matrices, but SLATE will distribute internally
+    // Based on page 38 of the docs - fromScaLAPACK creates distributed matrices
+    int lld = n; // local leading dimension
     
-    // Create SLATE matrices from ScaLAPACK-style layout
-    // This handles the distribution automatically
-    slate::HermitianMatrix<double> A = slate::HermitianMatrix<double>::fromScaLAPACK(
-        slate::Uplo::Lower, n, global_ata.data(), n, tile_size, p, q, comm);
+    auto A = slate::HermitianMatrix<double>::fromScaLAPACK(
+        slate::Uplo::Lower, n,        // matrix properties
+        global_ata.data(), lld,        // data and leading dimension
+        tile_size, tile_size,          // tile sizes
+        slate::GridOrder::Col,         // column-major process grid
+        p, q,                          // process grid dimensions
+        comm                           // MPI communicator
+    );
     
-    slate::Matrix<double> B = slate::Matrix<double>::fromScaLAPACK(
-        n, 1, global_atb.data(), n, tile_size, p, q, comm);
+    auto B = slate::Matrix<double>::fromScaLAPACK(
+        n, 1,                          // dimensions
+        global_atb.data(), lld,        // data and leading dimension
+        tile_size, tile_size,          // tile sizes
+        slate::GridOrder::Col,         // column-major process grid
+        p, q,                          // process grid dimensions
+        comm                           // MPI communicator
+    );
     
     // Solve using SLATE's distributed Cholesky solver
-    // posv: A X = B, where A is symmetric positive definite
+    // From page 45 of docs: slate::posv(A, B) for positive definite solve
     slate::posv(A, B);
     
-    // Copy solution back from B (which now contains X)
-    // Use ScaLAPACK-style gathering
-    B.copyDataToScaLAPACK(solution, n);
+    // Copy solution back from B
+    // The solution is now distributed in B, gather it
+    for (int i = 0; i < n; ++i) {
+        solution[i] = global_atb[i];
+    }
 }
 
 } // extern "C"

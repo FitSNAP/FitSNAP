@@ -18,14 +18,7 @@ except:
 # Extract include dirs from MPI flags
 mpi_include_dirs = [flag[2:] for flag in mpi_compile_flags if flag.startswith('-I')]
 
-# Import mpi4py to get its include directory
-try:
-    import mpi4py
-    mpi4py_include = mpi4py.get_include()
-    print(f"Found mpi4py include: {mpi4py_include}")
-except ImportError:
-    print("Warning: mpi4py not found in current environment")
-    mpi4py_include = None
+# We don't need mpi4py at build time anymore
 
 # Try different possible SLATE installation locations
 slate_dir = None
@@ -48,9 +41,6 @@ include_dirs = [
     f"{slate_dir}/include",
     "/usr/include/eigen3",  # Often needed for SLATE
 ] + mpi_include_dirs
-
-if mpi4py_include:
-    include_dirs.append(mpi4py_include)
 
 ext = Extension(
     "slate_wrapper",

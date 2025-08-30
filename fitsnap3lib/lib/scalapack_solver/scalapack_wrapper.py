@@ -56,36 +56,64 @@ def lstsq(A, b, pt, lengths=None):
         raise ValueError("lengths should not be none!")
     else:
         total_length, node_length, scraped_length = lengths
+    
+    # The arrays A and b passed here are already the local portions after split_by_node
+    # So we work with their actual sizes
+    local_rows = len(A)
+    
     nprow = pt.get_number_of_nodes()
     npcol = 1
+    
+    # Calculate block size for ScaLAPACK distribution
+    # Each node should have approximately total_length/nprow rows
     mb = int(np.floor(total_length / nprow))
-    m = total_length
-    n = np.shape(A)[-1]
-    nb = n
+    remainder = total_length - mb * nprow
+    
+    # First node gets the remainder
+    if pt.get_node() == 0:
+        mb = mb + remainder
+    
+    m = total_length  # Global number of rows
+    n = np.shape(A)[-1]  # Global number of columns
+    nb = n  # Column block size (use full columns)
+    
     blacs_pinfo()
-
     ictxt = blacs_get(0, 0)
     ictxt = blacs_gridmap(ictxt, pt.get_node_list(), nprow, nprow, npcol)
-    # nprow = Number of process rows in the current process grid.
-    # npcol = Number of process columns in the current process grid.
-    # myprow = Row coordinate of the calling process in the process grid.
-    # mypcol = Column coordinate of the calling process in the process grid.
+    
+    # Get BLACS grid info
     nprow, npcol, myrow, mycol = blacs_gridinfo(ictxt, nprow, npcol)
-    numroc_Ar = numroc(m, mb, myrow, nprow)
-    descA = descinit(m, n, mb, nb, ictxt, numroc_Ar)
-    descB = descinit(m, 1, mb, 1, ictxt, numroc_Ar)
-    upper = node_length
-    A = A[:upper]
-    b = b[:upper]
+    
+    # The local leading dimension should be at least the number of local rows
+    # For our case, it's exactly the number of local rows we have
+    lld_a = max(1, local_rows)  # Leading dimension must be at least 1
+    lld_b = max(1, local_rows)
+    
+    # Create descriptors with actual local dimensions
+    descA = descinit(m, n, mb, nb, ictxt, lld_a)
+    descB = descinit(m, 1, mb, 1, ictxt, lld_b)
+    
+    # Calculate workspace
     work_length = find_work_space(myrow, mycol, nprow, npcol, m, mb, n)
-    work = np.zeros(work_length)
-    pdgels(m, n, 1, A, descA, b, descB, work, work_length)
+    work = np.zeros(max(1, work_length))  # Ensure work is at least size 1
+    
+    # Make sure we're using the correct data
+    A_local = np.ascontiguousarray(A[:local_rows])  # Ensure contiguous arrays
+    b_local = np.ascontiguousarray(b[:local_rows])
+    
+    # Call ScaLAPACK solver
+    pdgels(m, n, 1, A_local, descA, b_local, descB, work, len(work))
+    
+    # Extract result on rank 0
     if pt.get_rank() == 0:
-        b_ptr = b.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
-        b = np.ctypeslib.as_array(b_ptr,shape=(n,))
+        b_ptr = b_local.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        b_result = np.ctypeslib.as_array(b_ptr, shape=(n,))
+    else:
+        b_result = None
+    
     blacs_gridexit(ictxt)
     pt.all_barrier()
-    return b
+    return b_result
 
 
 def dummy_lstsq(pt):

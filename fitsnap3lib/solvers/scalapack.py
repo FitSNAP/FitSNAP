@@ -18,16 +18,29 @@ try:
             # would break the distribution pattern required by ScaLAPACK
             
             if self.config.sections["SOLVER"].true_multinode:
-                # Use original arrays directly - they're already distributed
+                # Use original arrays but need to redistribute them across nodes
                 self.pt.shared_arrays['a_train'] = self.pt.shared_arrays['a']
                 self.pt.shared_arrays['b_train'] = self.pt.shared_arrays['b']
                 self.pt.shared_arrays['w_train'] = self.pt.shared_arrays['w']
                 
-                # The arrays are already split by node when created with tm=True
-                # We just need to get their dimensions
-                total_length = self.pt.shared_arrays['a'].get_total_length()
-                node_length = self.pt.shared_arrays['a'].get_node_length()
-                scraped_length = self.pt.shared_arrays['a'].get_scraped_length()
+                # Call split_by_node to redistribute the data across nodes
+                # This is required for arrays created with tm=True
+                self.pt.split_by_node(self.pt.shared_arrays['w_train'])
+                self.pt.split_by_node(self.pt.shared_arrays['a_train'])
+                self.pt.split_by_node(self.pt.shared_arrays['b_train'])
+                
+                # Now get the dimensions after redistribution
+                total_length = self.pt.shared_arrays['a_train'].get_total_length()
+                node_length = self.pt.shared_arrays['a_train'].get_node_length()
+                scraped_length = self.pt.shared_arrays['a_train'].get_scraped_length()
+                
+                # Debug output
+                if self.pt.get_subrank() == 0:
+                    print(f"[Node {self.pt.get_node()}] After split_by_node (multinode):", flush=True)
+                    print(f"  total_length = {total_length}", flush=True)
+                    print(f"  node_length = {node_length}", flush=True)
+                    print(f"  scraped_length = {scraped_length}", flush=True)
+                    print(f"  a_train shape = {self.pt.shared_arrays['a_train'].array.shape}", flush=True)
             else:
                 # Single node mode - can handle testing/training split normally
                 # Check if we have a testing split

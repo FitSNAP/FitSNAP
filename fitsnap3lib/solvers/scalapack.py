@@ -29,9 +29,14 @@ try:
             
             # Handle testing/training split if needed
             if has_testing:
+                # Get the Testing array and create training mask on head subrank
+                testing_array = None
+                training_mask = None
+                train_length = None
+                n_features = None
+                
                 if self.pt.get_subrank() == 0:
                     # Get the Testing array and create training mask
-                    testing_array = None
                     if self.pt.get_rank() == 0:
                         testing_array = np.array(self.pt.fitsnap_dict['Testing'], dtype=bool)
                     
@@ -51,17 +56,24 @@ try:
                     b_train = b_orig[training_mask]
                     w_train = w_orig[training_mask]
                     
-                    # Create new shared arrays with training data only
+                    # Get dimensions for creating shared arrays
                     train_length = len(a_train)
                     n_features = a_orig.shape[1] if len(a_orig.shape) > 1 else 1
-                    
-                    self.pt.create_shared_array('a_train', train_length, n_features, 
-                                                 tm=self.config.sections["SOLVER"].true_multinode)
-                    self.pt.create_shared_array('b_train', train_length, 
-                                                 tm=self.config.sections["SOLVER"].true_multinode)
-                    self.pt.create_shared_array('w_train', train_length, 
-                                                 tm=self.config.sections["SOLVER"].true_multinode)
-                    
+                
+                # Broadcast dimensions to all subranks for shared array creation
+                train_length = self.pt._sub_comm.bcast(train_length, root=0)
+                n_features = self.pt._sub_comm.bcast(n_features, root=0)
+                
+                # All subranks create the shared arrays (required for shared memory)
+                self.pt.create_shared_array('a_train', train_length, n_features, 
+                                             tm=self.config.sections["SOLVER"].true_multinode)
+                self.pt.create_shared_array('b_train', train_length, 
+                                             tm=self.config.sections["SOLVER"].true_multinode)
+                self.pt.create_shared_array('w_train', train_length, 
+                                             tm=self.config.sections["SOLVER"].true_multinode)
+                
+                # Only head subrank copies the training data
+                if self.pt.get_subrank() == 0:
                     # Copy training data to new arrays
                     self.pt.shared_arrays['a_train'].array[:] = a_train
                     self.pt.shared_arrays['b_train'].array[:] = b_train
@@ -69,6 +81,8 @@ try:
                     
                     # Store the training mask for error analysis later
                     self.training_mask = training_mask
+                else:
+                    self.training_mask = None
             else:
                 # No testing split, use all data
                 self.pt.shared_arrays['a_train'] = self.pt.shared_arrays['a']

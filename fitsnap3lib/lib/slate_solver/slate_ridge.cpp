@@ -103,15 +103,29 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 
                 // Check if this tile belongs to this rank in the process grid
                 if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
-                    // Calculate pointer to the start of this tile in row-major data
-                    // local_a_data is row-major: element (i,j) is at i*n + j
-                    int local_i = i - local_start_row;
-                    double* tile_data = &local_a_data[local_i * n + j];
+                    // For row-major data, we need to handle tiles carefully
+                    // Each tile covers rows_in_tile x cols_in_tile
+                    // But our data is stored row-major with stride n
                     
-                    // Insert tile with pointer to existing memory
-                    // Leading dimension is n (stride between rows in row-major)
-                    // Use HostNum (-1) for CPU-only operations
-                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, n);
+                    // If tile fits perfectly in our contiguous data, we can use zero-copy
+                    if (cols_in_tile == nb) {
+                        // Calculate pointer to the start of this tile in row-major data
+                        int local_i = i - local_start_row;
+                        double* tile_data = &local_a_data[local_i * n + j];
+                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, 
+                                        slate::Layout::RowMajor, tile_data, n);
+                    } else {
+                        // For partial tiles, we need to copy data to ensure correct layout
+                        std::vector<double> tile_buffer(rows_in_tile * cols_in_tile);
+                        for (int r = 0; r < rows_in_tile; ++r) {
+                            int local_i = (i - local_start_row) + r;
+                            for (int c = 0; c < cols_in_tile; ++c) {
+                                tile_buffer[r * cols_in_tile + c] = local_a_data[local_i * n + j + c];
+                            }
+                        }
+                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, 
+                                        slate::Layout::RowMajor, tile_buffer.data(), cols_in_tile);
+                    }
                 }
             }
         }
@@ -125,9 +139,11 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 int local_i = i - local_start_row;
                 double* tile_data = &local_b_data[local_i];
                 
-                // For vector, leading dimension is just the number of elements
+                // For vector, use column-major (it's a single column)
+                // Leading dimension is the number of rows in the tile
                 // Use HostNum (-1) for CPU-only operations
-                b_aug.tileInsert(tile_i, 0, slate::HostNum, tile_data, rows_in_tile);
+                b_aug.tileInsert(tile_i, 0, slate::HostNum, 
+                                slate::Layout::ColMajor, tile_data, rows_in_tile);
             }
         }
         
@@ -168,15 +184,31 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
             // Insert regularization tiles
             for (int j = 0; j < n; j += nb) {
                 int tile_j = j / nb;
+                int cols_in_tile = std::min(nb, n - j);
                 
                 if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
-                    double* tile_ptr = &reg_tile_data[j];
-                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_ptr, n);
+                    if (cols_in_tile == nb) {
+                        // Full tile - can use direct pointer
+                        double* tile_ptr = &reg_tile_data[j];
+                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, 
+                                        slate::Layout::RowMajor, tile_ptr, n);
+                    } else {
+                        // Partial tile - need to copy with correct stride
+                        std::vector<double> partial_tile(rows_in_tile * cols_in_tile);
+                        for (int r = 0; r < rows_in_tile; ++r) {
+                            for (int c = 0; c < cols_in_tile; ++c) {
+                                partial_tile[r * cols_in_tile + c] = reg_tile_data[r * n + j + c];
+                            }
+                        }
+                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, 
+                                        slate::Layout::RowMajor, partial_tile.data(), cols_in_tile);
+                    }
                 }
             }
             
             if (b_aug.tileRank(tile_i, 0) == mpi_rank) {
-                b_aug.tileInsert(tile_i, 0, slate::HostNum, reg_b_data.data(), rows_in_tile);
+                b_aug.tileInsert(tile_i, 0, slate::HostNum, 
+                                slate::Layout::ColMajor, reg_b_data.data(), rows_in_tile);
             }
         }
         

@@ -78,63 +78,40 @@ class RidgeSlate(Solver):
         # Handle testing/training split
         training_node = None
         if 'Testing' in pt.fitsnap_dict and any(pt.fitsnap_dict.get('Testing', [])):
-            testing_list = pt.fitsnap_dict['Testing']
+            # The Testing mask is already the correct size for this node's data
+            # It was split the same way as the data in split_by_node
+            testing_node = pt.fitsnap_dict['Testing']
             
-            # The Testing mask is distributed across ALL MPI ranks
-            # We need to gather it properly to get the full mask
+            # Convert to numpy array if needed
+            if not isinstance(testing_node, np.ndarray):
+                testing_node = np.array(testing_node)
             
-            # Gather testing masks from all ranks
-            testing_gathered = pt._comm.allgather(testing_list)
-            
-            # Flatten the gathered masks - each rank contributed its portion
-            testing_flat = []
-            for rank_mask in testing_gathered:
-                if isinstance(rank_mask, list):
-                    testing_flat.extend(rank_mask)
-                elif isinstance(rank_mask, np.ndarray):
-                    testing_flat.extend(rank_mask.tolist())
-                else:
-                    # Handle single boolean or other types
-                    testing_flat.append(rank_mask)
-            
-            # Now testing_flat contains the full Testing mask for all data
-            total_samples = len(testing_flat)
+            # Create training mask (inverse of testing)
+            training_node = ~testing_node
             
             if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: Total mask samples: {total_samples}")
-                pt.sub_print(f"Node {pt._node_index}: Node data samples: {len(w_node)}")
+                pt.sub_print(f"Node {pt._node_index}: Data samples: {len(w_node)}, Mask samples: {len(testing_node)}")
             
-            # The data was split by node using split_by_node, which distributes as:
-            # node 0 gets indices: 0, 3, 6, 9, ...
-            # node 1 gets indices: 1, 4, 7, 10, ...
-            # node 2 gets indices: 2, 5, 8, 11, ...
-            # i.e., node i gets indices: [i::num_nodes]
-            
-            # Apply the same slicing pattern to the mask
-            testing_node = testing_flat[pt._node_index::pt._number_of_nodes]
-            training_node = np.array([not elem for elem in testing_node])
-            
-            # Verify size match
-            if len(training_node) != len(w_node):
-                # This shouldn't happen with correct split_by_node
+            # Verify sizes match
+            if len(training_node) == len(w_node):
+                # Count samples
+                train_count = np.sum(training_node)
+                test_count = len(training_node) - train_count
+                
+                if pt._sub_rank == 0:
+                    pt.sub_print(f"Node {pt._node_index}: Using {train_count} training, {test_count} testing samples")
+                
+                # Filter to training data only
+                w_node = w_node[training_node]
+                a_node = a_node[training_node]
+                b_node = b_node[training_node]
+            else:
                 if pt._sub_rank == 0:
                     pt.sub_print(f"WARNING: Node {pt._node_index} mask/data size mismatch!")
                     pt.sub_print(f"  Mask length: {len(training_node)}")
                     pt.sub_print(f"  Data length: {len(w_node)}")
                     pt.sub_print(f"  Using all samples as training data.")
                 training_node = None
-            else:
-                # Count samples and filter
-                train_count = np.sum(training_node)
-                test_count = len(training_node) - train_count
-                
-                if pt._sub_rank == 0:
-                    pt.sub_print(f"Node {pt._node_index}: {train_count} training, {test_count} testing samples")
-                
-                # Filter to training data only
-                w_node = w_node[training_node]
-                a_node = a_node[training_node]
-                b_node = b_node[training_node]
         
         # Now distribute the node's (possibly filtered) data across all processes on this node
         # Each process gets a portion based on its subrank

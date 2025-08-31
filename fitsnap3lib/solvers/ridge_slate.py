@@ -82,11 +82,6 @@ class RidgeSlate(Solver):
             
             # The Testing mask is distributed across ALL MPI ranks
             # We need to gather it properly to get the full mask
-            if pt._rank == 0:
-                # Check structure of testing_list
-                pt.single_print(f"Testing list structure: type={type(testing_list)}, len={len(testing_list) if hasattr(testing_list, '__len__') else 'N/A'}")
-                if hasattr(testing_list, '__len__') and len(testing_list) > 0:
-                    pt.single_print(f"First element type: {type(testing_list[0])}")
             
             # Gather testing masks from all ranks
             testing_gathered = pt._comm.allgather(testing_list)
@@ -96,90 +91,50 @@ class RidgeSlate(Solver):
             for rank_mask in testing_gathered:
                 if isinstance(rank_mask, list):
                     testing_flat.extend(rank_mask)
+                elif isinstance(rank_mask, np.ndarray):
+                    testing_flat.extend(rank_mask.tolist())
                 else:
                     # Handle single boolean or other types
                     testing_flat.append(rank_mask)
             
             # Now testing_flat contains the full Testing mask for all data
-            if pt._sub_rank == 0:
-                pt.sub_print(f"Total testing mask length: {len(testing_flat)}")
-                pt.sub_print(f"Node's data shape: {w_node.shape}")
-                pt.sub_print(f"Number of MPI ranks: {pt._size}")
-                pt.sub_print(f"Number of nodes: {pt._number_of_nodes}")
-            
-            # The data was split by node, with each node getting every nth element
-            # where n is the number of nodes. So we need to extract the mask
-            # elements that correspond to this node's data
-            
-            # Get this node's portion of the mask using the same slicing pattern
-            # that was used to split the data: [node_index::number_of_nodes]
-            training_global = [not elem for elem in testing_flat]
-            training_node = training_global[pt._node_index::pt._number_of_nodes]
-            training_node = np.array(training_node)
+            total_samples = len(testing_flat)
             
             if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: mask length {len(training_node)}, data length {len(w_node)}")
-                expected_mask_len = len(testing_flat) // pt._number_of_nodes
-                if len(testing_flat) % pt._number_of_nodes > pt._node_index:
-                    expected_mask_len += 1
-                pt.sub_print(f"Expected mask length for node: {expected_mask_len}")
+                pt.sub_print(f"Node {pt._node_index}: Total mask samples: {total_samples}")
+                pt.sub_print(f"Node {pt._node_index}: Node data samples: {len(w_node)}")
             
-            # Apply training mask to the node's data if sizes match
-            if len(training_node) == len(w_node):
-                # Count samples before filtering
+            # The data was split by node using split_by_node, which distributes as:
+            # node 0 gets indices: 0, 3, 6, 9, ...
+            # node 1 gets indices: 1, 4, 7, 10, ...
+            # node 2 gets indices: 2, 5, 8, 11, ...
+            # i.e., node i gets indices: [i::num_nodes]
+            
+            # Apply the same slicing pattern to the mask
+            testing_node = testing_flat[pt._node_index::pt._number_of_nodes]
+            training_node = np.array([not elem for elem in testing_node])
+            
+            # Verify size match
+            if len(training_node) != len(w_node):
+                # This shouldn't happen with correct split_by_node
+                if pt._sub_rank == 0:
+                    pt.sub_print(f"WARNING: Node {pt._node_index} mask/data size mismatch!")
+                    pt.sub_print(f"  Mask length: {len(training_node)}")
+                    pt.sub_print(f"  Data length: {len(w_node)}")
+                    pt.sub_print(f"  Using all samples as training data.")
+                training_node = None
+            else:
+                # Count samples and filter
                 train_count = np.sum(training_node)
                 test_count = len(training_node) - train_count
+                
+                if pt._sub_rank == 0:
+                    pt.sub_print(f"Node {pt._node_index}: {train_count} training, {test_count} testing samples")
                 
                 # Filter to training data only
                 w_node = w_node[training_node]
                 a_node = a_node[training_node]
                 b_node = b_node[training_node]
-                
-                if pt._sub_rank == 0:
-                    pt.sub_print(f"Node {pt._node_index}: Using {train_count} training samples, skipping {test_count} test samples")
-            else:
-                # Size mismatch - likely because the mask is per-process not per-node
-                # Try to reconstruct the correct mask
-                if pt._sub_rank == 0:
-                    pt.sub_print(f"WARNING: Initial mask/data size mismatch.")
-                    pt.sub_print(f"Attempting to reconstruct correct node-level mask...")
-                
-                # The mask might be organized per-process, not per-node
-                # Each node has pt._sub_size processes
-                # So node i should get masks from ranks [i*sub_size : (i+1)*sub_size]
-                node_start_rank = pt._node_index * pt._sub_size
-                node_end_rank = (pt._node_index + 1) * pt._sub_size
-                
-                # Extract masks for all processes on this node and combine
-                node_testing_parts = []
-                for rank in range(node_start_rank, node_end_rank):
-                    if rank < len(testing_gathered):
-                        rank_mask = testing_gathered[rank]
-                        if isinstance(rank_mask, list):
-                            node_testing_parts.extend(rank_mask)
-                        else:
-                            node_testing_parts.append(rank_mask)
-                
-                if len(node_testing_parts) == len(w_node):
-                    # Successfully reconstructed the mask
-                    training_node = np.array([not elem for elem in node_testing_parts])
-                    train_count = np.sum(training_node)
-                    test_count = len(training_node) - train_count
-                    
-                    # Filter to training data only
-                    w_node = w_node[training_node]
-                    a_node = a_node[training_node]
-                    b_node = b_node[training_node]
-                    
-                    if pt._sub_rank == 0:
-                        pt.sub_print(f"Successfully reconstructed mask for node {pt._node_index}")
-                        pt.sub_print(f"Using {train_count} training samples, skipping {test_count} test samples")
-                else:
-                    # Still doesn't match - give up on train/test split
-                    if pt._sub_rank == 0:
-                        pt.sub_print(f"ERROR: Cannot match mask to data. Mask parts: {len(node_testing_parts)}, Data: {len(w_node)}")
-                        pt.sub_print(f"Proceeding with all {len(w_node)} samples as training data.")
-                    training_node = None
         
         # Now distribute the node's (possibly filtered) data across all processes on this node
         # Each process gets a portion based on its subrank

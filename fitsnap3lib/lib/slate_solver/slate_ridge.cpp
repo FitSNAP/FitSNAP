@@ -110,7 +110,8 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                     
                     // Insert tile with pointer to existing memory
                     // Leading dimension is n (stride between rows in row-major)
-                    A_aug.tileInsert(tile_i, tile_j, 0, tile_data, n);
+                    // Use HostNum (-1) for CPU-only operations
+                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, n);
                 }
             }
         }
@@ -125,7 +126,8 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 double* tile_data = &local_b_data[local_i];
                 
                 // For vector, leading dimension is just the number of elements
-                b_aug.tileInsert(tile_i, 0, 0, tile_data, rows_in_tile);
+                // Use HostNum (-1) for CPU-only operations
+                b_aug.tileInsert(tile_i, 0, slate::HostNum, tile_data, rows_in_tile);
             }
         }
         
@@ -169,12 +171,12 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 
                 if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
                     double* tile_ptr = &reg_tile_data[j];
-                    A_aug.tileInsert(tile_i, tile_j, 0, tile_ptr, n);
+                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_ptr, n);
                 }
             }
             
             if (b_aug.tileRank(tile_i, 0) == mpi_rank) {
-                b_aug.tileInsert(tile_i, 0, 0, reg_b_data.data(), rows_in_tile);
+                b_aug.tileInsert(tile_i, 0, slate::HostNum, reg_b_data.data(), rows_in_tile);
             }
         }
         

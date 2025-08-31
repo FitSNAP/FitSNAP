@@ -114,7 +114,7 @@ class HDF5(Scraper):
                 #print(f"*** {group_name} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
 
                 # Add ALL configs, not just 80%
-                for j in range(conformations.shape[0]/10):
+                for j in range(int(conformations.shape[0]/10)):
                     self.local_configs.append((group_name, j))
 
         if self.pt.stubs==0:

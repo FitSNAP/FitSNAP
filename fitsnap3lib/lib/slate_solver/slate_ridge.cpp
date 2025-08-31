@@ -9,6 +9,21 @@
 #include <memory>
 #include <cstring>
 
+// Create a RowMajorMatrix class that inherits from slate::Matrix
+// This allows us to access the protected layout_ member and set it to RowMajor
+template<typename scalar_t>
+class RowMajorMatrix : public slate::Matrix<scalar_t> {
+public:
+    // Constructor that creates a row-major matrix
+    RowMajorMatrix(int64_t m, int64_t n, int64_t mb, int64_t nb,
+                   slate::GridOrder order, int p, int q, MPI_Comm mpi_comm)
+        : slate::Matrix<scalar_t>(m, n, mb, nb, order, p, q, mpi_comm) {
+        // Set the layout to RowMajor - this is the key!
+        // layout_ is protected in BaseMatrix, so we can access it here
+        this->layout_ = slate::Layout::RowMajor;
+    }
+};
+
 extern "C" {
 
 void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* solution,
@@ -44,13 +59,9 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     
     if (mpi_rank == 0) {
         std::cerr << "Total rows (m_total): " << m_total << std::endl;
-        std::cerr << "Using tileInsert for zero-copy with row-major data" << std::endl;
+        std::cerr << "Using RowMajorMatrix with ZERO-COPY of FitSNAP arrays" << std::endl;
         std::cerr.flush();
     }
-    
-    // ZERO-COPY APPROACH WITH ROW-MAJOR DATA
-    // Instead of using fromScaLAPACK (which expects column-major),
-    // we create an empty SLATE matrix and use tileInsert to wrap our row-major data
     
     // Set up process grid
     int p = mpi_size;
@@ -73,23 +84,27 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     }
     
     try {
-        // Create empty SLATE matrices
-        auto A_aug = slate::Matrix<double>(m_aug_total, n, mb, nb, 
-                                           slate::GridOrder::Col, p, q, comm);
+        // Create ROW-MAJOR SLATE matrices using our custom class
+        RowMajorMatrix<double> A_aug(m_aug_total, n, mb, nb, 
+                                     slate::GridOrder::Col, p, q, comm);
+        
+        // b vector is still column-major (it's a single column)
         auto b_aug = slate::Matrix<double>(m_aug_total, 1, mb, 1,
                                            slate::GridOrder::Col, p, q, comm);
         
-        // Calculate tile distribution
-        int mt = (m_total + mb - 1) / mb;  // Number of tile rows for original data
-        int nt = (n + nb - 1) / nb;         // Number of tile columns
-        
         if (mpi_rank == 0) {
-            std::cerr << "Inserting tiles from row-major data..." << std::endl;
+            std::cerr << "Matrix A_aug layout: " << 
+                (A_aug.layout() == slate::Layout::RowMajor ? "RowMajor" : "ColMajor") << std::endl;
+            std::cerr << "Inserting tiles with ZERO-COPY from row-major data..." << std::endl;
             std::cerr.flush();
         }
         
         // INSERT TILES FOR ORIGINAL DATA (A matrix)
         // Each rank inserts tiles for its local rows
+        // For row-major data:
+        // - Data is stored row-by-row
+        // - Stride (lda) is the number of columns (n) for row-major
+        // - Each tile points directly into the FitSNAP shared array
         int local_start_row = m_offsets[mpi_rank];
         int local_end_row = m_offsets[mpi_rank + 1];
         
@@ -103,34 +118,19 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 
                 // Check if this tile belongs to this rank in the process grid
                 if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
-                    // For row-major data, we need to handle tiles carefully
-                    // Each tile covers rows_in_tile x cols_in_tile
-                    // But our data is stored row-major with stride n
+                    // Calculate pointer to the start of this tile in row-major data
+                    int local_i = i - local_start_row;
+                    double* tile_data = &local_a_data[local_i * n + j];
                     
-                    // If tile fits perfectly in our contiguous data, we can use zero-copy
-                    if (cols_in_tile == nb) {
-                        // Calculate pointer to the start of this tile in row-major data
-                        int local_i = i - local_start_row;
-                        double* tile_data = &local_a_data[local_i * n + j];
-                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, 
-                                        slate::Layout::RowMajor, tile_data, n);
-                    } else {
-                        // For partial tiles, we need to copy data to ensure correct layout
-                        std::vector<double> tile_buffer(rows_in_tile * cols_in_tile);
-                        for (int r = 0; r < rows_in_tile; ++r) {
-                            int local_i = (i - local_start_row) + r;
-                            for (int c = 0; c < cols_in_tile; ++c) {
-                                tile_buffer[r * cols_in_tile + c] = local_a_data[local_i * n + j + c];
-                            }
-                        }
-                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, 
-                                        slate::Layout::RowMajor, tile_buffer.data(), cols_in_tile);
-                    }
+                    // For row-major: stride is the number of columns (n)
+                    // This is ZERO-COPY - we're using the FitSNAP data directly!
+                    // The tiles will know they are row-major because A_aug.layout_ is RowMajor
+                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, n);
                 }
             }
         }
         
-        // INSERT TILES FOR b vector
+        // INSERT TILES FOR b vector (column-major, single column)
         for (int i = local_start_row; i < local_end_row; i += mb) {
             int tile_i = i / mb;
             int rows_in_tile = std::min(mb, local_end_row - i);
@@ -138,12 +138,8 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
             if (b_aug.tileRank(tile_i, 0) == mpi_rank) {
                 int local_i = i - local_start_row;
                 double* tile_data = &local_b_data[local_i];
-                
-                // For vector, use column-major (it's a single column)
-                // Leading dimension is the number of rows in the tile
-                // Use HostNum (-1) for CPU-only operations
-                b_aug.tileInsert(tile_i, 0, slate::HostNum, 
-                                slate::Layout::ColMajor, tile_data, rows_in_tile);
+                // For column vector, stride is the number of rows in the tile
+                b_aug.tileInsert(tile_i, 0, slate::HostNum, tile_data, rows_in_tile);
             }
         }
         
@@ -159,7 +155,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
             std::cerr.flush();
         }
         
-        // Allocate memory for regularization tiles
+        // Allocate memory for regularization tiles IN ROW-MAJOR FORMAT
         double sqrt_alpha = std::sqrt(alpha);
         std::vector<double> reg_tile_data;
         std::vector<double> reg_b_data;
@@ -169,14 +165,15 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
             int tile_i = global_row / mb;
             int rows_in_tile = std::min(mb, my_reg_rows - i);
             
-            // Allocate and fill regularization tile
+            // Allocate row-major regularization data for the entire row
             reg_tile_data.assign(rows_in_tile * n, 0.0);
             reg_b_data.assign(rows_in_tile, 0.0);
             
-            // Set diagonal elements to sqrt(alpha)
+            // Set diagonal elements in row-major format
             for (int r = 0; r < rows_in_tile; ++r) {
                 int diag_col = my_reg_start + i + r;
                 if (diag_col < n) {
+                    // Row-major: row r, column diag_col
                     reg_tile_data[r * n + diag_col] = sqrt_alpha;
                 }
             }
@@ -187,38 +184,33 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 int cols_in_tile = std::min(nb, n - j);
                 
                 if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
-                    if (cols_in_tile == nb) {
-                        // Full tile - can use direct pointer
-                        double* tile_ptr = &reg_tile_data[j];
-                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, 
-                                        slate::Layout::RowMajor, tile_ptr, n);
-                    } else {
-                        // Partial tile - need to copy with correct stride
-                        std::vector<double> partial_tile(rows_in_tile * cols_in_tile);
-                        for (int r = 0; r < rows_in_tile; ++r) {
-                            for (int c = 0; c < cols_in_tile; ++c) {
-                                partial_tile[r * cols_in_tile + c] = reg_tile_data[r * n + j + c];
-                            }
-                        }
-                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, 
-                                        slate::Layout::RowMajor, partial_tile.data(), cols_in_tile);
-                    }
+                    // Pointer to the tile within the row-major data
+                    // For row r, the data starts at r*n, and tile starts at column j
+                    // So for tile at row block tile_i, starting at column j:
+                    // We need pointer to reg_tile_data[0*n + j] for first row of tile
+                    double* tile_ptr = &reg_tile_data[j];
+                    // Stride is n (number of columns) for row-major
+                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_ptr, n);
                 }
             }
             
             if (b_aug.tileRank(tile_i, 0) == mpi_rank) {
-                b_aug.tileInsert(tile_i, 0, slate::HostNum, 
-                                slate::Layout::ColMajor, reg_b_data.data(), rows_in_tile);
+                b_aug.tileInsert(tile_i, 0, slate::HostNum, reg_b_data.data(), rows_in_tile);
             }
         }
         
         MPI_Barrier(comm);
         if (mpi_rank == 0) {
-            std::cerr << "Solving augmented system with QR..." << std::endl;
+            std::cerr << "\nSolving augmented system with QR..." << std::endl;
+            std::cerr << "All matrix operations use ZERO-COPY row-major data" << std::endl;
             std::cerr.flush();
         }
         
         // SOLVE WITH QR DECOMPOSITION
+        // The QR factorization will work correctly because:
+        // 1. A_aug knows it's row-major (layout_ = RowMajor)
+        // 2. All tiles inherit this layout when created
+        // 3. BLAS operations will use the correct increment/stride
         slate::gels(A_aug, b_aug);
         
         if (mpi_rank == 0) {
@@ -245,7 +237,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         MPI_Allreduce(MPI_IN_PLACE, solution, n, MPI_DOUBLE, MPI_SUM, comm);
         
         if (mpi_rank == 0) {
-            std::cerr << "\nRidge regression solved successfully!" << std::endl;
+            std::cerr << "\nRidge regression solved successfully with ZERO-COPY!" << std::endl;
             std::cerr << "Solution vector has " << n << " coefficients" << std::endl;
             
             // Print first few coefficients

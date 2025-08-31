@@ -6,36 +6,30 @@ try:
 except ImportError:
     MPI = None
 
-# Try multiple import methods for the SLATE module
+# Import the SLATE module
 SLATE_AVAILABLE = False
-ridge_solve = None
 ridge_solve_qr = None
 
-# First try the direct import (after pip install -e .)
 try:
+    # Primary import method (after pip install -e .)
     from slate_wrapper import ridge_solve_qr
     SLATE_AVAILABLE = True
-except ImportError:
-    # Try the in-place build import path
+except ImportError as e:
+    # Fallback: try direct path import for in-place builds
     try:
-        from fitsnap3lib.lib.slate_solver.slate_wrapper import ridge_solve_qr
+        import sys
+        import os
+        slate_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lib', 'slate_solver')
+        if slate_path not in sys.path:
+            sys.path.insert(0, slate_path)
+        import slate_wrapper
+        ridge_solve_qr = slate_wrapper.ridge_solve_qr
         SLATE_AVAILABLE = True
     except ImportError:
-        # Try relative import for in-place builds
-        try:
-            import sys
-            import os
-            slate_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lib', 'slate_solver')
-            if slate_path not in sys.path:
-                sys.path.insert(0, slate_path)
-            import slate_wrapper
-            ridge_solve_qr = slate_wrapper.ridge_solve_qr
-            SLATE_AVAILABLE = True
-        except ImportError:
-            print("SLATE module not compiled. Run: cd fitsnap3lib/lib/slate_solver && python setup.py build_ext --inplace")
-            ridge_solve = None
-            ridge_solve_qr = None
-            SLATE_AVAILABLE = False
+        print(f"Warning: SLATE module import failed: {e}")
+        print("To install: cd fitsnap3lib/lib/slate_solver && pip install -e .")
+        ridge_solve_qr = None
+        SLATE_AVAILABLE = False
 
 class RidgeSlate(Solver):
     """
@@ -157,7 +151,7 @@ class RidgeSlate(Solver):
             Solution vector (coefficients)
         """
         if not SLATE_AVAILABLE:
-            error_msg = f"[Rank {pt._rank}, Node {pt._node}] SLATE module not available. Please compile it first."
+            error_msg = f"[Rank {pt._rank}, Node {pt._node_index}] SLATE module not available. Please compile it first."
             pt.single_print(error_msg)
             raise RuntimeError(error_msg)
         

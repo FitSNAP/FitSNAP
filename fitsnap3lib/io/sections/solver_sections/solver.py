@@ -15,7 +15,7 @@ class Solver(Section):
         self.solver = self.get_value("SOLVER", "solver", "SVD")
 
         self.true_multinode = 0
-        if self.solver == "ScaLAPACK":
+        if self.solver.lower() in ["scalapack", "ridgeslate"]:
             self.true_multinode = 1
 
         self.normalweight = self.get_value("SOLVER", "normalweight", "-12", "float")

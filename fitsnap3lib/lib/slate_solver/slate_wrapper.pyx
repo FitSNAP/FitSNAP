@@ -13,42 +13,42 @@ cdef extern from "slate/slate.hh" namespace "slate":
     void initialize() except +
     void finalize() except +
 
-# Declare the C++ function (it's defined in slate_ridge.cpp)
+# Declare the C++ functions
 cdef extern from *:
     """
-    extern "C" void slate_ridge_solve(double* local_ata, double* local_atb, double* solution,
-                                      int n, double alpha, void* comm, int tile_size);
+    extern "C" void slate_ridge_solve_qr(double* local_a, double* local_b, double* solution,
+                                          int m_local, int n, double alpha, void* comm, int tile_size);
     """
-    void slate_ridge_solve(double* local_ata, double* local_atb, double* solution,
-                          int n, double alpha, void* comm, int tile_size) except +
+    void slate_ridge_solve_qr(double* local_a, double* local_b, double* solution,
+                              int m_local, int n, double alpha, void* comm, int tile_size) except +
 
-def ridge_solve(np.ndarray[double, ndim=2, mode="c"] local_ata,
-                np.ndarray[double, ndim=1, mode="c"] local_atb,
-                double alpha,
-                comm,
-                int tile_size=256):
+def ridge_solve_qr(np.ndarray[double, ndim=2, mode="c"] local_a,
+                    np.ndarray[double, ndim=1, mode="c"] local_b,
+                    double alpha,
+                    comm,
+                    int tile_size=256):
     """
-    Solve ridge regression using SLATE.
+    Solve ridge regression using SLATE with augmented least squares and QR.
     
     Args:
-        local_ata: Local A^T A matrix
-        local_atb: Local A^T b vector
+        local_a: Local portion of matrix A (m_local x n)
+        local_b: Local portion of vector b (m_local,)
         alpha: Ridge parameter
         comm: MPI communicator (mpi4py.MPI.Comm object)
         tile_size: SLATE tile size
     
     Returns:
-        Solution vector
+        Solution vector (n,)
     """
-    cdef int n = local_ata.shape[0]
+    cdef int m_local = local_a.shape[0]
+    cdef int n = local_a.shape[1]
     cdef np.ndarray[double, ndim=1, mode="c"] solution = np.zeros(n, dtype=np.float64)
     
     # Get the MPI communicator handle at runtime
-    # Import mpi4py at runtime to avoid build-time dependency
     from mpi4py import MPI
     cdef size_t comm_ptr = MPI._handleof(comm)
     
-    slate_ridge_solve(&local_ata[0,0], &local_atb[0], &solution[0], 
-                     n, alpha, <void*>comm_ptr, tile_size)
+    slate_ridge_solve_qr(&local_a[0,0], &local_b[0], &solution[0], 
+                        m_local, n, alpha, <void*>comm_ptr, tile_size)
     
     return solution

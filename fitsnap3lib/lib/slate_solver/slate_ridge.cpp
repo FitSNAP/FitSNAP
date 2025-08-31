@@ -28,125 +28,137 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     int m_total;
     MPI_Allreduce(&m_local, &m_total, 1, MPI_INT, MPI_SUM, comm);
     
-    // Ridge regression via augmented least squares:
-    // Solve: [A    ] x ≈ [b]
-    //        [√α*I ]     [0]
-    // This is an (m_total + n) × n system
+    // For augmented least squares, we need an augmented system
+    // But since each process has its local A and b directly, we can use them
+    // For ridge regression with QR, we'll create augmented matrices
     
-    int m_augmented = m_total + n;
+    // Create augmented matrix locally: [A; sqrt(alpha)*I]
+    int m_augmented = m_local + n;  // local rows plus regularization rows
+    int m_augmented_total = m_total + n;
     double sqrt_alpha = std::sqrt(alpha);
     
-    // Create the augmented matrix A_aug of size (m_total + n) × n
-    slate::Matrix<double> A_aug(m_augmented, n, tile_size, p, q, comm);
+    // Allocate augmented local matrices
+    std::vector<double> a_augmented(m_augmented * n);
+    std::vector<double> b_augmented(m_augmented);
     
-    // For least squares, we need a BX matrix of size max(m_augmented, n) × 1
-    int max_mn = std::max(m_augmented, n);
-    slate::Matrix<double> BX(max_mn, 1, tile_size, p, q, comm);
+    // Copy local A into augmented matrix
+    for (int i = 0; i < m_local; ++i) {
+        for (int j = 0; j < n; ++j) {
+            a_augmented[i * n + j] = local_a_data[i * n + j];
+        }
+        b_augmented[i] = local_b_data[i];
+    }
     
-    // Allocate local tiles
-    A_aug.insertLocalTiles(slate::Target::Host);
-    BX.insertLocalTiles(slate::Target::Host);
-    
-    // First, we need to figure out the global row offset for this rank's data
+    // Add regularization part (only some processes get regularization rows)
+    // Distribute the n regularization rows across processes
     int row_offset;
     MPI_Scan(&m_local, &row_offset, 1, MPI_INT, MPI_SUM, comm);
     row_offset -= m_local; // Exclusive scan
     
-    // Fill the augmented matrix A_aug with local data from A
-    for (int64_t j = 0; j < A_aug.nt(); ++j) {
-        for (int64_t i = 0; i < A_aug.mt(); ++i) {
-            if (A_aug.tileIsLocal(i, j)) {
-                auto tile = A_aug(i, j);
-                double* tile_data = tile.data();
-                int64_t mb = tile.mb();
-                int64_t nb = tile.nb();
-                int64_t stride = tile.stride();
-                
-                // Global row and column indices for this tile
-                int64_t tile_row_start = i * tile_size;
-                int64_t tile_col_start = j * tile_size;
-                
-                // Initialize tile to zero
-                for (int64_t jj = 0; jj < nb; ++jj) {
-                    for (int64_t ii = 0; ii < mb; ++ii) {
-                        tile_data[ii + jj * stride] = 0.0;
-                    }
-                }
-                
-                // Fill with local A data if this tile overlaps with our local rows
-                for (int64_t jj = 0; jj < nb && tile_col_start + jj < n; ++jj) {
-                    for (int64_t ii = 0; ii < mb && tile_row_start + ii < m_augmented; ++ii) {
-                        int64_t global_row = tile_row_start + ii;
-                        int64_t global_col = tile_col_start + jj;
-                        
-                        if (global_row >= row_offset && global_row < row_offset + m_local) {
-                            // This is our local data from A
-                            int local_row = global_row - row_offset;
-                            tile_data[ii + jj * stride] = local_a_data[local_row * n + global_col];
-                        } else if (global_row >= m_total && global_row < m_augmented) {
-                            // This is the regularization part: √α*I
-                            if (global_col == global_row - m_total) {
-                                tile_data[ii + jj * stride] = sqrt_alpha;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    // Calculate which regularization rows this process owns
+    int reg_rows_per_proc = n / mpi_size;
+    int extra_reg_rows = n % mpi_size;
+    
+    int my_reg_start, my_reg_count;
+    if (mpi_rank < extra_reg_rows) {
+        my_reg_start = mpi_rank * (reg_rows_per_proc + 1);
+        my_reg_count = reg_rows_per_proc + 1;
+    } else {
+        my_reg_start = extra_reg_rows * (reg_rows_per_proc + 1) + 
+                       (mpi_rank - extra_reg_rows) * reg_rows_per_proc;
+        my_reg_count = reg_rows_per_proc;
     }
     
-    // Fill the augmented RHS vector b_aug
-    for (int64_t i = 0; i < BX.mt(); ++i) {
-        if (BX.tileIsLocal(i, 0)) {
-            auto tile = BX(i, 0);
-            double* tile_data = tile.data();
-            int64_t mb = tile.mb();
-            int64_t stride = tile.stride();
-            
-            int64_t tile_row_start = i * tile_size;
-            
-            // Initialize to zero
-            for (int64_t ii = 0; ii < mb; ++ii) {
-                tile_data[ii] = 0.0;
-            }
-            
-            // Fill with local b data
-            for (int64_t ii = 0; ii < mb && tile_row_start + ii < m_augmented; ++ii) {
-                int64_t global_row = tile_row_start + ii;
-                
-                if (global_row >= row_offset && global_row < row_offset + m_local) {
-                    // This is our local data from b
-                    int local_row = global_row - row_offset;
-                    tile_data[ii] = local_b_data[local_row];
-                }
-                // Rows m_total to m_augmented are already zero (regularization RHS)
-            }
+    // Fill in regularization rows for this process
+    for (int i = 0; i < my_reg_count; ++i) {
+        int local_row = m_local + i;
+        int global_reg_row = my_reg_start + i;
+        
+        // Zero out the row
+        for (int j = 0; j < n; ++j) {
+            a_augmented[local_row * n + j] = 0.0;
         }
+        // Set diagonal element
+        a_augmented[local_row * n + global_reg_row] = sqrt_alpha;
+        
+        // RHS is zero for regularization
+        b_augmented[local_row] = 0.0;
     }
+    
+    // Update local row count to include regularization rows
+    int m_local_aug = m_local + my_reg_count;
+    
+    // Create SLATE matrices from the augmented data using fromScaLAPACK
+    // This creates matrices that point to our data without copying
+    int lld_a = m_local_aug;  // local leading dimension for A
+    int lld_b = m_local_aug;  // local leading dimension for B
+    
+    auto A = slate::Matrix<double>::fromScaLAPACK(
+        m_augmented_total, n,           // global dimensions
+        a_augmented.data(),              // local data pointer
+        lld_a,                           // local leading dimension
+        tile_size, tile_size,            // tile sizes
+        slate::GridOrder::Col,           // column-major process grid
+        p, q,                            // process grid dimensions
+        comm                             // MPI communicator
+    );
+    
+    // For least squares, BX needs to be max(m, n) x 1
+    int max_mn = std::max(m_augmented_total, n);
+    
+    // Need to allocate properly sized local BX
+    int bx_local_rows = (max_mn + mpi_size - 1) / mpi_size;  // ceiling division
+    if (mpi_rank == mpi_size - 1) {
+        // Last process might have fewer rows
+        bx_local_rows = max_mn - mpi_rank * ((max_mn + mpi_size - 1) / mpi_size);
+    }
+    
+    std::vector<double> bx_local(bx_local_rows, 0.0);
+    
+    // Copy b_augmented into bx_local
+    for (int i = 0; i < std::min(m_local_aug, bx_local_rows); ++i) {
+        bx_local[i] = b_augmented[i];
+    }
+    
+    auto BX = slate::Matrix<double>::fromScaLAPACK(
+        max_mn, 1,                       // global dimensions
+        bx_local.data(),                 // local data pointer
+        bx_local_rows,                   // local leading dimension
+        tile_size, tile_size,            // tile sizes
+        slate::GridOrder::Col,           // column-major process grid
+        p, q,                            // process grid dimensions
+        comm                             // MPI communicator
+    );
     
     // Set options for SLATE
     slate::Options opts;
     opts[slate::Option::Target] = slate::Target::HostTask;
     
     // Solve the least squares problem using QR factorization
-    // From SLATE docs page 46-47: gels solves overdetermined systems with QR
-    slate::least_squares_solve(A_aug, BX, opts);
+    slate::least_squares_solve(A, BX, opts);
     
-    // Extract the solution from BX
-    // For overdetermined systems, the solution is in the first n rows of BX
+    // Extract solution from BX (first n elements on appropriate processes)
+    // The solution is distributed in BX, need to gather it
     std::vector<double> local_solution(n, 0.0);
     
-    for (int64_t i = 0; i < BX.mt(); ++i) {
-        if (BX.tileIsLocal(i, 0)) {
-            auto tile = BX(i, 0);
-            double* tile_data = tile.data();
-            int64_t mb = tile.mb();
-            int64_t tile_row_start = i * tile_size;
-            
-            for (int64_t ii = 0; ii < mb && tile_row_start + ii < n; ++ii) {
-                int64_t global_row = tile_row_start + ii;
-                local_solution[global_row] = tile_data[ii];
-            }
+    // Each process extracts its portion of the solution
+    int sol_rows_per_proc = n / mpi_size;
+    int extra_sol_rows = n % mpi_size;
+    
+    int my_sol_start, my_sol_count;
+    if (mpi_rank < extra_sol_rows) {
+        my_sol_start = mpi_rank * (sol_rows_per_proc + 1);
+        my_sol_count = sol_rows_per_proc + 1;
+    } else {
+        my_sol_start = extra_sol_rows * (sol_rows_per_proc + 1) + 
+                       (mpi_rank - extra_sol_rows) * sol_rows_per_proc;
+        my_sol_count = sol_rows_per_proc;
+    }
+    
+    // Copy from bx_local to local_solution
+    for (int i = 0; i < my_sol_count; ++i) {
+        if (my_sol_start + i < n && i < bx_local_rows) {
+            local_solution[my_sol_start + i] = bx_local[i];
         }
     }
     

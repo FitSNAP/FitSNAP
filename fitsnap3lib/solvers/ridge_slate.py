@@ -66,27 +66,44 @@ class RidgeSlate(Solver):
         
         # Handle the Testing mask - it's distributed across ranks and needs to be gathered
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict.get('Testing'):
-            # The Testing mask is distributed across all ranks, gather it first
+            # The Testing mask is distributed across ranks within each node
+            # We need to gather within node first, then exchange between nodes
             testing_local = pt.fitsnap_dict['Testing']
-            testing_full = pt._comm.allgather(testing_local)
             
-            # Flatten the gathered masks
-            testing_flat = []
-            for rank_mask in testing_full:
-                if isinstance(rank_mask, list):
-                    testing_flat.extend(rank_mask)
-                elif isinstance(rank_mask, np.ndarray):
-                    testing_flat.extend(rank_mask.tolist())
-                else:
-                    testing_flat.append(rank_mask)
+            # Step 1: Gather mask within each node (from all sub-ranks to head rank)
+            testing_node_full = pt._sub_comm.gather(testing_local, root=0)
             
-            # Debug: Check total mask size
             if pt._sub_rank == 0:
+                # Head rank of each node: flatten the gathered masks from this node
+                testing_flat_node = []
+                for rank_mask in testing_node_full:
+                    if isinstance(rank_mask, list):
+                        testing_flat_node.extend(rank_mask)
+                    elif isinstance(rank_mask, np.ndarray):
+                        testing_flat_node.extend(rank_mask.tolist())
+                    elif rank_mask is not None:
+                        testing_flat_node.append(rank_mask)
+                
+                # Step 2: Exchange flattened masks between head ranks of different nodes
+                testing_all_nodes = pt._head_group_comm.allgather(testing_flat_node)
+                
+                # Flatten the list from all nodes
+                testing_flat = []
+                for node_mask in testing_all_nodes:
+                    testing_flat.extend(node_mask)
+                
+                # Debug: Check total mask size
                 pt.sub_print(f"Node {pt._node_index}: Total mask elements after gathering: {len(testing_flat)}")
                 pt.sub_print(f"Node {pt._node_index}: Total data rows (before split): {pt.shared_arrays['a'].get_total_length()}")
+                
+                # Now split by node the same way as the data
+                testing_node = testing_flat[pt._node_index::pt._number_of_nodes]
+            else:
+                testing_node = None
             
-            # Now split by node the same way as the data
-            testing_node = testing_flat[pt._node_index::pt._number_of_nodes]
+            # Broadcast the node-specific mask from head rank to all ranks on this node
+            testing_node = pt._sub_comm.bcast(testing_node, root=0)
+            
             # Store the node-specific Testing mask
             pt.fitsnap_dict['Testing'] = testing_node
             
@@ -132,11 +149,13 @@ class RidgeSlate(Solver):
                     a_node = a_node[training_node]
                     b_node = b_node[training_node]
                 else:
+                    error_msg = (f"Node {pt._node_index} mask/data size mismatch! "
+                                f"Mask length: {len(testing_node)}, Data length: {len(w_node)}. "
+                                f"This indicates an error in data distribution.")
                     if pt._sub_rank == 0:
-                        pt.sub_print(f"ERROR: Node {pt._node_index} mask/data size mismatch!")
-                        pt.sub_print(f"  Mask length: {len(testing_node)}, Data length: {len(w_node)}")
-                        pt.sub_print(f"  Using all samples as training data.")
-                    training_node = None
+                        pt.sub_print(f"ERROR: {error_msg}")
+                    # Raise an exception to stop execution
+                    raise ValueError(error_msg)
         
         # Now distribute the node's (possibly filtered) data across all processes on this node
         # Each process gets a portion based on its subrank

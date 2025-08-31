@@ -22,6 +22,16 @@ public:
         // layout_ is protected in BaseMatrix, so we can access it here
         this->layout_ = slate::Layout::RowMajor;
     }
+    
+    // Override tileInsert to properly handle row-major tiles
+    // When SLATE creates tiles internally, it needs to know they're row-major
+    slate::Tile<scalar_t> tileInsert(int64_t i, int64_t j, int device,
+                                     scalar_t* data, int64_t ld) {
+        // For row-major matrices, we need to ensure the stride is correct
+        // The parent class will create the tile with the right layout
+        // because we set layout_ = RowMajor in the constructor
+        return slate::Matrix<scalar_t>::tileInsert(i, j, device, data, ld);
+    }
 };
 
 extern "C" {
@@ -108,6 +118,12 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         int local_start_row = m_offsets[mpi_rank];
         int local_end_row = m_offsets[mpi_rank + 1];
         
+        // Optional debug output for specific ranks
+        // if (mpi_rank == 16) {
+        //     std::cerr << "[Rank 16] local rows: " << local_start_row 
+        //              << " to " << local_end_row << std::endl;
+        // }
+        
         for (int i = local_start_row; i < local_end_row; i += mb) {
             int tile_i = i / mb;
             int rows_in_tile = std::min(mb, local_end_row - i);
@@ -122,10 +138,30 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                     int local_i = i - local_start_row;
                     double* tile_data = &local_a_data[local_i * n + j];
                     
+                    // Optional debug for specific tiles
+                    // if (mpi_rank == 16 && tile_i == 0) {
+                    //     std::cerr << "[Rank 16] Tile dims: " << A_aug.tileMb(tile_i) 
+                    //              << " x " << A_aug.tileNb(tile_j) << std::endl;
+                    // }
+                    
                     // For row-major: stride is the number of columns (n)
                     // This is ZERO-COPY - we're using the FitSNAP data directly!
                     // The tiles will know they are row-major because A_aug.layout_ is RowMajor
-                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, n);
+                    // Important: For row-major, stride must be >= actual tile width
+                    int tile_stride = n;  // Always use full row stride for row-major
+                    
+                    // Verify stride is sufficient
+                    if (A_aug.layout() == slate::Layout::RowMajor) {
+                        int actual_nb = A_aug.tileNb(tile_j);
+                        if (tile_stride < actual_nb) {
+                            std::cerr << "[Rank " << mpi_rank << "] ERROR: stride " << tile_stride 
+                                     << " < tile width " << actual_nb << " for tile (" 
+                                     << tile_i << ", " << tile_j << ")" << std::endl;
+                            MPI_Abort(comm, 1);
+                        }
+                    }
+                    
+                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, tile_stride);
                 }
             }
         }
@@ -190,7 +226,9 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                     // We need pointer to reg_tile_data[0*n + j] for first row of tile
                     double* tile_ptr = &reg_tile_data[j];
                     // Stride is n (number of columns) for row-major
-                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_ptr, n);
+                    // Important: For edge tiles, SLATE needs stride >= tile width
+                    int tile_stride = n;  // Always use full row stride for row-major
+                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_ptr, tile_stride);
                 }
             }
             

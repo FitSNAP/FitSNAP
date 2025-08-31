@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <memory>
 
 extern "C" {
 
@@ -21,7 +22,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     
     // Debug output - use cerr for immediate flushing
     if (mpi_rank == 0) {
-        std::cerr << "\n=== SLATE Ridge Regression Solver ===" << std::endl;
+        std::cerr << "\n=== SLATE Ridge Regression Solver (Augmented QR) ===" << std::endl;
         std::cerr << "Features (n): " << n << std::endl;
         std::cerr << "Alpha: " << alpha << std::endl;
         std::cerr << "MPI ranks: " << mpi_size << std::endl;
@@ -34,211 +35,226 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     MPI_Allgather(&m_local, 1, MPI_INT, m_locals.data(), 1, MPI_INT, comm);
     
     int m_total = 0;
+    std::vector<int> m_offsets(mpi_size + 1, 0);
     for (int i = 0; i < mpi_size; ++i) {
         m_total += m_locals[i];
+        m_offsets[i + 1] = m_offsets[i] + m_locals[i];
     }
     
     if (mpi_rank == 0) {
         std::cerr << "Total rows (m_total): " << m_total << std::endl;
         std::cerr << "\nRow distribution across ranks:" << std::endl;
         for (int i = 0; i < mpi_size; ++i) {
-            std::cerr << "  Rank " << i << ": " << m_locals[i] << " rows" << std::endl;
+            std::cerr << "  Rank " << i << ": " << m_locals[i] << " rows (offset: " << m_offsets[i] << ")" << std::endl;
         }
         std::cerr.flush();
     }
     
-    // Create the augmented system for ridge regression:
-    // [ A     ]     [ b ]
-    // [ √α·I  ] x = [ 0 ]
-    //
-    // This is more numerically stable than normal equations
+    // AUGMENTED LEAST SQUARES APPROACH
+    // Solve: [ A     ]     [ b ]
+    //        [ √α·I  ] x = [ 0 ]
+    // Total augmented rows: m_total + n
     
-    int m_aug_total = m_total + n;  // Augmented system has additional n rows
-    int m_aug_local = m_local;      // This rank's portion of augmented rows
+    int m_aug_total = m_total + n;
     
-    // Determine which ranks will hold regularization rows
-    // We'll distribute the n regularization rows across ranks
-    int reg_rows_base = n / mpi_size;
-    int reg_rows_extra = n % mpi_size;
-    int reg_rows_this_rank = reg_rows_base + (mpi_rank < reg_rows_extra ? 1 : 0);
+    // Distribute the regularization rows (√α·I) across ranks
+    // We'll add them to the last ranks to balance the load
+    int reg_rows_per_rank = n / mpi_size;
+    int reg_rows_remainder = n % mpi_size;
     
-    m_aug_local += reg_rows_this_rank;
-    
-    // Calculate starting index for regularization rows on this rank
-    int reg_start_idx;
-    if (mpi_rank < reg_rows_extra) {
-        reg_start_idx = mpi_rank * (reg_rows_base + 1);
-    } else {
-        reg_start_idx = reg_rows_extra * (reg_rows_base + 1) + 
-                       (mpi_rank - reg_rows_extra) * reg_rows_base;
+    // Calculate how many regularization rows this rank gets
+    int my_reg_rows = reg_rows_per_rank;
+    if (mpi_rank < reg_rows_remainder) {
+        my_reg_rows++;
     }
     
+    // Calculate which regularization columns this rank is responsible for
+    int my_reg_start_col = 0;
+    for (int i = 0; i < mpi_rank; ++i) {
+        my_reg_start_col += reg_rows_per_rank;
+        if (i < reg_rows_remainder) {
+            my_reg_start_col++;
+        }
+    }
+    
+    int m_aug_local = m_local + my_reg_rows;
+    
     if (mpi_rank == 0) {
-        std::cerr << "\nAugmented system setup:" << std::endl;
+        std::cerr << "\nAugmented system:" << std::endl;
         std::cerr << "  Total augmented rows: " << m_aug_total << std::endl;
-        std::cerr << "  Regularization rows per rank (approx): " << reg_rows_base << std::endl;
+        std::cerr << "  Each rank adds ~" << reg_rows_per_rank << " regularization rows" << std::endl;
         std::cerr.flush();
     }
     
     // Debug: Each rank reports its augmented row count
     std::stringstream ss;
     ss << "[Rank " << mpi_rank << "] m_local=" << m_local 
-       << ", reg_rows=" << reg_rows_this_rank 
-       << ", m_aug_local=" << m_aug_local << std::endl;
+       << ", my_reg_rows=" << my_reg_rows
+       << ", m_aug_local=" << m_aug_local 
+       << ", reg_start_col=" << my_reg_start_col << std::endl;
     std::cerr << ss.str();
     std::cerr.flush();
     
-    // Allocate local storage for augmented system in COLUMN-MAJOR format
-    // SLATE expects column-major, so we need to transpose our row-major data
-    std::vector<double> aug_a_col_major(m_aug_local * n, 0.0);
-    std::vector<double> aug_b(m_aug_local, 0.0);
+    // CREATE AUGMENTED SYSTEM IN COLUMN-MAJOR FORMAT FOR SLATE
+    // Allocate contiguous memory for the augmented system
+    // Use aligned allocation for better performance
+    double* aug_a_data = (double*)aligned_alloc(64, m_aug_local * n * sizeof(double));
+    double* aug_b_data = (double*)aligned_alloc(64, m_aug_local * sizeof(double));
     
-    // Copy and transpose the original A matrix data (row-major to column-major)
+    // Initialize to zero
+    std::memset(aug_a_data, 0, m_aug_local * n * sizeof(double));
+    std::memset(aug_b_data, 0, m_aug_local * sizeof(double));
+    
+    if (mpi_rank == 0) {
+        std::cerr << "Converting data to column-major format for SLATE..." << std::endl;
+        std::cerr.flush();
+    }
+    
+    // Copy original A matrix (convert from row-major to column-major)
     for (int i = 0; i < m_local; ++i) {
         for (int j = 0; j < n; ++j) {
-            // Row-major: local_a_data[i*n + j]
-            // Column-major: aug_a_col_major[j*m_aug_local + i]
-            aug_a_col_major[j * m_aug_local + i] = local_a_data[i * n + j];
+            // Row-major source: local_a_data[i * n + j]
+            // Column-major dest: aug_a_data[j * m_aug_local + i]
+            aug_a_data[j * m_aug_local + i] = local_a_data[i * n + j];
         }
-        aug_b[i] = local_b_data[i];
+        // Copy b vector
+        aug_b_data[i] = local_b_data[i];
     }
     
     // Add regularization rows (√α on diagonal)
     double sqrt_alpha = std::sqrt(alpha);
-    for (int i = 0; i < reg_rows_this_rank; ++i) {
-        int global_reg_col = reg_start_idx + i;  // Which column gets √α
-        int local_row = m_local + i;             // Local row index in augmented system
+    for (int i = 0; i < my_reg_rows; ++i) {
+        int local_row = m_local + i;          // Local row index in augmented system
+        int global_col = my_reg_start_col + i; // Which column gets √α
         
-        // Set diagonal element to √α
-        // Column-major: aug_a_col_major[col * m_aug_local + row]
-        aug_a_col_major[global_reg_col * m_aug_local + local_row] = sqrt_alpha;
-        
-        // Corresponding b value is 0 (already initialized)
+        // Column-major: aug_a_data[col * m_aug_local + row]
+        aug_a_data[global_col * m_aug_local + local_row] = sqrt_alpha;
+        // b remains 0 for regularization rows (already initialized)
     }
     
-    // Now create SLATE matrices using the column-major data
-    // Use a 1D block-cyclic distribution
+    if (mpi_rank == 0) {
+        std::cerr << "\nSetting up SLATE distributed matrices..." << std::endl;
+        std::cerr.flush();
+    }
+    
+    // SLATE PROCESS GRID SETUP
+    // Use all available MPI ranks in a Px1 grid for row distribution
     int p = mpi_size;
     int q = 1;
-    int mb = tile_size;
-    int nb = tile_size;
+    
+    // Block sizes for SLATE tiling
+    int mb = tile_size;  // Row block size
+    int nb = tile_size;  // Column block size
     
     if (mpi_rank == 0) {
-        std::cerr << "\nCreating SLATE matrices:" << std::endl;
+        std::cerr << "SLATE configuration:" << std::endl;
         std::cerr << "  Process grid: " << p << " x " << q << std::endl;
         std::cerr << "  Block sizes: mb=" << mb << ", nb=" << nb << std::endl;
+        std::cerr << "  Creating distributed matrix (" << m_aug_total << " x " << n << ")" << std::endl;
         std::cerr.flush();
     }
     
-    // All ranks report their status before matrix creation
-    MPI_Barrier(comm);
-    for (int r = 0; r < mpi_size; ++r) {
-        if (mpi_rank == r) {
-            std::cerr << "[Rank " << r << "] Creating matrices with m_aug_local=" 
-                     << m_aug_local << std::endl;
-            std::cerr.flush();
-        }
-        MPI_Barrier(comm);
-    }
-    
-    // Create augmented A matrix from column-major data
-    slate::Matrix<double> A_aug;
-    slate::Matrix<double> b_aug;
-    
-    if (m_aug_local > 0) {
-        A_aug = slate::Matrix<double>::fromScaLAPACK(
-            m_aug_total, n,                    // Global dimensions
-            aug_a_col_major.data(),            // Local data (column-major)
-            m_aug_local,                       // Local leading dimension
-            mb, nb,                            // Block sizes
-            slate::GridOrder::Col,             // Process grid ordering
-            p, q,                              // Process grid
-            comm                               // MPI communicator
-        );
-        
-        b_aug = slate::Matrix<double>::fromScaLAPACK(
-            m_aug_total, 1,                    // Global dimensions
-            aug_b.data(),                      // Local data
-            m_aug_local,                       // Local leading dimension
-            mb, 1,                             // Block sizes
-            slate::GridOrder::Col,             // Process grid ordering
-            p, q,                              // Process grid
-            comm                               // MPI communicator
-        );
-    } else {
-        // Handle case where process has no rows
-        A_aug = slate::Matrix<double>::fromScaLAPACK(
-            m_aug_total, n,                    // Global dimensions
-            nullptr,                           // No local data
-            1,                                 // Dummy leading dimension
-            mb, nb,                            // Block sizes
-            slate::GridOrder::Col,             // Process grid ordering
-            p, q,                              // Process grid
-            comm                               // MPI communicator
-        );
-        
-        b_aug = slate::Matrix<double>::fromScaLAPACK(
-            m_aug_total, 1,                    // Global dimensions
-            nullptr,                           // No local data
-            1,                                 // Dummy leading dimension
-            mb, 1,                             // Block sizes
-            slate::GridOrder::Col,             // Process grid ordering
-            p, q,                              // Process grid
-            comm                               // MPI communicator
-        );
-    }
-    
-    if (mpi_rank == 0) {
-        std::cerr << "  About to call SLATE least_squares_solve..." << std::endl;
-        std::cerr.flush();
-    }
+    // Synchronize before creating matrices
     MPI_Barrier(comm);
     
-    // Solve the augmented least squares problem using QR decomposition
-    // This is more stable than normal equations
     try {
-        slate::least_squares_solve(A_aug, b_aug);
         if (mpi_rank == 0) {
-            std::cerr << "  SLATE least_squares_solve completed successfully" << std::endl;
+            std::cerr << "Creating SLATE Matrix objects..." << std::endl;
             std::cerr.flush();
         }
+        
+        // Create SLATE distributed matrices using fromScaLAPACK
+        // This creates matrices that are distributed across all MPI ranks
+        auto A_aug = slate::Matrix<double>::fromScaLAPACK(
+            m_aug_total, n,           // Global dimensions
+            aug_a_data,               // Local data pointer (column-major)
+            m_aug_local,              // Local leading dimension (number of local rows)
+            mb, nb,                   // Block sizes
+            slate::GridOrder::Col,    // Column-major process grid
+            p, q,                     // Process grid dimensions
+            comm                      // MPI communicator
+        );
+        
+        auto b_aug = slate::Matrix<double>::fromScaLAPACK(
+            m_aug_total, 1,           // Global dimensions (column vector)
+            aug_b_data,               // Local data pointer
+            m_aug_local,              // Local leading dimension
+            mb, 1,                    // Block sizes
+            slate::GridOrder::Col,    // Column-major process grid
+            p, q,                     // Process grid dimensions
+            comm                      // MPI communicator
+        );
+        
+        if (mpi_rank == 0) {
+            std::cerr << "SLATE matrices created successfully" << std::endl;
+            std::cerr << "Calling SLATE gels (QR-based least squares solver)..." << std::endl;
+            std::cerr.flush();
+        }
+        
+        // Synchronize before solve
+        MPI_Barrier(comm);
+        
+        // SOLVE USING QR DECOMPOSITION
+        // slate::gels uses QR decomposition for overdetermined systems
+        // This is the most numerically stable approach
+        slate::gels(A_aug, b_aug);
+        
+        if (mpi_rank == 0) {
+            std::cerr << "SLATE gels completed successfully" << std::endl;
+            std::cerr.flush();
+        }
+        
+        // Extract solution from b_aug
+        // After gels, the first n elements of b_aug contain the solution
+        // The solution is distributed, so we need to gather it
+        
+        // First, zero out the solution array
+        std::fill(solution, solution + n, 0.0);
+        
+        // Each rank extracts its portion of the solution
+        // The solution is in the first n rows of b_aug
+        for (int i = 0; i < std::min(n, m_aug_local); ++i) {
+            int global_row = m_offsets[mpi_rank] + i;
+            if (global_row < n) {
+                solution[global_row] = aug_b_data[i];
+            }
+        }
+        
+        if (mpi_rank == 0) {
+            std::cerr << "Gathering solution from all ranks..." << std::endl;
+            std::cerr.flush();
+        }
+        
+        // All-reduce to gather the complete solution on all ranks
+        MPI_Allreduce(MPI_IN_PLACE, solution, n, MPI_DOUBLE, MPI_SUM, comm);
+        
+        if (mpi_rank == 0) {
+            std::cerr << "\nRidge regression (augmented QR) solved successfully!" << std::endl;
+            std::cerr << "Solution vector has " << n << " coefficients" << std::endl;
+            
+            // Print first few coefficients for verification
+            std::cerr << "First 5 coefficients: ";
+            for (int i = 0; i < std::min(5, n); ++i) {
+                std::cerr << std::fixed << std::setprecision(6) << solution[i] << " ";
+            }
+            std::cerr << std::endl;
+            std::cerr << "=====================================\n" << std::endl;
+            std::cerr.flush();
+        }
+        
     } catch (const std::exception& e) {
         std::cerr << "[Rank " << mpi_rank << "] SLATE error: " << e.what() << std::endl;
         std::cerr.flush();
         MPI_Abort(comm, 1);
     }
     
-    // Extract solution from b_aug (first n elements after solve)
-    // b_aug now contains the solution in its first n rows
-    std::vector<double> local_solution(n, 0.0);
-    
-    // Each process extracts the parts of the solution it owns
-    for (int i = 0; i < n; ++i) {
-        // Determine which process owns row i of the solution
-        int owner_rank = i % mpi_size;  // Simple cyclic distribution assumption
-        
-        if (mpi_rank == owner_rank && i / mpi_size < m_aug_local) {
-            int local_idx = i / mpi_size;
-            if (local_idx < m_aug_local) {
-                local_solution[i] = aug_b[local_idx];
-            }
-        }
-    }
-    
-    // All-reduce to get complete solution on all ranks
-    MPI_Allreduce(local_solution.data(), solution, n, MPI_DOUBLE, MPI_SUM, comm);
+    // Clean up aligned memory
+    // Do this after SLATE matrices are destroyed (out of scope)
+    std::free(aug_a_data);
+    std::free(aug_b_data);
     
     if (mpi_rank == 0) {
-        std::cerr << "\nRidge regression solved successfully!" << std::endl;
-        std::cerr << "Solution vector has " << n << " coefficients" << std::endl;
-        
-        // Print first few coefficients for verification
-        std::cerr << "First 5 coefficients: ";
-        for (int i = 0; i < std::min(5, n); ++i) {
-            std::cerr << std::fixed << std::setprecision(6) << solution[i] << " ";
-        }
-        std::cerr << std::endl;
-        std::cerr << "=====================================\n" << std::endl;
+        std::cerr << "Memory cleanup completed" << std::endl;
         std::cerr.flush();
     }
 }

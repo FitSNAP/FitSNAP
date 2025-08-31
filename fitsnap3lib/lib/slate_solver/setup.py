@@ -18,8 +18,6 @@ except:
 # Extract include dirs from MPI flags
 mpi_include_dirs = [flag[2:] for flag in mpi_compile_flags if flag.startswith('-I')]
 
-# We don't need mpi4py at build time anymore
-
 # Try different possible SLATE installation locations
 slate_dir = None
 for path in [os.environ.get('SLATE_DIR', ''), 
@@ -42,12 +40,21 @@ include_dirs = [
     "/usr/include/eigen3",  # Often needed for SLATE
 ] + mpi_include_dirs
 
+# Library directories - just SLATE's location
+library_dirs = [f"{slate_dir}/lib", f"{slate_dir}/lib64"]
+
+# Libraries - only SLATE and MPI
+libraries = ["slate", "mpi"]
+
+print(f"Libraries to link: {libraries}")
+print(f"Library directories: {library_dirs}")
+
 ext = Extension(
     "slate_wrapper",
     sources=["slate_wrapper.pyx", "slate_ridge.cpp"],
     include_dirs=include_dirs,
-    library_dirs=[f"{slate_dir}/lib", f"{slate_dir}/lib64"],  # lib64 for some systems
-    libraries=["slate", "blaspp", "lapackpp", "blas", "lapack", "mpi"],
+    library_dirs=library_dirs,
+    libraries=libraries,
     language="c++",
     extra_compile_args=["-std=c++17", "-O3"] + [f for f in mpi_compile_flags if not f.startswith('-I')],
     extra_link_args=[f for f in mpi_link_flags if not f.startswith('-l')],

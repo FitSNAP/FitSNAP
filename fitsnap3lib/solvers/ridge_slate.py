@@ -27,14 +27,13 @@ class RidgeSlate(Solver):
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
         
-        # Get regularization parameter
-        self.alpha = self.config.sections['RIDGE'].alpha if 'RIDGE' in self.config.sections else 1e-6
-        
-        # Set SLATE parameters
-        self.tile_size = 256  # Default tile size for blocking
-        if 'SLATE' in self.config.sections:
-            if hasattr(self.config.sections['SLATE'], 'tile_size'):
-                self.tile_size = self.config.sections['SLATE'].tile_size
+        # Get regularization parameter and tile size from RIDGE section
+        if 'RIDGE' in self.config.sections:
+            self.alpha = self.config.sections['RIDGE'].alpha
+            self.tile_size = self.config.sections['RIDGE'].tile_size if hasattr(self.config.sections['RIDGE'], 'tile_size') else 256
+        else:
+            self.alpha = 1e-6
+            self.tile_size = 256  # Default tile size for blocking
 
     def perform_fit(self):
         """

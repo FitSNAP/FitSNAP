@@ -3,6 +3,8 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
+#include <iomanip>
 
 extern "C" {
 
@@ -16,154 +18,164 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     MPI_Comm_rank(comm, &mpi_rank);
     MPI_Comm_size(comm, &mpi_size);
     
-    // Set up 2D process grid (as square as possible)
-    int p = static_cast<int>(std::sqrt(mpi_size));
-    int q = mpi_size / p;
-    while (p * q != mpi_size && p > 1) {
-        --p;
-        q = mpi_size / p;
+    // Debug output
+    if (mpi_rank == 0) {
+        std::cout << "\n=== SLATE Ridge Regression Solver ===" << std::endl;
+        std::cout << "Features (n): " << n << std::endl;
+        std::cout << "Alpha: " << alpha << std::endl;
+        std::cout << "MPI ranks: " << mpi_size << std::endl;
+        std::cout << "Tile size: " << tile_size << std::endl;
     }
     
-    // Get total number of rows across all processes
-    int m_total;
-    MPI_Allreduce(&m_local, &m_total, 1, MPI_INT, MPI_SUM, comm);
+    // Gather all local row counts to understand the distribution
+    std::vector<int> m_locals(mpi_size);
+    MPI_Allgather(&m_local, 1, MPI_INT, m_locals.data(), 1, MPI_INT, comm);
     
-    // For augmented least squares, we need an augmented system
-    // But since each process has its local A and b directly, we can use them
-    // For ridge regression with QR, we'll create augmented matrices
+    int m_total = 0;
+    for (int i = 0; i < mpi_size; ++i) {
+        m_total += m_locals[i];
+    }
     
-    // Create augmented matrix locally: [A; sqrt(alpha)*I]
-    int m_augmented = m_local + n;  // local rows plus regularization rows
-    int m_augmented_total = m_total + n;
-    double sqrt_alpha = std::sqrt(alpha);
-    
-    // Allocate augmented local matrices
-    std::vector<double> a_augmented(m_augmented * n);
-    std::vector<double> b_augmented(m_augmented);
-    
-    // Copy local A into augmented matrix
-    for (int i = 0; i < m_local; ++i) {
-        for (int j = 0; j < n; ++j) {
-            a_augmented[i * n + j] = local_a_data[i * n + j];
+    if (mpi_rank == 0) {
+        std::cout << "Total rows (m_total): " << m_total << std::endl;
+        std::cout << "\nRow distribution across ranks:" << std::endl;
+        for (int i = 0; i < mpi_size; ++i) {
+            std::cout << "  Rank " << i << ": " << m_locals[i] << " rows" << std::endl;
         }
-        b_augmented[i] = local_b_data[i];
     }
     
-    // Add regularization part (only some processes get regularization rows)
-    // Distribute the n regularization rows across processes
-    int row_offset;
-    MPI_Scan(&m_local, &row_offset, 1, MPI_INT, MPI_SUM, comm);
-    row_offset -= m_local; // Exclusive scan
+    // FitSNAP uses 1D row distribution:
+    // - Each rank owns m_local complete rows
+    // - All ranks have all n columns
+    // - Data is stored row-major: row i, column j is at local_a_data[i*n + j]
     
-    // Calculate which regularization rows this process owns
-    int reg_rows_per_proc = n / mpi_size;
-    int extra_reg_rows = n % mpi_size;
+    // For SLATE's fromScaLAPACK with 1D row distribution:
+    // We use a Px1 process grid where P = mpi_size
+    // This matches FitSNAP's row distribution exactly
     
-    int my_reg_start, my_reg_count;
-    if (mpi_rank < extra_reg_rows) {
-        my_reg_start = mpi_rank * (reg_rows_per_proc + 1);
-        my_reg_count = reg_rows_per_proc + 1;
-    } else {
-        my_reg_start = extra_reg_rows * (reg_rows_per_proc + 1) + 
-                       (mpi_rank - extra_reg_rows) * reg_rows_per_proc;
-        my_reg_count = reg_rows_per_proc;
+    int p = mpi_size;  // P processes in rows
+    int q = 1;         // 1 process in columns
+    
+    // Calculate the block size for row distribution
+    // In ScaLAPACK terms, each process owns a block of rows
+    // The block row size (mb) should be set to handle the distribution
+    int mb = tile_size;  // Block size for rows
+    int nb = n;          // Each process has all columns, so nb = n
+    
+    if (mpi_rank == 0) {
+        std::cout << "\nSLATE configuration:" << std::endl;
+        std::cout << "  Process grid: " << p << " x " << q << std::endl;
+        std::cout << "  Block sizes: mb=" << mb << ", nb=" << nb << std::endl;
     }
     
-    // Fill in regularization rows for this process
-    for (int i = 0; i < my_reg_count; ++i) {
-        int local_row = m_local + i;
-        int global_reg_row = my_reg_start + i;
-        
-        // Zero out the row
-        for (int j = 0; j < n; ++j) {
-            a_augmented[local_row * n + j] = 0.0;
-        }
-        // Set diagonal element
-        a_augmented[local_row * n + global_reg_row] = sqrt_alpha;
-        
-        // RHS is zero for regularization
-        b_augmented[local_row] = 0.0;
-    }
-    
-    // Update local row count to include regularization rows
-    int m_local_aug = m_local + my_reg_count;
-    
-    // Create SLATE matrices from the augmented data using fromScaLAPACK
-    // This creates matrices that point to our data without copying
-    int lld_a = m_local_aug;  // local leading dimension for A
-    int lld_b = m_local_aug;  // local leading dimension for B
+    // Create SLATE matrix A from FitSNAP's row-distributed data
+    // Key insight: With Px1 grid and row distribution:
+    // - Process grid is column-major (GridOrder::Col)
+    // - Each process's data starts at its first row
+    // - Local leading dimension is m_local (number of local rows)
     
     auto A = slate::Matrix<double>::fromScaLAPACK(
-        m_augmented_total, n,           // global dimensions
-        a_augmented.data(),              // local data pointer
-        lld_a,                           // local leading dimension
-        tile_size, tile_size,            // tile sizes
-        slate::GridOrder::Col,           // column-major process grid
-        p, q,                            // process grid dimensions
-        comm                             // MPI communicator
+        m_total, n,                       // Global dimensions
+        local_a_data,                     // Local data pointer
+        m_local,                          // Local leading dimension (rows this process owns)
+        mb, nb,                           // Block sizes
+        slate::GridOrder::Col,            // Column-major process grid ordering
+        p, q,                             // Process grid dimensions (Px1)
+        comm                              // MPI communicator
     );
     
-    // For least squares, BX needs to be max(m, n) x 1
-    int max_mn = std::max(m_augmented_total, n);
-    
-    // Need to allocate properly sized local BX
-    int bx_local_rows = (max_mn + mpi_size - 1) / mpi_size;  // ceiling division
-    if (mpi_rank == mpi_size - 1) {
-        // Last process might have fewer rows
-        bx_local_rows = max_mn - mpi_rank * ((max_mn + mpi_size - 1) / mpi_size);
-    }
-    
-    std::vector<double> bx_local(bx_local_rows, 0.0);
-    
-    // Copy b_augmented into bx_local
-    for (int i = 0; i < std::min(m_local_aug, bx_local_rows); ++i) {
-        bx_local[i] = b_augmented[i];
-    }
-    
-    auto BX = slate::Matrix<double>::fromScaLAPACK(
-        max_mn, 1,                       // global dimensions
-        bx_local.data(),                 // local data pointer
-        bx_local_rows,                   // local leading dimension
-        tile_size, tile_size,            // tile sizes
-        slate::GridOrder::Col,           // column-major process grid
-        p, q,                            // process grid dimensions
-        comm                             // MPI communicator
+    // Create SLATE vector b from local data
+    auto b_vec = slate::Matrix<double>::fromScaLAPACK(
+        m_total, 1,                       // Global dimensions (column vector)
+        local_b_data,                     // Local data pointer
+        m_local,                          // Local leading dimension
+        mb, 1,                            // Block sizes
+        slate::GridOrder::Col,            // Process grid ordering
+        p, q,                             // Process grid (Px1)
+        comm                              // MPI communicator
     );
     
-    // Set options for SLATE
-    slate::Options opts;
-    opts[slate::Option::Target] = slate::Target::HostTask;
-    
-    // Solve the least squares problem using QR factorization
-    slate::least_squares_solve(A, BX, opts);
-    
-    // Extract solution from BX (first n elements on appropriate processes)
-    // The solution is distributed in BX, need to gather it
-    std::vector<double> local_solution(n, 0.0);
-    
-    // Each process extracts its portion of the solution
-    int sol_rows_per_proc = n / mpi_size;
-    int extra_sol_rows = n % mpi_size;
-    
-    int my_sol_start, my_sol_count;
-    if (mpi_rank < extra_sol_rows) {
-        my_sol_start = mpi_rank * (sol_rows_per_proc + 1);
-        my_sol_count = sol_rows_per_proc + 1;
-    } else {
-        my_sol_start = extra_sol_rows * (sol_rows_per_proc + 1) + 
-                       (mpi_rank - extra_sol_rows) * sol_rows_per_proc;
-        my_sol_count = sol_rows_per_proc;
+    if (mpi_rank == 0) {
+        std::cout << "\nComputing normal equations: (A^T A + alpha*I) x = A^T b" << std::endl;
     }
     
-    // Copy from bx_local to local_solution
-    for (int i = 0; i < my_sol_count; ++i) {
-        if (my_sol_start + i < n && i < bx_local_rows) {
-            local_solution[my_sol_start + i] = bx_local[i];
+    // Allocate distributed matrices for normal equations
+    // A^T A is n x n, will be distributed across all processes
+    auto AtA = slate::Matrix<double>(n, n, tile_size, tile_size, slate::GridOrder::Col, p, q, comm);
+    
+    // A^T b is n x 1 vector
+    auto Atb = slate::Matrix<double>(n, 1, tile_size, 1, slate::GridOrder::Col, p, q, comm);
+    
+    // Compute A^T A using distributed GEMM
+    // AtA = 1.0 * A^T * A + 0.0 * AtA
+    if (mpi_rank == 0) {
+        std::cout << "  Computing A^T A..." << std::endl;
+    }
+    slate::gemm(1.0, A.conj_transpose(), A, 0.0, AtA);
+    
+    // Compute A^T b
+    // Atb = 1.0 * A^T * b + 0.0 * Atb
+    if (mpi_rank == 0) {
+        std::cout << "  Computing A^T b..." << std::endl;
+    }
+    slate::gemm(1.0, A.conj_transpose(), b_vec, 0.0, Atb);
+    
+    // Add ridge regularization to diagonal of AtA
+    if (mpi_rank == 0) {
+        std::cout << "  Adding regularization (alpha = " << alpha << ") to diagonal..." << std::endl;
+    }
+    
+    // Each process updates the diagonal elements it owns
+    for (int64_t i = 0; i < n; ++i) {
+        int64_t tile_i = i / tile_size;
+        if (AtA.tileIsLocal(tile_i, tile_i)) {
+            auto T = AtA(tile_i, tile_i);
+            int local_i = i % tile_size;
+            if (local_i < T.mb() && local_i < T.nb()) {
+                T.at(local_i, local_i) += alpha;
+            }
         }
     }
     
-    // All-reduce to get complete solution on all processes
-    MPI_Allreduce(local_solution.data(), solution, n, MPI_DOUBLE, MPI_SUM, comm);
+    // Solve the system using Cholesky factorization
+    // AtA is symmetric positive definite after regularization
+    if (mpi_rank == 0) {
+        std::cout << "  Solving system using Cholesky factorization..." << std::endl;
+    }
+    
+    // Use SLATE's posv (positive definite solver)
+    slate::posv(AtA, Atb);
+    
+    // Extract the distributed solution from Atb
+    // Each process owns some elements of the solution
+    std::fill(solution, solution + n, 0.0);
+    
+    for (int64_t i = 0; i < n; ++i) {
+        int64_t tile_i = i / tile_size;
+        if (Atb.tileIsLocal(tile_i, 0)) {
+            auto T = Atb(tile_i, 0);
+            int local_i = i % tile_size;
+            if (local_i < T.mb()) {
+                solution[i] = T.at(local_i, 0);
+            }
+        }
+    }
+    
+    // All-reduce to ensure all processes have the complete solution
+    MPI_Allreduce(MPI_IN_PLACE, solution, n, MPI_DOUBLE, MPI_SUM, comm);
+    
+    if (mpi_rank == 0) {
+        std::cout << "\nRidge regression solved successfully!" << std::endl;
+        std::cout << "Solution vector has " << n << " coefficients" << std::endl;
+        
+        // Print first few coefficients for verification
+        std::cout << "First 5 coefficients: ";
+        for (int i = 0; i < std::min(5, n); ++i) {
+            std::cout << std::fixed << std::setprecision(6) << solution[i] << " ";
+        }
+        std::cout << std::endl;
+        std::cout << "=====================================\n" << std::endl;
+    }
 }
 
 } // extern "C"

@@ -2,6 +2,11 @@ from fitsnap3lib.solvers.solver import Solver
 import numpy as np
 
 try:
+    from mpi4py import MPI
+except ImportError:
+    MPI = None
+
+try:
     from fitsnap3lib.lib.slate_solver.slate_wrapper import ridge_solve
     SLATE_AVAILABLE = True
 except ImportError:
@@ -38,14 +43,6 @@ class RidgeSlate(Solver):
         """
         pt = self.pt
         
-        # Handle testing/training split similar to ScaLAPACK
-        if pt.get_subrank() == 0:
-            if any(pt.fitsnap_dict.get('Testing', [])):
-                # Extract training indices
-                training = [not elem for elem in pt.fitsnap_dict['Testing']]
-            else:
-                training = None  # Use all data
-        
         # Split arrays by node for distributed computation
         pt.split_by_node(pt.shared_arrays['w'])
         pt.split_by_node(pt.shared_arrays['a'])
@@ -57,53 +54,79 @@ class RidgeSlate(Solver):
         scraped_length = pt.shared_arrays['a'].get_scraped_length()
         lengths = [total_length, node_length, scraped_length]
         
-        if pt.get_subrank() == 0:
-            # Apply weights and handle training indices
-            w = pt.shared_arrays['w'].array[:]
-            a_local = pt.shared_arrays['a'].array[:]
-            b_local = pt.shared_arrays['b'].array[:]
-            
-            if training is not None:
-                # Apply training mask
-                training_mask = np.array(training[:len(w)])  # Ensure same length as local data
-                w = w[training_mask]
-                a_local = a_local[training_mask]
-                b_local = b_local[training_mask]
-            
-            # Apply weights
+        # Handle testing/training split on all processes
+        training = None
+        if any(pt.fitsnap_dict.get('Testing', [])):
+            # Extract training indices
+            training = [not elem for elem in pt.fitsnap_dict['Testing']]
+        
+        # Get the shared data for this node
+        w_node = pt.shared_arrays['w'].array[:]
+        a_node = pt.shared_arrays['a'].array[:]
+        b_node = pt.shared_arrays['b'].array[:]
+        
+        # Now distribute the node's data across all processes on this node
+        # Each process gets a portion based on its subrank
+        node_rows = len(w_node)
+        rows_per_proc = node_rows // pt._sub_size
+        extra_rows = node_rows % pt._sub_size
+        
+        # Calculate start and end indices for this process
+        if pt._sub_rank < extra_rows:
+            start_idx = pt._sub_rank * (rows_per_proc + 1)
+            end_idx = start_idx + rows_per_proc + 1
+        else:
+            start_idx = extra_rows * (rows_per_proc + 1) + (pt._sub_rank - extra_rows) * rows_per_proc
+            end_idx = start_idx + rows_per_proc
+        
+        # Get this process's portion of the data
+        w = w_node[start_idx:end_idx]
+        a_local = a_node[start_idx:end_idx]
+        b_local = b_node[start_idx:end_idx]
+        
+        if training is not None and len(w) > 0:
+            # Apply training mask to this process's portion
+            training_mask = np.array(training[start_idx:end_idx])
+            w = w[training_mask]
+            a_local = a_local[training_mask]
+            b_local = b_local[training_mask]
+        
+        # Apply weights
+        if len(w) > 0:
             aw = w[:, np.newaxis] * a_local
             bw = w * b_local
-            
-            # Apply transpose method if configured
-            if 'EXTRAS' in self.config.sections and self.config.sections['EXTRAS'].apply_transpose:
-                bw = aw.T @ bw
-                aw = aw.T @ aw
-                # In this case, aw is already A^T A and bw is A^T b
-                local_ata = aw
-                local_atb = bw
-            else:
-                # Compute local portions of normal equations
-                local_ata = aw.T @ aw
-                local_atb = aw.T @ bw
-            
-            # Get feature dimension
-            n_features = local_ata.shape[0]
-            
-            # Use SLATE for distributed ridge regression
-            self.fit = self._slate_ridge_solve(local_ata, local_atb, n_features, lengths, pt)
-            
-            if pt.get_subrank() == 0:
-                self.fit = pt.gather_to_head_node(self.fit)[0]
         else:
-            self.fit = self._dummy_slate_solve()
+            # Process has no data
+            aw = np.zeros((0, a_node.shape[1] if len(a_node) > 0 else 0), dtype=np.float64)
+            bw = np.zeros(0, dtype=np.float64)
+        
+        # Get dimensions
+        m_local = aw.shape[0]  # local number of rows for this process
+        n_features = aw.shape[1] if len(aw) > 0 else (a_node.shape[1] if len(a_node) > 0 else 0)
+        
+        # Make sure all processes agree on n_features
+        n_features_array = np.array([n_features], dtype=np.int32)
+        pt._comm.Allreduce(MPI.IN_PLACE, n_features_array, op=MPI.MAX)
+        n_features = n_features_array[0]
+        
+        # Ensure correct shape even for empty arrays
+        if m_local == 0:
+            aw = np.zeros((0, n_features), dtype=np.float64)
+            bw = np.zeros(0, dtype=np.float64)
+        
+        # ALL processes participate in the SLATE solve
+        self.fit = self._slate_ridge_solve_qr(aw, bw, m_local, n_features, lengths, pt)
+        
+        # Solution is already available on all processes after SLATE solve
     
-    def _slate_ridge_solve(self, local_ata, local_atb, n_features, lengths, pt):
+    def _slate_ridge_solve_qr(self, aw, bw, m_local, n_features, lengths, pt):
         """
-        Solve ridge regression using SLATE.
+        Solve ridge regression using SLATE with augmented least squares and QR.
         
         Args:
-            local_ata: Local portion of A^T A matrix
-            local_atb: Local portion of A^T b vector
+            aw: Local weighted matrix A (m_local x n_features)
+            bw: Local weighted vector b (m_local,)
+            m_local: Number of local rows
             n_features: Number of features (columns in A)
             lengths: Array dimensions [total_length, node_length, scraped_length]
             pt: Parallel tools instance
@@ -114,12 +137,14 @@ class RidgeSlate(Solver):
         if not SLATE_AVAILABLE:
             raise RuntimeError("SLATE module not available. Please compile it first.")
         
-        # Call the SLATE ridge solver directly
-        solution = ridge_solve(
-            local_ata, 
-            local_atb, 
+        # Call the SLATE ridge solver with QR directly
+        # Use the full communicator (pt._comm) to use ALL MPI ranks
+        from fitsnap3lib.lib.slate_solver.slate_wrapper import ridge_solve_qr
+        solution = ridge_solve_qr(
+            aw, 
+            bw, 
             self.alpha, 
-            pt._head_group_comm, 
+            pt._comm,  # Use full communicator with ALL processes
             self.tile_size
         )
         

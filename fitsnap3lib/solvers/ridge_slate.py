@@ -70,18 +70,34 @@ class RidgeSlate(Solver):
         scraped_length = pt.shared_arrays['a'].get_scraped_length()
         lengths = [total_length, node_length, scraped_length]
         
-        # Handle testing/training split on all processes
-        training = None
-        if any(pt.fitsnap_dict.get('Testing', [])):
-            # Extract training indices
-            training = [not elem for elem in pt.fitsnap_dict['Testing']]
-        
         # Get the shared data for this node
         w_node = pt.shared_arrays['w'].array[:]
         a_node = pt.shared_arrays['a'].array[:]
         b_node = pt.shared_arrays['b'].array[:]
         
-        # Now distribute the node's data across all processes on this node
+        # Handle testing/training split
+        training_node = None
+        if any(pt.fitsnap_dict.get('Testing', [])):
+            # Extract training indices for ALL data
+            training_global = [not elem for elem in pt.fitsnap_dict['Testing']]
+            
+            # Get this node's portion of the training mask
+            # The arrays have already been split by node, so we need the corresponding slice
+            # Each node gets every Nth element starting from its index
+            training_node = training_global[pt._node_index::pt._number_of_nodes]
+            training_node = np.array(training_node)
+            
+            # Apply training mask to the node's data
+            if len(training_node) == len(w_node):
+                w_node = w_node[training_node]
+                a_node = a_node[training_node]
+                b_node = b_node[training_node]
+            else:
+                # Size mismatch - log error details
+                pt.single_print(f"Warning: Training mask size mismatch on node {pt._node_index}: "
+                              f"mask size {len(training_node)}, data size {len(w_node)}")
+        
+        # Now distribute the node's (possibly filtered) data across all processes on this node
         # Each process gets a portion based on its subrank
         node_rows = len(w_node)
         rows_per_proc = node_rows // pt._sub_size
@@ -99,13 +115,6 @@ class RidgeSlate(Solver):
         w = w_node[start_idx:end_idx]
         a_local = a_node[start_idx:end_idx]
         b_local = b_node[start_idx:end_idx]
-        
-        if training is not None and len(w) > 0:
-            # Apply training mask to this process's portion
-            training_mask = np.array(training[start_idx:end_idx])
-            w = w[training_mask]
-            a_local = a_local[training_mask]
-            b_local = b_local[training_mask]
         
         # Apply weights
         if len(w) > 0:
@@ -179,3 +188,83 @@ class RidgeSlate(Solver):
         """Save the predicted values to file."""
         b = self.pt.shared_arrays['a'].array @ self.fit
         np.savez_compressed('b.npz', b=b)
+    
+    def evaluate_errors(self):
+        """Evaluate training and testing errors using distributed computation."""
+        pt = self.pt
+        
+        # Each node computes predictions for its portion of data
+        # The arrays are already split by node
+        a_node = pt.shared_arrays['a'].array
+        b_node = pt.shared_arrays['b'].array
+        w_node = pt.shared_arrays['w'].array
+        
+        # Local matrix multiply - each node does its portion
+        predictions_node = a_node @ self.fit
+        
+        # Calculate weighted errors locally
+        errors_node = (predictions_node - b_node) * w_node
+        
+        # Get testing mask for this node's data
+        if 'Testing' in pt.fitsnap_dict and any(pt.fitsnap_dict['Testing']):
+            testing_global = pt.fitsnap_dict['Testing']
+            # Get this node's portion of the testing mask (same slicing as split_by_node)
+            testing_node = testing_global[pt._node_index::pt._number_of_nodes]
+            testing_node = np.array(testing_node)
+            training_node = ~testing_node
+            
+            # Calculate local error statistics
+            train_errors_local = errors_node[training_node]
+            test_errors_local = errors_node[testing_node]
+            
+            # Calculate local sums and counts for distributed RMSE
+            train_sum_sq = np.sum(train_errors_local**2) if len(train_errors_local) > 0 else 0.0
+            train_count = len(train_errors_local)
+            test_sum_sq = np.sum(test_errors_local**2) if len(test_errors_local) > 0 else 0.0
+            test_count = len(test_errors_local)
+            
+            # Reduce across all nodes to get global statistics
+            train_stats = np.array([train_sum_sq, train_count], dtype=np.float64)
+            test_stats = np.array([test_sum_sq, test_count], dtype=np.float64)
+            
+            if pt._sub_rank == 0:
+                # Head node of each node participates in reduction
+                pt._head_group_comm.Allreduce(MPI.IN_PLACE, train_stats, op=MPI.SUM)
+                pt._head_group_comm.Allreduce(MPI.IN_PLACE, test_stats, op=MPI.SUM)
+            
+            # Broadcast from head to all procs on node
+            pt._sub_comm.Bcast(train_stats, root=0)
+            pt._sub_comm.Bcast(test_stats, root=0)
+            
+            # Calculate global RMSE
+            train_rmse = np.sqrt(train_stats[0] / train_stats[1]) if train_stats[1] > 0 else 0.0
+            test_rmse = np.sqrt(test_stats[0] / test_stats[1]) if test_stats[1] > 0 else 0.0
+            
+            if pt._rank == 0:
+                print(f"\nDistributed Evaluation Results:")
+                print(f"Training RMSE: {train_rmse:.6f}")
+                print(f"Testing RMSE: {test_rmse:.6f}")
+                print(f"Training samples: {int(train_stats[1])}")
+                print(f"Testing samples: {int(test_stats[1])}")
+                print(f"Data distributed across {pt._number_of_nodes} nodes, {pt._size} total processes")
+        else:
+            # No test/train split - calculate overall RMSE
+            sum_sq_local = np.sum(errors_node**2)
+            count_local = len(errors_node)
+            
+            stats = np.array([sum_sq_local, count_local], dtype=np.float64)
+            
+            if pt._sub_rank == 0:
+                pt._head_group_comm.Allreduce(MPI.IN_PLACE, stats, op=MPI.SUM)
+            
+            pt._sub_comm.Bcast(stats, root=0)
+            
+            rmse = np.sqrt(stats[0] / stats[1]) if stats[1] > 0 else 0.0
+            
+            if pt._rank == 0:
+                print(f"\nDistributed Evaluation Results:")
+                print(f"Overall RMSE: {rmse:.6f}")
+                print(f"Total samples: {int(stats[1])}")
+                print(f"Data distributed across {pt._number_of_nodes} nodes")
+        
+        return errors_node  # Return local errors only

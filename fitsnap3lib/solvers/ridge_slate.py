@@ -64,14 +64,35 @@ class RidgeSlate(Solver):
         pt.split_by_node(pt.shared_arrays['a'])
         pt.split_by_node(pt.shared_arrays['b'])
         
-        # Also split the Testing mask if it exists
+        # Handle the Testing mask - it's distributed across ranks and needs to be gathered
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict.get('Testing'):
-            # The Testing mask needs to be split the same way as the data
-            testing_full = pt.fitsnap_dict['Testing']
-            # Each node gets every nth element where n is number of nodes
-            testing_node = testing_full[pt._node_index::pt._number_of_nodes]
-            # Store the node-specific Testing mask back
+            # The Testing mask is distributed across all ranks, gather it first
+            testing_local = pt.fitsnap_dict['Testing']
+            testing_full = pt._comm.allgather(testing_local)
+            
+            # Flatten the gathered masks
+            testing_flat = []
+            for rank_mask in testing_full:
+                if isinstance(rank_mask, list):
+                    testing_flat.extend(rank_mask)
+                elif isinstance(rank_mask, np.ndarray):
+                    testing_flat.extend(rank_mask.tolist())
+                else:
+                    testing_flat.append(rank_mask)
+            
+            # Debug: Check total mask size
+            if pt._sub_rank == 0:
+                pt.sub_print(f"Node {pt._node_index}: Total mask elements after gathering: {len(testing_flat)}")
+                pt.sub_print(f"Node {pt._node_index}: Total data rows (before split): {pt.shared_arrays['a'].get_total_length()}")
+            
+            # Now split by node the same way as the data
+            testing_node = testing_flat[pt._node_index::pt._number_of_nodes]
+            # Store the node-specific Testing mask
             pt.fitsnap_dict['Testing'] = testing_node
+            
+            if pt._sub_rank == 0:
+                pt.sub_print(f"Node {pt._node_index}: Mask elements after split: {len(testing_node)}")
+                pt.sub_print(f"Node {pt._node_index}: Data rows after split: {len(pt.shared_arrays['w'].array)}")
         
         # Get array dimensions for distributed computation
         total_length = pt.shared_arrays['a'].get_total_length()
@@ -93,12 +114,15 @@ class RidgeSlate(Solver):
             if testing_node and len(testing_node) > 0:
                 # Convert to numpy array of booleans
                 testing_node = np.array(testing_node, dtype=bool)
-                training_node = ~testing_node
                 
-                if len(training_node) == len(w_node):
+                # Check if sizes match
+                if len(testing_node) == len(w_node):
+                    # Create training mask (inverse of testing)
+                    training_node = ~testing_node
+                    
                     # Count samples
                     train_count = np.sum(training_node)
-                    test_count = len(training_node) - train_count
+                    test_count = np.sum(testing_node)
                     
                     if pt._sub_rank == 0:
                         pt.sub_print(f"Node {pt._node_index}: Using {train_count} training, {test_count} testing samples")

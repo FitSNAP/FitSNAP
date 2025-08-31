@@ -92,17 +92,11 @@ class HDF5(Scraper):
                 norm = {
                     "energy":     1.0 / 100.0,     # normalize ~100 kcal/mol
                     "force":      1.0 / 5000.0,    # normalize ~5000 kcal/mol/Å
-                    "charge":     1.0 / 250.0,     # normalize large sum(q_i)^2
-                    "dipole":     1.0 / 30.0,      # normalize ~30 e·Å
-                    "quadrupole": 1.0 / 600.0,     # normalize ~600 e·Å²
                 }
 
                 importance = {
                     "energy":     0.1,
                     "force":      100.0,
-                    "charge":     0.05,
-                    "dipole":     50.0,
-                    "quadrupole": 20.0,
                 }
 
                 weights = {k: norm[k] * importance[k] for k in norm}
@@ -112,9 +106,6 @@ class HDF5(Scraper):
                     "is_solvated": is_solvated,
                     "eweight": weights["energy"],
                     "fweight": weights["force"],
-                    "cweight": weights["charge"] if is_solvated else 0.0,
-                    "dweight": weights["dipole"] if is_solvated else 0.0,
-                    "qweight": weights["quadrupole"] if is_solvated else 0.0,
                     "bounds": (bounds_min, bounds_max),
                     "lattice": lattice
                 }
@@ -123,7 +114,7 @@ class HDF5(Scraper):
                 #print(f"*** {group_name} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
 
                 # Add ALL configs, not just 80%
-                for j in range(conformations.shape[0]):
+                for j in range(conformations.shape[0]/10):
                     self.local_configs.append((group_name, j))
 
         if self.pt.stubs==0:

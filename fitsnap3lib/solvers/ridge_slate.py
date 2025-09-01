@@ -69,9 +69,10 @@ class RidgeSlate(Solver):
         
         if pt._sub_rank == 0:
             pt.sub_print(f"Node {pt._node_index}: scraped_length={scraped_length}")
-            pt.sub_print(f"Node {pt._node_index}: First 5 b values: {b_node[:5]}")
-            pt.sub_print(f"Node {pt._node_index}: Sum of b values: {np.sum(b_node):.6f}")
-            pt.sub_print(f"Node {pt._node_index}: Mean of b values: {np.mean(b_node):.6f}")
+            pt.sub_print(f"Node {pt._node_index}: FULL a matrix shape: {a_node.shape}")
+            pt.sub_print(f"Node {pt._node_index}: FULL a matrix:\n{a_node}")
+            pt.sub_print(f"Node {pt._node_index}: FULL b vector: {b_node}")
+            pt.sub_print(f"Node {pt._node_index}: FULL w vector: {w_node}")
         
         # Handle testing/training split using the Testing mask from fitsnap_dict
         # The Testing mask is gathered with allgather within each node, creating a list of lists
@@ -81,9 +82,10 @@ class RidgeSlate(Solver):
             
             # Debug: understand the structure
             if pt._sub_rank == 0:
+                pt.sub_print(f"\nNode {pt._node_index}: Processing Testing mask:")
                 pt.sub_print(f"Node {pt._node_index}: Testing structure type={type(testing_gathered)}, len={len(testing_gathered) if isinstance(testing_gathered, list) else 'N/A'}")
                 if isinstance(testing_gathered, list) and len(testing_gathered) > 0:
-                    pt.sub_print(f"Node {pt._node_index}: First element type={type(testing_gathered[0])}, len={len(testing_gathered[0]) if isinstance(testing_gathered[0], list) else 'N/A'}")
+                    pt.sub_print(f"Node {pt._node_index}: Full Testing mask: {testing_gathered}")
             
             # The Testing mask was gathered with allgather across procs in this node
             # Each proc contributed its portion, so we have node_size sublists
@@ -100,6 +102,10 @@ class RidgeSlate(Solver):
                 
                 if pt._sub_rank == 0:
                     pt.sub_print(f"Node {pt._node_index}: Reconstructed Testing mask length={len(testing_node)}")
+                    # Show True/False count
+                    n_true = np.sum(testing_node)
+                    n_false = np.sum(~testing_node)
+                    pt.sub_print(f"Node {pt._node_index}: Testing mask has {n_true} True (testing), {n_false} False (training)")
             else:
                 # Unexpected format - try to use as-is
                 if pt._sub_rank == 0:
@@ -131,6 +137,13 @@ class RidgeSlate(Solver):
             
             if pt._sub_rank == 0:
                 pt.sub_print(f"Node {pt._node_index}: Using {train_count} training, {test_count} testing samples")
+                pt.sub_print(f"Node {pt._node_index}: training_node mask: {training_node}")
+                # Show what we're actually filtering
+                pt.sub_print(f"\nNode {pt._node_index}: AFTER filtering (training only):")
+                pt.sub_print(f"Node {pt._node_index}: a_node.shape={a_node[training_node].shape}")
+                pt.sub_print(f"Node {pt._node_index}: Filtered a matrix:\n{a_node[training_node]}")
+                pt.sub_print(f"Node {pt._node_index}: Filtered b vector: {b_node[training_node]}")
+                pt.sub_print(f"Node {pt._node_index}: Filtered w vector: {w_node[training_node]}")
             
             # Apply the training filter to get only training data
             w_node = w_node[training_node]
@@ -189,6 +202,12 @@ class RidgeSlate(Solver):
         if len(w) > 0:
             aw = w[:, np.newaxis] * a_local
             bw = w * b_local
+            # Debug: print what this process is sending to SLATE
+            if pt._rank == 0:
+                pt.single_print(f"\nRank 0 sending to SLATE:")
+                pt.single_print(f"aw shape: {aw.shape}")
+                pt.single_print(f"aw matrix:\n{aw}")
+                pt.single_print(f"bw vector: {bw}")
         else:
             # Process has no data
             aw = np.zeros((0, a_node.shape[1] if len(a_node) > 0 else 0), dtype=np.float64)

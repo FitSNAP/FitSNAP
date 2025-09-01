@@ -52,6 +52,9 @@ class RidgeSlate(Solver):
         else:
             self.alpha = 1e-6
             self.tile_size = 256  # Default tile size for blocking
+        
+        # Store redistributed testing mask for reuse
+        self.redistributed_testing_mask = None
 
     def perform_fit(self):
         """
@@ -61,6 +64,44 @@ class RidgeSlate(Solver):
         
         pt = self.pt
         
+        # First, handle the Testing mask redistribution if it exists
+        # We need to redistribute the Testing mask the same way split_by_node redistributes data
+        testing_node = None
+        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing']:
+            # The Testing mask has been gathered within each node
+            testing_full = pt.fitsnap_dict['Testing']
+            
+            # Create a numpy array version for redistribution
+            testing_array = np.array(testing_full, dtype=np.int8)
+            
+            # Store original scraped lengths before split_by_node
+            original_scraped_length = pt.shared_arrays['a'].get_scraped_length()
+            
+            # The Testing mask needs to be treated as a SharedArray for redistribution
+            # Create a temporary shared array for the testing mask with multinode flag
+            pt.create_shared_array('testing_mask_temp', len(testing_array), dtype='i', tm=1)
+            if pt._sub_rank == 0:
+                pt.shared_arrays['testing_mask_temp'].array[:] = testing_array
+            pt.sub_barrier()
+            
+            # Apply split_by_node to redistribute the testing mask
+            pt.split_by_node(pt.shared_arrays['testing_mask_temp'])
+            
+            # Extract the redistributed testing mask for this node
+            node_length = pt.shared_arrays['testing_mask_temp'].get_node_length()
+            testing_node = pt.shared_arrays['testing_mask_temp'].array[:node_length].astype(bool)
+            
+            # Store for reuse in evaluate_errors
+            self.redistributed_testing_mask = testing_node.copy()
+            
+            # Clean up temporary array
+            if not pt.stubs:
+                try:
+                    pt.shared_arrays['testing_mask_temp'].win.Free()
+                except:
+                    pass
+            del pt.shared_arrays['testing_mask_temp']
+        
         # Split arrays by node for distributed computation
         pt.split_by_node(pt.shared_arrays['w'])
         pt.split_by_node(pt.shared_arrays['a'])
@@ -69,64 +110,48 @@ class RidgeSlate(Solver):
         node_length = pt.shared_arrays['a'].get_node_length()
         scraped_length = pt.shared_arrays['a'].get_scraped_length()
         lengths = [total_length, node_length, scraped_length]
-        print(f"*** Node {pt._node_index} Rank {pt._rank} total_length {total_length} node_length {node_length} scraped_length {scraped_length} len(pt.fitsnap_dict['Testing']) {len(pt.fitsnap_dict['Testing'])}", flush=True)
         
-
-
-
-        
-        # Handle the Testing mask for multi-node execution
-        # The issue is that gather_fitsnap only gathers within each node using _sub_comm
-        # For multi-node, we need to gather across ALL nodes to get the full Testing mask
-        if 'Testing' in pt.fitsnap_dict:
-
-            print(f"*** Node {pt._node_index} Rank {pt._rank} Testing", flush=True)
-
-        else:
-            # No Testing mask in fitsnap_dict
-            pt.fitsnap_dict['Testing'] = None
+        if pt._sub_rank == 0:
+            pt.sub_print(f"Node {pt._node_index}: total_length={total_length}, node_length={node_length}, scraped_length={scraped_length}")
+            if testing_node is not None:
+                pt.sub_print(f"Node {pt._node_index}: Testing mask redistributed, length={len(testing_node)}")
         
 
         
-        # Get the shared data for this node
-        w_node = pt.shared_arrays['w'].array[:]
-        a_node = pt.shared_arrays['a'].array[:]
-        b_node = pt.shared_arrays['b'].array[:]
+        # Get the shared data for this node (after redistribution)
+        # Use node_length to get the correct amount of data
+        w_node = pt.shared_arrays['w'].array[:node_length]
+        a_node = pt.shared_arrays['a'].array[:node_length]
+        b_node = pt.shared_arrays['b'].array[:node_length]
         
         # Handle testing/training split
         training_node = None
-        if 'Testing' in pt.fitsnap_dict:
-            testing_node = pt.fitsnap_dict.get('Testing', [])
-            
-            # Convert to boolean numpy array if it exists and has elements
-            if testing_node and len(testing_node) > 0:
-                # Convert to numpy array of booleans
-                testing_node = np.array(testing_node, dtype=bool)
+        if testing_node is not None and len(testing_node) > 0:
+            # The testing_node mask has already been redistributed above
+            # Check if sizes match
+            if len(testing_node) == len(w_node):
+                # Create training mask (inverse of testing)
+                training_node = ~testing_node
                 
-                # Check if sizes match
-                if len(testing_node) == len(w_node):
-                    # Create training mask (inverse of testing)
-                    training_node = ~testing_node
-                    
-                    # Count samples
-                    train_count = np.sum(training_node)
-                    test_count = np.sum(testing_node)
-                    
-                    if pt._sub_rank == 0:
-                        pt.sub_print(f"Node {pt._node_index}: Using {train_count} training, {test_count} testing samples")
-                    
-                    # Filter to training data only
-                    w_node = w_node[training_node]
-                    a_node = a_node[training_node]
-                    b_node = b_node[training_node]
-                else:
-                    error_msg = (f"Node {pt._node_index} mask/data size mismatch! "
-                                f"Mask length: {len(testing_node)}, Data length: {len(w_node)}. "
-                                f"This indicates an error in data distribution.")
-                    if pt._sub_rank == 0:
-                        pt.sub_print(f"ERROR: {error_msg}")
-                    # Raise an exception to stop execution
-                    raise ValueError(error_msg)
+                # Count samples
+                train_count = np.sum(training_node)
+                test_count = np.sum(testing_node)
+                
+                if pt._sub_rank == 0:
+                    pt.sub_print(f"Using {train_count} training, {test_count} testing samples")
+                
+                # Filter to training data only
+                w_node = w_node[training_node]
+                a_node = a_node[training_node]
+                b_node = b_node[training_node]
+            else:
+                error_msg = (f"Node {pt._node_index} mask/data size mismatch! "
+                            f"Mask length: {len(testing_node)}, Data length: {len(w_node)}. "
+                            f"This indicates an error in data distribution.")
+                if pt._sub_rank == 0:
+                    pt.sub_print(f"ERROR: {error_msg}")
+                # Raise an exception to stop execution
+                raise ValueError(error_msg)
         
         # Now distribute the node's (possibly filtered) data across all processes on this node
         # Each process gets a portion based on its subrank
@@ -224,11 +249,13 @@ class RidgeSlate(Solver):
         """Evaluate training and testing errors using distributed computation."""
         pt = self.pt
         
-        # Each node computes predictions for its portion of data
-        # The arrays are already split by node
-        a_node = pt.shared_arrays['a'].array
-        b_node = pt.shared_arrays['b'].array
-        w_node = pt.shared_arrays['w'].array
+        # Get node_length for accessing the redistributed data
+        node_length = pt.shared_arrays['a'].get_node_length()
+        
+        # Each node computes predictions for its portion of data (after redistribution)
+        a_node = pt.shared_arrays['a'].array[:node_length]
+        b_node = pt.shared_arrays['b'].array[:node_length]
+        w_node = pt.shared_arrays['w'].array[:node_length]
         
         # Local matrix multiply - each node does its portion
         predictions_node = a_node @ self.fit
@@ -237,11 +264,9 @@ class RidgeSlate(Solver):
         errors_node = (predictions_node - b_node) * w_node
         
         # Get testing mask for this node's data
-        if 'Testing' in pt.fitsnap_dict and any(pt.fitsnap_dict['Testing']):
-            testing_global = pt.fitsnap_dict['Testing']
-            # Get this node's portion of the testing mask (same slicing as split_by_node)
-            testing_node = testing_global[pt._node_index::pt._number_of_nodes]
-            testing_node = np.array(testing_node)
+        if self.redistributed_testing_mask is not None:
+            # Use the stored redistributed testing mask from perform_fit
+            testing_node = self.redistributed_testing_mask
             training_node = ~testing_node
             
             # Calculate local error statistics

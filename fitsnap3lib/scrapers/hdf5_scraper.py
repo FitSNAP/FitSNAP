@@ -14,8 +14,6 @@ def atomic_number_to_symbol(n):
 def atomic_symbol_to_number(s):
     return {"H":1,"C":6,"N":7,"O":8,"F":9,"Na":11,"Mg":12,"P":15,"S":16,"Cl":17,"K":19,"Ca":20}[s]
 
-
-
 # ------------------------------------------------------------------------------------------------
 
 class HDF5(Scraper):
@@ -34,7 +32,7 @@ class HDF5(Scraper):
           allowed_elements = self.config.sections["ACE"].types
         
         self.allowed_atomic_numbers = set(atomic_symbol_to_number(e) for e in allowed_elements)
-        self.hdf5_path = path.join(self.config.sections["PATH"].datapath, \
+        self.hdf5_path = path.join(self.config.sections["PATH"].dataPath, \
           self.config.sections["SCRAPER"].filename)
 
         if self.pt.stubs == 0:
@@ -114,7 +112,8 @@ class HDF5(Scraper):
                 #print(f"*** {group_name} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
 
                 # Add ALL configs, not just 80%
-                for j in range(conformations.shape[0]):
+                #for j in range(conformations.shape[0]):
+                for j in range(12):
                     self.local_configs.append((group_name, j))
 
         if self.pt.stubs==0:
@@ -135,11 +134,6 @@ class HDF5(Scraper):
 
         if self.pt.stubs==1:
             self.my_configs = self.local_configs[:3]
-            # Simple training/validation split for stubs
-            n_training = int(len(self.my_configs) * 0.8)
-            self.config_assignments = {}
-            for idx, cfg in enumerate(self.my_configs):
-                self.config_assignments[cfg] = (idx >= n_training)
         else:
         
             all_configs = self.comm.allgather(self.local_configs)
@@ -147,30 +141,21 @@ class HDF5(Scraper):
             flat_configs.sort()
 
             total = len(flat_configs)
-            
-            # Distribute configs in contiguous blocks FIRST
+            #total = 1*(self.size)
+
             base = total // (self.size)
+
+            # make sure that all ranks have same number of configs
+            # remainder extra configs can be used for validation testing
             remainder = total % self.size
+            #remainder = 0
 
             start = self.rank * base + min(self.rank, remainder)
             stop = start + base + (1 if self.rank < remainder else 0)
             expected = base + (1 if self.rank < remainder else 0)
             self.my_configs = flat_configs[start:stop]
             actual = len(self.my_configs)
-            
-            # Now do 80/20 training/validation split LOCALLY within each rank's block
-            # This ensures every rank has both training and validation data
-            n_training_local = int(len(self.my_configs) * 0.8)
-            n_validation_local = len(self.my_configs) - n_training_local
-            
-            # Create local assignments - first 80% of THIS rank's configs are training
-            self.config_assignments = {}
-            for idx, cfg in enumerate(self.my_configs):
-                self.config_assignments[cfg] = (idx >= n_training_local)
-            
-            print(f"[Rank {self.rank}] Total configs: {actual}, "
-                  f"Training: {n_training_local}, Validation: {n_validation_local}", flush=True)
-            
+            #print(f"[Rank {self.rank}] Expected {expected} configs, got {actual}. total {total} base {base}, remainder {remainder}")
             if actual != expected:
                 raise RuntimeError(f"[Rank {self.rank}] Expected {expected} configs, got {actual}")
 
@@ -179,11 +164,35 @@ class HDF5(Scraper):
     def scrape_configs(self):
         self.data = []
         
-        # Use the pre-computed global assignments from divvy_up_configs
-        # This ensures all ranks have consistent training/validation split
+        # Calculate training/validation split
+        # IMPORTANT: Each rank must have SAME number of training configs
+        # Calculate based on total configs across all ranks
+        if self.pt.stubs == 0:
+            # Get total number of configs across all ranks
+            local_count = len(self.my_configs)
+            total_configs_global = self.comm.allreduce(local_count)
+            
+            # Calculate how many training configs each rank should have
+            # 80% of total for training, distributed evenly across ranks
+            total_training = int(total_configs_global * 0.8)
+            n_training_per_rank = total_training // self.size
+            
+            # Ensure we don't exceed local configs available
+            n_training = min(n_training_per_rank, len(self.my_configs))
+        else:
+            # For non-MPI case
+            n_training = int(len(self.my_configs) * 0.8)
+            
+        n_validation = len(self.my_configs) - n_training
         
         print(f"[Rank {self.rank if hasattr(self, 'rank') else 'unknown'}] "
-              f"Scraping {len(self.my_configs)} configs", flush=True )
+              f"Total configs: {len(self.my_configs)}, Training: {n_training}, Validation: {n_validation}")
+        
+        # Create a deterministic assignment of training/validation
+        config_assignments = {}
+        for idx, (g, i) in enumerate(self.my_configs):
+            # First n_training are training (test_bool=False), rest are validation (test_bool=True)
+            config_assignments[(g, i)] = (idx >= n_training)
 
         file_kwargs = {"driver": "mpio", "comm": self.comm} if self.pt.stubs == 0 else {}
 
@@ -196,6 +205,9 @@ class HDF5(Scraper):
         HARTREE_TO_KCAL_MOL = 627.509474
         FORCE_CONV = HARTREE_TO_KCAL_MOL / BOHR_TO_ANGSTROM
 
+        import logging
+        logging.getLogger("numba").setLevel(logging.WARNING)
+
         with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
             for group_name in sorted(grouped):
                 group = f[group_name]
@@ -204,8 +216,8 @@ class HDF5(Scraper):
                 formation_energy = group["formation_energy"][()] * HARTREE_TO_KCAL_MOL
                 dft_total_gradient = group["dft_total_gradient"][()] * FORCE_CONV
                 atomic_numbers = group["atomic_numbers"][()]
-                
                 for i in grouped[group_name]:
+
                     self.data.append({
                         "Group": group.name,
                         "File": f"{group.name}/{i}",
@@ -217,11 +229,10 @@ class HDF5(Scraper):
                         "NumAtoms": len(atomic_numbers),
                         "Lattice": meta["lattice"],
                         "Bounds": meta["bounds"],
-                        "test_bool": self.config_assignments[(group_name, i)],
+                        "test_bool": config_assignments[(group_name, i)],
                         "eweight": meta["eweight"],
                         "fweight": meta["fweight"] / len(atomic_numbers),
                     })
 
         #print(self.data)
         return self.data
-

@@ -60,150 +60,78 @@ class RidgeSlate(Solver):
         """
         
         pt = self.pt
-                
-        # Debug: print FULL matrices before filtering DO NOT REMOVE
-        np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
-        self.pt.all_print(
-          f"--------\nRidge solver BEFORE filtering:\n"
-          f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
-          f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}\n"
-          f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}\n--------\n\n"
-        )
-
         
-        # Get the raw arrays from shared memory
+        # Debug output - print all in one statement to avoid tangled output
+        pt.all_print(f"--------\n"
+                     f"Ridge solver BEFORE filtering:\n"
+                     f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
+                     f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}\n"
+                     f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}\n"
+                     f"--------\n")
+        
+        # Get raw arrays from shared memory (may include padding)
         a_full = pt.shared_arrays['a'].array
         b_full = pt.shared_arrays['b'].array  
         w_full = pt.shared_arrays['w'].array
         
-        # Find actual data vs padding by checking for non-zero weights
-        # Padded rows have w=0
+        # Find actual data by checking for non-zero weights (padded rows have w=0)
         non_zero_mask = w_full != 0
-        actual_length = np.sum(non_zero_mask)
+        actual_data_indices = np.where(non_zero_mask)[0]
         
-        # Extract only actual data (exclude padding)
-        if actual_length > 0:
+        if len(actual_data_indices) > 0:
             a_node = a_full[non_zero_mask]
             b_node = b_full[non_zero_mask]
             w_node = w_full[non_zero_mask]
         else:
-            # This node has no data
+            # No data on this node
             a_node = np.zeros((0, a_full.shape[1] if len(a_full.shape) > 1 else 0), dtype=np.float64)
             b_node = np.zeros(0, dtype=np.float64)
             w_node = np.zeros(0, dtype=np.float64)
         
-        np.set_printoptions(precision=5, suppress=True, linewidth=np.inf)
-        
-        # Debug output: show what data this node has
-        if pt._sub_rank == 0:
-            pt.sub_print(f"Node {pt._node_index}: actual_length={actual_length} (excluding padding)")
-            pt.sub_print(f"Node {pt._node_index}: a shape after removing padding: {a_node.shape}")
-            if actual_length <= 12:  # Only print small matrices
-                pt.sub_print(f"Node {pt._node_index}: Full a_node:\n{a_node}")
-                pt.sub_print(f"Node {pt._node_index}: Full b_node: {b_node}")
-                pt.sub_print(f"Node {pt._node_index}: Full w_node: {w_node}")
-        
-        # Handle train/test split using Testing mask
+        # Handle train/test split
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
             testing_gathered = pt.fitsnap_dict['Testing']
             
-            # Debug: understand the structure
-            if pt._sub_rank == 0:
-                pt.sub_print(f"\nNode {pt._node_index}: Processing Testing mask")
-                pt.sub_print(f"Node {pt._node_index}: Testing gathered type={type(testing_gathered)}")
-                if isinstance(testing_gathered, list):
-                    pt.sub_print(f"Node {pt._node_index}: Testing gathered len={len(testing_gathered)}")
-                    # Show structure of first few elements
-                    for i in range(min(4, len(testing_gathered))):
-                        elem = testing_gathered[i]
-                        if isinstance(elem, list):
-                            pt.sub_print(f"Node {pt._node_index}: testing_gathered[{i}] is list with {len(elem)} elements")
-                        else:
-                            pt.sub_print(f"Node {pt._node_index}: testing_gathered[{i}] = {elem}")
-            
-            # The Testing mask was gathered with allgather
-            # It's a list where each element is the contribution from one rank
-            # We need to extract only the portions from ranks belonging to this node
-            
-            # Determine which ranks belong to this node
-            ranks_on_this_node = []
-            for rank in range(pt._size):
-                # Calculate which node this rank belongs to
-                # This depends on how MPI distributes ranks across nodes
-                # Typically: ranks 0,1 on node 0; ranks 2,3 on node 1, etc.
-                node_for_rank = rank // pt._sub_size
-                if node_for_rank == pt._node_index:
-                    ranks_on_this_node.append(rank)
-            
-            if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: Ranks on this node: {ranks_on_this_node}")
-            
-            # Extract Testing values from the ranks on this node
+            # The Testing list was gathered with _sub_comm.allgather (within node)
+            # It contains contributions from all ranks on THIS node
+            # Filter out padding (' ' or other non-boolean values)
             testing_node = []
             if isinstance(testing_gathered, list):
-                for rank_idx in ranks_on_this_node:
-                    if rank_idx < len(testing_gathered):
-                        rank_contribution = testing_gathered[rank_idx]
-                        if isinstance(rank_contribution, list):
-                            # Filter out padding markers (non-boolean values)
-                            for val in rank_contribution:
-                                if isinstance(val, bool):
-                                    testing_node.append(val)
-                        elif isinstance(rank_contribution, bool):
-                            testing_node.append(rank_contribution)
+                for item in testing_gathered:
+                    if isinstance(item, list):
+                        for val in item:
+                            if isinstance(val, bool):
+                                testing_node.append(val)
+                    elif isinstance(item, bool):
+                        testing_node.append(item)
             else:
-                # Not a list, just use as-is
                 testing_node = testing_gathered
             
             testing_node = np.array(testing_node, dtype=bool)
             
-            if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: Extracted {len(testing_node)} Testing values")
-                pt.sub_print(f"Node {pt._node_index}: Testing mask: {testing_node}")
-                pt.sub_print(f"Node {pt._node_index}: Sum of Testing (test samples): {np.sum(testing_node)}")
-                pt.sub_print(f"Node {pt._node_index}: Sum of ~Testing (train samples): {np.sum(~testing_node)}")
-            
             # Verify size match
-            if len(testing_node) != actual_length:
-                if pt._sub_rank == 0:
-                    pt.sub_print(f"ERROR: Testing mask size {len(testing_node)} != actual data size {actual_length}")
+            if len(testing_node) != len(a_node):
+                pt.all_print(f"ERROR: Testing mask size {len(testing_node)} != actual data size {len(a_node)}")
                 raise ValueError(f"Testing mask mismatch on node {pt._node_index}")
             
-            # Create training mask (inverse of testing)
+            # Create training mask
             training_node = ~testing_node
-            train_count = np.sum(training_node)
-            test_count = np.sum(testing_node)
             
-            if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: {train_count} training, {test_count} testing samples")
-                pt.sub_print(f"Node {pt._node_index}: Training mask: {training_node}")
-            
-            # Filter to get only training data
+            # Filter for training data only
             w_train = w_node[training_node]
             a_train = a_node[training_node]
             b_train = b_node[training_node]
-            
-            if pt._sub_rank == 0:
-                pt.sub_print(f"\nNode {pt._node_index}: After filtering for training:")
-                pt.sub_print(f"Node {pt._node_index}: a_train shape: {a_train.shape}")
-                if train_count <= 10:  # Only print small matrices
-                    pt.sub_print(f"Node {pt._node_index}: a_train:\n{a_train}")
-                    pt.sub_print(f"Node {pt._node_index}: b_train: {b_train}")
-                    pt.sub_print(f"Node {pt._node_index}: w_train: {w_train}")
         else:
-            # No test/train split - use all data for training
-            if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: No Testing mask, using all {actual_length} samples for training")
+            # No test/train split
             w_train = w_node
             a_train = a_node
             b_train = b_node
         
-        # Now distribute the training data across processes within this node
+        # Distribute training data across processes within this node
         node_rows = len(w_train)
         rows_per_proc = node_rows // pt._sub_size
         extra_rows = node_rows % pt._sub_size
         
-        # Calculate contiguous block for this process
         if pt._sub_rank < extra_rows:
             start_idx = pt._sub_rank * (rows_per_proc + 1)
             end_idx = start_idx + rows_per_proc + 1
@@ -222,7 +150,6 @@ class RidgeSlate(Solver):
             aw = w_local[:, np.newaxis] * a_local
             bw = w_local * b_local
         else:
-            # Process has no data
             aw = np.zeros((0, a_train.shape[1] if len(a_train) > 0 else 0), dtype=np.float64)
             bw = np.zeros(0, dtype=np.float64)
         
@@ -230,12 +157,12 @@ class RidgeSlate(Solver):
         m_local = aw.shape[0]
         n_features = aw.shape[1] if len(aw) > 0 else (a_train.shape[1] if len(a_train) > 0 else 0)
         
-        # Make sure all processes agree on n_features
+        # Ensure all processes agree on n_features
         n_features_array = np.array([n_features], dtype=np.int32)
         pt._comm.Allreduce(MPI.IN_PLACE, n_features_array, op=MPI.MAX)
         n_features = n_features_array[0]
         
-        # Ensure correct shape even for empty arrays
+        # Ensure correct shape
         if m_local == 0:
             aw = np.zeros((0, n_features), dtype=np.float64)
             bw = np.zeros(0, dtype=np.float64)
@@ -246,16 +173,16 @@ class RidgeSlate(Solver):
             pt.single_print(f"aw shape: {aw.shape}")
             pt.single_print(f"bw shape: {bw.shape}")
             pt.single_print(f"alpha: {self.alpha}")
-            if m_local > 0 and m_local <= 5:
+            if m_local > 0:
                 pt.single_print(f"aw matrix:\n{aw}")
                 pt.single_print(f"bw vector: {bw}")
         
         # ALL processes participate in the SLATE solve
         self.fit = self._slate_ridge_solve_qr(aw, bw, m_local, n_features, pt)
         
-        # Solution is already available on all processes after SLATE solve
+        # Solution is available on all processes
         if pt._rank == 0:
-            pt.single_print(f"Solution first 5 coefficients: {self.fit[:5]}")
+            pt.single_print(f"First 5 coefficients: {self.fit[:min(5, len(self.fit))]}")
     
     def _slate_ridge_solve_qr(self, aw, bw, m_local, n_features, pt):
         """
@@ -305,7 +232,7 @@ class RidgeSlate(Solver):
         """Evaluate training and testing errors using distributed computation."""
         pt = self.pt
         
-        # Get the raw arrays
+        # Get raw arrays
         a_full = pt.shared_arrays['a'].array
         b_full = pt.shared_arrays['b'].array
         w_full = pt.shared_arrays['w'].array
@@ -332,25 +259,16 @@ class RidgeSlate(Solver):
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing']:
             testing_gathered = pt.fitsnap_dict['Testing']
             
-            # Determine which ranks belong to this node
-            ranks_on_this_node = []
-            for rank in range(pt._size):
-                node_for_rank = rank // pt._sub_size
-                if node_for_rank == pt._node_index:
-                    ranks_on_this_node.append(rank)
-            
-            # Extract Testing values from the ranks on this node
+            # Filter out padding to get actual Testing mask for this node
             testing_node = []
             if isinstance(testing_gathered, list):
-                for rank_idx in ranks_on_this_node:
-                    if rank_idx < len(testing_gathered):
-                        rank_contribution = testing_gathered[rank_idx]
-                        if isinstance(rank_contribution, list):
-                            for val in rank_contribution:
-                                if isinstance(val, bool):
-                                    testing_node.append(val)
-                        elif isinstance(rank_contribution, bool):
-                            testing_node.append(rank_contribution)
+                for item in testing_gathered:
+                    if isinstance(item, list):
+                        for val in item:
+                            if isinstance(val, bool):
+                                testing_node.append(val)
+                    elif isinstance(item, bool):
+                        testing_node.append(item)
             else:
                 testing_node = testing_gathered
             

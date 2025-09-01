@@ -43,6 +43,7 @@ class RIDGE(Solver):
                 aw = aw.T @ aw
                 
             alval = self.config.sections['RIDGE'].alpha
+            method = self.config.sections['RIDGE'].method
 
             if not self.config.sections['RIDGE'].local_solver:
                 try:
@@ -50,9 +51,9 @@ class RIDGE(Solver):
                     reg = Ridge(alpha = alval, fit_intercept = False)
                 except ModuleNotFoundError:
                     self.pt.single_print('Cannot find sklearn module, using local ridge solver anyway')
-                    reg = Local_Ridge(alpha = alval, fit_intercept = False)
+                    reg = Local_Ridge(alpha = alval, fit_intercept = False, mode = method)
             elif self.config.sections['RIDGE'].local_solver:
-                reg = Local_Ridge(alpha = alval, fit_intercept = False)
+                reg = Local_Ridge(alpha = alval, fit_intercept = False, mode = method)
 
             reg.fit(aw, bw)
             # self.pt.single_print('printing fit: ', reg.coef_)

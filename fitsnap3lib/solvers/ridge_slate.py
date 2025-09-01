@@ -62,6 +62,8 @@ class RidgeSlate(Solver):
         pt = self.pt
         
         # Debug output - print all in one statement to avoid tangled output
+        # *** DO NOT REMOVE !!! ***
+        np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
         pt.all_print(f"--------\n"
                      f"Ridge solver BEFORE filtering:\n"
                      f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"

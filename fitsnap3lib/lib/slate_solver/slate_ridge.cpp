@@ -50,12 +50,64 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     std::vector<int> m_locals(mpi_size);
     MPI_Allgather(&m_local, 1, MPI_INT, m_locals.data(), 1, MPI_INT, comm);
     
-    int m_total = 0;
-    std::vector<int> m_offsets(mpi_size + 1, 0);
-    for (int i = 0; i < mpi_size; ++i) {
-        m_total += m_locals[i];
-        m_offsets[i + 1] = m_offsets[i] + m_locals[i];
+    // FitSNAP uses node-based distribution: first to nodes, then within nodes
+    // We need to understand the node structure
+    // Assume processes are laid out as: node0_procs, node1_procs, node2_procs, ...
+    
+    // First, figure out the number of processes per node
+    // We can infer this by looking at the pattern of m_locals
+    // All processes on the same node should have similar row counts
+    
+    // Get MPI node information
+    MPI_Comm node_comm;
+    MPI_Comm_split_type(comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &node_comm);
+    int node_rank, node_size;
+    MPI_Comm_rank(node_comm, &node_rank);
+    MPI_Comm_size(node_comm, &node_size);
+    
+    // Create a communicator for all rank 0s of each node
+    int color = (node_rank == 0) ? 0 : MPI_UNDEFINED;
+    MPI_Comm head_comm;
+    MPI_Comm_split(comm, color, mpi_rank, &head_comm);
+    
+    int num_nodes = 0;
+    if (head_comm != MPI_COMM_NULL) {
+        MPI_Comm_size(head_comm, &num_nodes);
     }
+    MPI_Bcast(&num_nodes, 1, MPI_INT, 0, node_comm);
+    
+    // Calculate which node this rank belongs to
+    int node_id = mpi_rank / node_size;
+    
+    // Calculate total rows and create offset arrays
+    // For FitSNAP's distribution:
+    // - Each node owns a contiguous block of the global rows
+    // - Within each node, processes share that block
+    
+    // First, sum up rows per node
+    std::vector<int> rows_per_node(num_nodes, 0);
+    for (int rank = 0; rank < mpi_size; ++rank) {
+        int rank_node = rank / node_size;
+        if (rank_node < num_nodes) {
+            rows_per_node[rank_node] += m_locals[rank];
+        }
+    }
+    
+    // Calculate node offsets in global data
+    std::vector<int> node_offsets(num_nodes + 1, 0);
+    for (int n = 0; n < num_nodes; ++n) {
+        node_offsets[n + 1] = node_offsets[n] + rows_per_node[n];
+    }
+    int m_total = node_offsets[num_nodes];
+    
+    // Now calculate this rank's offset within its node's data
+    int rank_offset_in_node = 0;
+    for (int r = node_id * node_size; r < mpi_rank; ++r) {
+        rank_offset_in_node += m_locals[r];
+    }
+    
+    // Global offset for this rank's data
+    int global_offset = node_offsets[node_id] + rank_offset_in_node;
     
     if (mpi_rank == 0) {
         std::cerr << "Total rows (m_total): " << m_total << std::endl;
@@ -127,15 +179,21 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                     double* tile_data = a_tiles.back().data();
                     
                     // Copy data if it's from our local portion
-                    if (i < m_total && i >= m_offsets[mpi_rank] && i < m_offsets[mpi_rank + 1]) {
-                        // Copy from local data
-                        int local_start = i - m_offsets[mpi_rank];
-                        int rows_to_copy = std::min(rows_in_tile, m_offsets[mpi_rank + 1] - i);
+                    // Check if any rows in this tile belong to our rank
+                    int my_global_start = global_offset;
+                    int my_global_end = global_offset + m_local;
+                    
+                    if (i < m_total && i < my_global_end && (i + rows_in_tile) > my_global_start) {
+                        // Calculate which rows of the tile we own
+                        int tile_row_start = std::max(0, my_global_start - i);
+                        int tile_row_end = std::min(rows_in_tile, my_global_end - i);
                         
-                        for (int r = 0; r < rows_to_copy; ++r) {
+                        for (int r = tile_row_start; r < tile_row_end; ++r) {
+                            int global_row = i + r;
+                            int local_row = global_row - my_global_start;
                             for (int c = 0; c < cols_in_tile; ++c) {
                                 tile_data[r * cols_in_tile + c] = 
-                                    local_a_data[(local_start + r) * n + j + c];
+                                    local_a_data[local_row * n + j + c];
                             }
                         }
                     }
@@ -165,12 +223,18 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 double* b_tile_data = b_tiles.back().data();
                 
                 // Copy data if it's from our local portion
-                if (i < m_total && i >= m_offsets[mpi_rank] && i < m_offsets[mpi_rank + 1]) {
-                    int local_start = i - m_offsets[mpi_rank];
-                    int rows_to_copy = std::min(rows_in_tile, m_offsets[mpi_rank + 1] - i);
+                int my_global_start = global_offset;
+                int my_global_end = global_offset + m_local;
+                
+                if (i < m_total && i < my_global_end && (i + rows_in_tile) > my_global_start) {
+                    // Calculate which rows of the tile we own
+                    int tile_row_start = std::max(0, my_global_start - i);
+                    int tile_row_end = std::min(rows_in_tile, my_global_end - i);
                     
-                    for (int r = 0; r < rows_to_copy; ++r) {
-                        b_tile_data[r] = local_b_data[local_start + r];
+                    for (int r = tile_row_start; r < tile_row_end; ++r) {
+                        int global_row = i + r;
+                        int local_row = global_row - my_global_start;
+                        b_tile_data[r] = local_b_data[local_row];
                     }
                 }
                 
@@ -228,6 +292,12 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
             std::cerr << std::endl;
             std::cerr << "=====================================\n" << std::endl;
             std::cerr.flush();
+        }
+        
+        // Clean up MPI communicators
+        MPI_Comm_free(&node_comm);
+        if (head_comm != MPI_COMM_NULL) {
+            MPI_Comm_free(&head_comm);
         }
         
     } catch (const std::exception& e) {

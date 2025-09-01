@@ -31,6 +31,14 @@ class RIDGE(Solver):
                 training = [True]*np.shape(a)[0]
             else:
                 training = [not elem for elem in pt.fitsnap_dict['Testing']]
+                # Debug: print FULL matrices before filtering
+                self.pt.single_print(f"\nRidge solver BEFORE filtering:")
+                self.pt.single_print(f"Full Testing mask: {pt.fitsnap_dict['Testing']}")
+                self.pt.single_print(f"Full training mask: {training}")
+                self.pt.single_print(f"Full a matrix shape: {pt.shared_arrays['a'].array.shape}")
+                self.pt.single_print(f"Full a matrix:\n{pt.shared_arrays['a'].array}")
+                self.pt.single_print(f"Full b vector: {pt.shared_arrays['b'].array}")
+                self.pt.single_print(f"Full w vector: {pt.shared_arrays['w'].array}")
 
             if a is None and b is None and w is None:
                 w = pt.shared_arrays['w'].array[training]
@@ -59,7 +67,10 @@ class RIDGE(Solver):
             self.fit = reg.coef_
             
             # Debug: print dimensions and first few coefficients
-            self.pt.single_print(f'Ridge solver: aw.shape={aw.shape}, bw.shape={bw.shape}, alpha={alval}')
+            self.pt.single_print(f"\nRidge solver AFTER filtering (training only):")
+            self.pt.single_print(f'aw.shape={aw.shape}, bw.shape={bw.shape}, alpha={alval}')
+            self.pt.single_print(f'aw matrix:\n{aw}')
+            self.pt.single_print(f'bw vector: {bw}')
             self.pt.single_print(f'First 5 coefficients: {self.fit[:5]}')
             self.pt.single_print(f'Training samples used: {len(training)} total, {sum(training)} for training')
             residues = np.matmul(aw,reg.coef_) - bw

@@ -67,6 +67,8 @@ class RidgeSlate(Solver):
         a_node = pt.shared_arrays['a'].array[:scraped_length]
         b_node = pt.shared_arrays['b'].array[:scraped_length]
         
+        np.set_printoptions(precision=3, suppress=True, linewidth=np.inf)
+        
         if pt._sub_rank == 0:
             pt.sub_print(f"Node {pt._node_index}: scraped_length={scraped_length}")
             pt.sub_print(f"Node {pt._node_index}: FULL a matrix shape: {a_node.shape}")
@@ -107,20 +109,29 @@ class RidgeSlate(Solver):
                     n_false = np.sum(~testing_node)
                     pt.sub_print(f"Node {pt._node_index}: Testing mask has {n_true} True (testing), {n_false} False (training)")
             else:
-                # Unexpected format - try to use as-is
+                # CRITICAL FIX: Filter out padding entries (' ' or empty strings)
+                # Only keep actual boolean values
                 if pt._sub_rank == 0:
-                    pt.sub_print(f"WARNING: Node {pt._node_index} unexpected Testing format, attempting to flatten")
-                # Try to flatten whatever structure we have
+                    pt.sub_print(f"Node {pt._node_index}: Filtering Testing mask to remove padding")
                 testing_flat = []
                 if isinstance(testing_gathered, list):
                     for item in testing_gathered:
                         if isinstance(item, list):
-                            testing_flat.extend(item)
-                        elif item is not None:
+                            for val in item:
+                                # Only add actual boolean values, skip padding
+                                if isinstance(val, bool):
+                                    testing_flat.append(val)
+                        elif isinstance(item, bool):
                             testing_flat.append(item)
                     testing_node = np.array(testing_flat, dtype=bool) if testing_flat else np.array([], dtype=bool)
                 else:
                     testing_node = np.array(testing_gathered, dtype=bool)
+                    
+                if pt._sub_rank == 0:
+                    pt.sub_print(f"Node {pt._node_index}: After filtering, Testing mask length={len(testing_node)}")
+                    n_true = np.sum(testing_node)
+                    n_false = np.sum(~testing_node)
+                    pt.sub_print(f"Node {pt._node_index}: Testing mask has {n_true} True (testing), {n_false} False (training)")
             
             # Verify the Testing mask matches our data size
             if len(testing_node) != scraped_length:

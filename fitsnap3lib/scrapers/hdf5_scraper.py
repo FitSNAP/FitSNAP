@@ -88,7 +88,7 @@ class HDF5(Scraper):
 
                 # Scale all to ~comparable range using expected magnitude
                 norm = {
-                    "energy":     1.0 / 100.0,     # normalize ~100 kcal/mol
+                    "energy":     1.0 / 1.0,     # normalize ~100 kcal/mol
                     "force":      1.0 / 5000.0,    # normalize ~5000 kcal/mol/Å
                 }
 

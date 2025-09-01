@@ -11,6 +11,6 @@ class Ridge(Section):
         self._check_if_used("SOLVER", "solver", "SVD")
 
         self.alpha = self.get_value("RIDGE", "alpha", "1.0E-8", "float")
-        self.local_solver = self.get_value("RIDGE", "local_solver", "1", "bool")
+        self.local_solver = self.get_value("RIDGE", "local_solver", "0", "bool")
         self.method = self.get_value("RIDGE", "method", "SVD", "str")
         self.delete()

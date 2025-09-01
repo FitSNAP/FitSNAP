@@ -64,10 +64,10 @@ class RidgeSlate(Solver):
         # Debug: print FULL matrices before filtering DO NOT REMOVE
         np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
         self.pt.all_print(
-          f"Ridge solver BEFORE filtering:\n"
-          f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}"
-          f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}"
-          f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}"
+          f"--------\nRidge solver BEFORE filtering:\n"
+          f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
+          f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}\n"
+          f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}\n--------\n\n"
         )
 
         

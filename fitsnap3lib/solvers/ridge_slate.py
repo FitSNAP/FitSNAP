@@ -83,7 +83,6 @@ class RidgeSlate(Solver):
         else:
             # No Testing mask in fitsnap_dict
             pt.fitsnap_dict['Testing'] = None
-            if pt._sub_rank == 0:
         
 
         

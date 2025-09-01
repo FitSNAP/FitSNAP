@@ -32,7 +32,7 @@ class HDF5(Scraper):
           allowed_elements = self.config.sections["ACE"].types
         
         self.allowed_atomic_numbers = set(atomic_symbol_to_number(e) for e in allowed_elements)
-        self.hdf5_path = path.join(self.config.sections["PATH"].dataPath, \
+        self.hdf5_path = path.join(self.config.sections["PATH"].datapath, \
           self.config.sections["SCRAPER"].filename)
 
         if self.pt.stubs == 0:

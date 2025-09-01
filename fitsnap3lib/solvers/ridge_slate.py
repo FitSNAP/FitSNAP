@@ -61,20 +61,38 @@ class RidgeSlate(Solver):
         
         pt = self.pt
         
-        # Get the data for this node - use only the scraped length, not the full padded array
-        scraped_length = pt.shared_arrays['a'].get_scraped_length()
-        w_node = pt.shared_arrays['w'].array[:scraped_length]
-        a_node = pt.shared_arrays['a'].array[:scraped_length]
-        b_node = pt.shared_arrays['b'].array[:scraped_length]
+        # Get the full arrays (may include padding)
+        a_full = pt.shared_arrays['a'].array
+        b_full = pt.shared_arrays['b'].array
+        w_full = pt.shared_arrays['w'].array
+        
+        # Detect actual data length by finding non-zero weights
+        # Padded rows have w=0
+        non_zero_mask = w_full != 0
+        actual_data_indices = np.where(non_zero_mask)[0]
+        
+        if len(actual_data_indices) > 0:
+            # Get the actual data length (excluding padding)
+            actual_length = len(actual_data_indices)
+            # Extract only the actual data (non-padded rows)
+            a_node = a_full[non_zero_mask]
+            b_node = b_full[non_zero_mask]
+            w_node = w_full[non_zero_mask]
+        else:
+            # No data on this node
+            actual_length = 0
+            a_node = np.zeros((0, a_full.shape[1] if len(a_full.shape) > 1 else 0), dtype=np.float64)
+            b_node = np.zeros(0, dtype=np.float64)
+            w_node = np.zeros(0, dtype=np.float64)
         
         np.set_printoptions(precision=5, suppress=True, linewidth=np.inf)
         
         if pt._sub_rank == 0:
-            pt.sub_print(f"Node {pt._node_index}: scraped_length={scraped_length}")
-            pt.sub_print(f"Node {pt._node_index}: FULL a matrix shape: {a_node.shape}")
-            pt.sub_print(f"Node {pt._node_index}: FULL a matrix:\n{a_node}")
-            pt.sub_print(f"Node {pt._node_index}: FULL b vector: {b_node}")
-            pt.sub_print(f"Node {pt._node_index}: FULL w vector: {w_node}")
+            pt.sub_print(f"Node {pt._node_index}: actual_length={actual_length} (excluding padding)")
+            pt.sub_print(f"Node {pt._node_index}: ACTUAL a matrix shape: {a_node.shape}")
+            pt.sub_print(f"Node {pt._node_index}: ACTUAL a matrix (no padding):\n{a_node}")
+            pt.sub_print(f"Node {pt._node_index}: ACTUAL b vector: {b_node}")
+            pt.sub_print(f"Node {pt._node_index}: ACTUAL w vector: {w_node}")
         
         # Handle testing/training split using the Testing mask from fitsnap_dict
         # The Testing mask is gathered with allgather within each node, creating a list of lists
@@ -133,11 +151,11 @@ class RidgeSlate(Solver):
                     n_false = np.sum(~testing_node)
                     pt.sub_print(f"Node {pt._node_index}: Testing mask has {n_true} True (testing), {n_false} False (training)")
             
-            # Verify the Testing mask matches our data size
-            if len(testing_node) != scraped_length:
+            # Verify the Testing mask matches our actual data size
+            if len(testing_node) != actual_length:
                 if pt._sub_rank == 0:
-                    pt.sub_print(f"ERROR on Node {pt._node_index}: Testing mask size {len(testing_node)} != scraped_length {scraped_length}")
-                raise ValueError(f"Testing mask size mismatch on node {pt._node_index}: {len(testing_node)} != {scraped_length}")
+                    pt.sub_print(f"ERROR on Node {pt._node_index}: Testing mask size {len(testing_node)} != actual_length {actual_length}")
+                raise ValueError(f"Testing mask size mismatch on node {pt._node_index}: {len(testing_node)} != {actual_length}")
             
             # Create training mask (inverse of testing)
             training_node = ~testing_node
@@ -162,12 +180,12 @@ class RidgeSlate(Solver):
             b_node = b_node[training_node]
         else:
             if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: No Testing mask found, using all {scraped_length} samples for training")
+                pt.sub_print(f"Node {pt._node_index}: No Testing mask found, using all {actual_length} samples for training")
         
         # Debug: Report total training data across all nodes
         if pt._sub_rank == 0:
             # Gather statistics from all nodes to check for data duplication
-            local_train = len(w_node) if 'w_node' in locals() else scraped_length
+            local_train = len(w_node) if 'w_node' in locals() else actual_length
             local_b_sum = np.sum(b_node) if 'b_node' in locals() else 0.0
             local_b_mean = np.mean(b_node) if 'b_node' in locals() else 0.0
             
@@ -291,11 +309,25 @@ class RidgeSlate(Solver):
         """Evaluate training and testing errors using distributed computation."""
         pt = self.pt
         
-        # Each node computes predictions for its portion of data - use scraped length
-        scraped_length = pt.shared_arrays['a'].get_scraped_length()
-        a_node = pt.shared_arrays['a'].array[:scraped_length]
-        b_node = pt.shared_arrays['b'].array[:scraped_length]
-        w_node = pt.shared_arrays['w'].array[:scraped_length]
+        # Get the full arrays (may include padding)
+        a_full = pt.shared_arrays['a'].array
+        b_full = pt.shared_arrays['b'].array
+        w_full = pt.shared_arrays['w'].array
+        
+        # Detect actual data length by finding non-zero weights
+        # Padded rows have w=0
+        non_zero_mask = w_full != 0
+        
+        if np.any(non_zero_mask):
+            # Extract only the actual data (non-padded rows)
+            a_node = a_full[non_zero_mask]
+            b_node = b_full[non_zero_mask]
+            w_node = w_full[non_zero_mask]
+        else:
+            # No data on this node
+            a_node = np.zeros((0, a_full.shape[1] if len(a_full.shape) > 1 else 0), dtype=np.float64)
+            b_node = np.zeros(0, dtype=np.float64)
+            w_node = np.zeros(0, dtype=np.float64)
         
         # Local matrix multiply - each node does its portion
         predictions_node = a_node @ self.fit

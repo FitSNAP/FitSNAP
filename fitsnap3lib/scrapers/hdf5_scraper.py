@@ -93,7 +93,7 @@ class HDF5(Scraper):
                 }
 
                 importance = {
-                    "energy":     0.1,
+                    "energy":     1.0,
                     "force":      100.0,
                 }
 

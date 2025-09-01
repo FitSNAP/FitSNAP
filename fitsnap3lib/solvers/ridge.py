@@ -24,7 +24,6 @@ class RIDGE(Solver):
         pt = self.pt
         # Only fit on rank 0 to prevent unnecessary memory and work.
         if pt._rank == 0:
-        
             
             if fs_dict is not None:
                 training = [not elem for elem in fs_dict['Testing']]
@@ -35,9 +34,9 @@ class RIDGE(Solver):
                 # Debug: print FULL matrices before filtering DO NOT REMOVE
                 np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
                 self.pt.all_print(f"Ridge solver BEFORE filtering:")
-                self.pt.all_print(f"pt.fitsnap_dict['Testing'] {pt.fitsnap_dict['Testing']}")
+                self.pt.all_print(f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}")
                 self.pt.all_print(f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}")
-                self.pt.all_print(f"pt.shared_arrays['b'].array {pt.shared_arrays['b'].array}")
+                self.pt.all_print(f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}")
 
 
             if a is None and b is None and w is None:
@@ -68,7 +67,6 @@ class RIDGE(Solver):
             
             # Debug: print dimensions and first few coefficients
             self.pt.single_print(f"\nRidge solver AFTER filtering (training only):")
-            self.pt.single_print(f'aw.shape={aw.shape}, bw.shape={bw.shape}, alpha={alval}')
             self.pt.single_print(f'aw matrix:\n{aw}')
             self.pt.single_print(f'bw vector: {bw}')
             self.pt.single_print(f'First 5 coefficients: {self.fit[:5]}')

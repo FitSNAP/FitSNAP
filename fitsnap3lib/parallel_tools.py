@@ -963,7 +963,7 @@ class SharedArray:
         array (np.ndarray): Array of numbers that share memory across processes in the communicator.
     """
 
-    def __init__(self, size1, size2=1, dtype='d', multinode=0, comms=None, MPI=None):
+    def __init__(self, size1, size2=1, dtype='d', multinode=False, comms=None, MPI=None):
         
         self.MPI = MPI
 
@@ -987,6 +987,7 @@ class SharedArray:
         # comm, rank, size
         self._comms = comms
 
+        self._multinode = multinode
         if multinode:
             self.multinode_lengths()
 
@@ -1036,7 +1037,7 @@ class SharedArray:
 
     def multinode_lengths(self):
         # Each head node needs to have mb or its scraped length if longer
-        # Solvers which require this: ScaLAPACK
+        # Solvers which require this: ScaLAPACK & RidgeSlate
         remainder = 0
         self._scraped_length = self._length
         if self._comms[1][1] == 0:

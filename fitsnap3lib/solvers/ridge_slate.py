@@ -71,36 +71,83 @@ class RidgeSlate(Solver):
             # The Testing mask has been gathered within each node
             testing_full = pt.fitsnap_dict['Testing']
             
-            # Create a numpy array version for redistribution
-            testing_array = np.array(testing_full, dtype=np.int8)
-            
-            # Store original scraped lengths before split_by_node
-            original_scraped_length = pt.shared_arrays['a'].get_scraped_length()
-            
-            # The Testing mask needs to be treated as a SharedArray for redistribution
-            # Create a temporary shared array for the testing mask with multinode flag
-            pt.create_shared_array('testing_mask_temp', len(testing_array), dtype='i', tm=1)
             if pt._sub_rank == 0:
-                pt.shared_arrays['testing_mask_temp'].array[:] = testing_array
-            pt.sub_barrier()
+                pt.sub_print(f"Testing mask type: {type(testing_full)}, length: {len(testing_full) if hasattr(testing_full, '__len__') else 'N/A'}")
+                if testing_full and hasattr(testing_full, '__getitem__'):
+                    pt.sub_print(f"First element type: {type(testing_full[0])}")
             
-            # Apply split_by_node to redistribute the testing mask
-            pt.split_by_node(pt.shared_arrays['testing_mask_temp'])
+            # Handle the case where testing_full is a list of lists (from gather_fitsnap)
+            # Flatten it if it's a list of lists
+            if testing_full and len(testing_full) > 0 and isinstance(testing_full[0], list):
+                # Flatten the list of lists
+                testing_full = [item for sublist in testing_full for item in sublist]
             
-            # Extract the redistributed testing mask for this node
-            node_length = pt.shared_arrays['testing_mask_temp'].get_node_length()
-            testing_node = pt.shared_arrays['testing_mask_temp'].array[:node_length].astype(bool)
+            # Convert to boolean array, handling DistributedList placeholder values
+            testing_list = []
+            for item in testing_full:
+                if isinstance(item, bool):
+                    testing_list.append(item)
+                elif isinstance(item, (int, np.integer)):
+                    testing_list.append(bool(item))
+                elif isinstance(item, str) and item.strip() == '':
+                    # Skip placeholder values from DistributedList (spaces or empty strings)
+                    continue
+                else:
+                    # Try to interpret as boolean
+                    try:
+                        # Convert to int first, then bool (handles '0' and '1' strings)
+                        testing_list.append(bool(int(item)))
+                    except (ValueError, TypeError):
+                        # If we can't convert, skip this item
+                        if pt._sub_rank == 0:
+                            pt.sub_print(f"Warning: Skipping invalid testing mask value: {item} (type: {type(item)})")
+                        continue
             
-            # Store for reuse in evaluate_errors
-            self.redistributed_testing_mask = testing_node.copy()
+            # Create a numpy array version for redistribution if we have valid data
+            if len(testing_list) > 0:
+                testing_array = np.array(testing_list, dtype=np.int8)
+                
+                if pt._sub_rank == 0:
+                    pt.sub_print(f"Filtered testing array length: {len(testing_array)}")
+                    test_count = np.sum(testing_array)
+                    pt.sub_print(f"Number of testing samples: {test_count}, training samples: {len(testing_array) - test_count}")
+            else:
+                testing_array = np.array([], dtype=np.int8)
+                if pt._sub_rank == 0:
+                    pt.sub_print("Warning: No valid Testing mask found, will use all data for training")
             
-            # Clean up temporary array
-            if not pt.stubs:
-                try:
-                    pt.shared_arrays['testing_mask_temp'].win.Free()
-                except:
-                    pass
-            del pt.shared_arrays['testing_mask_temp']
+            # Only proceed with redistribution if we have valid testing data
+            if len(testing_array) > 0:
+                # Store original scraped lengths before split_by_node
+                original_scraped_length = pt.shared_arrays['a'].get_scraped_length()
+                
+                # The Testing mask needs to be treated as a SharedArray for redistribution
+                # Create a temporary shared array for the testing mask with multinode flag
+                pt.create_shared_array('testing_mask_temp', len(testing_array), dtype='i', tm=1)
+                if pt._sub_rank == 0:
+                    pt.shared_arrays['testing_mask_temp'].array[:] = testing_array
+                pt.sub_barrier()
+                
+                # Apply split_by_node to redistribute the testing mask
+                pt.split_by_node(pt.shared_arrays['testing_mask_temp'])
+                
+                # Extract the redistributed testing mask for this node
+                node_length = pt.shared_arrays['testing_mask_temp'].get_node_length()
+                testing_node = pt.shared_arrays['testing_mask_temp'].array[:node_length].astype(bool)
+                
+                # Store for reuse in evaluate_errors
+                self.redistributed_testing_mask = testing_node.copy()
+                
+                # Clean up temporary array
+                if not pt.stubs:
+                    try:
+                        pt.shared_arrays['testing_mask_temp'].win.Free()
+                    except:
+                        pass
+                del pt.shared_arrays['testing_mask_temp']
+            else:
+                if pt._sub_rank == 0:
+                    pt.sub_print("Warning: Testing mask is empty after filtering placeholders")
         
         # Split arrays by node for distributed computation
         pt.split_by_node(pt.shared_arrays['w'])
@@ -112,9 +159,13 @@ class RidgeSlate(Solver):
         lengths = [total_length, node_length, scraped_length]
         
         if pt._sub_rank == 0:
-            pt.sub_print(f"Node {pt._node_index}: total_length={total_length}, node_length={node_length}, scraped_length={scraped_length}")
+            pt.sub_print(f"Data redistribution complete: total_length={total_length}, node_length={node_length}, scraped_length={scraped_length}")
             if testing_node is not None:
-                pt.sub_print(f"Node {pt._node_index}: Testing mask redistributed, length={len(testing_node)}")
+                pt.sub_print(f"Testing mask redistributed, length={len(testing_node)}")
+            elif self.redistributed_testing_mask is not None:
+                pt.sub_print(f"Using stored redistributed testing mask, length={len(self.redistributed_testing_mask)}")
+            else:
+                pt.sub_print("No testing mask - will use all data for training")
         
 
         
@@ -125,7 +176,6 @@ class RidgeSlate(Solver):
         b_node = pt.shared_arrays['b'].array[:node_length]
         
         # Handle testing/training split
-        training_node = None
         if testing_node is not None and len(testing_node) > 0:
             # The testing_node mask has already been redistributed above
             # Check if sizes match
@@ -145,13 +195,17 @@ class RidgeSlate(Solver):
                 a_node = a_node[training_node]
                 b_node = b_node[training_node]
             else:
-                error_msg = (f"Node {pt._node_index} mask/data size mismatch! "
-                            f"Mask length: {len(testing_node)}, Data length: {len(w_node)}. "
+                error_msg = (f"Testing mask/data size mismatch! "
+                            f"Mask length: {len(testing_node)}, Data length: {len(w_node)} (node_length={node_length}). "
                             f"This indicates an error in data distribution.")
                 if pt._sub_rank == 0:
                     pt.sub_print(f"ERROR: {error_msg}")
                 # Raise an exception to stop execution
                 raise ValueError(error_msg)
+        else:
+            # No testing mask or empty testing mask - use all data for training
+            if pt._sub_rank == 0:
+                pt.sub_print(f"Using all {len(w_node)} samples for training (no test/train split)")
         
         # Now distribute the node's (possibly filtered) data across all processes on this node
         # Each process gets a portion based on its subrank

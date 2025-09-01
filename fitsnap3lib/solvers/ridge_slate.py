@@ -59,15 +59,17 @@ class RidgeSlate(Solver):
         The fit is stored as a member `self.fit`.
         """
         
+        pt = self.pt
+        
         # Split arrays by node for distributed computation
-        self.pt.split_by_node(pt.shared_arrays['w'])
-        self.pt.split_by_node(pt.shared_arrays['a'])
-        self.pt.split_by_node(pt.shared_arrays['b'])
-        total_length = self.pt.shared_arrays['a'].get_total_length()
-        node_length = self.pt.shared_arrays['a'].get_node_length()
-        scraped_length = self.pt.shared_arrays['a'].get_scraped_length()
+        pt.split_by_node(pt.shared_arrays['w'])
+        pt.split_by_node(pt.shared_arrays['a'])
+        pt.split_by_node(pt.shared_arrays['b'])
+        total_length = pt.shared_arrays['a'].get_total_length()
+        node_length = pt.shared_arrays['a'].get_node_length()
+        scraped_length = pt.shared_arrays['a'].get_scraped_length()
         lengths = [total_length, node_length, scraped_length]
-        print(f"*** Node {self._node_index} Rank {self.pt._rank} total_length {total_length} node_length {node_length} scraped_length {scraped_length}", flush=True)
+        print(f"*** Node {pt._node_index} Rank {pt._rank} total_length {total_length} node_length {node_length} scraped_length {scraped_length}", flush=True)
         
 
 
@@ -76,7 +78,7 @@ class RidgeSlate(Solver):
         # Handle the Testing mask for multi-node execution
         # The issue is that gather_fitsnap only gathers within each node using _sub_comm
         # For multi-node, we need to gather across ALL nodes to get the full Testing mask
-        if 'Testing' in self.pt.fitsnap_dict:
+        if 'Testing' in pt.fitsnap_dict:
 
             print(f"*** pt.fitsnap_dict['Testing'] {pt.fitsnap_dict['Testing']}", flush=True)
 
@@ -87,9 +89,9 @@ class RidgeSlate(Solver):
 
         
         # Get the shared data for this node
-        w_node = self.pt.shared_arrays['w'].array[:]
-        a_node = self.pt.shared_arrays['a'].array[:]
-        b_node = self.pt.shared_arrays['b'].array[:]
+        w_node = pt.shared_arrays['w'].array[:]
+        a_node = pt.shared_arrays['a'].array[:]
+        b_node = pt.shared_arrays['b'].array[:]
         
         # Handle testing/training split
         training_node = None

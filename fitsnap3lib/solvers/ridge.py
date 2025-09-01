@@ -35,13 +35,11 @@ class RIDGE(Solver):
             else:
                 training = [not elem for elem in pt.fitsnap_dict['Testing']]
                 # Debug: print FULL matrices before filtering
-                self.pt.single_print(f"\nRidge solver BEFORE filtering:")
-                self.pt.single_print(f"Full Testing mask: {pt.fitsnap_dict['Testing']}")
-                self.pt.single_print(f"Full training mask: {training}")
-                self.pt.single_print(f"Full a matrix shape: {pt.shared_arrays['a'].array.shape}")
-                self.pt.single_print(f"Full a matrix:\n{pt.shared_arrays['a'].array}")
-                self.pt.single_print(f"Full b vector: {pt.shared_arrays['b'].array}")
-                self.pt.single_print(f"Full w vector: {pt.shared_arrays['w'].array}")
+                self.pt.all_print(f"\nRidge solver BEFORE filtering:")
+                self.pt.all_print(f"pt.fitsnap_dict['Testing'] {pt.fitsnap_dict['Testing']}")
+                self.pt.all_print(f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}")
+                self.pt.all_print(f"pt.shared_arrays['b'].array {pt.shared_arrays['b'].array}")
+
 
             if a is None and b is None and w is None:
                 w = pt.shared_arrays['w'].array[training]

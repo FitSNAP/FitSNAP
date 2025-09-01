@@ -245,7 +245,7 @@ try:
                 bondinds=range(len(self.types))
                 bonds = [b for b in itertools.product(bondinds,bondinds)]
                 bondstrs = ['[%d, %d]' % b for b in bonds]
-                print(f"*** len(self.rcutfac) {len(self.rcutfac)} len(bondstrs) {len(bondstrs)} bondstrs {bondstrs}\n", flush=True);
+                #print(f"*** len(self.rcutfac) {len(self.rcutfac)} len(bondstrs) {len(bondstrs)} bondstrs {bondstrs}\n", flush=True);
                 assert len(self.rcutfac) == len(bondstrs), "must provide rc (radial cutoff) for each BOND type"
                 assert len(self.lmbda) == len(bondstrs), "must provide lambda (radial decay parameter) for each BOND type" 
                 assert len(self.rcinner) == len(bondstrs), "must provide rcinner for each BOND type" 

@@ -108,17 +108,19 @@ class RidgeSlate(Solver):
             if pt._sub_rank == 0:
                 pt.sub_print(f"Node {pt._node_index}: No Testing mask found, using all {len(w_node)} samples for training")
         
-        # Now distribute this node's data across all processes on this node
-        # Use split_within_node logic: each process gets every sub_size-th row starting from sub_rank
+        # Distribute this node's data across processes on this node
+        # Use CONTIGUOUS blocks, not strided distribution
         node_rows = len(w_node)
         rows_per_proc = node_rows // pt._sub_size
         extra_rows = node_rows % pt._sub_size
         
-        # Calculate start and end indices for this process
+        # Calculate CONTIGUOUS block for this process
         if pt._sub_rank < extra_rows:
+            # First 'extra_rows' processes get one extra row
             start_idx = pt._sub_rank * (rows_per_proc + 1)
             end_idx = start_idx + rows_per_proc + 1
         else:
+            # Remaining processes get standard number of rows
             start_idx = extra_rows * (rows_per_proc + 1) + (pt._sub_rank - extra_rows) * rows_per_proc
             end_idx = start_idx + rows_per_proc
         

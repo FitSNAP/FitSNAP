@@ -84,44 +84,74 @@ class RidgeSlate(Solver):
         
         np.set_printoptions(precision=5, suppress=True, linewidth=np.inf)
         
+        # Debug output: show what data this node has
         if pt._sub_rank == 0:
             pt.sub_print(f"Node {pt._node_index}: actual_length={actual_length} (excluding padding)")
             pt.sub_print(f"Node {pt._node_index}: a shape after removing padding: {a_node.shape}")
+            if actual_length <= 12:  # Only print small matrices
+                pt.sub_print(f"Node {pt._node_index}: Full a_node:\n{a_node}")
+                pt.sub_print(f"Node {pt._node_index}: Full b_node: {b_node}")
+                pt.sub_print(f"Node {pt._node_index}: Full w_node: {w_node}")
         
         # Handle train/test split using Testing mask
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
             testing_gathered = pt.fitsnap_dict['Testing']
             
+            # Debug: understand the structure
+            if pt._sub_rank == 0:
+                pt.sub_print(f"\nNode {pt._node_index}: Processing Testing mask")
+                pt.sub_print(f"Node {pt._node_index}: Testing gathered type={type(testing_gathered)}")
+                if isinstance(testing_gathered, list):
+                    pt.sub_print(f"Node {pt._node_index}: Testing gathered len={len(testing_gathered)}")
+                    # Show structure of first few elements
+                    for i in range(min(4, len(testing_gathered))):
+                        elem = testing_gathered[i]
+                        if isinstance(elem, list):
+                            pt.sub_print(f"Node {pt._node_index}: testing_gathered[{i}] is list with {len(elem)} elements")
+                        else:
+                            pt.sub_print(f"Node {pt._node_index}: testing_gathered[{i}] = {elem}")
+            
             # The Testing mask was gathered with allgather
-            # First, extract actual boolean values (filter out padding markers like ' ')
-            testing_bools = []
-            if isinstance(testing_gathered, list):
-                for item in testing_gathered:
-                    if isinstance(item, list):
-                        for val in item:
-                            if isinstance(val, bool):
-                                testing_bools.append(val)
-                    elif isinstance(item, bool):
-                        testing_bools.append(item)
-            else:
-                testing_bools = testing_gathered
+            # It's a list where each element is the contribution from one rank
+            # We need to extract only the portions from ranks belonging to this node
             
-            # Now we have a flat list of all Testing booleans across all nodes
-            # We need to extract this node's portion
+            # Determine which ranks belong to this node
+            ranks_on_this_node = []
+            for rank in range(pt._size):
+                # Calculate which node this rank belongs to
+                # This depends on how MPI distributes ranks across nodes
+                # Typically: ranks 0,1 on node 0; ranks 2,3 on node 1, etc.
+                node_for_rank = rank // pt._sub_size
+                if node_for_rank == pt._node_index:
+                    ranks_on_this_node.append(rank)
             
-            # The data is distributed round-robin across nodes
-            # So node 0 gets indices 0, num_nodes, 2*num_nodes, ...
-            # Node 1 gets indices 1, num_nodes+1, 2*num_nodes+1, ...
+            if pt._sub_rank == 0:
+                pt.sub_print(f"Node {pt._node_index}: Ranks on this node: {ranks_on_this_node}")
             
-            # Extract this node's Testing values using round-robin indexing
+            # Extract Testing values from the ranks on this node
             testing_node = []
-            for i in range(pt._node_index, len(testing_bools), pt._number_of_nodes):
-                testing_node.append(testing_bools[i])
+            if isinstance(testing_gathered, list):
+                for rank_idx in ranks_on_this_node:
+                    if rank_idx < len(testing_gathered):
+                        rank_contribution = testing_gathered[rank_idx]
+                        if isinstance(rank_contribution, list):
+                            # Filter out padding markers (non-boolean values)
+                            for val in rank_contribution:
+                                if isinstance(val, bool):
+                                    testing_node.append(val)
+                        elif isinstance(rank_contribution, bool):
+                            testing_node.append(rank_contribution)
+            else:
+                # Not a list, just use as-is
+                testing_node = testing_gathered
+            
             testing_node = np.array(testing_node, dtype=bool)
             
             if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: Extracted {len(testing_node)} Testing values from {len(testing_bools)} total")
+                pt.sub_print(f"Node {pt._node_index}: Extracted {len(testing_node)} Testing values")
                 pt.sub_print(f"Node {pt._node_index}: Testing mask: {testing_node}")
+                pt.sub_print(f"Node {pt._node_index}: Sum of Testing (test samples): {np.sum(testing_node)}")
+                pt.sub_print(f"Node {pt._node_index}: Sum of ~Testing (train samples): {np.sum(~testing_node)}")
             
             # Verify size match
             if len(testing_node) != actual_length:
@@ -136,11 +166,20 @@ class RidgeSlate(Solver):
             
             if pt._sub_rank == 0:
                 pt.sub_print(f"Node {pt._node_index}: {train_count} training, {test_count} testing samples")
+                pt.sub_print(f"Node {pt._node_index}: Training mask: {training_node}")
             
             # Filter to get only training data
             w_train = w_node[training_node]
             a_train = a_node[training_node]
             b_train = b_node[training_node]
+            
+            if pt._sub_rank == 0:
+                pt.sub_print(f"\nNode {pt._node_index}: After filtering for training:")
+                pt.sub_print(f"Node {pt._node_index}: a_train shape: {a_train.shape}")
+                if train_count <= 10:  # Only print small matrices
+                    pt.sub_print(f"Node {pt._node_index}: a_train:\n{a_train}")
+                    pt.sub_print(f"Node {pt._node_index}: b_train: {b_train}")
+                    pt.sub_print(f"Node {pt._node_index}: w_train: {w_train}")
         else:
             # No test/train split - use all data for training
             if pt._sub_rank == 0:
@@ -195,8 +234,11 @@ class RidgeSlate(Solver):
         if pt._rank == 0:
             pt.single_print(f"\nRank 0 sending to SLATE:")
             pt.single_print(f"aw shape: {aw.shape}")
-            pt.single_print(f"First 5 rows of aw:\n{aw[:5]}")
-            pt.single_print(f"First 5 elements of bw: {bw[:5]}")
+            pt.single_print(f"bw shape: {bw.shape}")
+            pt.single_print(f"alpha: {self.alpha}")
+            if m_local > 0 and m_local <= 5:
+                pt.single_print(f"aw matrix:\n{aw}")
+                pt.single_print(f"bw vector: {bw}")
         
         # ALL processes participate in the SLATE solve
         self.fit = self._slate_ridge_solve_qr(aw, bw, m_local, n_features, pt)
@@ -280,23 +322,28 @@ class RidgeSlate(Solver):
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing']:
             testing_gathered = pt.fitsnap_dict['Testing']
             
-            # Extract actual boolean values
-            testing_bools = []
-            if isinstance(testing_gathered, list):
-                for item in testing_gathered:
-                    if isinstance(item, list):
-                        for val in item:
-                            if isinstance(val, bool):
-                                testing_bools.append(val)
-                    elif isinstance(item, bool):
-                        testing_bools.append(item)
-            else:
-                testing_bools = testing_gathered
+            # Determine which ranks belong to this node
+            ranks_on_this_node = []
+            for rank in range(pt._size):
+                node_for_rank = rank // pt._sub_size
+                if node_for_rank == pt._node_index:
+                    ranks_on_this_node.append(rank)
             
-            # Extract this node's Testing values using round-robin indexing
+            # Extract Testing values from the ranks on this node
             testing_node = []
-            for i in range(pt._node_index, len(testing_bools), pt._number_of_nodes):
-                testing_node.append(testing_bools[i])
+            if isinstance(testing_gathered, list):
+                for rank_idx in ranks_on_this_node:
+                    if rank_idx < len(testing_gathered):
+                        rank_contribution = testing_gathered[rank_idx]
+                        if isinstance(rank_contribution, list):
+                            for val in rank_contribution:
+                                if isinstance(val, bool):
+                                    testing_node.append(val)
+                        elif isinstance(rank_contribution, bool):
+                            testing_node.append(rank_contribution)
+            else:
+                testing_node = testing_gathered
+            
             testing_node = np.array(testing_node, dtype=bool)
             
             if len(testing_node) == len(errors_node):

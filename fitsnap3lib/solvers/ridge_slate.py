@@ -68,17 +68,16 @@ class RidgeSlate(Solver):
         b_node = pt.shared_arrays['b'].array[:scraped_length]
         
         if pt._sub_rank == 0:
-            pt.sub_print(f"Node {pt._node_index}: scraped_length={scraped_length}, array_shape={pt.shared_arrays['a'].array.shape}")
-            pt.sub_print(f"Node {pt._node_index}: fitsnap_dict keys = {list(pt.fitsnap_dict.keys())}")
-            if 'Testing' in pt.fitsnap_dict:
-                testing = pt.fitsnap_dict['Testing']
-                pt.sub_print(f"Node {pt._node_index}: Testing in dict - type={type(testing)}, len={len(testing) if testing else 0}")
-                if testing and len(testing) > 0:
-                    pt.sub_print(f"Node {pt._node_index}: Testing[0] = {testing[0] if not isinstance(testing[0], list) else f'list with {len(testing[0])} elements'}")
-                else:
-                    pt.sub_print(f"Node {pt._node_index}: Testing is empty or None: {testing}")
-            else:
-                pt.sub_print(f"Node {pt._node_index}: No 'Testing' key in fitsnap_dict")
+            pt.sub_print(f"Node {pt._node_index}: scraped_length={scraped_length}")
+            pt.sub_print(f"Node {pt._node_index}: First 5 b values: {b_node[:5]}")
+            pt.sub_print(f"Node {pt._node_index}: Sum of b values: {np.sum(b_node):.6f}")
+            pt.sub_print(f"Node {pt._node_index}: Mean of b values: {np.mean(b_node):.6f}")
+            # Check which configs this node has
+            if 'Configs' in pt.fitsnap_dict and pt.fitsnap_dict['Configs']:
+                configs = pt.fitsnap_dict['Configs']
+                if isinstance(configs, list) and len(configs) > 0:
+                    # Show first few config names
+                    pt.sub_print(f"Node {pt._node_index}: First 5 configs: {configs[:5]}")
         
         # Handle testing/training split using the Testing mask from fitsnap_dict
         # IMPORTANT: Due to gather_fitsnap using _sub_comm (intra-node communicator),
@@ -126,6 +125,9 @@ class RidgeSlate(Solver):
                 
                 if pt._sub_rank == 0:
                     pt.sub_print(f"Node {pt._node_index}: Using {train_count} training, {test_count} testing samples")
+                    # Debug: Show characteristics of training data after filtering
+                    pt.sub_print(f"Node {pt._node_index}: After filtering - b_mean={np.mean(b_node):.6f}, b_std={np.std(b_node):.6f}")
+                    pt.sub_print(f"Node {pt._node_index}: After filtering - first 5 b values: {b_node[:5]}")
                 
                 # Apply the training filter to get only training data
                 w_node = w_node[training_node]
@@ -135,8 +137,30 @@ class RidgeSlate(Solver):
             if pt._sub_rank == 0:
                 pt.sub_print(f"Node {pt._node_index}: No Testing mask found, using all {scraped_length} samples for training")
         
-        # Distribute this node's data across processes on this node
-        # Use CONTIGUOUS blocks, not strided distribution
+        # Debug: Report total training data across all nodes
+        if pt._sub_rank == 0:
+            # Gather statistics from all nodes to check for data duplication
+            local_train = len(w_node) if 'w_node' in locals() else scraped_length
+            local_b_sum = np.sum(b_node) if 'b_node' in locals() else 0.0
+            local_b_mean = np.mean(b_node) if 'b_node' in locals() else 0.0
+            
+            if pt._head_group_comm:
+                # Head nodes communicate
+                all_train_counts = pt._head_group_comm.gather(local_train, root=0)
+                all_b_sums = pt._head_group_comm.gather(local_b_sum, root=0) 
+                all_b_means = pt._head_group_comm.gather(local_b_mean, root=0)
+                
+                if pt._node_index == 0 and all_train_counts:
+                    total_training = sum(all_train_counts)
+                    pt.single_print(f"\n=== DATA DISTRIBUTION DEBUG ===")
+                    pt.single_print(f"Total training rows: {total_training}")
+                    pt.single_print(f"Per-node counts: {all_train_counts}")
+                    pt.single_print(f"Per-node b sums: {[f'{s:.2f}' for s in all_b_sums]}")
+                    pt.single_print(f"Per-node b means: {[f'{m:.6f}' for m in all_b_means]}")
+                    # Check if all nodes have same mean - would indicate duplication
+                    if len(set([f'{m:.6f}' for m in all_b_means])) == 1:
+                        pt.single_print(f"WARNING: All nodes have identical b means - possible data duplication!")
+                    pt.single_print(f"================================\n")
         node_rows = len(w_node)
         rows_per_proc = node_rows // pt._sub_size
         extra_rows = node_rows % pt._sub_size

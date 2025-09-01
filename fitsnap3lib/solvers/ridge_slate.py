@@ -48,7 +48,7 @@ class RidgeSlate(Solver):
         # Get regularization parameter and tile size from RIDGE section
         if 'RIDGE' in self.config.sections:
             self.alpha = self.config.sections['RIDGE'].alpha
-            self.tile_size = self.config.sections['RIDGE'].tile_size if hasattr(self.config.sections['RIDGE'], 'tile_size') else 256
+            self.tile_size = self.config.sections['RIDGE'].tile_size if hasattr(self.config.sections['RIDGE'], 'tile_size') else 16
         else:
             self.alpha = 1e-6
             self.tile_size = 256  # Default tile size for blocking

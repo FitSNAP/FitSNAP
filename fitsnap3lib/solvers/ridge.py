@@ -25,7 +25,7 @@ class RIDGE(Solver):
         # Only fit on rank 0 to prevent unnecessary memory and work.
         if pt._rank == 0:
         
-            np.set_printoptions(precision=3, suppress=True, linewidth=np.inf)
+            np.set_printoptions(precision=5, suppress=True, linewidth=np.inf)
 
             
             if fs_dict is not None:

@@ -100,138 +100,85 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
             std::cerr.flush();
         }
         
-        // INSERT TILES FOR ORIGINAL DATA (A matrix)
-        // Each rank inserts tiles for its local rows
-        // For row-major data:
-        // - Data is stored row-by-row
-        // - Stride (lda) is the number of columns (n) for row-major
-        // - Each tile points directly into the FitSNAP shared array
-        int local_start_row = m_offsets[mpi_rank];
-        int local_end_row = m_offsets[mpi_rank + 1];
+        // INSERT ALL TILES that this rank owns
+        // SLATE expects all tiles to exist, even if we don't have data for them
+        int mt_total = (m_aug_total + mb - 1) / mb;  // Total number of tile rows
+        int nt_total = (n + nb - 1) / nb;  // Total number of tile columns
         
-        for (int i = local_start_row; i < local_end_row; i += mb) {
-            int tile_i = i / mb;
-            int rows_in_tile = std::min(mb, local_end_row - i);
-            
-            for (int j = 0; j < n; j += nb) {
-                int tile_j = j / nb;
-                int cols_in_tile = std::min(nb, n - j);
-                
-                // Check if this tile belongs to this rank in the process grid
+        // Storage for tiles we need to allocate
+        std::vector<std::vector<double>> allocated_tiles;
+        std::vector<std::vector<double>> allocated_b_tiles;
+        
+        // Insert all A matrix tiles this rank owns
+        for (int tile_i = 0; tile_i < mt_total; ++tile_i) {
+            for (int tile_j = 0; tile_j < nt_total; ++tile_j) {
                 if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
-                    // Calculate pointer to the start of this tile in row-major data
-                    int local_i = i - local_start_row;
-                    double* tile_data = &local_a_data[local_i * n + j];
+                    int tile_start_row = tile_i * mb;
+                    int tile_end_row = std::min((tile_i + 1) * mb, m_aug_total);
+                    int rows_in_tile = tile_end_row - tile_start_row;
                     
-                    // For row-major: stride is the number of columns (n)
-                    // This is ZERO-COPY - we're using the FitSNAP data directly!
-                    int tile_stride = n;  // Always use full row stride for row-major
-                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, tile_stride);
-                }
-            }
-        }
-        
-        // INSERT TILES FOR b vector (column-major, single column)
-        for (int i = local_start_row; i < local_end_row; i += mb) {
-            int tile_i = i / mb;
-            int rows_in_tile = std::min(mb, local_end_row - i);
-            
-            if (b_aug.tileRank(tile_i, 0) == mpi_rank) {
-                int local_i = i - local_start_row;
-                double* tile_data = &local_b_data[local_i];
-                // For column vector, stride is the number of rows in the tile
-                b_aug.tileInsert(tile_i, 0, slate::HostNum, tile_data, rows_in_tile);
-            }
-        }
-        
-        // ADD REGULARIZATION ROWS  
-        // The regularization rows (m_total to m_total+n-1) need to be handled carefully
-        // They are distributed in the same block-cyclic pattern as the data rows
-        
-        if (mpi_rank == 0) {
-            std::cerr << "Adding regularization rows..." << std::endl;
-            std::cerr << "Regularization rows: " << m_total << " to " << (m_total + n - 1) << std::endl;
-            std::cerr.flush();
-        }
-        
-        // Allocate memory for regularization tiles IN ROW-MAJOR FORMAT
-        double sqrt_alpha = std::sqrt(alpha);
-        
-        // Storage for regularization data - must persist through solve
-        std::vector<std::vector<double>> reg_A_storage;
-        std::vector<std::vector<double>> reg_b_storage;
-        
-        // Process tiles that overlap with regularization rows
-        // Tiles start at row m_total and go through row m_total + n - 1
-        int first_reg_tile = m_total / mb;  // First tile that contains regularization rows
-        int last_reg_tile = (m_total + n - 1) / mb;  // Last tile that contains regularization rows
-        
-        for (int tile_i = first_reg_tile; tile_i <= last_reg_tile; ++tile_i) {
-            // Determine the actual rows in this tile
-            int tile_start_row = tile_i * mb;
-            int tile_end_row = std::min((tile_i + 1) * mb, m_aug_total);
-            int tile_rows = tile_end_row - tile_start_row;
-            
-            // Determine which rows in this tile are regularization rows
-            int reg_start_in_tile = std::max(0, m_total - tile_start_row);
-            int reg_end_in_tile = std::min(tile_rows, m_total + n - tile_start_row);
-            int num_reg_rows_in_tile = reg_end_in_tile - reg_start_in_tile;
-            
-            if (num_reg_rows_in_tile > 0) {
-                // This tile contains regularization rows
-                // Check if this rank owns any column tiles for this row tile
-                bool owns_tiles = false;
-                for (int j = 0; j < n; j += nb) {
-                    int tile_j = j / nb;
-                    if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
-                        owns_tiles = true;
-                        break;
+                    int tile_start_col = tile_j * nb;
+                    int tile_end_col = std::min((tile_j + 1) * nb, n);
+                    int cols_in_tile = tile_end_col - tile_start_col;
+                    
+                    // Check if this tile contains actual data from FitSNAP
+                    if (tile_start_row < m_total && 
+                        tile_start_row >= m_offsets[mpi_rank] && 
+                        tile_start_row < m_offsets[mpi_rank + 1]) {
+                        // This tile contains our local data - use zero-copy
+                        int local_i = tile_start_row - m_offsets[mpi_rank];
+                        double* tile_data = &local_a_data[local_i * n + tile_start_col];
+                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, n);
                     }
-                }
-                
-                if (owns_tiles || b_aug.tileRank(tile_i, 0) == mpi_rank) {
-                    // Allocate storage for the ENTIRE tile (not just regularization rows)
-                    // because SLATE expects full tiles
-                    std::vector<double> tile_data(tile_rows * n, 0.0);
-                    std::vector<double> b_data(tile_rows, 0.0);
-                    
-                    // Fill in the regularization part (identity matrix scaled by sqrt_alpha)
-                    for (int r = reg_start_in_tile; r < reg_end_in_tile; ++r) {
-                        int global_reg_row = tile_start_row + r - m_total;  // 0-based index in regularization
-                        if (global_reg_row >= 0 && global_reg_row < n) {
-                            // Set diagonal element
-                            tile_data[r * n + global_reg_row] = sqrt_alpha;
-                        }
-                    }
-                    
-                    // Store the data
-                    reg_A_storage.push_back(std::move(tile_data));
-                    reg_b_storage.push_back(std::move(b_data));
-                    
-                    // Get pointers to the stored data
-                    double* reg_tile_data = reg_A_storage.back().data();
-                    double* reg_b_data = reg_b_storage.back().data();
-                    
-                    // Insert column tiles for this row tile
-                    for (int j = 0; j < n; j += nb) {
-                        int tile_j = j / nb;
-                        int cols_in_tile = std::min(nb, n - j);
+                    else {
+                        // This tile is either regularization or not our data - allocate
+                        allocated_tiles.emplace_back(rows_in_tile * n, 0.0);
+                        double* tile_data = allocated_tiles.back().data();
                         
-                        if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
-                            // Pointer to column j in the row-major data
-                            double* tile_ptr = reg_tile_data + j;
-                            int tile_stride = n;  // Row-major stride
-                            A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_ptr, tile_stride);
+                        // If this contains regularization rows, fill them
+                        if (tile_end_row > m_total) {
+                            int reg_start = std::max(0, m_total - tile_start_row);
+                            for (int r = reg_start; r < rows_in_tile; ++r) {
+                                int global_row = tile_start_row + r;
+                                if (global_row >= m_total && global_row < m_aug_total) {
+                                    int diag_idx = global_row - m_total;
+                                    if (diag_idx >= tile_start_col && diag_idx < tile_end_col) {
+                                        tile_data[r * n + diag_idx] = std::sqrt(alpha);
+                                    }
+                                }
+                            }
                         }
-                    }
-                    
-                    // Insert b vector tile
-                    if (b_aug.tileRank(tile_i, 0) == mpi_rank) {
-                        b_aug.tileInsert(tile_i, 0, slate::HostNum, reg_b_data, tile_rows);
+                        
+                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data + tile_start_col, n);
                     }
                 }
             }
         }
+        
+        // Insert all b vector tiles this rank owns
+        for (int tile_i = 0; tile_i < mt_total; ++tile_i) {
+            if (b_aug.tileRank(tile_i, 0) == mpi_rank) {
+                int tile_start_row = tile_i * mb;
+                int tile_end_row = std::min((tile_i + 1) * mb, m_aug_total);
+                int rows_in_tile = tile_end_row - tile_start_row;
+                
+                // Check if this tile contains actual data from FitSNAP
+                if (tile_start_row < m_total && 
+                    tile_start_row >= m_offsets[mpi_rank] && 
+                    tile_start_row < m_offsets[mpi_rank + 1]) {
+                    // This tile contains our local data
+                    int local_i = tile_start_row - m_offsets[mpi_rank];
+                    double* tile_data = &local_b_data[local_i];
+                    b_aug.tileInsert(tile_i, 0, slate::HostNum, tile_data, rows_in_tile);
+                }
+                else {
+                    // Allocate zero tile for b
+                    allocated_b_tiles.emplace_back(rows_in_tile, 0.0);
+                    b_aug.tileInsert(tile_i, 0, slate::HostNum, allocated_b_tiles.back().data(), rows_in_tile);
+                }
+            }
+        }
+
         
         MPI_Barrier(comm);
         if (mpi_rank == 0) {

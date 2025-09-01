@@ -67,7 +67,7 @@ class RidgeSlate(Solver):
         a_node = pt.shared_arrays['a'].array[:scraped_length]
         b_node = pt.shared_arrays['b'].array[:scraped_length]
         
-        np.set_printoptions(precision=3, suppress=True, linewidth=np.inf)
+        np.set_printoptions(precision=5, suppress=True, linewidth=np.inf)
         
         if pt._sub_rank == 0:
             pt.sub_print(f"Node {pt._node_index}: scraped_length={scraped_length}")

@@ -132,7 +132,8 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                     }
                     else {
                         // This tile is either regularization or not our data - allocate
-                        allocated_tiles.emplace_back(rows_in_tile * n, 0.0);
+                        // We need to allocate exactly what this tile needs, not the full row
+                        allocated_tiles.emplace_back(rows_in_tile * cols_in_tile, 0.0);
                         double* tile_data = allocated_tiles.back().data();
                         
                         // If this contains regularization rows, fill them
@@ -143,13 +144,16 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                                 if (global_row >= m_total && global_row < m_aug_total) {
                                     int diag_idx = global_row - m_total;
                                     if (diag_idx >= tile_start_col && diag_idx < tile_end_col) {
-                                        tile_data[r * n + diag_idx] = std::sqrt(alpha);
+                                        // In the tile's local coordinates
+                                        int local_col = diag_idx - tile_start_col;
+                                        tile_data[r * cols_in_tile + local_col] = std::sqrt(alpha);
                                     }
                                 }
                             }
                         }
                         
-                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data + tile_start_col, n);
+                        // For allocated tiles, stride is cols_in_tile since we allocated exactly that
+                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, cols_in_tile);
                     }
                 }
             }

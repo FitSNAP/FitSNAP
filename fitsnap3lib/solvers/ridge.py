@@ -25,8 +25,6 @@ class RIDGE(Solver):
         # Only fit on rank 0 to prevent unnecessary memory and work.
         if pt._rank == 0:
         
-            np.set_printoptions(precision=5, suppress=True, linewidth=np.inf)
-
             
             if fs_dict is not None:
                 training = [not elem for elem in fs_dict['Testing']]
@@ -34,8 +32,9 @@ class RIDGE(Solver):
                 training = [True]*np.shape(a)[0]
             else:
                 training = [not elem for elem in pt.fitsnap_dict['Testing']]
-                # Debug: print FULL matrices before filtering
-                self.pt.all_print(f"\nRidge solver BEFORE filtering:")
+                # Debug: print FULL matrices before filtering DO NOT REMOVE
+                np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
+                self.pt.all_print(f"Ridge solver BEFORE filtering:")
                 self.pt.all_print(f"pt.fitsnap_dict['Testing'] {pt.fitsnap_dict['Testing']}")
                 self.pt.all_print(f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}")
                 self.pt.all_print(f"pt.shared_arrays['b'].array {pt.shared_arrays['b'].array}")

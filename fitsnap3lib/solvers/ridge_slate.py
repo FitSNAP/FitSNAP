@@ -58,90 +58,39 @@ class RidgeSlate(Solver):
         Perform ridge regression fit on the linear system using SLATE for distributed computation.
         The fit is stored as a member `self.fit`.
         """
-        pt = self.pt
         
         # Split arrays by node for distributed computation
-        pt.split_by_node(pt.shared_arrays['w'])
-        pt.split_by_node(pt.shared_arrays['a'])
-        pt.split_by_node(pt.shared_arrays['b'])
+        self.pt.split_by_node(pt.shared_arrays['w'])
+        self.pt.split_by_node(pt.shared_arrays['a'])
+        self.pt.split_by_node(pt.shared_arrays['b'])
+        total_length = self.pt.shared_arrays['a'].get_total_length()
+        node_length = self.pt.shared_arrays['a'].get_node_length()
+        scraped_length = self.pt.shared_arrays['a'].get_scraped_length()
+        lengths = [total_length, node_length, scraped_length]
+        print(f"*** Node {self._node_index} Rank {self.pt._rank} total_length {total_length} node_length {node_length} scraped_length {scraped_length}", flush=True)
+        
+
+
+
         
         # Handle the Testing mask for multi-node execution
         # The issue is that gather_fitsnap only gathers within each node using _sub_comm
         # For multi-node, we need to gather across ALL nodes to get the full Testing mask
-        if 'Testing' in pt.fitsnap_dict:
-            # After collect_distributed_lists, each node has only its portion of the Testing mask
-            # We need to gather from all nodes to get the complete mask
-            testing_mask_node = pt.fitsnap_dict.get('Testing', [])
-            
-            # Gather Testing masks from all nodes
-            # First, head rank of each node gathers the mask
-            if pt._sub_rank == 0:
-                # Head ranks exchange their node's Testing masks
-                all_testing_masks = pt._head_group_comm.allgather(testing_mask_node)
-                # Flatten the list of lists
-                testing_mask_full = []
-                for node_mask in all_testing_masks:
-                    if isinstance(node_mask, list):
-                        testing_mask_full.extend(node_mask)
-                    else:
-                        testing_mask_full.append(node_mask)
-            else:
-                testing_mask_full = None
-            
-            # Broadcast the full Testing mask within each node
-            testing_mask_full = pt._sub_comm.bcast(testing_mask_full, root=0)
-            
-            if testing_mask_full:
-                # Now split the full Testing mask by node
-                # Takes every Nth element starting from node_index
-                testing_mask_split = testing_mask_full[pt._node_index::pt._number_of_nodes]
-                
-                # Convert to numpy array
-                testing_mask_split = np.array(testing_mask_split, dtype=bool)
-                
-                # Verify the mask size matches this node's data size
-                node_data_size = len(pt.shared_arrays['w'].array)
-                
-                if pt._sub_rank == 0:
-                    pt.sub_print(f"Node {pt._node_index}: Full Testing mask size: {len(testing_mask_full)}, "
-                               f"Split size: {len(testing_mask_split)}, Data size: {node_data_size}")
-                
-                if len(testing_mask_split) == node_data_size:
-                    # Store the split mask for this node
-                    pt.fitsnap_dict['Testing'] = testing_mask_split
-                    if pt._sub_rank == 0:
-                        train_count = np.sum(~testing_mask_split)
-                        test_count = np.sum(testing_mask_split)
-                        pt.sub_print(f"Node {pt._node_index}: Using Testing mask - {train_count} training, {test_count} testing samples")
-                else:
-                    # Size mismatch - this indicates a problem with data distribution
-                    error_msg = (f"Node {pt._node_index}: Testing mask size ({len(testing_mask_split)}) "
-                               f"doesn't match node data size ({node_data_size}). "
-                               f"This indicates a bug in data distribution.")
-                    if pt._sub_rank == 0:
-                        pt.sub_print(f"ERROR: {error_msg}")
-                    raise ValueError(error_msg)
-            else:
-                # No Testing mask available
-                pt.fitsnap_dict['Testing'] = None
-                if pt._sub_rank == 0:
-                    pt.sub_print(f"Node {pt._node_index}: No Testing mask found, training on all data.")
+        if 'Testing' in self.pt.fitsnap_dict:
+
+            print(f"*** pt.fitsnap_dict['Testing'] {pt.fitsnap_dict['Testing']}", flush=True)
+
         else:
             # No Testing mask in fitsnap_dict
             pt.fitsnap_dict['Testing'] = None
             if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: No Testing mask found, training on all data.")
         
-        # Get array dimensions for distributed computation
-        total_length = pt.shared_arrays['a'].get_total_length()
-        node_length = pt.shared_arrays['a'].get_node_length()
-        scraped_length = pt.shared_arrays['a'].get_scraped_length()
-        lengths = [total_length, node_length, scraped_length]
+
         
         # Get the shared data for this node
-        w_node = pt.shared_arrays['w'].array[:]
-        a_node = pt.shared_arrays['a'].array[:]
-        b_node = pt.shared_arrays['b'].array[:]
+        w_node = self.pt.shared_arrays['w'].array[:]
+        a_node = self.pt.shared_arrays['a'].array[:]
+        b_node = self.pt.shared_arrays['b'].array[:]
         
         # Handle testing/training split
         training_node = None

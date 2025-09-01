@@ -135,6 +135,11 @@ class HDF5(Scraper):
 
         if self.pt.stubs==1:
             self.my_configs = self.local_configs[:3]
+            # Simple training/validation split for stubs
+            n_training = int(len(self.my_configs) * 0.8)
+            self.config_assignments = {}
+            for idx, cfg in enumerate(self.my_configs):
+                self.config_assignments[cfg] = (idx >= n_training)
         else:
         
             all_configs = self.comm.allgather(self.local_configs)
@@ -142,21 +147,35 @@ class HDF5(Scraper):
             flat_configs.sort()
 
             total = len(flat_configs)
-            #total = 1*(self.size)
-
+            
+            # GLOBAL training/validation split BEFORE distribution
+            # This ensures all ranks agree on which configs are training vs validation
+            total_training = int(total * 0.8)
+            global_assignments = {}
+            for idx, cfg in enumerate(flat_configs):
+                # First 80% globally are training, last 20% are validation
+                global_assignments[cfg] = (idx >= total_training)
+            
+            # Now distribute configs in contiguous blocks
             base = total // (self.size)
-
-            # make sure that all ranks have same number of configs
-            # remainder extra configs can be used for validation testing
             remainder = total % self.size
-            #remainder = 0
 
             start = self.rank * base + min(self.rank, remainder)
             stop = start + base + (1 if self.rank < remainder else 0)
             expected = base + (1 if self.rank < remainder else 0)
             self.my_configs = flat_configs[start:stop]
             actual = len(self.my_configs)
-            #print(f"[Rank {self.rank}] Expected {expected} configs, got {actual}. total {total} base {base}, remainder {remainder}")
+            
+            # Store the global assignments for our configs
+            self.config_assignments = {cfg: global_assignments[cfg] for cfg in self.my_configs}
+            
+            # Count training/validation for this rank
+            n_training_local = sum(1 for cfg in self.my_configs if not self.config_assignments[cfg])
+            n_validation_local = len(self.my_configs) - n_training_local
+            
+            print(f"[Rank {self.rank}] Total configs: {actual}, "
+                  f"Training: {n_training_local}, Validation: {n_validation_local}", flush=True)
+            
             if actual != expected:
                 raise RuntimeError(f"[Rank {self.rank}] Expected {expected} configs, got {actual}")
 
@@ -165,35 +184,11 @@ class HDF5(Scraper):
     def scrape_configs(self):
         self.data = []
         
-        # Calculate training/validation split
-        # IMPORTANT: Each rank must have SAME number of training configs
-        # Calculate based on total configs across all ranks
-        if self.pt.stubs == 0:
-            # Get total number of configs across all ranks
-            local_count = len(self.my_configs)
-            total_configs_global = self.comm.allreduce(local_count)
-            
-            # Calculate how many training configs each rank should have
-            # 80% of total for training, distributed evenly across ranks
-            total_training = int(total_configs_global * 0.8)
-            n_training_per_rank = total_training // self.size
-            
-            # Ensure we don't exceed local configs available
-            n_training = min(n_training_per_rank, len(self.my_configs))
-        else:
-            # For non-MPI case
-            n_training = int(len(self.my_configs) * 0.8)
-            
-        n_validation = len(self.my_configs) - n_training
+        # Use the pre-computed global assignments from divvy_up_configs
+        # This ensures all ranks have consistent training/validation split
         
         print(f"[Rank {self.rank if hasattr(self, 'rank') else 'unknown'}] "
-              f"Total configs: {len(self.my_configs)}, Training: {n_training}, Validation: {n_validation}", flush=True )
-        
-        # Create a deterministic assignment of training/validation
-        config_assignments = {}
-        for idx, (g, i) in enumerate(self.my_configs):
-            # First n_training are training (test_bool=False), rest are validation (test_bool=True)
-            config_assignments[(g, i)] = (idx >= n_training)
+              f"Scraping {len(self.my_configs)} configs", flush=True )
 
         file_kwargs = {"driver": "mpio", "comm": self.comm} if self.pt.stubs == 0 else {}
 
@@ -227,7 +222,7 @@ class HDF5(Scraper):
                         "NumAtoms": len(atomic_numbers),
                         "Lattice": meta["lattice"],
                         "Bounds": meta["bounds"],
-                        "test_bool": config_assignments[(group_name, i)],
+                        "test_bool": self.config_assignments[(group_name, i)],
                         "eweight": meta["eweight"],
                         "fweight": meta["fweight"] / len(atomic_numbers),
                     })

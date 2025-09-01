@@ -72,67 +72,70 @@ class RidgeSlate(Solver):
             pt.sub_print(f"Node {pt._node_index}: First 5 b values: {b_node[:5]}")
             pt.sub_print(f"Node {pt._node_index}: Sum of b values: {np.sum(b_node):.6f}")
             pt.sub_print(f"Node {pt._node_index}: Mean of b values: {np.mean(b_node):.6f}")
-            # Check which configs this node has
-            if 'Configs' in pt.fitsnap_dict and pt.fitsnap_dict['Configs']:
-                configs = pt.fitsnap_dict['Configs']
-                if isinstance(configs, list) and len(configs) > 0:
-                    # Show first few config names
-                    pt.sub_print(f"Node {pt._node_index}: First 5 configs: {configs[:5]}")
         
         # Handle testing/training split using the Testing mask from fitsnap_dict
-        # IMPORTANT: Due to gather_fitsnap using _sub_comm (intra-node communicator),
-        # each node only has its own local Testing mask, not a global one.
-        # The Testing mask corresponds to this node's A matrix rows.
+        # The Testing mask is gathered with allgather within each node, creating a list of lists
         
-        if 'Testing' in pt.fitsnap_dict:
-            # Each node has its own Testing mask from gather_fitsnap within the node
-            testing_node = pt.fitsnap_dict['Testing'] 
+        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
+            testing_gathered = pt.fitsnap_dict['Testing']
             
-            # Check if testing_node is None or empty
-            if testing_node is None or (isinstance(testing_node, list) and len(testing_node) == 0):
-                if pt._sub_rank == 0:
-                    pt.sub_print(f"WARNING: Node {pt._node_index} has no Testing mask (None or empty list), using all data for training")
-                # No testing mask - use all data without filtering
-            else:
-                # We have a Testing mask to process
-                # Handle list format from gather_fitsnap if needed
-                if isinstance(testing_node[0], list):
-                    # Flatten the list of lists from allgather within node
-                    testing_flat = []
-                    for sublist in testing_node:
-                        if isinstance(sublist, list):
-                            testing_flat.extend(sublist)
-                        else:
-                            testing_flat.append(sublist)
-                    testing_node = testing_flat
-                
-                # Convert to numpy boolean array
+            # Debug: understand the structure
+            if pt._sub_rank == 0:
+                pt.sub_print(f"Node {pt._node_index}: Testing structure type={type(testing_gathered)}, len={len(testing_gathered) if isinstance(testing_gathered, list) else 'N/A'}")
+                if isinstance(testing_gathered, list) and len(testing_gathered) > 0:
+                    pt.sub_print(f"Node {pt._node_index}: First element type={type(testing_gathered[0])}, len={len(testing_gathered[0]) if isinstance(testing_gathered[0], list) else 'N/A'}")
+            
+            # The Testing mask was gathered with allgather across procs in this node
+            # Each proc contributed its portion, so we have node_size sublists
+            # We need to concatenate them in the right order
+            
+            if isinstance(testing_gathered, list) and len(testing_gathered) == pt._sub_size:
+                # Each element is a sublist from one proc on this node
+                # Concatenate all sublists to get the full Testing mask for this node
+                testing_node = []
+                for proc_list in testing_gathered:
+                    if proc_list is not None:  # Some procs might have no data
+                        testing_node.extend(proc_list)
                 testing_node = np.array(testing_node, dtype=bool)
                 
-                # Verify the Testing mask matches our data size
-                if len(testing_node) != scraped_length:
-                    if pt._sub_rank == 0:
-                        pt.sub_print(f"ERROR on Node {pt._node_index}: Testing mask size {len(testing_node)} != scraped_length {scraped_length}")
-                        pt.sub_print(f"Testing mask content (first 20): {testing_node[:20] if len(testing_node) > 0 else 'empty'}")
-                    raise ValueError(f"Testing mask size mismatch on node {pt._node_index}: {len(testing_node)} != {scraped_length}")
-                
-                # Create training mask (inverse of testing)
-                training_node = ~testing_node
-                
-                # Count samples
-                train_count = np.sum(training_node)
-                test_count = np.sum(testing_node)
-                
                 if pt._sub_rank == 0:
-                    pt.sub_print(f"Node {pt._node_index}: Using {train_count} training, {test_count} testing samples")
-                    # Debug: Show characteristics of training data after filtering
-                    pt.sub_print(f"Node {pt._node_index}: After filtering - b_mean={np.mean(b_node):.6f}, b_std={np.std(b_node):.6f}")
-                    pt.sub_print(f"Node {pt._node_index}: After filtering - first 5 b values: {b_node[:5]}")
-                
-                # Apply the training filter to get only training data
-                w_node = w_node[training_node]
-                a_node = a_node[training_node]
-                b_node = b_node[training_node]
+                    pt.sub_print(f"Node {pt._node_index}: Reconstructed Testing mask length={len(testing_node)}")
+            else:
+                # Unexpected format - try to use as-is
+                if pt._sub_rank == 0:
+                    pt.sub_print(f"WARNING: Node {pt._node_index} unexpected Testing format, attempting to flatten")
+                # Try to flatten whatever structure we have
+                testing_flat = []
+                if isinstance(testing_gathered, list):
+                    for item in testing_gathered:
+                        if isinstance(item, list):
+                            testing_flat.extend(item)
+                        elif item is not None:
+                            testing_flat.append(item)
+                    testing_node = np.array(testing_flat, dtype=bool) if testing_flat else np.array([], dtype=bool)
+                else:
+                    testing_node = np.array(testing_gathered, dtype=bool)
+            
+            # Verify the Testing mask matches our data size
+            if len(testing_node) != scraped_length:
+                if pt._sub_rank == 0:
+                    pt.sub_print(f"ERROR on Node {pt._node_index}: Testing mask size {len(testing_node)} != scraped_length {scraped_length}")
+                raise ValueError(f"Testing mask size mismatch on node {pt._node_index}: {len(testing_node)} != {scraped_length}")
+            
+            # Create training mask (inverse of testing)
+            training_node = ~testing_node
+            
+            # Count samples
+            train_count = np.sum(training_node)
+            test_count = np.sum(testing_node)
+            
+            if pt._sub_rank == 0:
+                pt.sub_print(f"Node {pt._node_index}: Using {train_count} training, {test_count} testing samples")
+            
+            # Apply the training filter to get only training data
+            w_node = w_node[training_node]
+            a_node = a_node[training_node]
+            b_node = b_node[training_node]
         else:
             if pt._sub_rank == 0:
                 pt.sub_print(f"Node {pt._node_index}: No Testing mask found, using all {scraped_length} samples for training")

@@ -50,123 +50,36 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     std::vector<int> m_locals(mpi_size);
     MPI_Allgather(&m_local, 1, MPI_INT, m_locals.data(), 1, MPI_INT, comm);
     
-    // FitSNAP uses node-based distribution with LOGICAL nodes
-    // Ranks are grouped sequentially: node0_procs, node1_procs, node2_procs, ...
-    // Detect the node size from the data pattern
-    
-    int node_size = 1;
-    int num_nodes = mpi_size;
-    
-    // Look for the pattern in m_locals
-    // Within a node, processes have similar row counts (differ by at most 1)
-    // Between nodes, there can be larger differences
-    
-    // For the water test case with 24 processes:
-    // - Ranks 0-7 (node 0) all have similar counts (~8943)
-    // - Ranks 8-15 (node 1) all have similar counts (~8943)
-    // - Ranks 16-23 (node 2) all have similar counts (~8943)
-    
-    // Find where the pattern changes
-    bool found = false;
-    for (int test_size = 8; test_size >= 2; test_size--) {
-        if (mpi_size % test_size == 0) {
-            // Check if this grouping makes sense
-            bool valid = true;
-            for (int node = 0; node < mpi_size / test_size; node++) {
-                int node_start = node * test_size;
-                int node_end = (node + 1) * test_size;
-                
-                // Check if all processes in this potential node have similar counts
-                int min_in_node = m_locals[node_start];
-                int max_in_node = m_locals[node_start];
-                for (int r = node_start + 1; r < node_end; r++) {
-                    min_in_node = std::min(min_in_node, m_locals[r]);
-                    max_in_node = std::max(max_in_node, m_locals[r]);
-                }
-                
-                // Within a node, difference should be at most 1
-                if (max_in_node - min_in_node > 1) {
-                    valid = false;
-                    break;
-                }
-            }
-            
-            if (valid) {
-                node_size = test_size;
-                num_nodes = mpi_size / test_size;
-                found = true;
-                break;
-            }
-        }
+    // Calculate total rows and global offsets for each rank
+    // Simple approach: each rank owns a contiguous block of rows
+    std::vector<int> rank_offsets(mpi_size + 1, 0);
+    for (int r = 0; r < mpi_size; ++r) {
+        rank_offsets[r + 1] = rank_offsets[r] + m_locals[r];
     }
+    int m_total = rank_offsets[mpi_size];
     
-    if (!found) {
-        // Default to 8 if we can't detect
-        node_size = 8;
-        num_nodes = (mpi_size + node_size - 1) / node_size;
-        if (mpi_rank == 0) {
-            std::cerr << "Warning: Could not detect node size, defaulting to " << node_size << std::endl;
-        }
-    }
-    
-    // Calculate which logical node this rank belongs to
-    int node_id = mpi_rank / node_size;
-    int node_rank = mpi_rank % node_size;
-    
-    // Calculate total rows and create offset arrays
-    // For FitSNAP's distribution:
-    // - Each node owns a contiguous block of the global rows
-    // - Within each node, processes share that block
-    
-    // First, sum up rows per node
-    std::vector<int> rows_per_node(num_nodes, 0);
-    for (int rank = 0; rank < mpi_size; ++rank) {
-        int rank_node = rank / node_size;
-        if (rank_node < num_nodes) {
-            rows_per_node[rank_node] += m_locals[rank];
-        }
-    }
-    
-    // Calculate node offsets in global data
-    std::vector<int> node_offsets(num_nodes + 1, 0);
-    for (int n = 0; n < num_nodes; ++n) {
-        node_offsets[n + 1] = node_offsets[n] + rows_per_node[n];
-    }
-    int m_total = node_offsets[num_nodes];
-    
-    // Now calculate this rank's offset within its node's data
-    int rank_offset_in_node = 0;
-    for (int r = node_id * node_size; r < mpi_rank; ++r) {
-        rank_offset_in_node += m_locals[r];
-    }
-    
-    // Global offset for this rank's data
-    int global_offset = node_offsets[node_id] + rank_offset_in_node;
+    // This rank's global offset is simply the sum of rows from lower ranks
+    int global_offset = rank_offsets[mpi_rank];
     
     if (mpi_rank == 0) {
         std::cerr << "Total rows (m_total): " << m_total << std::endl;
-        std::cerr << "Detected logical node structure: " << num_nodes << " nodes, " 
-                  << node_size << " processes per node" << std::endl;
         
         // Debug: show row distribution
-        std::cerr << "Row distribution by rank:" << std::endl;
-        for (int i = 0; i < std::min(mpi_size, 24); ++i) {
-            if (i % node_size == 0) {
-                std::cerr << "  Node " << (i / node_size) << ":";
-            }
-            std::cerr << " " << m_locals[i];
-            if ((i + 1) % node_size == 0 || i == mpi_size - 1) {
-                std::cerr << std::endl;
-            }
+        std::cerr << "Row distribution by rank: ";
+        for (int i = 0; i < std::min(mpi_size, 10); ++i) {
+            std::cerr << m_locals[i] << " ";
         }
-        
-        std::cerr << "Node offsets: ";
-        for (int n = 0; n <= num_nodes; ++n) {
-            std::cerr << node_offsets[n] << " ";
-        }
+        if (mpi_size > 10) std::cerr << "...";
         std::cerr << std::endl;
         
-        std::cerr << "Using RowMajorMatrix with ZERO-COPY of FitSNAP arrays" << std::endl;
+        std::cerr << "Rank offsets: ";
+        for (int i = 0; i <= std::min(mpi_size, 10); ++i) {
+            std::cerr << rank_offsets[i] << " ";
+        }
+        if (mpi_size > 10) std::cerr << "...";
+        std::cerr << std::endl;
+        
+        std::cerr << "Using RowMajorMatrix with direct distribution" << std::endl;
         std::cerr.flush();
     }
     

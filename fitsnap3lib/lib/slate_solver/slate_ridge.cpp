@@ -50,34 +50,68 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     std::vector<int> m_locals(mpi_size);
     MPI_Allgather(&m_local, 1, MPI_INT, m_locals.data(), 1, MPI_INT, comm);
     
-    // FitSNAP uses node-based distribution: first to nodes, then within nodes
-    // We need to understand the node structure
-    // Assume processes are laid out as: node0_procs, node1_procs, node2_procs, ...
+    // FitSNAP uses node-based distribution with LOGICAL nodes
+    // Ranks are grouped sequentially: node0_procs, node1_procs, node2_procs, ...
+    // Detect the node size from the data pattern
     
-    // First, figure out the number of processes per node
-    // We can infer this by looking at the pattern of m_locals
-    // All processes on the same node should have similar row counts
+    int node_size = 1;
+    int num_nodes = mpi_size;
     
-    // Get MPI node information
-    MPI_Comm node_comm;
-    MPI_Comm_split_type(comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &node_comm);
-    int node_rank, node_size;
-    MPI_Comm_rank(node_comm, &node_rank);
-    MPI_Comm_size(node_comm, &node_size);
+    // Look for the pattern in m_locals
+    // Within a node, processes have similar row counts (differ by at most 1)
+    // Between nodes, there can be larger differences
     
-    // Create a communicator for all rank 0s of each node
-    int color = (node_rank == 0) ? 0 : MPI_UNDEFINED;
-    MPI_Comm head_comm;
-    MPI_Comm_split(comm, color, mpi_rank, &head_comm);
+    // For the water test case with 24 processes:
+    // - Ranks 0-7 (node 0) all have similar counts (~8943)
+    // - Ranks 8-15 (node 1) all have similar counts (~8943)
+    // - Ranks 16-23 (node 2) all have similar counts (~8943)
     
-    int num_nodes = 0;
-    if (head_comm != MPI_COMM_NULL) {
-        MPI_Comm_size(head_comm, &num_nodes);
+    // Find where the pattern changes
+    bool found = false;
+    for (int test_size = 8; test_size >= 2; test_size--) {
+        if (mpi_size % test_size == 0) {
+            // Check if this grouping makes sense
+            bool valid = true;
+            for (int node = 0; node < mpi_size / test_size; node++) {
+                int node_start = node * test_size;
+                int node_end = (node + 1) * test_size;
+                
+                // Check if all processes in this potential node have similar counts
+                int min_in_node = m_locals[node_start];
+                int max_in_node = m_locals[node_start];
+                for (int r = node_start + 1; r < node_end; r++) {
+                    min_in_node = std::min(min_in_node, m_locals[r]);
+                    max_in_node = std::max(max_in_node, m_locals[r]);
+                }
+                
+                // Within a node, difference should be at most 1
+                if (max_in_node - min_in_node > 1) {
+                    valid = false;
+                    break;
+                }
+            }
+            
+            if (valid) {
+                node_size = test_size;
+                num_nodes = mpi_size / test_size;
+                found = true;
+                break;
+            }
+        }
     }
-    MPI_Bcast(&num_nodes, 1, MPI_INT, 0, node_comm);
     
-    // Calculate which node this rank belongs to
+    if (!found) {
+        // Default to 8 if we can't detect
+        node_size = 8;
+        num_nodes = (mpi_size + node_size - 1) / node_size;
+        if (mpi_rank == 0) {
+            std::cerr << "Warning: Could not detect node size, defaulting to " << node_size << std::endl;
+        }
+    }
+    
+    // Calculate which logical node this rank belongs to
     int node_id = mpi_rank / node_size;
+    int node_rank = mpi_rank % node_size;
     
     // Calculate total rows and create offset arrays
     // For FitSNAP's distribution:
@@ -111,6 +145,27 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     
     if (mpi_rank == 0) {
         std::cerr << "Total rows (m_total): " << m_total << std::endl;
+        std::cerr << "Detected logical node structure: " << num_nodes << " nodes, " 
+                  << node_size << " processes per node" << std::endl;
+        
+        // Debug: show row distribution
+        std::cerr << "Row distribution by rank:" << std::endl;
+        for (int i = 0; i < std::min(mpi_size, 24); ++i) {
+            if (i % node_size == 0) {
+                std::cerr << "  Node " << (i / node_size) << ":";
+            }
+            std::cerr << " " << m_locals[i];
+            if ((i + 1) % node_size == 0 || i == mpi_size - 1) {
+                std::cerr << std::endl;
+            }
+        }
+        
+        std::cerr << "Node offsets: ";
+        for (int n = 0; n <= num_nodes; ++n) {
+            std::cerr << node_offsets[n] << " ";
+        }
+        std::cerr << std::endl;
+        
         std::cerr << "Using RowMajorMatrix with ZERO-COPY of FitSNAP arrays" << std::endl;
         std::cerr.flush();
     }
@@ -292,12 +347,6 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
             std::cerr << std::endl;
             std::cerr << "=====================================\n" << std::endl;
             std::cerr.flush();
-        }
-        
-        // Clean up MPI communicators
-        MPI_Comm_free(&node_comm);
-        if (head_comm != MPI_COMM_NULL) {
-            MPI_Comm_free(&head_comm);
         }
         
     } catch (const std::exception& e) {

@@ -69,6 +69,9 @@ class RidgeSlate(Solver):
         
         if pt._sub_rank == 0:
             pt.sub_print(f"Node {pt._node_index}: scraped_length={scraped_length}, array_shape={pt.shared_arrays['a'].array.shape}")
+            # Debug: Check first few rows of data
+            #pt.sub_print(f"First 3 rows of a_node: {a_node[:3, :5] if len(a_node) > 0 else 'empty'}")
+            #pt.sub_print(f"First 3 values of b_node: {b_node[:3] if len(b_node) > 0 else 'empty'}")
         
         # Handle testing/training split using the Testing mask from fitsnap_dict
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing']:
@@ -82,8 +85,49 @@ class RidgeSlate(Solver):
                     testing_flat.extend(sublist)
                 testing_full = testing_flat
             
-            # Convert to numpy boolean array
-            testing_node = np.array(testing_full, dtype=bool)
+            # The Testing mask is for ALL data across all nodes
+            # We need to extract just this node's portion
+            # Calculate this node's offset in the global data
+            node_offset = 0
+            for n in range(pt._node_index):
+                # Each node has the same scraped_length except possibly the last
+                if n < pt._number_of_nodes - 1:
+                    node_offset += scraped_length  # Assume similar sizes
+                else:
+                    # Last node might be different, but we don't know its size
+                    node_offset += scraped_length
+            
+            # Extract this node's portion of the Testing mask
+            # For 3 nodes with 8 procs each:
+            # Node 0 gets testing_full[0:scraped_length]
+            # Node 1 gets testing_full[scraped_length:2*scraped_length]
+            # Node 2 gets testing_full[2*scraped_length:3*scraped_length]
+            
+            # Actually, we need to be more careful - gather the node sizes first
+            all_node_sizes = pt._comm.allgather(scraped_length)
+            #all_node_sizes = pt._sub_comm.bcast(all_node_sizes, root=0)
+            
+            # Group sizes by node (8 processes per node)
+            procs_per_node = pt._sub_size
+            node_sizes = []
+            for n in range(pt._number_of_nodes):
+                # Get the size from the first process of each node
+                node_sizes.append(all_node_sizes[n * procs_per_node])
+            
+            # Calculate offset for this node
+            node_offset = sum(node_sizes[:pt._node_index])
+            node_end = node_offset + node_sizes[pt._node_index]
+            
+            # Extract this node's Testing mask
+            testing_node = np.array(testing_full[node_offset:node_end], dtype=bool)
+            
+            if pt._sub_rank == 0:
+                pt.sub_print(f"Node {pt._node_index}: Testing mask extraction - offset={node_offset}, end={node_end}, local_size={len(testing_node)}")
+                pt.sub_print(f"Node sizes: {node_sizes}, total Testing length: {len(testing_full)}")
+                # Debug: print some actual Testing values
+                pt.sub_print(f"First 10 Testing values for this node: {testing_node[:10].tolist() if len(testing_node) > 0 else 'empty'}")
+                pt.sub_print(f"Sum of Testing (should match test_count): {np.sum(testing_node)}")
+                pt.sub_print(f"Data shape check - w_node: {w_node.shape}, a_node: {a_node.shape}, b_node: {b_node.shape}")
             
             # Check sizes match
             if len(testing_node) == len(w_node):
@@ -125,9 +169,11 @@ class RidgeSlate(Solver):
             end_idx = start_idx + rows_per_proc
         
         # Get this process's portion of the data
-        w = w_node[start_idx:end_idx]
-        a_local = a_node[start_idx:end_idx]
-        b_local = b_node[start_idx:end_idx]
+        # Make sure we don't go out of bounds
+        actual_end_idx = min(end_idx, len(w_node))
+        w = w_node[start_idx:actual_end_idx]
+        a_local = a_node[start_idx:actual_end_idx]
+        b_local = b_node[start_idx:actual_end_idx]
         
         # Apply weights
         if len(w) > 0:
@@ -138,7 +184,7 @@ class RidgeSlate(Solver):
             aw = np.zeros((0, a_node.shape[1] if len(a_node) > 0 else 0), dtype=np.float64)
             bw = np.zeros(0, dtype=np.float64)
         
-        # Get dimensions
+        # Get dimensions - IMPORTANT: m_local is the actual number of rows after filtering
         m_local = aw.shape[0]  # local number of rows for this process
         n_features = aw.shape[1] if len(aw) > 0 else (a_node.shape[1] if len(a_node) > 0 else 0)
         
@@ -146,6 +192,10 @@ class RidgeSlate(Solver):
         n_features_array = np.array([n_features], dtype=np.int32)
         pt._comm.Allreduce(MPI.IN_PLACE, n_features_array, op=MPI.MAX)
         n_features = n_features_array[0]
+        
+        # Debug output
+        if pt._rank < 3 or pt._rank == 8 or pt._rank == 16:  # Sample from each node
+            print(f"[Rank {pt._rank}] m_local={m_local}, n_features={n_features}, aw.shape={aw.shape if len(aw) > 0 else '(0,0)'}", flush=True)
         
         # Ensure correct shape even for empty arrays
         if m_local == 0:

@@ -57,6 +57,11 @@ class RIDGE(Solver):
             reg.fit(aw, bw)
             # self.pt.single_print('printing fit: ', reg.coef_)
             self.fit = reg.coef_
+            
+            # Debug: print dimensions and first few coefficients
+            self.pt.single_print(f'Ridge solver: aw.shape={aw.shape}, bw.shape={bw.shape}, alpha={alval}')
+            self.pt.single_print(f'First 5 coefficients: {self.fit[:5]}')
+            self.pt.single_print(f'Training samples used: {len(training)} total, {sum(training)} for training')
             residues = np.matmul(aw,reg.coef_) - bw
 
     def _dump_a(self):

@@ -60,7 +60,7 @@ class RidgeSlate(Solver):
         """
         
         pt = self.pt
-        
+                
         # Debug: print FULL matrices before filtering DO NOT REMOVE
         np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
         self.pt.all_print(

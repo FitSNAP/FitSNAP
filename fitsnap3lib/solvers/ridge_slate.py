@@ -69,7 +69,7 @@ class RidgeSlate(Solver):
         node_length = pt.shared_arrays['a'].get_node_length()
         scraped_length = pt.shared_arrays['a'].get_scraped_length()
         lengths = [total_length, node_length, scraped_length]
-        print(f"*** Node {pt._node_index} Rank {pt._rank} total_length {total_length} node_length {node_length} scraped_length {scraped_length}", flush=True)
+        print(f"*** Node {pt._node_index} Rank {pt._rank} total_length {total_length} node_length {node_length} scraped_length {scraped_length} len(pt.fitsnap_dict['Testing']) {len(pt.fitsnap_dict['Testing'])}", flush=True)
         
 
 
@@ -80,7 +80,7 @@ class RidgeSlate(Solver):
         # For multi-node, we need to gather across ALL nodes to get the full Testing mask
         if 'Testing' in pt.fitsnap_dict:
 
-            print(f"*** pt.fitsnap_dict['Testing'] {pt.fitsnap_dict['Testing']}", flush=True)
+            print(f"*** Node {pt._node_index} Rank {pt._rank} Testing", flush=True)
 
         else:
             # No Testing mask in fitsnap_dict

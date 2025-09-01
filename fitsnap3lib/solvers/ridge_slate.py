@@ -69,88 +69,71 @@ class RidgeSlate(Solver):
         
         if pt._sub_rank == 0:
             pt.sub_print(f"Node {pt._node_index}: scraped_length={scraped_length}, array_shape={pt.shared_arrays['a'].array.shape}")
-            # Debug: Check first few rows of data
-            #pt.sub_print(f"First 3 rows of a_node: {a_node[:3, :5] if len(a_node) > 0 else 'empty'}")
-            #pt.sub_print(f"First 3 values of b_node: {b_node[:3] if len(b_node) > 0 else 'empty'}")
         
         # Handle testing/training split using the Testing mask from fitsnap_dict
+        # IMPORTANT: The Testing mask in fitsnap_dict is for the A matrix rows, which have
+        # already been processed. For ridge_slate, the data in the shared arrays already
+        # has the correct test/train split applied during the calculator phase.
+        # We need to extract ONLY the training data.
+        
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing']:
-            # Extract the Testing mask - it's already gathered for this node
+            # The Testing mask is a list for ALL A matrix rows across all nodes
             testing_full = pt.fitsnap_dict['Testing']
             
-            # Handle list of lists from gather_fitsnap (allgather returns list of lists)
+            # Handle list format from gather_fitsnap
             if testing_full and isinstance(testing_full[0], list):
+                # This shouldn't happen after gather_fitsnap flattening, but handle it just in case
                 testing_flat = []
                 for sublist in testing_full:
                     testing_flat.extend(sublist)
                 testing_full = testing_flat
             
-            # The Testing mask is for ALL data across all nodes
-            # We need to extract just this node's portion
-            # Calculate this node's offset in the global data
-            node_offset = 0
-            for n in range(pt._node_index):
-                # Each node has the same scraped_length except possibly the last
-                if n < pt._number_of_nodes - 1:
-                    node_offset += scraped_length  # Assume similar sizes
-                else:
-                    # Last node might be different, but we don't know its size
-                    node_offset += scraped_length
+            # Calculate this node's offset in the global A matrix
+            # Each node contributes scraped_length rows to the global A matrix
+            # Get all node sizes via allgather
+            all_scraped_lengths = pt._comm.allgather(scraped_length)
+            
+            # Group by node (assuming pt._sub_size processes per node)
+            node_scraped_lengths = []
+            for n in range(pt._number_of_nodes):
+                # Get scraped_length from first proc of each node
+                node_scraped_lengths.append(all_scraped_lengths[n * pt._sub_size])
+            
+            # Calculate this node's offset and range in the global Testing array
+            node_offset = sum(node_scraped_lengths[:pt._node_index])
+            node_end = node_offset + node_scraped_lengths[pt._node_index]
             
             # Extract this node's portion of the Testing mask
-            # For 3 nodes with 8 procs each:
-            # Node 0 gets testing_full[0:scraped_length]
-            # Node 1 gets testing_full[scraped_length:2*scraped_length]
-            # Node 2 gets testing_full[2*scraped_length:3*scraped_length]
-            
-            # Actually, we need to be more careful - gather the node sizes first
-            all_node_sizes = pt._comm.allgather(scraped_length)
-            #all_node_sizes = pt._sub_comm.bcast(all_node_sizes, root=0)
-            
-            # Group sizes by node (8 processes per node)
-            procs_per_node = pt._sub_size
-            node_sizes = []
-            for n in range(pt._number_of_nodes):
-                # Get the size from the first process of each node
-                node_sizes.append(all_node_sizes[n * procs_per_node])
-            
-            # Calculate offset for this node
-            node_offset = sum(node_sizes[:pt._node_index])
-            node_end = node_offset + node_sizes[pt._node_index]
-            
-            # Extract this node's Testing mask
             testing_node = np.array(testing_full[node_offset:node_end], dtype=bool)
             
-            if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: Testing mask extraction - offset={node_offset}, end={node_end}, local_size={len(testing_node)}")
-                pt.sub_print(f"Node sizes: {node_sizes}, total Testing length: {len(testing_full)}")
-                # Debug: print some actual Testing values
-                pt.sub_print(f"First 10 Testing values for this node: {testing_node[:10].tolist() if len(testing_node) > 0 else 'empty'}")
-                pt.sub_print(f"Sum of Testing (should match test_count): {np.sum(testing_node)}")
-                pt.sub_print(f"Data shape check - w_node: {w_node.shape}, a_node: {a_node.shape}, b_node: {b_node.shape}")
+            #if pt._sub_rank == 0:
+            #    pt.sub_print(f"Node {pt._node_index}: scraped_length={scraped_length}, Testing mask range=[{node_offset}:{node_end}]")
+            #    pt.sub_print(f"Node scraped lengths: {node_scraped_lengths}, total Testing length: {len(testing_full)}")
+            #    pt.sub_print(f"Testing mask stats - total: {len(testing_node)}, test: {np.sum(testing_node)}, train: {np.sum(~testing_node)}")
             
-            # Check sizes match
-            if len(testing_node) == len(w_node):
-                # Create training mask (inverse of testing)
-                training_node = ~testing_node
-                
-                # Count samples
-                train_count = np.sum(training_node)
-                test_count = np.sum(testing_node)
-                
+            # Verify the Testing mask matches our data size
+            if len(testing_node) != scraped_length:
                 if pt._sub_rank == 0:
-                    pt.sub_print(f"Node {pt._node_index}: Using {train_count} training, {test_count} testing samples")
-                
-                # Filter to training data only
-                w_node = w_node[training_node]
-                a_node = a_node[training_node]
-                b_node = b_node[training_node]
-            else:
-                if pt._sub_rank == 0:
-                    pt.sub_print(f"WARNING: Testing mask length {len(testing_node)} != data length {len(w_node)}, using all data for training")
+                    pt.sub_print(f"ERROR: Testing mask size {len(testing_node)} != scraped_length {scraped_length}")
+                raise ValueError(f"Testing mask size mismatch on node {pt._node_index}")
+            
+            # Create training mask (inverse of testing)
+            training_node = ~testing_node
+            
+            # Filter to training data only
+            train_count = np.sum(training_node)
+            test_count = np.sum(testing_node)
+            
+            if pt._sub_rank == 0:
+                pt.sub_print(f"Node {pt._node_index}: Using {train_count} training, {test_count} testing samples")
+            
+            # Apply the training filter
+            w_node = w_node[training_node]
+            a_node = a_node[training_node]
+            b_node = b_node[training_node]
         else:
             if pt._sub_rank == 0:
-                pt.sub_print(f"Node {pt._node_index}: No Testing mask found, using all {len(w_node)} samples for training")
+                pt.sub_print(f"Node {pt._node_index}: No Testing mask found, using all {scraped_length} samples for training")
         
         # Distribute this node's data across processes on this node
         # Use CONTIGUOUS blocks, not strided distribution
@@ -192,10 +175,6 @@ class RidgeSlate(Solver):
         n_features_array = np.array([n_features], dtype=np.int32)
         pt._comm.Allreduce(MPI.IN_PLACE, n_features_array, op=MPI.MAX)
         n_features = n_features_array[0]
-        
-        # Debug output
-        if pt._rank < 3 or pt._rank == 8 or pt._rank == 16:  # Sample from each node
-            print(f"[Rank {pt._rank}] m_local={m_local}, n_features={n_features}, aw.shape={aw.shape if len(aw) > 0 else '(0,0)'}", flush=True)
         
         # Ensure correct shape even for empty arrays
         if m_local == 0:

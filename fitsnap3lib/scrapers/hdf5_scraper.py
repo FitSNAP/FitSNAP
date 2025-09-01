@@ -113,7 +113,7 @@ class HDF5(Scraper):
 
                 # Add ALL configs, not just 80%
                 #for j in range(conformations.shape[0]):
-                for j in range(24):
+                for j in range(12):
                     self.local_configs.append((group_name, j))
 
         if self.pt.stubs==0:

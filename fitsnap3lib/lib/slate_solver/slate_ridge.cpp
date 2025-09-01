@@ -109,16 +109,6 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         int local_start_row = m_offsets[mpi_rank];
         int local_end_row = m_offsets[mpi_rank + 1];
         
-        // Debug: verify data dimensions
-        if (m_local > 0 && n > 0) {
-            // Verify that we have valid data pointers
-            if (local_a_data == nullptr || local_b_data == nullptr) {
-                std::cerr << "[Rank " << mpi_rank << "] ERROR: null data pointers!" << std::endl;
-                MPI_Abort(comm, 1);
-            }
-        }
-        
-        int tiles_inserted = 0;
         for (int i = local_start_row; i < local_end_row; i += mb) {
             int tile_i = i / mb;
             int rows_in_tile = std::min(mb, local_end_row - i);
@@ -131,37 +121,14 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
                     // Calculate pointer to the start of this tile in row-major data
                     int local_i = i - local_start_row;
-                    
-                    // Verify bounds
-                    if (local_i + rows_in_tile > m_local) {
-                        std::cerr << "[Rank " << mpi_rank << "] ERROR: tile row bounds exceeded!" 
-                                  << " local_i=" << local_i << " rows_in_tile=" << rows_in_tile 
-                                  << " m_local=" << m_local << std::endl;
-                        MPI_Abort(comm, 1);
-                    }
-                    
                     double* tile_data = &local_a_data[local_i * n + j];
                     
                     // For row-major: stride is the number of columns (n)
                     // This is ZERO-COPY - we're using the FitSNAP data directly!
-                    // The tiles will know they are row-major because A_aug.layout_ is RowMajor
                     int tile_stride = n;  // Always use full row stride for row-major
-                    
-                    // Debug output for first few tiles
-                    if (tiles_inserted < 2) {
-                        std::cerr << "[Rank " << mpi_rank << "] Inserting tile (" << tile_i << "," << tile_j 
-                                  << ") rows=" << rows_in_tile << " cols=" << cols_in_tile 
-                                  << " stride=" << tile_stride << " nb=" << nb << std::endl;
-                    }
-                    
                     A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, tile_stride);
-                    tiles_inserted++;
                 }
             }
-        }
-        
-        if (mpi_rank == 0) {
-            std::cerr << "Original data tiles inserted successfully." << std::endl;
         }
         
         // INSERT TILES FOR b vector (column-major, single column)
@@ -177,104 +144,93 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
             }
         }
         
-        // ADD REGULARIZATION ROWS
-        // Distribute regularization rows across ranks
-        int reg_rows_per_rank = n / mpi_size;
-        int reg_rows_remainder = n % mpi_size;
-        int my_reg_rows = reg_rows_per_rank + (mpi_rank < reg_rows_remainder ? 1 : 0);
-        int my_reg_start = mpi_rank * reg_rows_per_rank + std::min(mpi_rank, reg_rows_remainder);
+        // ADD REGULARIZATION ROWS  
+        // The regularization rows (m_total to m_total+n-1) need to be handled carefully
+        // They are distributed in the same block-cyclic pattern as the data rows
         
         if (mpi_rank == 0) {
             std::cerr << "Adding regularization rows..." << std::endl;
-            std::cerr << "Regularization distribution:" << std::endl;
-            for (int r = 0; r < mpi_size; ++r) {
-                int r_rows_per_rank = n / mpi_size;
-                int r_rows_remainder = n % mpi_size;
-                int r_my_reg_rows = r_rows_per_rank + (r < r_rows_remainder ? 1 : 0);
-                int r_my_reg_start = r * r_rows_per_rank + std::min(r, r_rows_remainder);
-                std::cerr << "  Rank " << r << ": " << r_my_reg_rows << " rows starting at " << r_my_reg_start << std::endl;
-            }
+            std::cerr << "Regularization rows: " << m_total << " to " << (m_total + n - 1) << std::endl;
             std::cerr.flush();
         }
-        MPI_Barrier(comm);
         
         // Allocate memory for regularization tiles IN ROW-MAJOR FORMAT
         double sqrt_alpha = std::sqrt(alpha);
         
-        // Pre-allocate all regularization data to ensure memory persists
-        // Each rank stores its portion of regularization rows
-        std::vector<std::vector<double>> reg_tile_data_storage;
-        std::vector<std::vector<double>> reg_b_data_storage;
+        // Storage for regularization data - must persist through solve
+        std::vector<std::vector<double>> reg_A_storage;
+        std::vector<std::vector<double>> reg_b_storage;
         
-        // First pass: allocate storage for all regularization tiles
-        for (int i = 0; i < my_reg_rows; i += mb) {
-            int rows_in_tile = std::min(mb, my_reg_rows - i);
+        // Process tiles that overlap with regularization rows
+        // Tiles start at row m_total and go through row m_total + n - 1
+        int first_reg_tile = m_total / mb;  // First tile that contains regularization rows
+        int last_reg_tile = (m_total + n - 1) / mb;  // Last tile that contains regularization rows
+        
+        for (int tile_i = first_reg_tile; tile_i <= last_reg_tile; ++tile_i) {
+            // Determine the actual rows in this tile
+            int tile_start_row = tile_i * mb;
+            int tile_end_row = std::min((tile_i + 1) * mb, m_aug_total);
+            int tile_rows = tile_end_row - tile_start_row;
             
-            // Allocate row-major regularization data for this tile row
-            std::vector<double> tile_data(rows_in_tile * n, 0.0);
-            std::vector<double> b_data(rows_in_tile, 0.0);
+            // Determine which rows in this tile are regularization rows
+            int reg_start_in_tile = std::max(0, m_total - tile_start_row);
+            int reg_end_in_tile = std::min(tile_rows, m_total + n - tile_start_row);
+            int num_reg_rows_in_tile = reg_end_in_tile - reg_start_in_tile;
             
-            // Set diagonal elements in row-major format
-            for (int r = 0; r < rows_in_tile; ++r) {
-                int diag_col = my_reg_start + i + r;
-                if (diag_col < n) {
-                    // Row-major: row r, column diag_col
-                    tile_data[r * n + diag_col] = sqrt_alpha;
+            if (num_reg_rows_in_tile > 0) {
+                // This tile contains regularization rows
+                // Check if this rank owns any column tiles for this row tile
+                bool owns_tiles = false;
+                for (int j = 0; j < n; j += nb) {
+                    int tile_j = j / nb;
+                    if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
+                        owns_tiles = true;
+                        break;
+                    }
                 }
-            }
-            
-            reg_tile_data_storage.push_back(std::move(tile_data));
-            reg_b_data_storage.push_back(std::move(b_data));
-        }
-        
-        // Second pass: insert tiles using persistent storage
-        int tile_row_idx = 0;
-        for (int i = 0; i < my_reg_rows; i += mb) {
-            int global_row = m_total + my_reg_start + i;
-            int tile_i = global_row / mb;
-            int rows_in_tile = std::min(mb, my_reg_rows - i);
-            
-            // Get references to the pre-allocated storage
-            double* reg_tile_data = reg_tile_data_storage[tile_row_idx].data();
-            double* reg_b_data = reg_b_data_storage[tile_row_idx].data();
-            
-            // Insert regularization tiles
-            for (int j = 0; j < n; j += nb) {
-                int tile_j = j / nb;
-                int cols_in_tile = std::min(nb, n - j);
                 
-                if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
-                    // For row-major data, to get to column j, we offset by j
-                    // Each row has n elements, so row 0 column j is at index j
-                    double* tile_ptr = reg_tile_data + j;
-                    // Stride is n (number of columns) for row-major
-                    int tile_stride = n;  // Always use full row stride for row-major
+                if (owns_tiles || b_aug.tileRank(tile_i, 0) == mpi_rank) {
+                    // Allocate storage for the ENTIRE tile (not just regularization rows)
+                    // because SLATE expects full tiles
+                    std::vector<double> tile_data(tile_rows * n, 0.0);
+                    std::vector<double> b_data(tile_rows, 0.0);
                     
-                    // Debug for rank 4
-                    if (mpi_rank == 4 || (mpi_rank == 0 && tile_row_idx == 0 && tile_j == 0)) {
-                        std::cerr << "[Rank " << mpi_rank << "] Inserting REG tile (" << tile_i << "," << tile_j 
-                                  << ") rows=" << rows_in_tile << " cols=" << cols_in_tile 
-                                  << " stride=" << tile_stride << " nb=" << nb 
-                                  << " n=" << n << std::endl;
-                        std::cerr.flush();
+                    // Fill in the regularization part (identity matrix scaled by sqrt_alpha)
+                    for (int r = reg_start_in_tile; r < reg_end_in_tile; ++r) {
+                        int global_reg_row = tile_start_row + r - m_total;  // 0-based index in regularization
+                        if (global_reg_row >= 0 && global_reg_row < n) {
+                            // Set diagonal element
+                            tile_data[r * n + global_reg_row] = sqrt_alpha;
+                        }
                     }
                     
-                    // Verify stride constraint before insertion
-                    if (tile_stride < nb) {
-                        std::cerr << "[Rank " << mpi_rank << "] ERROR: stride " << tile_stride 
-                                  << " < nb " << nb << " for tile (" << tile_i << "," << tile_j << ")" << std::endl;
-                        MPI_Abort(comm, 1);
+                    // Store the data
+                    reg_A_storage.push_back(std::move(tile_data));
+                    reg_b_storage.push_back(std::move(b_data));
+                    
+                    // Get pointers to the stored data
+                    double* reg_tile_data = reg_A_storage.back().data();
+                    double* reg_b_data = reg_b_storage.back().data();
+                    
+                    // Insert column tiles for this row tile
+                    for (int j = 0; j < n; j += nb) {
+                        int tile_j = j / nb;
+                        int cols_in_tile = std::min(nb, n - j);
+                        
+                        if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
+                            // Pointer to column j in the row-major data
+                            double* tile_ptr = reg_tile_data + j;
+                            int tile_stride = n;  // Row-major stride
+                            A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_ptr, tile_stride);
+                        }
                     }
                     
-                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_ptr, tile_stride);
+                    // Insert b vector tile
+                    if (b_aug.tileRank(tile_i, 0) == mpi_rank) {
+                        b_aug.tileInsert(tile_i, 0, slate::HostNum, reg_b_data, tile_rows);
+                    }
                 }
             }
-            
-            if (b_aug.tileRank(tile_i, 0) == mpi_rank) {
-                b_aug.tileInsert(tile_i, 0, slate::HostNum, reg_b_data, rows_in_tile);
-            }
-            
-            tile_row_idx++;
         }
         
         MPI_Barrier(comm);

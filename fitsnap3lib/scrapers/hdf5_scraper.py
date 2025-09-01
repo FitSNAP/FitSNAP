@@ -148,15 +148,7 @@ class HDF5(Scraper):
 
             total = len(flat_configs)
             
-            # GLOBAL training/validation split BEFORE distribution
-            # This ensures all ranks agree on which configs are training vs validation
-            total_training = int(total * 0.8)
-            global_assignments = {}
-            for idx, cfg in enumerate(flat_configs):
-                # First 80% globally are training, last 20% are validation
-                global_assignments[cfg] = (idx >= total_training)
-            
-            # Now distribute configs in contiguous blocks
+            # Distribute configs in contiguous blocks FIRST
             base = total // (self.size)
             remainder = total % self.size
 
@@ -166,12 +158,15 @@ class HDF5(Scraper):
             self.my_configs = flat_configs[start:stop]
             actual = len(self.my_configs)
             
-            # Store the global assignments for our configs
-            self.config_assignments = {cfg: global_assignments[cfg] for cfg in self.my_configs}
-            
-            # Count training/validation for this rank
-            n_training_local = sum(1 for cfg in self.my_configs if not self.config_assignments[cfg])
+            # Now do 80/20 training/validation split LOCALLY within each rank's block
+            # This ensures every rank has both training and validation data
+            n_training_local = int(len(self.my_configs) * 0.8)
             n_validation_local = len(self.my_configs) - n_training_local
+            
+            # Create local assignments - first 80% of THIS rank's configs are training
+            self.config_assignments = {}
+            for idx, cfg in enumerate(self.my_configs):
+                self.config_assignments[cfg] = (idx >= n_training_local)
             
             print(f"[Rank {self.rank}] Total configs: {actual}, "
                   f"Training: {n_training_local}, Validation: {n_validation_local}", flush=True)

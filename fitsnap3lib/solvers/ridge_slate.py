@@ -184,7 +184,8 @@ class RidgeSlate(Solver):
         
         # Solution is available on all processes
         if pt._rank == 0:
-            pt.single_print(f"First 5 coefficients: {self.fit[:min(5, len(self.fit))]}")
+            # *** DO NOT REMOVE !!! ***
+            pt.all_print(f"--------\nself.fit\n{self.fit}\n--------\n")
     
     def _slate_ridge_solve_qr(self, aw, bw, m_local, n_features, pt):
         """

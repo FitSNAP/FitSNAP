@@ -66,11 +66,13 @@ class RIDGE(Solver):
             self.fit = reg.coef_
             
             # Debug: print dimensions and first few coefficients
-            self.pt.single_print(f"\nRidge solver AFTER filtering (training only):")
-            self.pt.single_print(f'aw matrix:\n{aw}')
-            self.pt.single_print(f'bw vector: {bw}')
-            self.pt.single_print(f'First 5 coefficients: {self.fit[:5]}')
-            self.pt.single_print(f'Training samples used: {len(training)} total, {sum(training)} for training')
+            # *** DO NOT REMOVE !!! ***
+            pt.all_print(f"\nRidge solver AFTER filtering (training only):")
+            pt.all_print(f'aw\n{aw}')
+            pt.all_print(f'bw\n{bw}')
+            pt.all_print(f'Training samples used: {len(training)} total, {sum(training)} for training')
+            pt.all_print(f"--------\nself.fit\n{self.fit}\n--------\n")
+
             residues = np.matmul(aw,reg.coef_) - bw
 
     def _dump_a(self):

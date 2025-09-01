@@ -95,25 +95,23 @@ class RidgeSlate(Solver):
             testing_gathered = pt.fitsnap_dict['Testing']
             
             # The Testing list was gathered with _sub_comm.allgather (within node)
-            # It contains contributions from all ranks on THIS node
-            # Filter out padding (' ' or other non-boolean values)
-            testing_node = []
-            if isinstance(testing_gathered, list):
-                for item in testing_gathered:
-                    if isinstance(item, list):
-                        for val in item:
-                            if isinstance(val, bool):
-                                testing_node.append(val)
-                    elif isinstance(item, bool):
-                        testing_node.append(item)
-            else:
-                testing_node = testing_gathered
+            # It already has the correct structure matching the shared arrays
+            # Convert to numpy array, keeping padding markers
+            testing_full = np.array(testing_gathered, dtype=object)
             
-            testing_node = np.array(testing_node, dtype=bool)
+            # Extract Testing values for actual data rows (where w != 0)
+            testing_node = testing_full[non_zero_mask]
+            
+            # Convert to boolean array (padding markers are filtered out by non_zero_mask)
+            testing_node = np.array([bool(val) for val in testing_node if isinstance(val, bool)])
             
             # Verify size match
             if len(testing_node) != len(a_node):
                 pt.all_print(f"ERROR: Testing mask size {len(testing_node)} != actual data size {len(a_node)}")
+                pt.all_print(f"testing_gathered: {testing_gathered}")
+                pt.all_print(f"non_zero_mask: {non_zero_mask}")
+                pt.all_print(f"testing_full: {testing_full}")
+                pt.all_print(f"testing_node after mask: {testing_full[non_zero_mask]}")
                 raise ValueError(f"Testing mask mismatch on node {pt._node_index}")
             
             # Create training mask

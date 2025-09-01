@@ -100,86 +100,81 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
             std::cerr.flush();
         }
         
-        // INSERT ALL TILES that this rank owns
-        // SLATE expects all tiles to exist, even if we don't have data for them
-        int mt_total = (m_aug_total + mb - 1) / mb;  // Total number of tile rows
-        int nt_total = (n + nb - 1) / nb;  // Total number of tile columns
+        // INSERT TILES - simpler approach: just copy data into SLATE format
+        // This avoids all the complexity of trying to make zero-copy work
+        // with different data distributions
         
-        // Storage for tiles we need to allocate
-        std::vector<std::vector<double>> allocated_tiles;
-        std::vector<std::vector<double>> allocated_b_tiles;
+        // Allocate workspace for all tiles we own
+        std::vector<std::vector<double>> a_tiles;
+        std::vector<std::vector<double>> b_tiles;
         
-        // Insert all A matrix tiles this rank owns
-        for (int tile_i = 0; tile_i < mt_total; ++tile_i) {
-            for (int tile_j = 0; tile_j < nt_total; ++tile_j) {
+        // Process all tiles in the augmented matrix
+        int mt_total = (m_aug_total + mb - 1) / mb;
+        int nt_total = 1;  // b vector has only 1 column of tiles
+        
+        // Insert A matrix tiles
+        for (int i = 0; i < m_aug_total; i += mb) {
+            int tile_i = i / mb;
+            int rows_in_tile = std::min(mb, m_aug_total - i);
+            
+            for (int j = 0; j < n; j += nb) {
+                int tile_j = j / nb;
+                int cols_in_tile = std::min(nb, n - j);
+                
                 if (A_aug.tileRank(tile_i, tile_j) == mpi_rank) {
-                    int tile_start_row = tile_i * mb;
-                    int tile_end_row = std::min((tile_i + 1) * mb, m_aug_total);
-                    int rows_in_tile = tile_end_row - tile_start_row;
+                    // Allocate tile
+                    a_tiles.emplace_back(rows_in_tile * cols_in_tile, 0.0);
+                    double* tile_data = a_tiles.back().data();
                     
-                    int tile_start_col = tile_j * nb;
-                    int tile_end_col = std::min((tile_j + 1) * nb, n);
-                    int cols_in_tile = tile_end_col - tile_start_col;
-                    
-                    // Check if this tile contains actual data from FitSNAP
-                    if (tile_start_row < m_total && 
-                        tile_start_row >= m_offsets[mpi_rank] && 
-                        tile_start_row < m_offsets[mpi_rank + 1]) {
-                        // This tile contains our local data - use zero-copy
-                        int local_i = tile_start_row - m_offsets[mpi_rank];
-                        double* tile_data = &local_a_data[local_i * n + tile_start_col];
-                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, n);
-                    }
-                    else {
-                        // This tile is either regularization or not our data - allocate
-                        // We need to allocate exactly what this tile needs, not the full row
-                        allocated_tiles.emplace_back(rows_in_tile * cols_in_tile, 0.0);
-                        double* tile_data = allocated_tiles.back().data();
+                    // Copy data if it's from our local portion
+                    if (i < m_total && i >= m_offsets[mpi_rank] && i < m_offsets[mpi_rank + 1]) {
+                        // Copy from local data
+                        int local_start = i - m_offsets[mpi_rank];
+                        int rows_to_copy = std::min(rows_in_tile, m_offsets[mpi_rank + 1] - i);
                         
-                        // If this contains regularization rows, fill them
-                        if (tile_end_row > m_total) {
-                            int reg_start = std::max(0, m_total - tile_start_row);
-                            for (int r = reg_start; r < rows_in_tile; ++r) {
-                                int global_row = tile_start_row + r;
-                                if (global_row >= m_total && global_row < m_aug_total) {
-                                    int diag_idx = global_row - m_total;
-                                    if (diag_idx >= tile_start_col && diag_idx < tile_end_col) {
-                                        // In the tile's local coordinates
-                                        int local_col = diag_idx - tile_start_col;
-                                        tile_data[r * cols_in_tile + local_col] = std::sqrt(alpha);
-                                    }
+                        for (int r = 0; r < rows_to_copy; ++r) {
+                            for (int c = 0; c < cols_in_tile; ++c) {
+                                tile_data[r * cols_in_tile + c] = 
+                                    local_a_data[(local_start + r) * n + j + c];
+                            }
+                        }
+                    }
+                    
+                    // Fill regularization rows if needed
+                    if (i + rows_in_tile > m_total) {
+                        int reg_start_row = std::max(0, m_total - i);
+                        for (int r = reg_start_row; r < rows_in_tile; ++r) {
+                            int global_row = i + r;
+                            if (global_row >= m_total && global_row < m_aug_total) {
+                                int diag_idx = global_row - m_total;
+                                if (diag_idx >= j && diag_idx < j + cols_in_tile) {
+                                    int local_col = diag_idx - j;
+                                    tile_data[r * cols_in_tile + local_col] = std::sqrt(alpha);
                                 }
                             }
                         }
-                        
-                        // For allocated tiles, stride is cols_in_tile since we allocated exactly that
-                        A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, cols_in_tile);
                     }
+                    
+                    A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, cols_in_tile);
                 }
             }
-        }
-        
-        // Insert all b vector tiles this rank owns
-        for (int tile_i = 0; tile_i < mt_total; ++tile_i) {
+            
+            // Insert b vector tile for this row
             if (b_aug.tileRank(tile_i, 0) == mpi_rank) {
-                int tile_start_row = tile_i * mb;
-                int tile_end_row = std::min((tile_i + 1) * mb, m_aug_total);
-                int rows_in_tile = tile_end_row - tile_start_row;
+                b_tiles.emplace_back(rows_in_tile, 0.0);
+                double* b_tile_data = b_tiles.back().data();
                 
-                // Check if this tile contains actual data from FitSNAP
-                if (tile_start_row < m_total && 
-                    tile_start_row >= m_offsets[mpi_rank] && 
-                    tile_start_row < m_offsets[mpi_rank + 1]) {
-                    // This tile contains our local data
-                    int local_i = tile_start_row - m_offsets[mpi_rank];
-                    double* tile_data = &local_b_data[local_i];
-                    b_aug.tileInsert(tile_i, 0, slate::HostNum, tile_data, rows_in_tile);
+                // Copy data if it's from our local portion
+                if (i < m_total && i >= m_offsets[mpi_rank] && i < m_offsets[mpi_rank + 1]) {
+                    int local_start = i - m_offsets[mpi_rank];
+                    int rows_to_copy = std::min(rows_in_tile, m_offsets[mpi_rank + 1] - i);
+                    
+                    for (int r = 0; r < rows_to_copy; ++r) {
+                        b_tile_data[r] = local_b_data[local_start + r];
+                    }
                 }
-                else {
-                    // Allocate zero tile for b
-                    allocated_b_tiles.emplace_back(rows_in_tile, 0.0);
-                    b_aug.tileInsert(tile_i, 0, slate::HostNum, allocated_b_tiles.back().data(), rows_in_tile);
-                }
+                
+                b_aug.tileInsert(tile_i, 0, slate::HostNum, b_tile_data, rows_in_tile);
             }
         }
 

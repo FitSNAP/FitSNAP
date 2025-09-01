@@ -61,10 +61,14 @@ class RidgeSlate(Solver):
         
         pt = self.pt
         
-        # Get the data for this node - already scraped and stored in shared arrays
-        w_node = pt.shared_arrays['w'].array[:]
-        a_node = pt.shared_arrays['a'].array[:]
-        b_node = pt.shared_arrays['b'].array[:]
+        # Get the data for this node - use only the scraped length, not the full padded array
+        scraped_length = pt.shared_arrays['a'].get_scraped_length()
+        w_node = pt.shared_arrays['w'].array[:scraped_length]
+        a_node = pt.shared_arrays['a'].array[:scraped_length]
+        b_node = pt.shared_arrays['b'].array[:scraped_length]
+        
+        if pt._sub_rank == 0:
+            pt.sub_print(f"Node {pt._node_index}: scraped_length={scraped_length}, array_shape={pt.shared_arrays['a'].array.shape}")
         
         # Handle testing/training split using the Testing mask from fitsnap_dict
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing']:
@@ -199,10 +203,11 @@ class RidgeSlate(Solver):
         """Evaluate training and testing errors using distributed computation."""
         pt = self.pt
         
-        # Each node computes predictions for its portion of data
-        a_node = pt.shared_arrays['a'].array
-        b_node = pt.shared_arrays['b'].array
-        w_node = pt.shared_arrays['w'].array
+        # Each node computes predictions for its portion of data - use scraped length
+        scraped_length = pt.shared_arrays['a'].get_scraped_length()
+        a_node = pt.shared_arrays['a'].array[:scraped_length]
+        b_node = pt.shared_arrays['b'].array[:scraped_length]
+        w_node = pt.shared_arrays['w'].array[:scraped_length]
         
         # Local matrix multiply - each node does its portion
         predictions_node = a_node @ self.fit

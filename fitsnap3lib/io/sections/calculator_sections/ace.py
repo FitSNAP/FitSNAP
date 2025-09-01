@@ -59,7 +59,7 @@ try:
             self._generate_b_list()
 
             # Print detailed statistics about ACE basis and design matrix
-            self._print_ace_statistics()
+            # self._print_ace_statistics()
 
             self._write_couple()
             Section.num_desc = len(self.blist)

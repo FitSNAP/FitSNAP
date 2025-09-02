@@ -169,8 +169,7 @@ class HDF5(Scraper):
         # Create a deterministic assignment of training/validation
         config_assignments = {}
         for idx, (g, i) in enumerate(self.my_configs):
-            # First n_training are training (test_bool=False), rest are validation (test_bool=True)
-            config_assignments[(g, i)] = (idx % 4 == 0)
+            config_assignments[(g, i)] = (i % 4 == 3)
 
         file_kwargs = {"driver": "mpio", "comm": self.comm} if self.pt.stubs == 0 else {}
 

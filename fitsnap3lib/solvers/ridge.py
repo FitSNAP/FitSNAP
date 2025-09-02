@@ -22,6 +22,14 @@ class RIDGE(Solver):
         The fit is stored as a member `fs.solver.fit`.
         """
         pt = self.pt
+        
+        # Debug: print FULL matrices before filtering DO NOT REMOVE
+        np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
+        self.pt.all_print(f"Ridge solver BEFORE filtering:")
+        self.pt.all_print(f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}")
+        self.pt.all_print(f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}")
+        self.pt.all_print(f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}")
+
         # Only fit on rank 0 to prevent unnecessary memory and work.
         if pt._rank == 0:
             
@@ -31,12 +39,6 @@ class RIDGE(Solver):
                 training = [True]*np.shape(a)[0]
             else:
                 training = [not elem for elem in pt.fitsnap_dict['Testing']]
-                # Debug: print FULL matrices before filtering DO NOT REMOVE
-                np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
-                self.pt.all_print(f"Ridge solver BEFORE filtering:")
-                self.pt.all_print(f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}")
-                self.pt.all_print(f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}")
-                self.pt.all_print(f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}")
 
 
             if a is None and b is None and w is None:

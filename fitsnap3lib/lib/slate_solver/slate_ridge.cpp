@@ -39,10 +39,10 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     // Debug output
     if (mpi_rank == 0) {
         std::cerr << "\n=== SLATE Ridge Regression Solver (Zero-Copy Row-Major) ===" << std::endl;
-        std::cerr << "Features (n): " << n << std::endl;
-        std::cerr << "Alpha: " << alpha << std::endl;
-        std::cerr << "MPI ranks: " << mpi_size << std::endl;
-        std::cerr << "Tile size: " << tile_size << std::endl;
+        std::cerr << " Features (n): " << n;
+        std::cerr << " Alpha: " << alpha;
+        std::cerr << " MPI ranks: " << mpi_size;
+        std::cerr << " Tile size: " << tile_size << std::endl;
         std::cerr.flush();
     }
     
@@ -78,9 +78,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         }
         if (mpi_size > 10) std::cerr << "...";
         std::cerr << std::endl;
-        
-        std::cerr << "Using RowMajorMatrix with direct distribution" << std::endl;
-        std::cerr.flush();
+
     }
     
     // Set up process grid
@@ -97,28 +95,19 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     
     if (mpi_rank == 0) {
         std::cerr << "\nCreating augmented system:" << std::endl;
-        std::cerr << "  Original: " << m_total << " x " << n << std::endl;
-        std::cerr << "  Augmented: " << m_aug_total << " x " << n << std::endl;
-        std::cerr << "  Process grid: " << p << " x " << q << std::endl;
-        std::cerr << "  Tile sizes: " << mb << " x " << nb << std::endl;
+        std::cerr << " Original: " << m_total << " x " << n;
+        std::cerr << " Augmented: " << m_aug_total << " x " << n;
+        std::cerr << " Process grid: " << p << " x " << q;
+        std::cerr << " Tile sizes: " << mb << " x " << nb << std::endl;
         std::cerr.flush();
     }
     
     try {
         // Create ROW-MAJOR SLATE matrices using our custom class
-        RowMajorMatrix<double> A_aug(m_aug_total, n, mb, nb, 
-                                     slate::GridOrder::Col, p, q, comm);
+        RowMajorMatrix<double> A_aug(m_aug_total, n, mb, nb, slate::GridOrder::Col, p, q, comm);
         
         // b vector is still column-major (it's a single column)
-        auto b_aug = slate::Matrix<double>(m_aug_total, 1, mb, 1,
-                                           slate::GridOrder::Col, p, q, comm);
-        
-        if (mpi_rank == 0) {
-            std::cerr << "Matrix A_aug layout: " << 
-                (A_aug.layout() == slate::Layout::RowMajor ? "RowMajor" : "ColMajor") << std::endl;
-            std::cerr << "Inserting tiles with ZERO-COPY from row-major data..." << std::endl;
-            std::cerr.flush();
-        }
+        auto b_aug = slate::Matrix<double>(m_aug_total, 1, mb, 1, slate::GridOrder::Col, p, q, comm);
         
         // INSERT TILES - simpler approach: just copy data into SLATE format
         // This avoids all the complexity of trying to make zero-copy work
@@ -214,7 +203,6 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         MPI_Barrier(comm);
         if (mpi_rank == 0) {
             std::cerr << "\nSolving augmented system with QR..." << std::endl;
-            std::cerr << "All matrix operations use ZERO-COPY row-major data" << std::endl;
             std::cerr.flush();
         }
         
@@ -226,7 +214,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         slate::gels(A_aug, b_aug);
         
         if (mpi_rank == 0) {
-            std::cerr << "QR solve completed. Extracting solution..." << std::endl;
+            std::cerr << "QR solve completed." << std::endl;
             std::cerr.flush();
         }
         
@@ -249,15 +237,6 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         MPI_Allreduce(MPI_IN_PLACE, solution, n, MPI_DOUBLE, MPI_SUM, comm);
         
         if (mpi_rank == 0) {
-            std::cerr << "\nRidge regression solved successfully with ZERO-COPY!" << std::endl;
-            std::cerr << "Solution vector has " << n << " coefficients" << std::endl;
-            
-            // Print first few coefficients
-            std::cerr << "First 5 coefficients: ";
-            for (int i = 0; i < std::min(5, n); ++i) {
-                std::cerr << std::fixed << std::setprecision(6) << solution[i] << " ";
-            }
-            std::cerr << std::endl;
             std::cerr << "=====================================\n" << std::endl;
             std::cerr.flush();
         }

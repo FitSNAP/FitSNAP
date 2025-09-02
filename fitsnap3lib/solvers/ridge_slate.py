@@ -90,47 +90,30 @@ class RidgeSlate(Solver):
             f"bw\n{w_train * b_train}\n"
             f"--------------------------------\n")
             
-        # EVERYTHING OK SO FAR, FIXME FOR THE REST
-
-        # Distribute training data across processes within this node
-        node_rows = len(w_train)
-        rows_per_proc = node_rows // pt._sub_size
-        extra_rows = node_rows % pt._sub_size
+        # IMPORTANT: With shared arrays, only rank 0 within each node handles data
+        # Other ranks in the node will participate in SLATE computation but send empty data
         
-        if pt._sub_rank < extra_rows:
-            start_idx = pt._sub_rank * (rows_per_proc + 1)
-            end_idx = start_idx + rows_per_proc + 1
+        if pt._sub_rank == 0:
+            # Only rank 0 in each node handles the shared array data
+            aw = w_train[:, np.newaxis] * a_train
+            bw = w_train * b_train
+            m_local = aw.shape[0]
+            n_features = aw.shape[1] if len(aw) > 0 else 0
         else:
-            start_idx = extra_rows * (rows_per_proc + 1) + (pt._sub_rank - extra_rows) * rows_per_proc
-            end_idx = start_idx + rows_per_proc
-        
-        # Get this process's portion
-        actual_end_idx = min(end_idx, len(w_train))
-        w_local = w_train[start_idx:actual_end_idx]
-        a_local = a_train[start_idx:actual_end_idx]
-        b_local = b_train[start_idx:actual_end_idx]
-        
-        # Apply weights
-        if len(w_local) > 0:
-            aw = w_local[:, np.newaxis] * a_local
-            bw = w_local * b_local
-        else:
-            aw = np.zeros((0, a_train.shape[1] if len(a_train) > 0 else 0), dtype=np.float64)
+            # Other ranks in the node send empty arrays
+            aw = np.zeros((0, 0), dtype=np.float64)
             bw = np.zeros(0, dtype=np.float64)
-        
-        # Get dimensions for SLATE solver
-        m_local = aw.shape[0]  # Number of local rows
-        n_features = aw.shape[1] if len(aw) > 0 else (a_train.shape[1] if len(a_train) > 0 else 0)
+            m_local = 0
+            n_features = 0
         
         # Ensure all processes agree on n_features
         n_features_array = np.array([n_features], dtype=np.int32)
         pt._comm.Allreduce(MPI.IN_PLACE, n_features_array, op=MPI.MAX)
         n_features = n_features_array[0]
         
-        # Ensure correct shape for empty arrays
-        if m_local == 0:
+        # Fix array dimensions if needed
+        if aw.shape[1] == 0 and n_features > 0:
             aw = np.zeros((0, n_features), dtype=np.float64)
-            bw = np.zeros(0, dtype=np.float64)
                 
         # Debug output on all ranks
         # *** DO NOT REMOVE !!! ***

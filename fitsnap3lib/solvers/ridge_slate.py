@@ -131,12 +131,13 @@ class RidgeSlate(Solver):
             b_train = b_node[training_node]
             
             # Debug output to verify correct filtering
-            pt.all_print(f"[Node {pt._node_index} Rank {pt._rank}]")
-            pt.all_print(f"Ridge solver AFTER filtering (training only):")
-            pt.all_print(f"aw\n{w_node[training_node][:, np.newaxis] * a_node[training_node]}")
-            pt.all_print(f"bw\n{w_node[training_node] * b_node[training_node]}")
-            pt.all_print(f"Training samples used: {len(testing_node)} total, {sum(training_node)} for training")
-            pt.all_print(f"--------\n")
+            pt.all_print(
+              f"----------------\nRidge solver AFTER filtering (training only):\n"
+              f"aw\n{w_node[training_node][:, np.newaxis] * a_node[training_node]}\n"
+              f"bw\n{w_node[training_node] * b_node[training_node]}\n"
+              f"Training samples used: {len(testing_node)} total, {sum(training_node)} for training\n"
+              f"--------------------------------\n"
+            )
         else:
             # No test/train split
             w_train = w_node

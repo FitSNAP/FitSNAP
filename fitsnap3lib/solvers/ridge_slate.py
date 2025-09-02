@@ -117,6 +117,20 @@ class RidgeSlate(Solver):
         else:
             aw = np.zeros((0, a_train.shape[1] if len(a_train) > 0 else 0), dtype=np.float64)
             bw = np.zeros(0, dtype=np.float64)
+        
+        # Get dimensions for SLATE solver
+        m_local = aw.shape[0]  # Number of local rows
+        n_features = aw.shape[1] if len(aw) > 0 else (a_train.shape[1] if len(a_train) > 0 else 0)
+        
+        # Ensure all processes agree on n_features
+        n_features_array = np.array([n_features], dtype=np.int32)
+        pt._comm.Allreduce(MPI.IN_PLACE, n_features_array, op=MPI.MAX)
+        n_features = n_features_array[0]
+        
+        # Ensure correct shape for empty arrays
+        if m_local == 0:
+            aw = np.zeros((0, n_features), dtype=np.float64)
+            bw = np.zeros(0, dtype=np.float64)
                 
         # Debug output on all ranks
         # *** DO NOT REMOVE !!! ***

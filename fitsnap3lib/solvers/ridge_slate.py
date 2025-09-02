@@ -89,8 +89,7 @@ class RidgeSlate(Solver):
             f"----------------\nSLATE solver AFTER filtering:\n"
             f"aw\n{w_train[:, np.newaxis] * a_train}\n"
             f"bw\n{w_train * b_train\n"
-            f"--------------------------------\n"
-        )
+            f"--------------------------------\n")
 
         # Distribute training data across processes within this node
         node_rows = len(w_train)

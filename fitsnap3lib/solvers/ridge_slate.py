@@ -89,6 +89,8 @@ class RidgeSlate(Solver):
             f"aw\n{w_train[:, np.newaxis] * a_train}\n"
             f"bw\n{w_train * b_train}\n"
             f"--------------------------------\n")
+            
+        # EVERYTHING OK SO FAR, FIXME FOR THE REST
 
         # Distribute training data across processes within this node
         node_rows = len(w_train)
@@ -115,38 +117,17 @@ class RidgeSlate(Solver):
         else:
             aw = np.zeros((0, a_train.shape[1] if len(a_train) > 0 else 0), dtype=np.float64)
             bw = np.zeros(0, dtype=np.float64)
-        
-        # Get dimensions
-        m_local = aw.shape[0]
-        n_features = aw.shape[1] if len(aw) > 0 else (a_train.shape[1] if len(a_train) > 0 else 0)
-        
-        # Ensure all processes agree on n_features
-        n_features_array = np.array([n_features], dtype=np.int32)
-        pt._comm.Allreduce(MPI.IN_PLACE, n_features_array, op=MPI.MAX)
-        n_features = n_features_array[0]
-        
-        # Ensure correct shape
-        if m_local == 0:
-            aw = np.zeros((0, n_features), dtype=np.float64)
-            bw = np.zeros(0, dtype=np.float64)
-        
-        # Debug output on rank 0
-        if pt._rank == 0:
-            pt.single_print(f"\nRank 0 sending to SLATE:")
-            pt.single_print(f"aw shape: {aw.shape}")
-            pt.single_print(f"bw shape: {bw.shape}")
-            pt.single_print(f"alpha: {self.alpha}")
-            if m_local > 0:
-                pt.single_print(f"aw matrix:\n{aw}")
-                pt.single_print(f"bw vector: {bw}")
+                
+        # Debug output on all ranks
+        # *** DO NOT REMOVE !!! ***
+        pt.all_print(f"\nsending to SLATE:\naw\n{aw}\nbw{bw}")
         
         # ALL processes participate in the SLATE solve
         self.fit = self._slate_ridge_solve_qr(aw, bw, m_local, n_features, pt)
         
         # Solution is available on all processes
-        if pt._rank == 0:
-            # *** DO NOT REMOVE !!! ***
-            pt.all_print(f"------------------------\nself.fit\n{self.fit}\n--------------------------------\n")
+        # *** DO NOT REMOVE !!! ***
+        pt.all_print(f"------------------------\nself.fit\n{self.fit}\n--------------------------------\n")
     
     def _slate_ridge_solve_qr(self, aw, bw, m_local, n_features, pt):
         """

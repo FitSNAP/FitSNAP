@@ -146,37 +146,18 @@ class Calculator:
 
             # make an index for which the 'a' array starts on a particular proc
             self.pt.new_slice_a()
-            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0]
-            
-            # When using true_multinode, adjust the starting index based on node
-            if self.config.sections["SOLVER"].true_multinode and self.pt._number_of_nodes > 1:
-                # Each node should start at a different offset
-                node_offset = self.pt._node_index * self.pt.shared_arrays['a'].get_scraped_length()
-                self.shared_index += node_offset 
+            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0] 
             # make an index for which the 'b' array starts on a particular proc
             self.pt.new_slice_b()
-            self.shared_index_b = self.pt.fitsnap_dict["sub_b_indices"][0]
-            
+            self.shared_index_b = self.pt.fitsnap_dict["sub_b_indices"][0] 
             # make an index for which the 'c' array starts on a particular proc
             self.pt.new_slice_c()
-            self.shared_index_c = self.pt.fitsnap_dict["sub_c_indices"][0]
+            self.shared_index_c = self.pt.fitsnap_dict["sub_c_indices"][0] 
             #self.pt.new_slice_t() # atom types
 
             # make an index for which the 'dgrad' array starts on a particular proc
             self.pt.new_slice_dgrad()
             self.shared_index_dgrad = self.pt.fitsnap_dict["sub_dgrad_indices"][0]
-            
-            # When using true_multinode, adjust all starting indices based on node
-            if self.config.sections["SOLVER"].true_multinode and self.pt._number_of_nodes > 1:
-                # Each node should start at a different offset
-                b_node_offset = self.pt._node_index * self.pt.shared_arrays['b'].get_scraped_length()
-                self.shared_index_b += b_node_offset
-                
-                c_node_offset = self.pt._node_index * self.pt.shared_arrays['c'].get_scraped_length()
-                self.shared_index_c += c_node_offset
-                
-                dgrad_node_offset = self.pt._node_index * self.pt.shared_arrays['dgrad'].get_scraped_length()
-                self.shared_index_dgrad += dgrad_node_offset
 
             # create fitsnap dicts - distributed lists of size nconfig per proc
             # these later get gathered on the root proc in calculator.gather_distributed_lists
@@ -308,12 +289,6 @@ class Calculator:
             self.pt.create_shared_array('w', a_len, tm=self.config.sections["SOLVER"].true_multinode)
             self.pt.new_slice_a()
             self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0]
-            
-            # When using true_multinode, adjust the starting index based on node
-            if self.config.sections["SOLVER"].true_multinode and self.pt._number_of_nodes > 1:
-                # Each node should start at a different offset
-                node_offset = self.pt._node_index * self.pt.shared_arrays['a'].get_scraped_length()
-                self.shared_index += node_offset
             # pt.slice_array('a')
 
             self.pt.add_2_fitsnap("Groups", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
@@ -349,28 +324,6 @@ class Calculator:
                     self.pt.fitsnap_dict[key] = [item for sublist in self.pt.fitsnap_dict[key] for item in sublist]
                 elif self.pt.fitsnap_dict[key] is not None:
                     self.pt.fitsnap_dict[key] = self.pt.fitsnap_dict[key].get_list()
-        
-        # When using true_multinode, pad the gathered lists to match the padded shared arrays
-        if (hasattr(self.config.sections["SOLVER"], "true_multinode") and 
-            self.config.sections["SOLVER"].true_multinode and 
-            'a' in self.pt.shared_arrays and self.pt._number_of_nodes > 1):
-            
-            # Each node has scraped_len of actual data but storage_len total space
-            scraped_len = self.pt.shared_arrays['a'].get_scraped_length()
-            storage_len = self.pt.shared_arrays['a'].get_storage_length()
-            
-            # The gathered lists need padding to match the shared arrays
-            # Insert padding AFTER the scraped data for THIS node
-            # Other nodes' data comes after our padding
-            node_offset = self.pt._node_index * scraped_len
-            padding_len = storage_len - scraped_len
-            
-            for key in self.pt.fitsnap_dict.keys():
-                if isinstance(self.pt.fitsnap_dict[key], list) and len(self.pt.fitsnap_dict[key]) == scraped_len:
-                    # This list needs padding
-                    # Add padding markers after our data
-                    padded_list = self.pt.fitsnap_dict[key] + [' '] * padding_len
-                    self.pt.fitsnap_dict[key] = padded_list
 
     #@pt.rank_zero
     def extras(self):

@@ -85,6 +85,9 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     int p = mpi_size;
     int q = 1;  // 1D row distribution
     
+    // Augmented system dimensions
+    int m_aug_total = m_total + n;  // Add n regularization rows
+    
     // Tile sizes - need to be small enough to distribute data across ranks
     // For small matrices, use smaller tiles to ensure distribution
     int target_rows_per_rank = (m_aug_total + mpi_size - 1) / mpi_size;
@@ -99,9 +102,6 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     if (mpi_rank == 0) {
         std::cerr << "Adjusted tile sizes for distribution: mb=" << mb << ", nb=" << nb << std::endl;
     }
-    
-    // Augmented system dimensions
-    int m_aug_total = m_total + n;  // Add n regularization rows
     
     if (mpi_rank == 0) {
         std::cerr << "\nCreating augmented system:" << std::endl;

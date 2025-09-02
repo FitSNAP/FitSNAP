@@ -70,35 +70,28 @@ class RidgeSlate(Solver):
                      f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}\n"
                      f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}\n"
                      f"--------------------------------\n")
-        
-        # Get raw arrays from shared memory (may include padding)
-        a_full = pt.shared_arrays['a'].array
-        b_full = pt.shared_arrays['b'].array  
-        w_full = pt.shared_arrays['w'].array
                 
         # Handle train/test split
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
-            
-            testing_node = pt.fitsnap_dict['Testing']
-            training_node = ~testing_node
-            w_train = w_node[training_node]
-            a_train = a_node[training_node]
-            b_train = b_node[training_node]
-            
-            # Debug output to verify filtering - print one statement to avoid tangled output
-            # *** DO NOT REMOVE !!! ***
-            pt.all_print(
-              f"----------------\nSLATE solver AFTER filtering:\n"
-              f"aw\n{w_node[training_node][:, np.newaxis] * a_node[training_node]}\n"
-              f"bw\n{w_node[training_node] * b_node[training_node]}\n"
-              f"--------------------------------\n"
-            )
+            training = [(elem==False) for elem in fs_dict['Testing']]
+            a_train = pt.shared_arrays['a'].array[training]
+            b_train = pt.shared_arrays['b'].array[training]
+            w_train = pt.shared_arrays['w'].array[training]
         else:
             # No test/train split
-            w_train = w_node
-            a_train = a_node
-            b_train = b_node
-        
+            a_train = pt.shared_arrays['a'].array
+            b_train = pt.shared_arrays['b'].array
+            w_train = pt.shared_arrays['w'].array
+            
+        # Debug output to verify filtering - print one statement to avoid tangled output
+        # *** DO NOT REMOVE !!! ***
+        pt.all_print(
+            f"----------------\nSLATE solver AFTER filtering:\n"
+            f"aw\n{w_train[:, np.newaxis] * a_train}\n"
+            f"bw\n{w_train * b_train\n"
+            f"--------------------------------\n"
+        )
+
         # Distribute training data across processes within this node
         node_rows = len(w_train)
         rows_per_proc = node_rows // pt._sub_size

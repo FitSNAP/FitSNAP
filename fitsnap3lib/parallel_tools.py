@@ -349,7 +349,7 @@ class ParallelTools():
             #self.single_print("No need to free a stubs array.")
             pass
 
-    def create_shared_array(self, name, size1, size2=1, dtype='d', tm=0):
+    def create_shared_array(self, name, size1, size2=1, dtype='d', tm=False):
         """
         Create a shared memory array as a key in the ``pt.shared_array`` dictionary. This function uses the ``SharedArray`` 
         class to instantiate a shared memory array in the supplied dictionary key ``name``.

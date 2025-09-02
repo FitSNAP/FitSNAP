@@ -75,67 +75,22 @@ class RidgeSlate(Solver):
         a_full = pt.shared_arrays['a'].array
         b_full = pt.shared_arrays['b'].array  
         w_full = pt.shared_arrays['w'].array
-        
-        # Find actual data by checking for non-zero weights (padded rows have w=0)
-        non_zero_mask = w_full != 0
-        actual_data_indices = np.where(non_zero_mask)[0]
-        
-        if len(actual_data_indices) > 0:
-            a_node = a_full[non_zero_mask]
-            b_node = b_full[non_zero_mask]
-            w_node = w_full[non_zero_mask]
-        else:
-            # No data on this node
-            a_node = np.zeros((0, a_full.shape[1] if len(a_full.shape) > 1 else 0), dtype=np.float64)
-            b_node = np.zeros(0, dtype=np.float64)
-            w_node = np.zeros(0, dtype=np.float64)
-        
+                
         # Handle train/test split
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
-            testing_gathered = pt.fitsnap_dict['Testing']
             
-            # The Testing list was gathered with _sub_comm.allgather (within node)
-            # Filter out padding markers (' ') and extract only boolean values
-            testing_bools = []
-            if isinstance(testing_gathered, list):
-                for item in testing_gathered:
-                    if isinstance(item, bool):
-                        testing_bools.append(item)
-                    elif isinstance(item, list):
-                        # Handle nested lists if they exist
-                        for val in item:
-                            if isinstance(val, bool):
-                                testing_bools.append(val)
-                    # Skip padding markers (' ') - they correspond to padded rows already filtered out
-            else:
-                # If not a list, use as is
-                testing_bools = testing_gathered
-            
-            testing_node = np.array(testing_bools, dtype=bool)
-            
-            # Verify size match
-            if len(testing_node) != len(a_node):
-                pt.all_print(f"ERROR: Testing mask size {len(testing_node)} != actual data size {len(a_node)}")
-                pt.all_print(f"testing_gathered: {testing_gathered}")
-                pt.all_print(f"non_zero_mask: {non_zero_mask}")
-                pt.all_print(f"testing_bools extracted: {testing_bools}")
-                pt.all_print(f"Actual data count: {len(actual_data_indices)}")
-                raise ValueError(f"Testing mask mismatch on node {pt._node_index}")
-            
-            # Create training mask
+            testing_node = pt.fitsnap_dict['Testing']
             training_node = ~testing_node
-            
-            # Filter for training data only
             w_train = w_node[training_node]
             a_train = a_node[training_node]
             b_train = b_node[training_node]
             
-            # Debug output to verify correct filtering
+            # Debug output to verify filtering - print one statement to avoid tangled output
+            # *** DO NOT REMOVE !!! ***
             pt.all_print(
-              f"----------------\nRidge solver AFTER filtering (training only):\n"
+              f"----------------\nSLATE solver AFTER filtering:\n"
               f"aw\n{w_node[training_node][:, np.newaxis] * a_node[training_node]}\n"
               f"bw\n{w_node[training_node] * b_node[training_node]}\n"
-              f"Training samples used: {len(testing_node)} total, {sum(training_node)} for training\n"
               f"--------------------------------\n"
             )
         else:

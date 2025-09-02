@@ -185,8 +185,7 @@ class HDF5(Scraper):
             
         n_validation = len(self.my_configs) - n_training
         
-        self.pt.all_print(f"[Rank {self.rank if hasattr(self, 'rank') else 'unknown'}] "
-              f"Total configs: {len(self.my_configs)}, Training: {n_training}, Validation: {n_validation}")
+        self.pt.all_print(f"Total configs: {len(self.my_configs)} Training: {n_training} Validation: {n_validation}")
         
         # Create a deterministic assignment of training/validation
         config_assignments = {}

@@ -164,34 +164,13 @@ class HDF5(Scraper):
     def scrape_configs(self):
         self.data = []
         
-        # Calculate training/validation split
-        # IMPORTANT: Each rank must have SAME number of training configs
-        # Calculate based on total configs across all ranks
-        if self.pt.stubs == 0:
-            # Get total number of configs across all ranks
-            local_count = len(self.my_configs)
-            total_configs_global = self.comm.allreduce(local_count)
-            
-            # Calculate how many training configs each rank should have
-            # 80% of total for training, distributed evenly across ranks
-            total_training = int(total_configs_global * 0.8)
-            n_training_per_rank = total_training // self.size
-            
-            # Ensure we don't exceed local configs available
-            n_training = min(n_training_per_rank, len(self.my_configs))
-        else:
-            # For non-MPI case
-            n_training = int(len(self.my_configs) * 0.8)
-            
-        n_validation = len(self.my_configs) - n_training
-        
-        self.pt.all_print(f"Total configs: {len(self.my_configs)} Training: {n_training} Validation: {n_validation}")
+        #self.pt.all_print(f"Total configs: {len(self.my_configs)} Training: {n_training} Validation: {n_validation}")
         
         # Create a deterministic assignment of training/validation
         config_assignments = {}
         for idx, (g, i) in enumerate(self.my_configs):
             # First n_training are training (test_bool=False), rest are validation (test_bool=True)
-            config_assignments[(g, i)] = (idx >= n_training)
+            config_assignments[(g, i)] = (idx % 4 == 0)
 
         file_kwargs = {"driver": "mpio", "comm": self.comm} if self.pt.stubs == 0 else {}
 

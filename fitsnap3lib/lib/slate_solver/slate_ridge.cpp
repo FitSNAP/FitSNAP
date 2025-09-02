@@ -38,7 +38,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     
     // Debug output
     if (mpi_rank == 0) {
-        std::cerr << "\n=== SLATE Ridge Regression Solver (Zero-Copy Row-Major) ===" << std::endl;
+        std::cerr << "\n=== SLATE Ridge Solver ===" << std::endl;
         std::cerr << " Features (n): " << n;
         std::cerr << " Alpha: " << alpha;
         std::cerr << " MPI ranks: " << mpi_size;

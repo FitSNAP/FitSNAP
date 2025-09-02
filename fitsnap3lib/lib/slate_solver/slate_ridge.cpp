@@ -92,7 +92,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         slate::Matrix<double> b_aug(m_aug, 1, mb, 1, slate::GridOrder::Col, p, q, comm);
         
         // Only ranks with data (rank 0 within each node) insert tiles
-        if (m_local > 0) {
+        if (m_local > 0 && local_a_data != nullptr && local_b_data != nullptr) {
             int my_row_start = row_offsets[mpi_rank];
             int my_row_end = row_offsets[mpi_rank + 1];
             

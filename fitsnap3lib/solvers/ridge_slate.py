@@ -101,19 +101,16 @@ class RidgeSlate(Solver):
             n_features = aw.shape[1] if len(aw) > 0 else 0
         else:
             # Other ranks in the node send empty arrays
-            aw = np.zeros((0, 0), dtype=np.float64)
-            bw = np.zeros(0, dtype=np.float64)
+            # First get n_features from the training data shape
+            n_features = a_train.shape[1] if len(a_train) > 0 else 0
             m_local = 0
-            n_features = 0
+            aw = np.zeros((0, n_features), dtype=np.float64, order='C')
+            bw = np.zeros(0, dtype=np.float64, order='C')
         
         # Ensure all processes agree on n_features
         n_features_array = np.array([n_features], dtype=np.int32)
         pt._comm.Allreduce(MPI.IN_PLACE, n_features_array, op=MPI.MAX)
         n_features = n_features_array[0]
-        
-        # Fix array dimensions if needed
-        if aw.shape[1] == 0 and n_features > 0:
-            aw = np.zeros((0, n_features), dtype=np.float64)
                 
         # Debug output on all ranks
         # *** DO NOT REMOVE !!! ***

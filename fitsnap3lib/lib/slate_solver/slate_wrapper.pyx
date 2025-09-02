@@ -49,7 +49,15 @@ def ridge_solve_qr(np.ndarray[double, ndim=2, mode="c"] local_a,
     from mpi4py import MPI
     cdef size_t comm_ptr = MPI._handleof(comm)
     
-    slate_ridge_solve_qr(&local_a[0,0], &local_b[0], &solution[0], 
+    # Handle empty arrays (m_local = 0)
+    cdef double* a_ptr = NULL
+    cdef double* b_ptr = NULL
+    
+    if m_local > 0:
+        a_ptr = &local_a[0,0]
+        b_ptr = &local_b[0]
+    
+    slate_ridge_solve_qr(a_ptr, b_ptr, &solution[0], 
                         m_local, n, alpha, <void*>comm_ptr, tile_size)
     
     return solution

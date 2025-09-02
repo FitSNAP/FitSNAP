@@ -95,23 +95,31 @@ class RidgeSlate(Solver):
             testing_gathered = pt.fitsnap_dict['Testing']
             
             # The Testing list was gathered with _sub_comm.allgather (within node)
-            # It already has the correct structure matching the shared arrays
-            # Convert to numpy array, keeping padding markers
-            testing_full = np.array(testing_gathered, dtype=object)
+            # Filter out padding markers (' ') and extract only boolean values
+            testing_bools = []
+            if isinstance(testing_gathered, list):
+                for item in testing_gathered:
+                    if isinstance(item, bool):
+                        testing_bools.append(item)
+                    elif isinstance(item, list):
+                        # Handle nested lists if they exist
+                        for val in item:
+                            if isinstance(val, bool):
+                                testing_bools.append(val)
+                    # Skip padding markers (' ') - they correspond to padded rows already filtered out
+            else:
+                # If not a list, use as is
+                testing_bools = testing_gathered
             
-            # Extract Testing values for actual data rows (where w != 0)
-            testing_node = testing_full[non_zero_mask]
-            
-            # Convert to boolean array (padding markers are filtered out by non_zero_mask)
-            testing_node = np.array([bool(val) for val in testing_node if isinstance(val, bool)])
+            testing_node = np.array(testing_bools, dtype=bool)
             
             # Verify size match
             if len(testing_node) != len(a_node):
                 pt.all_print(f"ERROR: Testing mask size {len(testing_node)} != actual data size {len(a_node)}")
                 pt.all_print(f"testing_gathered: {testing_gathered}")
                 pt.all_print(f"non_zero_mask: {non_zero_mask}")
-                pt.all_print(f"testing_full: {testing_full}")
-                pt.all_print(f"testing_node after mask: {testing_full[non_zero_mask]}")
+                pt.all_print(f"testing_bools extracted: {testing_bools}")
+                pt.all_print(f"Actual data count: {len(actual_data_indices)}")
                 raise ValueError(f"Testing mask mismatch on node {pt._node_index}")
             
             # Create training mask
@@ -121,6 +129,14 @@ class RidgeSlate(Solver):
             w_train = w_node[training_node]
             a_train = a_node[training_node]
             b_train = b_node[training_node]
+            
+            # Debug output to verify correct filtering
+            pt.all_print(f"[Node {pt._node_index} Rank {pt._rank}]")
+            pt.all_print(f"Ridge solver AFTER filtering (training only):")
+            pt.all_print(f"aw\n{w_node[training_node][:, np.newaxis] * a_node[training_node]}")
+            pt.all_print(f"bw\n{w_node[training_node] * b_node[training_node]}")
+            pt.all_print(f"Training samples used: {len(testing_node)} total, {sum(training_node)} for training")
+            pt.all_print(f"--------\n")
         else:
             # No test/train split
             w_train = w_node
@@ -260,20 +276,23 @@ class RidgeSlate(Solver):
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing']:
             testing_gathered = pt.fitsnap_dict['Testing']
             
-            # Filter out padding to get actual Testing mask for this node
-            testing_node = []
+            # Filter out padding markers (' ') to get actual Testing mask for this node
+            testing_bools = []
             if isinstance(testing_gathered, list):
                 for item in testing_gathered:
-                    if isinstance(item, list):
+                    if isinstance(item, bool):
+                        testing_bools.append(item)
+                    elif isinstance(item, list):
+                        # Handle nested lists if they exist
                         for val in item:
                             if isinstance(val, bool):
-                                testing_node.append(val)
-                    elif isinstance(item, bool):
-                        testing_node.append(item)
+                                testing_bools.append(val)
+                    # Skip padding markers (' ') - they correspond to padded rows already filtered out
             else:
-                testing_node = testing_gathered
+                # If not a list, use as is
+                testing_bools = testing_gathered
             
-            testing_node = np.array(testing_node, dtype=bool)
+            testing_node = np.array(testing_bools, dtype=bool)
             
             if len(testing_node) == len(errors_node):
                 training_node = ~testing_node

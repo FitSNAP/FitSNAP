@@ -85,10 +85,20 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     int p = mpi_size;
     int q = 1;  // 1D row distribution
     
-    // Tile sizes - for column dimension, use min of tile_size and n
-    // This prevents tiles from being wider than the matrix
-    int mb = tile_size;  // Row tile size
+    // Tile sizes - need to be small enough to distribute data across ranks
+    // For small matrices, use smaller tiles to ensure distribution
+    int target_rows_per_rank = (m_aug_total + mpi_size - 1) / mpi_size;
+    int mb = std::min(tile_size, std::max(1, target_rows_per_rank));  // Ensure each rank gets data
     int nb = std::min(tile_size, n);  // Column tile size (can't exceed n)
+    
+    // For very small matrices, further reduce tile size
+    if (m_aug_total < 20) {
+        mb = std::max(1, (m_aug_total + mpi_size - 1) / mpi_size);
+    }
+    
+    if (mpi_rank == 0) {
+        std::cerr << "Adjusted tile sizes for distribution: mb=" << mb << ", nb=" << nb << std::endl;
+    }
     
     // Augmented system dimensions
     int m_aug_total = m_total + n;  // Add n regularization rows
@@ -113,6 +123,12 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         // This avoids all the complexity of trying to make zero-copy work
         // with different data distributions
         
+        // Debug: show what we're building
+        if (mpi_rank == 0) {
+            std::cerr << "\nBuilding augmented system:" << std::endl;
+            std::cerr << "Alpha = " << alpha << ", sqrt(alpha) = " << std::sqrt(alpha) << std::endl;
+        }
+        
         // Allocate workspace for all tiles we own
         std::vector<std::vector<double>> a_tiles;
         std::vector<std::vector<double>> b_tiles;
@@ -120,6 +136,16 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         // Process all tiles in the augmented matrix
         int mt_total = (m_aug_total + mb - 1) / mb;
         int nt_total = 1;  // b vector has only 1 column of tiles
+        
+        // Debug: show tile ownership
+        if (mpi_rank == 0) {
+            std::cerr << "\nTile ownership for A_aug (" << mt_total << " row tiles):" << std::endl;
+            for (int ti = 0; ti < mt_total; ++ti) {
+                std::cerr << "  Tile row " << ti << " (rows " << ti*mb << "-" << std::min((ti+1)*mb-1, m_aug_total-1) << "): rank " << A_aug.tileRank(ti, 0) << std::endl;
+            }
+            std::cerr.flush();
+        }
+        MPI_Barrier(comm);
         
         // Insert A matrix tiles
         for (int i = 0; i < m_aug_total; i += mb) {
@@ -171,6 +197,25 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                     }
                     
                     A_aug.tileInsert(tile_i, tile_j, slate::HostNum, tile_data, cols_in_tile);
+                    
+                    // Debug: print what each rank is inserting
+                    if (n <= 4) {
+                        std::cerr << "[Rank " << mpi_rank << "] Inserting A_aug tile(" << tile_i << "," << tile_j << ") with " << rows_in_tile << "x" << cols_in_tile << " elements" << std::endl;
+                        // Print first and last row of each tile
+                        std::cerr << "  First row: ";
+                        for (int c = 0; c < std::min(4, cols_in_tile); ++c) {
+                            std::cerr << tile_data[c] << " ";
+                        }
+                        std::cerr << std::endl;
+                        if (rows_in_tile > 1) {
+                            std::cerr << "  Last row:  ";
+                            for (int c = 0; c < std::min(4, cols_in_tile); ++c) {
+                                std::cerr << tile_data[(rows_in_tile-1) * cols_in_tile + c] << " ";
+                            }
+                            std::cerr << std::endl;
+                        }
+                        std::cerr.flush();
+                    }
                 }
             }
             
@@ -196,6 +241,17 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 }
                 
                 b_aug.tileInsert(tile_i, 0, slate::HostNum, b_tile_data, rows_in_tile);
+                
+                // Debug: print b vector tiles
+                if (n <= 4) {
+                    std::cerr << "[Rank " << mpi_rank << "] Inserting b_aug tile(" << tile_i << ",0) with " << rows_in_tile << " elements: ";
+                    for (int r = 0; r < std::min(4, rows_in_tile); ++r) {
+                        std::cerr << b_tile_data[r] << " ";
+                    }
+                    if (rows_in_tile > 4) std::cerr << "...";
+                    std::cerr << std::endl;
+                    std::cerr.flush();
+                }
             }
         }
 
@@ -219,8 +275,21 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         }
         
         // Extract solution from first n elements of b_aug
-        std::fill(solution, solution + n, 0.0);
+        // The solution is in the first n rows of b_aug after QR solve
+        std::vector<double> local_solution(n, 0.0);
         
+        // Debug: check tile ownership
+        if (mpi_rank == 0) {
+            std::cerr << "\nExtracting solution from b_aug:" << std::endl;
+            for (int i = 0; i < n; ++i) {
+                int tile_i = i / mb;
+                std::cerr << "  Row " << i << " is in tile " << tile_i << ", owned by rank " << b_aug.tileRank(tile_i, 0) << std::endl;
+            }
+            std::cerr.flush();
+        }
+        MPI_Barrier(comm);
+        
+        // Each rank extracts its portion of the solution
         for (int i = 0; i < n; ++i) {
             int tile_i = i / mb;
             int local_i = i % mb;
@@ -228,13 +297,15 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
             if (b_aug.tileRank(tile_i, 0) == mpi_rank && b_aug.tileIsLocal(tile_i, 0)) {
                 auto tile = b_aug(tile_i, 0);
                 if (local_i < tile.mb()) {
-                    solution[i] = tile(local_i, 0);
+                    local_solution[i] = tile(local_i, 0);
+                    std::cerr << "[Rank " << mpi_rank << "] Extracted solution[" << i << "] = " << local_solution[i] << std::endl;
                 }
             }
         }
         
-        // Gather solution to all ranks
-        MPI_Allreduce(MPI_IN_PLACE, solution, n, MPI_DOUBLE, MPI_SUM, comm);
+        // Use MPI_Allreduce with SUM - each rank contributes its part
+        // Since each element is owned by exactly one rank, SUM is correct
+        MPI_Allreduce(local_solution.data(), solution, n, MPI_DOUBLE, MPI_SUM, comm);
         
         if (mpi_rank == 0) {
             std::cerr << "=====================================\n" << std::endl;

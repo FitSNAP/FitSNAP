@@ -275,7 +275,7 @@ class ParallelTools():
         printf("Node", self._node_index, ":", *args, file=self._fp)
 
     def all_print(self, *args, **kw):
-        printf(f"[Node {self._node_index} Rank {self._rank}]", *args, file=self._fp)
+        printf(f"[Node {self._node_index} Rank {self._rank}]", *args, file=self._fp, flush=True)
 
     def set_output(self, output_file, ns=False, ps=False):
         if ps:

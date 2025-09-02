@@ -72,7 +72,7 @@ class RidgeSlate(Solver):
                 
         # Handle train/test split
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
-            training = [(elem==False) for elem in fs_dict['Testing']]
+            training = [(elem==False) for elem in pt.fitsnap_dict['Testing']]
             a_train = pt.shared_arrays['a'].array[training]
             b_train = pt.shared_arrays['b'].array[training]
             w_train = pt.shared_arrays['w'].array[training]

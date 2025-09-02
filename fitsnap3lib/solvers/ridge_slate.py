@@ -64,8 +64,7 @@ class RidgeSlate(Solver):
         # Debug output - print all in one statement to avoid tangled output
         # *** DO NOT REMOVE !!! ***
         np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
-        pt.all_print(f"------------------------\n"
-                     f"Ridge solver BEFORE filtering:\n"
+        pt.all_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
                      f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
                      f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}\n"
                      f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}\n"
@@ -88,7 +87,7 @@ class RidgeSlate(Solver):
         pt.all_print(
             f"----------------\nSLATE solver AFTER filtering:\n"
             f"aw\n{w_train[:, np.newaxis] * a_train}\n"
-            f"bw\n{w_train * b_train\n"
+            f"bw\n{w_train * b_train}\n"
             f"--------------------------------\n")
 
         # Distribute training data across processes within this node

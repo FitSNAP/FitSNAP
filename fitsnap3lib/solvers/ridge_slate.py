@@ -64,12 +64,12 @@ class RidgeSlate(Solver):
         # Debug output - print all in one statement to avoid tangled output
         # *** DO NOT REMOVE !!! ***
         np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
-        pt.all_print(f"--------\n"
+        pt.all_print(f"------------------------\n"
                      f"Ridge solver BEFORE filtering:\n"
                      f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
                      f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}\n"
                      f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}\n"
-                     f"--------\n")
+                     f"--------------------------------\n")
         
         # Get raw arrays from shared memory (may include padding)
         a_full = pt.shared_arrays['a'].array
@@ -183,7 +183,7 @@ class RidgeSlate(Solver):
         # Solution is available on all processes
         if pt._rank == 0:
             # *** DO NOT REMOVE !!! ***
-            pt.all_print(f"--------\nself.fit\n{self.fit}\n--------\n")
+            pt.all_print(f"------------------------\nself.fit\n{self.fit}\n--------------------------------\n")
     
     def _slate_ridge_solve_qr(self, aw, bw, m_local, n_features, pt):
         """

@@ -1,63 +1,45 @@
-# cython: language_level=3
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 # distutils: language = c++
-# distutils: define_macros = NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION
 
-import numpy as np
-cimport numpy as np
+from libc.stddef cimport size_t
 
-np.import_array()
-
-# Define MPI_Comm as a void pointer (opaque type)
-ctypedef void* MPI_Comm
-
-cdef extern from "slate/slate.hh" namespace "slate":
-    void initialize() except +
-    void finalize() except +
-
-# Declare the C++ functions
 cdef extern from *:
     """
     extern "C" void slate_ridge_solve_qr(double* local_a, double* local_b, double* solution,
-                                          int m_local, int n, double alpha, void* comm, int tile_size);
+                                          int m_local, int m, int n, double alpha, void* comm, int tile_size);
     """
     void slate_ridge_solve_qr(double* local_a, double* local_b, double* solution,
-                              int m_local, int n, double alpha, void* comm, int tile_size) except +
+                              int m_local, int m, int n, double alpha, void* comm, int tile_size) except +
 
-def ridge_solve_qr(np.ndarray[double, ndim=2, mode="c"] local_a,
-                    np.ndarray[double, ndim=1, mode="c"] local_b,
-                    double alpha,
-                    comm,
-                    int tile_size=256):
-    """
-    Solve ridge regression using SLATE with augmented least squares and QR.
-    
-    Args:
-        local_a: Local portion of matrix A (m_local x n)
-        local_b: Local portion of vector b (m_local,)
-        alpha: Ridge parameter
-        comm: MPI communicator (mpi4py.MPI.Comm object)
-        tile_size: SLATE tile size
-    
-    Returns:
-        Solution vector (n,)
-    """
-    cdef int m_local = local_a.shape[0]
-    cdef int n = local_a.shape[1]
-    cdef np.ndarray[double, ndim=1, mode="c"] solution = np.zeros(n, dtype=np.float64)
-    
-    # Get the MPI communicator handle at runtime
+ctypedef void* MPI_Comm
+
+def ridge_solve_qr(double[:, ::1] local_a,
+                   double[::1]     local_b,
+                   int             m,
+                   double          alpha,
+                   comm,
+                   int             tile_size=256):
+    cdef int m_local = <int>local_a.shape[0]
+    cdef int n       = <int>local_a.shape[1]
+
+    if local_b.shape[0] != m_local:
+        raise ValueError("local_b length must equal local_a.shape[0].")
+
+    import numpy as _np
+    cdef _np.ndarray[_np.float64_t, ndim=1, mode="c"] x = _np.zeros(n, dtype=_np.float64)
+
     from mpi4py import MPI
     cdef size_t comm_ptr = MPI._handleof(comm)
-    
-    # Handle empty arrays (m_local = 0)
+
     cdef double* a_ptr = NULL
     cdef double* b_ptr = NULL
-    
+    cdef double* x_ptr = NULL
+
     if m_local > 0:
-        a_ptr = &local_a[0,0]
+        a_ptr = &local_a[0, 0]
         b_ptr = &local_b[0]
-    
-    slate_ridge_solve_qr(a_ptr, b_ptr, &solution[0], 
-                        m_local, n, alpha, <void*>comm_ptr, tile_size)
-    
-    return solution
+    if n > 0:
+        x_ptr = <double*>&x[0]
+
+    slate_ridge_solve_qr(a_ptr, b_ptr, x_ptr, m_local, m, n, alpha, <void*>comm_ptr, tile_size)
+    return x

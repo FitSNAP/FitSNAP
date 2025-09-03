@@ -24,7 +24,7 @@ public:
 extern "C" {
 
 void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* solution,
-                          int m_local, int n, double alpha, void* comm_ptr, int tile_size) {
+                          int m_local, int m, int n, double alpha, void* comm_ptr, int tile_size) {
     
     // Cast the void pointer back to MPI_Comm
     MPI_Comm comm = (MPI_Comm)comm_ptr;
@@ -91,10 +91,12 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         RowMajorMatrix<double> A_aug(m_aug, n, mb, nb, slate::GridOrder::Col, p, q, comm);
         slate::Matrix<double> b_aug(m_aug, 1, mb, 1, slate::GridOrder::Col, p, q, comm);
         
-        // Only ranks with data (rank 0 within each node) insert tiles
-        if (m_local > 0 && local_a_data != nullptr && local_b_data != nullptr) {
+        // Only rank 0 within each node inserts tiles (shared memory)
+        // Other ranks within the node can see these tiles
+        if (mpi_rank == 0) {
             int my_row_start = row_offsets[mpi_rank];
             int my_row_end = row_offsets[mpi_rank + 1];
+          
             
             // Insert tiles for matrix A - tiles point directly to shared array memory
             for (int j = 0; j < A_aug.nt(); ++j) {

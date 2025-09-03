@@ -97,41 +97,26 @@ class RidgeSlate(Solver):
             # Only rank 0 in each node handles the shared array data
             aw = w_train[:, np.newaxis] * a_train
             bw = w_train * b_train
-            m_local = aw.shape[0]
-            n_features = aw.shape[1] if len(aw) > 0 else 0
-        else:
-            # Other ranks in the node send empty arrays
-            # First get n_features from the training data shape
-            n_features = a_train.shape[1] if len(a_train) > 0 else 0
-            m_local = 0
-            aw = np.zeros((0, n_features), dtype=np.float64, order='C')
-            bw = np.zeros(0, dtype=np.float64, order='C')
-        
-        # Ensure all processes agree on n_features
-        n_features_array = np.array([n_features], dtype=np.int32)
-        pt._comm.Allreduce(MPI.IN_PLACE, n_features_array, op=MPI.MAX)
-        n_features = n_features_array[0]
-                
+                        
         # Debug output on all ranks
         # *** DO NOT REMOVE !!! ***
         pt.all_print(f"\nsending to SLATE:\naw\n{aw}\nbw{bw}")
         
         # ALL processes participate in the SLATE solve
-        self.fit = self._slate_ridge_solve_qr(aw, bw, m_local, n_features, pt)
+        self.fit = self._slate_ridge_solve_qr(aw, bw, pt)
         
         # Solution is available on all processes
         # *** DO NOT REMOVE !!! ***
         pt.all_print(f"------------------------\nself.fit\n{self.fit}\n--------------------------------\n")
     
-    def _slate_ridge_solve_qr(self, aw, bw, m_local, n_features, pt):
+    def _slate_ridge_solve_qr(self, aw, bw, pt):
         """
         Solve ridge regression using SLATE with augmented least squares and QR.
         
         Args:
-            aw: Local weighted matrix A (m_local x n_features)
+            aw: Local weighted matrix A (m_local x n)
             bw: Local weighted vector b (m_local,)
             m_local: Number of local rows
-            n_features: Number of features (columns in A)
             pt: Parallel tools instance
         
         Returns:

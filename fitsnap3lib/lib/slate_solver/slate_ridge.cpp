@@ -33,17 +33,25 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     MPI_Comm_rank(comm, &mpi_rank);
     MPI_Comm_size(comm, &mpi_size);
     
-    // Gather all local sizes to compute global m
+    // Gather all local sizes to compute offsets
     // Only rank 0 within each node has non-zero m_local
     std::vector<int> all_m_locals(mpi_size);
     MPI_Allgather(&m_local, 1, MPI_INT, all_m_locals.data(), 1, MPI_INT, comm);
     
-    int m_total = 0;
+    // Verify that m matches the sum of all local sizes
+    int m_computed = 0;
     std::vector<int> row_offsets(mpi_size + 1, 0);
     for (int i = 0; i < mpi_size; i++) {
-        m_total += all_m_locals[i];
+        m_computed += all_m_locals[i];
         row_offsets[i + 1] = row_offsets[i] + all_m_locals[i];
     }
+    
+    if (m_computed != m && mpi_rank == 0) {
+        std::cerr << "WARNING: m_computed (" << m_computed << ") != m (" << m << ")" << std::endl;
+    }
+    
+    // Use the passed-in m as the authoritative global size
+    int m_total = m;
     
     // Debug output
     if (mpi_rank == 0) {
@@ -52,6 +60,14 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         std::cerr << "Ridge parameter (alpha): " << alpha << std::endl;
         std::cerr << "MPI ranks: " << mpi_size << std::endl;
         std::cerr << "Tile size: " << tile_size << std::endl;
+        std::cerr << "Row distribution:" << std::endl;
+        for (int i = 0; i < mpi_size; i++) {
+            if (all_m_locals[i] > 0) {
+                std::cerr << "  Rank " << i << ": rows " << row_offsets[i] 
+                         << "-" << (row_offsets[i+1]-1) 
+                         << " (" << all_m_locals[i] << " rows)" << std::endl;
+            }
+        }
     }
     
     // For ridge regression, solve the augmented system:
@@ -71,12 +87,27 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     }
     
     // Create process grid for SLATE's 2D block-cyclic distribution
-    int p = 1, q = 1;
-    for (int i = (int)std::sqrt(mpi_size); i >= 1; i--) {
-        if (mpi_size % i == 0) {
-            p = i;
-            q = mpi_size / i;
+    // For multi-node shared memory setup, we want a column-major grid
+    // to align with how data is distributed (contiguous rows per node)
+    int p = mpi_size, q = 1;  // Column vector process grid
+    
+    // Only use 2D grid if all processes have data
+    bool all_have_data = true;
+    for (int i = 0; i < mpi_size; i++) {
+        if (all_m_locals[i] == 0 && i != 0) {
+            all_have_data = false;
             break;
+        }
+    }
+    
+    if (all_have_data) {
+        // Standard 2D grid when all processes have data
+        for (int i = (int)std::sqrt(mpi_size); i >= 1; i--) {
+            if (mpi_size % i == 0) {
+                p = i;
+                q = mpi_size / i;
+                break;
+            }
         }
     }
     
@@ -91,59 +122,59 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         RowMajorMatrix<double> A_aug(m_aug, n, mb, nb, slate::GridOrder::Col, p, q, comm);
         slate::Matrix<double> b_aug(m_aug, 1, mb, 1, slate::GridOrder::Col, p, q, comm);
         
-        // Only rank 0 within each node inserts tiles (shared memory)
-        // Other ranks within the node can see these tiles
-        if (mpi_rank == 0) {
-            int my_row_start = row_offsets[mpi_rank];
-            int my_row_end = row_offsets[mpi_rank + 1];
+        // Each process with data inserts tiles for its portion
+        // In shared memory architecture, only rank 0 within each node has m_local > 0
+        int my_row_start = row_offsets[mpi_rank];
+        int my_row_end = row_offsets[mpi_rank + 1];
           
             
-            // Insert tiles for matrix A - tiles point directly to shared array memory
-            for (int j = 0; j < A_aug.nt(); ++j) {
-                for (int i = 0; i < A_aug.mt(); ++i) {
-                    if (A_aug.tileIsLocal(i, j)) {
-                        int tile_row_start = i * mb;
-                        int tile_row_end = std::min((i + 1) * mb, m_aug);
-                        int tile_col_start = j * nb;
-                        int tile_col_end = std::min((j + 1) * nb, n);
-                        
-                        int tile_m = tile_row_end - tile_row_start;
-                        int tile_n = tile_col_end - tile_col_start;
-                        
-                        // Check if this tile overlaps with my data rows
-                        if (tile_row_start < m_total && 
-                            tile_row_start >= my_row_start && 
-                            tile_row_start < my_row_end) {
-                            
-                            // Point directly to shared array memory - zero copy!
-                            int local_row_offset = tile_row_start - my_row_start;
-                            double* tile_ptr = local_a_data + local_row_offset * n + tile_col_start;
-                            
-                            // Insert with row-major layout, stride = n
-                            A_aug.tileInsert(i, j, tile_ptr, n);
-                        }
-                    }
-                }
-            }
-            
-            // Insert tiles for vector b
-            for (int i = 0; i < b_aug.mt(); ++i) {
-                if (b_aug.tileIsLocal(i, 0)) {
+        // Insert tiles for matrix A - tiles point directly to shared array memory
+        for (int j = 0; j < A_aug.nt(); ++j) {
+            for (int i = 0; i < A_aug.mt(); ++i) {
+                if (A_aug.tileIsLocal(i, j)) {
                     int tile_row_start = i * mb;
                     int tile_row_end = std::min((i + 1) * mb, m_aug);
-                    int tile_m = tile_row_end - tile_row_start;
+                    int tile_col_start = j * nb;
+                    int tile_col_end = std::min((j + 1) * nb, n);
                     
-                    // Check if this tile overlaps with my b data
+                    int tile_m = tile_row_end - tile_row_start;
+                    int tile_n = tile_col_end - tile_col_start;
+                    
+                    // Check if this tile overlaps with my data rows and I have data
                     if (tile_row_start < m_total && 
+                        m_local > 0 &&
                         tile_row_start >= my_row_start && 
                         tile_row_start < my_row_end) {
                         
-                        // Point directly to shared array memory
+                        // Point directly to shared array memory - zero copy!
                         int local_row_offset = tile_row_start - my_row_start;
-                        double* tile_ptr = local_b_data + local_row_offset;
+                        double* tile_ptr = local_a_data + local_row_offset * n + tile_col_start;
                         
-                        b_aug.tileInsert(i, 0, tile_ptr, tile_m);
+                        // Insert with row-major layout, stride = n
+                        A_aug.tileInsert(i, j, tile_ptr, n);
                     }
+                }
+            }
+        }
+            
+        // Insert tiles for vector b
+        for (int i = 0; i < b_aug.mt(); ++i) {
+            if (b_aug.tileIsLocal(i, 0)) {
+                int tile_row_start = i * mb;
+                int tile_row_end = std::min((i + 1) * mb, m_aug);
+                int tile_m = tile_row_end - tile_row_start;
+                
+                // Check if this tile overlaps with my b data and I have data
+                if (tile_row_start < m_total && 
+                    m_local > 0 &&
+                    tile_row_start >= my_row_start && 
+                    tile_row_start < my_row_end) {
+                    
+                    // Point directly to shared array memory
+                    int local_row_offset = tile_row_start - my_row_start;
+                    double* tile_ptr = local_b_data + local_row_offset;
+                    
+                    b_aug.tileInsert(i, 0, tile_ptr, tile_m);
                 }
             }
         }

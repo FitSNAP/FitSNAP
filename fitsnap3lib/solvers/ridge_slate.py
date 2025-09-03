@@ -70,33 +70,39 @@ class RidgeSlate(Solver):
                      f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}\n"
                      f"--------------------------------\n")
                 
-        # Handle train/test split
-        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
-            training = [(elem==False) for elem in pt.fitsnap_dict['Testing']]
-            a_train = pt.shared_arrays['a'].array[training]
-            b_train = pt.shared_arrays['b'].array[training]
-            w_train = pt.shared_arrays['w'].array[training]
-        else:
-            # No test/train split
-            a_train = pt.shared_arrays['a'].array
-            b_train = pt.shared_arrays['b'].array
-            w_train = pt.shared_arrays['w'].array
-            
-        # Debug output to verify filtering - print one statement to avoid tangled output
-        # *** DO NOT REMOVE !!! ***
-        pt.all_print(
-            f"----------------\nSLATE solver AFTER filtering:\n"
-            f"aw\n{w_train[:, np.newaxis] * a_train}\n"
-            f"bw\n{w_train * b_train}\n"
-            f"--------------------------------\n")
-            
         # IMPORTANT: With shared arrays, only rank 0 within each node handles data
         # Other ranks in the node will participate in SLATE computation but send empty data
         
         if pt._sub_rank == 0:
+            # Handle train/test split
+            if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
+                training = [(elem==False) for elem in pt.fitsnap_dict['Testing']]
+                a_train = pt.shared_arrays['a'].array[training]
+                b_train = pt.shared_arrays['b'].array[training]
+                w_train = pt.shared_arrays['w'].array[training]
+            else:
+                # No test/train split
+                a_train = pt.shared_arrays['a'].array
+                b_train = pt.shared_arrays['b'].array
+                w_train = pt.shared_arrays['w'].array
+                
+            # Debug output to verify filtering - print one statement to avoid tangled output
+            # *** DO NOT REMOVE !!! ***
+            pt.all_print(
+                f"----------------\nSLATE solver AFTER filtering:\n"
+                f"aw\n{w_train[:, np.newaxis] * a_train}\n"
+                f"bw\n{w_train * b_train}\n"
+                f"--------------------------------\n")
+            
             # Only rank 0 in each node handles the shared array data
             aw = w_train[:, np.newaxis] * a_train
             bw = w_train * b_train
+        else:
+            # Other ranks within the node send empty arrays
+            # Need to get the number of columns from the shared array
+            n_cols = pt.shared_arrays['a'].array.shape[1] if len(pt.shared_arrays['a'].array.shape) > 1 else 1
+            aw = np.zeros((0, n_cols), dtype=np.float64)
+            bw = np.zeros(0, dtype=np.float64)
                         
         # Debug output on all ranks
         # *** DO NOT REMOVE !!! ***
@@ -127,11 +133,21 @@ class RidgeSlate(Solver):
             pt.single_print(error_msg)
             raise RuntimeError(error_msg)
         
+        # Calculate total number of rows across all processes
+        m_local = aw.shape[0]
+        m_total_local = np.array([m_local], dtype=np.int32)
+        m_total = np.array([0], dtype=np.int32)
+        pt._comm.Allreduce(m_total_local, m_total, op=MPI.SUM)
+        
+        # Debug output
+        pt.all_print(f"SLATE solver: m_local={m_local}, m_total={m_total[0]}, n={aw.shape[1]}")
+        
         # Call the SLATE ridge solver with QR directly
         # Use the full communicator (pt._comm) to use ALL MPI ranks
         solution = ridge_solve_qr(
             aw, 
             bw, 
+            m_total[0],  # Total number of rows
             self.alpha, 
             pt._comm,  # Use full communicator with ALL processes
             self.tile_size

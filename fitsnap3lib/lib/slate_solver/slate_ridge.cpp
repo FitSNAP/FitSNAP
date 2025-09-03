@@ -23,6 +23,15 @@ public:
     }
 };
 
+// Structure to hold receive information for b vector
+struct RecvInfo {
+    double* buffer;
+    int tile_i;
+    int tile_j;
+    int row_in_tile;
+    int count;
+};
+
 extern "C" {
 
 void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* solution,

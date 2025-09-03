@@ -8,6 +8,8 @@
 #include <iomanip>
 #include <memory>
 #include <cstring>
+#include <map>
+#include <utility>
 
 // Create a RowMajorMatrix class that inherits from slate::Matrix
 template<typename scalar_t>
@@ -75,15 +77,24 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     // [√α*I ] x = [ 0  ]
     int m_aug = m_total + n;
     
-    // Use appropriate tile size
+    // Use appropriate tile size - needs to be large enough for QR
     int mb, nb;
-    if (m_total < tile_size) {
-        // Small problem: make tiles small enough to distribute
-        mb = std::max(1, (m_total + mpi_size - 1) / mpi_size);
-        nb = std::min(n, tile_size);
+    
+    // For small problems, use larger tiles to avoid QR issues
+    if (m_total <= tile_size) {
+        // Use the augmented size directly for small problems
+        mb = m_total + n;  // Full augmented height
+        nb = n;            // Full width
     } else {
+        // Use the requested tile size for larger problems
         mb = tile_size;
-        nb = tile_size;
+        nb = std::min(tile_size, n);
+    }
+    
+    // Ensure minimum tile size for numerical stability in QR
+    // The tile must be at least as tall as it is wide for QR to work
+    if (mb < nb) {
+        mb = nb;
     }
     
     // Create process grid for SLATE's 2D block-cyclic distribution
@@ -128,7 +139,21 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         int my_row_end = row_offsets[mpi_rank + 1];
           
             
-        // Insert tiles for matrix A - tiles point directly to shared array memory
+        // Insert tiles for matrix A using point-to-point communication
+        // This approach scales to production size without collective operations
+        
+        // Structure to track receive operations and where data goes
+        struct RecvInfo {
+            double* buffer;
+            int tile_i, tile_j;
+            int row_in_tile;
+            int tile_n;
+        };
+        std::vector<MPI_Request> recv_requests;
+        std::vector<RecvInfo> recv_infos;
+        std::map<std::pair<int,int>, double*> tile_data_map;
+        
+        // Phase 1: Tile owners allocate tiles and post receives for rows they need
         for (int j = 0; j < A_aug.nt(); ++j) {
             for (int i = 0; i < A_aug.mt(); ++i) {
                 if (A_aug.tileIsLocal(i, j)) {
@@ -140,43 +165,224 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                     int tile_m = tile_row_end - tile_row_start;
                     int tile_n = tile_col_end - tile_col_start;
                     
-                    // Check if this tile overlaps with my data rows and I have data
-                    if (tile_row_start < m_total && 
-                        m_local > 0 &&
-                        tile_row_start >= my_row_start && 
-                        tile_row_start < my_row_end) {
-                        
-                        // Point directly to shared array memory - zero copy!
-                        int local_row_offset = tile_row_start - my_row_start;
-                        double* tile_ptr = local_a_data + local_row_offset * n + tile_col_start;
-                        
-                        // Insert with row-major layout, stride = n
-                        A_aug.tileInsert(i, j, tile_ptr, n);
+                    // Allocate tile memory
+                    double* tile_data = new double[tile_m * tile_n];
+                    std::fill(tile_data, tile_data + tile_m * tile_n, 0.0);
+                    tile_data_map[{i,j}] = tile_data;
+                    
+                    // For data tiles (not regularization)
+                    if (tile_row_start < m_total) {
+                        for (int ti = 0; ti < tile_m; ++ti) {
+                            int global_row = tile_row_start + ti;
+                            if (global_row >= m_total) break;
+                            
+                            // Find which rank owns this row
+                            int owner_rank = -1;
+                            for (int r = 0; r < mpi_size; r++) {
+                                if (all_m_locals[r] > 0 && 
+                                    global_row >= row_offsets[r] && 
+                                    global_row < row_offsets[r+1]) {
+                                    owner_rank = r;
+                                    break;
+                                }
+                            }
+                            
+                            if (owner_rank == -1) continue;
+                            
+                            if (owner_rank == mpi_rank) {
+                                // I own this row, copy directly
+                                if (m_local > 0) {
+                                    int local_row = global_row - my_row_start;
+                                    for (int tj = 0; tj < tile_n; ++tj) {
+                                        int global_col = tile_col_start + tj;
+                                        if (global_col < n) {
+                                            tile_data[ti * tile_n + tj] = 
+                                                local_a_data[local_row * n + global_col];
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Post receive for this row from owner
+                                int tag = global_row * 1000 + tile_col_start;
+                                double* row_buffer = new double[tile_n];
+                                MPI_Request req;
+                                MPI_Irecv(row_buffer, tile_n, MPI_DOUBLE, owner_rank, tag, comm, &req);
+                                recv_requests.push_back(req);
+                                recv_infos.push_back({row_buffer, i, j, ti, tile_n});
+                            }
+                        }
                     }
                 }
             }
         }
+        
+        // Phase 2: Row owners send their data to tile owners
+        if (m_local > 0) {
+            for (int j = 0; j < A_aug.nt(); ++j) {
+                for (int i = 0; i < A_aug.mt(); ++i) {
+                    int tile_row_start = i * mb;
+                    int tile_row_end = std::min((i + 1) * mb, m_aug);
+                    int tile_col_start = j * nb;
+                    int tile_col_end = std::min((j + 1) * nb, n);
+                    
+                    if (tile_row_start >= m_total) continue;
+                    
+                    int tile_n = tile_col_end - tile_col_start;
+                    
+                    for (int ti = 0; ti < (tile_row_end - tile_row_start); ++ti) {
+                        int global_row = tile_row_start + ti;
+                        if (global_row >= m_total) break;
+                        
+                        if (global_row >= my_row_start && global_row < my_row_end) {
+                            // I own this row, check if any other rank needs it for this tile
+                            if (!A_aug.tileIsLocal(i, j)) {
+                                // Someone else owns this tile, send them the row
+                                int local_row = global_row - my_row_start;
+                                double* row_segment = new double[tile_n];
+                                for (int tj = 0; tj < tile_n; ++tj) {
+                                    int global_col = tile_col_start + tj;
+                                    if (global_col < n) {
+                                        row_segment[tj] = local_a_data[local_row * n + global_col];
+                                    } else {
+                                        row_segment[tj] = 0.0;
+                                    }
+                                }
+                                
+                                int tag = global_row * 1000 + tile_col_start;
+                                // Send to the tile owner (need to determine who owns tile i,j)
+                                int tile_owner = A_aug.tileRank(i, j);
+                                MPI_Send(row_segment, tile_n, MPI_DOUBLE, tile_owner, tag, comm);
+                                delete[] row_segment;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Phase 3: Wait for all receives and copy data into tiles
+        if (!recv_requests.empty()) {
+            MPI_Waitall(recv_requests.size(), recv_requests.data(), MPI_STATUSES_IGNORE);
             
-        // Insert tiles for vector b
+            // Copy received data into tiles at the correct positions
+            for (const auto& info : recv_infos) {
+                double* tile_data = tile_data_map[{info.tile_i, info.tile_j}];
+                for (int tj = 0; tj < info.tile_n; ++tj) {
+                    tile_data[info.row_in_tile * info.tile_n + tj] = info.buffer[tj];
+                }
+                delete[] info.buffer;
+            }
+        }
+        
+        // Insert all tiles
+        for (auto& [indices, tile_data] : tile_data_map) {
+            int i = indices.first;
+            int j = indices.second;
+            int tile_row_start = i * mb;
+            int tile_row_end = std::min((i + 1) * mb, m_aug);
+            int tile_col_start = j * nb;
+            int tile_col_end = std::min((j + 1) * nb, n);
+            int tile_n = tile_col_end - tile_col_start;
+            
+            A_aug.tileInsert(i, j, tile_data, tile_n);
+        }
+            
+        // Insert tiles for vector b using point-to-point communication
+        std::vector<MPI_Request> b_recv_requests;
+        std::vector<RecvInfo> b_recv_infos;
+        std::map<int, double*> b_tile_data_map;
+        
         for (int i = 0; i < b_aug.mt(); ++i) {
             if (b_aug.tileIsLocal(i, 0)) {
                 int tile_row_start = i * mb;
                 int tile_row_end = std::min((i + 1) * mb, m_aug);
                 int tile_m = tile_row_end - tile_row_start;
                 
-                // Check if this tile overlaps with my b data and I have data
-                if (tile_row_start < m_total && 
-                    m_local > 0 &&
-                    tile_row_start >= my_row_start && 
-                    tile_row_start < my_row_end) {
-                    
-                    // Point directly to shared array memory
-                    int local_row_offset = tile_row_start - my_row_start;
-                    double* tile_ptr = local_b_data + local_row_offset;
-                    
-                    b_aug.tileInsert(i, 0, tile_ptr, tile_m);
+                double* tile_data = new double[tile_m];
+                std::fill(tile_data, tile_data + tile_m, 0.0);
+                b_tile_data_map[i] = tile_data;
+                
+                // For data tiles (not regularization)
+                if (tile_row_start < m_total) {
+                    for (int ti = 0; ti < tile_m; ++ti) {
+                        int global_row = tile_row_start + ti;
+                        if (global_row >= m_total) break;
+                        
+                        // Find which rank owns this row
+                        int owner_rank = -1;
+                        for (int r = 0; r < mpi_size; r++) {
+                            if (all_m_locals[r] > 0 && 
+                                global_row >= row_offsets[r] && 
+                                global_row < row_offsets[r+1]) {
+                                owner_rank = r;
+                                break;
+                            }
+                        }
+                        
+                        if (owner_rank == -1) continue;
+                        
+                        if (owner_rank == mpi_rank) {
+                            // I own this row, copy directly
+                            if (m_local > 0) {
+                                int local_row = global_row - my_row_start;
+                                tile_data[ti] = local_b_data[local_row];
+                            }
+                        } else {
+                            // Post receive for this element from owner
+                            int tag = global_row + 100000;  // Different tag range for b
+                            double* elem_buffer = new double[1];
+                            MPI_Request req;
+                            MPI_Irecv(elem_buffer, 1, MPI_DOUBLE, owner_rank, tag, comm, &req);
+                            b_recv_requests.push_back(req);
+                            b_recv_infos.push_back({elem_buffer, i, 0, ti, 1});
+                        }
+                    }
                 }
             }
+        }
+        
+        // Send b vector elements to tile owners
+        if (m_local > 0) {
+            for (int i = 0; i < b_aug.mt(); ++i) {
+                int tile_row_start = i * mb;
+                int tile_row_end = std::min((i + 1) * mb, m_aug);
+                
+                if (tile_row_start >= m_total) continue;
+                
+                for (int ti = 0; ti < (tile_row_end - tile_row_start); ++ti) {
+                    int global_row = tile_row_start + ti;
+                    if (global_row >= m_total) break;
+                    
+                    if (global_row >= my_row_start && global_row < my_row_end) {
+                        if (!b_aug.tileIsLocal(i, 0)) {
+                            // Someone else owns this tile, send them the element
+                            int local_row = global_row - my_row_start;
+                            int tag = global_row + 100000;
+                            int tile_owner = b_aug.tileRank(i, 0);
+                            MPI_Send(&local_b_data[local_row], 1, MPI_DOUBLE, tile_owner, tag, comm);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Wait for b receives and copy data
+        if (!b_recv_requests.empty()) {
+            MPI_Waitall(b_recv_requests.size(), b_recv_requests.data(), MPI_STATUSES_IGNORE);
+            
+            for (const auto& info : b_recv_infos) {
+                double* tile_data = b_tile_data_map[info.tile_i];
+                tile_data[info.row_in_tile] = info.buffer[0];
+                delete[] info.buffer;
+            }
+        }
+        
+        // Insert b tiles
+        for (auto& [i, tile_data] : b_tile_data_map) {
+            int tile_row_start = i * mb;
+            int tile_row_end = std::min((i + 1) * mb, m_aug);
+            int tile_m = tile_row_end - tile_row_start;
+            b_aug.tileInsert(i, 0, tile_data, tile_m);
         }
         
         // All ranks (including those without data) handle regularization rows

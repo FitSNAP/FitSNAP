@@ -55,63 +55,51 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     // Use the passed-in m as the authoritative global size
     int m_total = m;
     
-    // Debug output
-    if (mpi_rank == 0) {
-        std::cerr << "\n=== SLATE Ridge Solver (Row-Major, Zero-Copy) ===" << std::endl;
-        std::cerr << "Global dimensions: " << m_total << " x " << n << std::endl;
-        std::cerr << "Ridge parameter (alpha): " << alpha << std::endl;
-        std::cerr << "MPI ranks: " << mpi_size << std::endl;
-        std::cerr << "Tile size: " << tile_size << std::endl;
-        std::cerr << "Row distribution:" << std::endl;
-        for (int i = 0; i < mpi_size; i++) {
-            if (all_m_locals[i] > 0) {
-                std::cerr << "  Rank " << i << ": rows " << row_offsets[i] 
-                         << "-" << (row_offsets[i+1]-1) 
-                         << " (" << all_m_locals[i] << " rows)" << std::endl;
-            }
-        }
-    }
-    
     // For ridge regression, solve the augmented system:
     // [  A  ]     [  b  ]
     // [√α*I ] x = [ 0  ]
     int m_aug = m_total + n;
     
-    // Use appropriate tile size - needs to be large enough for QR
+    // Use appropriate tile size for distribution
+    // We want multiple tiles to distribute across processes
     int mb, nb;
     
-    // For small problems, use larger tiles to avoid QR issues
-    if (m_total <= tile_size) {
-        // Use the augmented size directly for small problems
-        mb = m_total + n;  // Full augmented height
-        nb = n;            // Full width
+    // For the augmented system, ensure tiles are large enough for QR
+    // QR needs tiles at least as tall as they are wide, and preferably taller
+    if (m_aug <= 32) {
+        // Very small problem - use a single tile per process if possible
+        // But ensure stability for QR
+        mb = std::max(8, (m_aug + mpi_size - 1) / mpi_size);
+        nb = n;
     } else {
-        // Use the requested tile size for larger problems
-        mb = tile_size;
+        // Normal case - use requested tile size
+        mb = std::min(tile_size, (m_aug + mpi_size - 1) / mpi_size);
         nb = std::min(tile_size, n);
     }
     
-    // Ensure minimum tile size for numerical stability in QR
-    // The tile must be at least as tall as it is wide for QR to work
-    if (mb < nb) {
-        mb = nb;
-    }
+    // Ensure tiles are tall enough for QR stability
+    // QR with tiles needs mb >= 2*nb for numerical stability
+    mb = std::max(mb, 2 * nb);
     
     // Create process grid for SLATE's 2D block-cyclic distribution
-    // For multi-node shared memory setup, we want a column-major grid
-    // to align with how data is distributed (contiguous rows per node)
-    int p = mpi_size, q = 1;  // Column vector process grid
+    // With shared memory, only some ranks have data (ranks 0 and 2 in 2-node case)
+    // We need a grid that works with this distribution
+    int p = 1, q = 1;
     
-    // Only use 2D grid if all processes have data
-    bool all_have_data = true;
+    // Count how many ranks actually have data
+    int ranks_with_data = 0;
     for (int i = 0; i < mpi_size; i++) {
-        if (all_m_locals[i] == 0 && i != 0) {
-            all_have_data = false;
-            break;
+        if (all_m_locals[i] > 0) {
+            ranks_with_data++;
         }
     }
     
-    if (all_have_data) {
+    // For shared memory setup where only some ranks have data,
+    // use a 1D distribution along rows (px1 grid)
+    if (ranks_with_data < mpi_size) {
+        p = mpi_size;
+        q = 1;
+    } else {
         // Standard 2D grid when all processes have data
         for (int i = (int)std::sqrt(mpi_size); i >= 1; i--) {
             if (mpi_size % i == 0) {
@@ -122,10 +110,13 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         }
     }
     
+    // Debug output
     if (mpi_rank == 0) {
+        std::cerr << "\n=== SLATE Ridge Solver ===" << std::endl;
+        std::cerr << "Problem size: " << m_total << " x " << n << std::endl;
+        std::cerr << "Tile configuration: " << mb << " x " << nb << std::endl;
         std::cerr << "Process grid: " << p << " x " << q << std::endl;
-        std::cerr << "Augmented system: " << m_aug << " x " << n << std::endl;
-        std::cerr << "Tile sizes: " << mb << " x " << nb << std::endl;
+        std::cerr << "Data distribution: " << ranks_with_data << " ranks have data" << std::endl;
     }
     
     try {
@@ -139,21 +130,119 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         int my_row_end = row_offsets[mpi_rank + 1];
           
             
-        // Insert tiles for matrix A using point-to-point communication
-        // This approach scales to production size without collective operations
+        // Redistribute matrix A from row-block to 2D block-cyclic using MPI_Alltoallv
+        // This is much cleaner and potentially more efficient than point-to-point
         
-        // Structure to track receive operations and where data goes
-        struct RecvInfo {
-            double* buffer;
-            int tile_i, tile_j;
-            int row_in_tile;
-            int tile_n;
-        };
-        std::vector<MPI_Request> recv_requests;
-        std::vector<RecvInfo> recv_infos;
+        // Calculate send counts and displacements for each process
+        std::vector<int> send_counts(mpi_size, 0);
+        std::vector<int> send_displs(mpi_size, 0);
+        std::vector<int> recv_counts(mpi_size, 0);
+        std::vector<int> recv_displs(mpi_size, 0);
+        
+        // First pass: count how much data to send/receive to/from each process
+        for (int j = 0; j < A_aug.nt(); ++j) {
+            for (int i = 0; i < A_aug.mt(); ++i) {
+                int tile_row_start = i * mb;
+                int tile_row_end = std::min((i + 1) * mb, m_aug);
+                int tile_col_start = j * nb;
+                int tile_col_end = std::min((j + 1) * nb, n);
+                int tile_m = tile_row_end - tile_row_start;
+                int tile_n = tile_col_end - tile_col_start;
+                
+                if (tile_row_start >= m_total) continue;
+                
+                int tile_owner = A_aug.tileRank(i, j);
+                
+                // Count data this process needs to send
+                if (m_local > 0) {
+                    for (int ti = 0; ti < tile_m; ++ti) {
+                        int global_row = tile_row_start + ti;
+                        if (global_row >= m_total) break;
+                        if (global_row >= my_row_start && global_row < my_row_end) {
+                            send_counts[tile_owner] += tile_n;
+                        }
+                    }
+                }
+                
+                // Count data this process needs to receive
+                if (A_aug.tileIsLocal(i, j)) {
+                    for (int ti = 0; ti < tile_m; ++ti) {
+                        int global_row = tile_row_start + ti;
+                        if (global_row >= m_total) break;
+                        
+                        // Find owner of this row
+                        for (int r = 0; r < mpi_size; r++) {
+                            if (all_m_locals[r] > 0 && 
+                                global_row >= row_offsets[r] && 
+                                global_row < row_offsets[r+1]) {
+                                recv_counts[r] += tile_n;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Calculate displacements
+        for (int i = 1; i < mpi_size; i++) {
+            send_displs[i] = send_displs[i-1] + send_counts[i-1];
+            recv_displs[i] = recv_displs[i-1] + recv_counts[i-1];
+        }
+        
+        int total_send = send_displs[mpi_size-1] + send_counts[mpi_size-1];
+        int total_recv = recv_displs[mpi_size-1] + recv_counts[mpi_size-1];
+        
+        // Allocate send and receive buffers
+        std::vector<double> send_buffer(total_send);
+        std::vector<double> recv_buffer(total_recv);
+        
+        // Pack send buffer
+        std::vector<int> send_offsets(mpi_size, 0);
+        for (int j = 0; j < A_aug.nt(); ++j) {
+            for (int i = 0; i < A_aug.mt(); ++i) {
+                int tile_row_start = i * mb;
+                int tile_row_end = std::min((i + 1) * mb, m_aug);
+                int tile_col_start = j * nb;
+                int tile_col_end = std::min((j + 1) * nb, n);
+                int tile_m = tile_row_end - tile_row_start;
+                int tile_n = tile_col_end - tile_col_start;
+                
+                if (tile_row_start >= m_total) continue;
+                
+                int tile_owner = A_aug.tileRank(i, j);
+                
+                if (m_local > 0) {
+                    for (int ti = 0; ti < tile_m; ++ti) {
+                        int global_row = tile_row_start + ti;
+                        if (global_row >= m_total) break;
+                        if (global_row >= my_row_start && global_row < my_row_end) {
+                            int local_row = global_row - my_row_start;
+                            int offset = send_displs[tile_owner] + send_offsets[tile_owner];
+                            for (int tj = 0; tj < tile_n; ++tj) {
+                                int global_col = tile_col_start + tj;
+                                if (global_col < n) {
+                                    send_buffer[offset + tj] = local_a_data[local_row * n + global_col];
+                                } else {
+                                    send_buffer[offset + tj] = 0.0;
+                                }
+                            }
+                            send_offsets[tile_owner] += tile_n;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Perform the all-to-all redistribution
+        MPI_Alltoallv(send_buffer.data(), send_counts.data(), send_displs.data(), MPI_DOUBLE,
+                      recv_buffer.data(), recv_counts.data(), recv_displs.data(), MPI_DOUBLE,
+                      comm);
+        
+        // Unpack receive buffer into tiles
         std::map<std::pair<int,int>, double*> tile_data_map;
+        std::vector<int> recv_offsets(mpi_size, 0);
         
-        // Phase 1: Tile owners allocate tiles and post receives for rows they need
         for (int j = 0; j < A_aug.nt(); ++j) {
             for (int i = 0; i < A_aug.mt(); ++i) {
                 if (A_aug.tileIsLocal(i, j)) {
@@ -161,22 +250,19 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                     int tile_row_end = std::min((i + 1) * mb, m_aug);
                     int tile_col_start = j * nb;
                     int tile_col_end = std::min((j + 1) * nb, n);
-                    
                     int tile_m = tile_row_end - tile_row_start;
                     int tile_n = tile_col_end - tile_col_start;
                     
-                    // Allocate tile memory
+                    // Allocate tile
                     double* tile_data = new double[tile_m * tile_n];
                     std::fill(tile_data, tile_data + tile_m * tile_n, 0.0);
-                    tile_data_map[{i,j}] = tile_data;
                     
-                    // For data tiles (not regularization)
                     if (tile_row_start < m_total) {
                         for (int ti = 0; ti < tile_m; ++ti) {
                             int global_row = tile_row_start + ti;
                             if (global_row >= m_total) break;
                             
-                            // Find which rank owns this row
+                            // Find owner of this row
                             int owner_rank = -1;
                             for (int r = 0; r < mpi_size; r++) {
                                 if (all_m_locals[r] > 0 && 
@@ -187,11 +273,9 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                                 }
                             }
                             
-                            if (owner_rank == -1) continue;
-                            
-                            if (owner_rank == mpi_rank) {
-                                // I own this row, copy directly
-                                if (m_local > 0) {
+                            if (owner_rank >= 0) {
+                                if (owner_rank == mpi_rank && m_local > 0) {
+                                    // Local copy
                                     int local_row = global_row - my_row_start;
                                     for (int tj = 0; tj < tile_n; ++tj) {
                                         int global_col = tile_col_start + tj;
@@ -200,91 +284,22 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                                                 local_a_data[local_row * n + global_col];
                                         }
                                     }
-                                }
-                            } else {
-                                // Post receive for this row from owner
-                                int tag = global_row * 1000 + tile_col_start;
-                                double* row_buffer = new double[tile_n];
-                                MPI_Request req;
-                                MPI_Irecv(row_buffer, tile_n, MPI_DOUBLE, owner_rank, tag, comm, &req);
-                                recv_requests.push_back(req);
-                                recv_infos.push_back({row_buffer, i, j, ti, tile_n});
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Phase 2: Row owners send their data to tile owners
-        if (m_local > 0) {
-            for (int j = 0; j < A_aug.nt(); ++j) {
-                for (int i = 0; i < A_aug.mt(); ++i) {
-                    int tile_row_start = i * mb;
-                    int tile_row_end = std::min((i + 1) * mb, m_aug);
-                    int tile_col_start = j * nb;
-                    int tile_col_end = std::min((j + 1) * nb, n);
-                    
-                    if (tile_row_start >= m_total) continue;
-                    
-                    int tile_n = tile_col_end - tile_col_start;
-                    
-                    for (int ti = 0; ti < (tile_row_end - tile_row_start); ++ti) {
-                        int global_row = tile_row_start + ti;
-                        if (global_row >= m_total) break;
-                        
-                        if (global_row >= my_row_start && global_row < my_row_end) {
-                            // I own this row, check if any other rank needs it for this tile
-                            if (!A_aug.tileIsLocal(i, j)) {
-                                // Someone else owns this tile, send them the row
-                                int local_row = global_row - my_row_start;
-                                double* row_segment = new double[tile_n];
-                                for (int tj = 0; tj < tile_n; ++tj) {
-                                    int global_col = tile_col_start + tj;
-                                    if (global_col < n) {
-                                        row_segment[tj] = local_a_data[local_row * n + global_col];
-                                    } else {
-                                        row_segment[tj] = 0.0;
+                                } else {
+                                    // Copy from receive buffer
+                                    int offset = recv_displs[owner_rank] + recv_offsets[owner_rank];
+                                    for (int tj = 0; tj < tile_n; ++tj) {
+                                        tile_data[ti * tile_n + tj] = recv_buffer[offset + tj];
                                     }
+                                    recv_offsets[owner_rank] += tile_n;
                                 }
-                                
-                                int tag = global_row * 1000 + tile_col_start;
-                                // Send to the tile owner (need to determine who owns tile i,j)
-                                int tile_owner = A_aug.tileRank(i, j);
-                                MPI_Send(row_segment, tile_n, MPI_DOUBLE, tile_owner, tag, comm);
-                                delete[] row_segment;
                             }
                         }
                     }
+                    
+                    // Insert tile
+                    A_aug.tileInsert(i, j, tile_data, tile_n);
                 }
             }
-        }
-        
-        // Phase 3: Wait for all receives and copy data into tiles
-        if (!recv_requests.empty()) {
-            MPI_Waitall(recv_requests.size(), recv_requests.data(), MPI_STATUSES_IGNORE);
-            
-            // Copy received data into tiles at the correct positions
-            for (const auto& info : recv_infos) {
-                double* tile_data = tile_data_map[{info.tile_i, info.tile_j}];
-                for (int tj = 0; tj < info.tile_n; ++tj) {
-                    tile_data[info.row_in_tile * info.tile_n + tj] = info.buffer[tj];
-                }
-                delete[] info.buffer;
-            }
-        }
-        
-        // Insert all tiles
-        for (auto& [indices, tile_data] : tile_data_map) {
-            int i = indices.first;
-            int j = indices.second;
-            int tile_row_start = i * mb;
-            int tile_row_end = std::min((i + 1) * mb, m_aug);
-            int tile_col_start = j * nb;
-            int tile_col_end = std::min((j + 1) * nb, n);
-            int tile_n = tile_col_end - tile_col_start;
-            
-            A_aug.tileInsert(i, j, tile_data, tile_n);
         }
             
         // Insert tiles for vector b using point-to-point communication
@@ -342,6 +357,9 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         }
         
         // Send b vector elements to tile owners
+        std::vector<MPI_Request> b_send_requests;
+        std::vector<double*> b_send_buffers;
+        
         if (m_local > 0) {
             for (int i = 0; i < b_aug.mt(); ++i) {
                 int tile_row_start = i * mb;
@@ -349,17 +367,25 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 
                 if (tile_row_start >= m_total) continue;
                 
-                for (int ti = 0; ti < (tile_row_end - tile_row_start); ++ti) {
-                    int global_row = tile_row_start + ti;
-                    if (global_row >= m_total) break;
-                    
-                    if (global_row >= my_row_start && global_row < my_row_end) {
-                        if (!b_aug.tileIsLocal(i, 0)) {
-                            // Someone else owns this tile, send them the element
+                int tile_owner = b_aug.tileRank(i, 0);
+                
+                // Only send if someone else owns this tile
+                if (tile_owner != mpi_rank) {
+                    for (int ti = 0; ti < (tile_row_end - tile_row_start); ++ti) {
+                        int global_row = tile_row_start + ti;
+                        if (global_row >= m_total) break;
+                        
+                        if (global_row >= my_row_start && global_row < my_row_end) {
+                            // I own this element, send it to tile owner
                             int local_row = global_row - my_row_start;
+                            double* elem_buffer = new double[1];
+                            elem_buffer[0] = local_b_data[local_row];
+                            b_send_buffers.push_back(elem_buffer);
+                            
                             int tag = global_row + 100000;
-                            int tile_owner = b_aug.tileRank(i, 0);
-                            MPI_Send(&local_b_data[local_row], 1, MPI_DOUBLE, tile_owner, tag, comm);
+                            MPI_Request req;
+                            MPI_Isend(elem_buffer, 1, MPI_DOUBLE, tile_owner, tag, comm, &req);
+                            b_send_requests.push_back(req);
                         }
                     }
                 }
@@ -374,6 +400,14 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                 double* tile_data = b_tile_data_map[info.tile_i];
                 tile_data[info.row_in_tile] = info.buffer[0];
                 delete[] info.buffer;
+            }
+        }
+        
+        // Wait for b sends to complete
+        if (!b_send_requests.empty()) {
+            MPI_Waitall(b_send_requests.size(), b_send_requests.data(), MPI_STATUSES_IGNORE);
+            for (auto* buf : b_send_buffers) {
+                delete[] buf;
             }
         }
         
@@ -435,16 +469,8 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         
         MPI_Barrier(comm);
         
-        if (mpi_rank == 0) {
-            std::cerr << "Solving with QR decomposition..." << std::endl;
-        }
-        
-        // ALL ranks participate in the solve
+        // Solve using QR decomposition
         slate::gels(A_aug, b_aug);
-        
-        if (mpi_rank == 0) {
-            std::cerr << "QR solve completed. Extracting solution..." << std::endl;
-        }
         
         // Extract solution (first n elements of b_aug)
         std::vector<double> solution_local(n, 0.0);
@@ -466,11 +492,6 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         
         // Reduce the solution to all processes
         MPI_Allreduce(solution_local.data(), solution, n, MPI_DOUBLE, MPI_SUM, comm);
-        
-        if (mpi_rank == 0) {
-            std::cerr << "Solution extracted successfully." << std::endl;
-            std::cerr << "=====================================\n" << std::endl;
-        }
         
     } catch (const std::exception& e) {
         std::cerr << "[Rank " << mpi_rank << "] SLATE error: " << e.what() << std::endl;

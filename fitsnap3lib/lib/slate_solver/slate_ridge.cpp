@@ -49,12 +49,20 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     std::vector<int> all_m_locals(mpi_size);
     MPI_Allgather(&m_local, 1, MPI_INT, all_m_locals.data(), 1, MPI_INT, comm);
     
-    // Verify that m matches the sum of all local sizes
+    // Build a map of which ranks actually have data and their true offsets
+    // This is critical for shared memory architecture where only some ranks have data
     int m_computed = 0;
     std::vector<int> row_offsets(mpi_size + 1, 0);
+    std::vector<int> data_rank_map;  // Maps data ranks to their order
+    std::map<int, int> rank_to_data_idx;  // Maps rank to its data index
+    
     for (int i = 0; i < mpi_size; i++) {
-        m_computed += all_m_locals[i];
         row_offsets[i + 1] = row_offsets[i] + all_m_locals[i];
+        m_computed += all_m_locals[i];
+        if (all_m_locals[i] > 0) {
+            rank_to_data_idx[i] = data_rank_map.size();
+            data_rank_map.push_back(i);
+        }
     }
     
     if (m_computed != m && mpi_rank == 0) {
@@ -126,6 +134,11 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         std::cerr << "Tile configuration: " << mb << " x " << nb << std::endl;
         std::cerr << "Process grid: " << p << " x " << q << std::endl;
         std::cerr << "Data distribution: " << ranks_with_data << " ranks have data" << std::endl;
+        std::cerr << "Data ranks: ";
+        for (int r : data_rank_map) {
+            std::cerr << r << "(rows " << row_offsets[r] << "-" << row_offsets[r+1] << ") ";
+        }
+        std::cerr << std::endl;
     }
     
     try {
@@ -135,8 +148,13 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         
         // Each process with data inserts tiles for its portion
         // In shared memory architecture, only rank 0 within each node has m_local > 0
+        // CRITICAL: row_offsets gives us the GLOBAL row range, but our local_a_data is indexed from 0
         int my_row_start = row_offsets[mpi_rank];
         int my_row_end = row_offsets[mpi_rank + 1];
+        
+        // Debug: Print what each rank thinks it owns
+        std::cerr << "[Rank " << mpi_rank << "] m_local=" << m_local 
+                  << ", owns global rows [" << my_row_start << ", " << my_row_end << ")" << std::endl;
           
             
         // Redistribute matrix A from row-block to 2D block-cyclic using MPI_Alltoallv
@@ -167,6 +185,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                     for (int ti = 0; ti < tile_m; ++ti) {
                         int global_row = tile_row_start + ti;
                         if (global_row >= m_total) break;
+                        // Check if this global row belongs to us
                         if (global_row >= my_row_start && global_row < my_row_end) {
                             send_counts[tile_owner] += tile_n;
                         }
@@ -203,8 +222,9 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         int total_recv = recv_displs[mpi_size-1] + recv_counts[mpi_size-1];
         
         // Allocate send and receive buffers
-        std::vector<double> send_buffer(total_send);
-        std::vector<double> recv_buffer(total_recv);
+        // CRITICAL: Even ranks with no data need properly sized buffers for MPI_Alltoallv
+        std::vector<double> send_buffer(std::max(1, total_send), 0.0);
+        std::vector<double> recv_buffer(std::max(1, total_recv), 0.0);
         
         // Pack send buffer
         std::vector<int> send_offsets(mpi_size, 0);
@@ -227,6 +247,12 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                         if (global_row >= m_total) break;
                         if (global_row >= my_row_start && global_row < my_row_end) {
                             int local_row = global_row - my_row_start;
+                            // CRITICAL: Ensure local_row is valid for our local array
+                            if (local_row >= m_local) {
+                                std::cerr << "[Rank " << mpi_rank << "] ERROR: local_row=" << local_row 
+                                          << " >= m_local=" << m_local << " for global_row=" << global_row << std::endl;
+                                continue;
+                            }
                             int offset = send_displs[tile_owner] + send_offsets[tile_owner];
                             for (int tj = 0; tj < tile_n; ++tj) {
                                 int global_col = tile_col_start + tj;
@@ -262,8 +288,9 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                     int tile_m = tile_row_end - tile_row_start;
                     int tile_n = tile_col_end - tile_col_start;
                     
-                    // Allocate tile
-                    double* tile_data = new double[tile_m * tile_n];
+                    // Allocate and initialize tile to zero
+                    // CRITICAL: Must initialize ALL elements to prevent garbage values
+                    double* tile_data = new double[tile_m * tile_n]();
                     std::fill(tile_data, tile_data + tile_m * tile_n, 0.0);
                     
                     if (tile_row_start < m_total) {
@@ -284,22 +311,38 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
                             
                             if (owner_rank >= 0) {
                                 if (owner_rank == mpi_rank && m_local > 0) {
-                                    // Local copy
+                                    // Local copy - only if we actually have data
                                     int local_row = global_row - my_row_start;
-                                    for (int tj = 0; tj < tile_n; ++tj) {
-                                        int global_col = tile_col_start + tj;
-                                        if (global_col < n) {
-                                            tile_data[ti * tile_n + tj] = 
-                                                local_a_data[local_row * n + global_col];
+                                    if (local_row >= 0 && local_row < m_local) {
+                                        for (int tj = 0; tj < tile_n; ++tj) {
+                                            int global_col = tile_col_start + tj;
+                                            if (global_col < n) {
+                                                tile_data[ti * tile_n + tj] = 
+                                                    local_a_data[local_row * n + global_col];
+                                            } else {
+                                                tile_data[ti * tile_n + tj] = 0.0;
+                                            }
+                                        }
+                                    } else {
+                                        // Out of bounds - shouldn't happen
+                                        std::cerr << "[Rank " << mpi_rank << "] ERROR: local_row=" << local_row 
+                                                  << " out of bounds [0, " << m_local << ")" << std::endl;
+                                        for (int tj = 0; tj < tile_n; ++tj) {
+                                            tile_data[ti * tile_n + tj] = 0.0;
                                         }
                                     }
-                                } else {
+                                } else if (owner_rank >= 0) {
                                     // Copy from receive buffer
                                     int offset = recv_displs[owner_rank] + recv_offsets[owner_rank];
                                     for (int tj = 0; tj < tile_n; ++tj) {
                                         tile_data[ti * tile_n + tj] = recv_buffer[offset + tj];
                                     }
                                     recv_offsets[owner_rank] += tile_n;
+                                } else {
+                                    // No owner found - fill with zeros
+                                    for (int tj = 0; tj < tile_n; ++tj) {
+                                        tile_data[ti * tile_n + tj] = 0.0;
+                                    }
                                 }
                             }
                         }
@@ -484,7 +527,8 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         // Extract solution (first n elements of b_aug)
         std::vector<double> solution_local(n, 0.0);
         
-        for (int i = 0; i < b_aug.nt() && i * mb < n; ++i) {
+        // CRITICAL BUG FIX: Use b_aug.mt() for row tiles, not b_aug.nt() which is column tiles!
+        for (int i = 0; i < b_aug.mt() && i * mb < n; ++i) {
             if (b_aug.tileIsLocal(i, 0)) {
                 int tile_row_start = i * mb;
                 int tile_row_end = std::min((i + 1) * mb, n);

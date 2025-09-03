@@ -1,6 +1,8 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 # distutils: language = c++
 
+import numpy as np
+cimport numpy as np
 from libc.stddef cimport size_t
 
 cdef extern from *:
@@ -25,8 +27,7 @@ def ridge_solve_qr(double[:, ::1] local_a,
     if local_b.shape[0] != m_local:
         raise ValueError("local_b length must equal local_a.shape[0].")
 
-    import numpy as _np
-    cdef _np.ndarray[_np.float64_t, ndim=1, mode="c"] x = _np.zeros(n, dtype=_np.float64)
+    cdef np.ndarray[np.float64_t, ndim=1, mode="c"] x = np.zeros(n, dtype=np.float64)
 
     from mpi4py import MPI
     cdef size_t comm_ptr = MPI._handleof(comm)

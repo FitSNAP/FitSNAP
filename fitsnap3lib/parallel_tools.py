@@ -1014,7 +1014,9 @@ class SharedArray:
         if self._width == 1:
             self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, ))
         else:
-            self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, self._width))
+            # create shared array in column major for SLATE if multinode
+            self.array = np.ndarray(buffer=buff, dtype=dtype,
+                                    shape=(self._length, self._width), order = 'F' if multinode else 'C')
 
     def get_memory(self):
         return self._nbytes

@@ -61,6 +61,7 @@ class RidgeSlate(Solver):
         
         pt = self.pt
         a = pt.shared_arrays['a'].array
+        ap = pt.shared_arrays['a']
         b = pt.shared_arrays['b'].array
         w = pt.shared_arrays['w'].array
         
@@ -70,12 +71,9 @@ class RidgeSlate(Solver):
         pt.all_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
                      #f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
                      f"pt.fitsnap_dict\n{pt.fitsnap_dict}\n"
-                     f"a _scraped_length {a._scraped_length} _total_length {a._total_length} _node_length {_node_length} _length {_length}\n{a}\n"
+                     f"a _scraped_length {ap._scraped_length} _total_length {ap._total_length} _node_length {ap._node_length} _length {ap._length}\n{a}\n"
                      f"b = {b}\n"
                      f"--------------------------------\n")
-                
-        # IMPORTANT: With shared arrays, only rank 0 within each node handles data
-        # Other ranks in the node will participate in SLATE computation but send empty data
         
         if pt._sub_rank == 0:
             # Handle train/test split

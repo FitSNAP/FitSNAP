@@ -16,7 +16,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     MPI_Comm_size(comm, &mpi_size);
         
     // Augmented system for ridge regression
-    int m_aug = m + n;  // [A; sqrt(alpha)*I]
+    int m = m + n;  // [A; sqrt(alpha)*I]
     
     /*
     // Tile size configuration
@@ -24,8 +24,8 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     int nb = tile_size;
     
     // Ensure tiles are appropriate for QR
-    if (m_aug < 100) {
-        mb = std::max(32, (m_aug + mpi_size - 1) / mpi_size);
+    if (m < 100) {
+        mb = std::max(32, (m + mpi_size - 1) / mpi_size);
         nb = std::min(32, n);
     }
     mb = std::max(mb, nb);  // QR needs tall tiles
@@ -46,7 +46,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     if (mpi_rank == 0) {
         std::cerr << "\n=== Clean SLATE Ridge Solver ===" << std::endl;
         std::cerr << "Problem size: " << m << " x " << n << std::endl;
-        std::cerr << "Augmented size: " << m_aug << " x " << n << std::endl;
+        std::cerr << "Augmented size: " << m << " x " << n << std::endl;
         std::cerr << "Tile size: " << mb << " x " << nb << std::endl;
         std::cerr << "Process grid: " << p << " x " << q << std::endl;
         std::cerr << "Alpha (regularization): " << alpha << std::endl;
@@ -54,8 +54,8 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     
     try {
         // Create SLATE matrices 
-        slate::Matrix<double> A_aug(m_aug, n, mb, nb, p, q, comm);
-        slate::Matrix<double> b_aug(m_aug, 1, mb, 1, p, q, comm);
+        slate::Matrix<double> A(m, n, mb, nb, p, q, comm);
+        slate::Matrix<double> b(m, 1, mb, 1, p, q, comm);
         
         // APPROACH: Each rank with data inserts its local tiles into SLATE's matrix
         // SLATE will manage the tile distribution and storage
@@ -63,15 +63,15 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         double sqrt_alpha = std::sqrt(alpha);
         
         // Insert A matrix data
-        for (int j = 0; j < A_aug.nt(); ++j)
-          for (int i = 0; i < A_aug.mt(); ++i)
-            if (A_aug.tileIsLocal(i, j))
-              A_aug.tileInsert(i, j, local_a_data, n);
+        for (int j = 0; j < A.nt(); ++j)
+          for (int i = 0; i < A.mt(); ++i)
+            if (A.tileIsLocal(i, j))
+              A.tileInsert(i, j, local_a_data, n);
             
         // Insert b vector data
-        for (int i = 0; i < b_aug.mt(); ++i)
-          if (b_aug.tileIsLocal(i, 0))
-            b_aug.tileInsert(i, 0, local_b_data, 1);
+        for (int i = 0; i < b.mt(); ++i)
+          if (b.tileIsLocal(i, 0))
+            b.tileInsert(i, 0, local_b_data, 1);
             
         slate::Options opts = {
           { slate::Option::PrintVerbose, 4 },     // Abbreviated
@@ -86,19 +86,19 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         }
         
         // Solve using QR decomposition
-        slate::gels(A_aug, b_aug);
+        slate::gels(A, b);
         
-        // Extract solution from first n elements of b_aug
+        // Extract solution from first n elements of b
         std::vector<double> solution_local(n, 0.0);
         
-        for (int i = 0; i < b_aug.mt(); ++i) {
-            if (b_aug.tileIsLocal(i, 0)) {
+        for (int i = 0; i < b.mt(); ++i) {
+            if (b.tileIsLocal(i, 0)) {
                 int tile_row_start = i * mb;
-                int tile_row_end = std::min((i + 1) * mb, m_aug);
+                int tile_row_end = std::min((i + 1) * mb, m);
                 
                 // Only extract from tiles containing solution (first n rows)
                 if (tile_row_start < n) {
-                    auto tile = b_aug(i, 0);
+                    auto tile = b(i, 0);
                     
                     int tile_m = std::min(tile_row_end, n) - tile_row_start;
                     

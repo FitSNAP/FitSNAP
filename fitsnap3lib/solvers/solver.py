@@ -384,7 +384,7 @@ class Solver:
                 self.df.to_pickle(self.config.sections['EXTRAS'].dataframe_file)
 
             # Proceed with error analysis if doing a fit.
-            if self.fit is not None and not self.config.sections["SOLVER"].true_multinode:
+            if self.fit is not None and not self.config.sections["SOLVER"].multinode:
 
                 # Return data for each group.
 

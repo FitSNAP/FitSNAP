@@ -129,20 +129,20 @@ class Calculator:
                 self.pt.single_print("Warning: > 50% RAM. I hope you know what you are doing!")
 
             self.pt.create_shared_array('a', a_len, a_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
+                                        tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].multinode)
             if self.config.sections["CALCULATOR"].per_atom_scalar:
                 # create per-atom scalar arrays
-                self.pt.create_shared_array('pas', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
+                self.pt.create_shared_array('pas', a_len, 1, tm=self.config.sections["SOLVER"].multinode)
 
             #if self.config.sections["CALCULATOR"].force:
             self.pt.create_shared_array('dgrad', dgrad_len, a_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
+                                        tm=self.config.sections["SOLVER"].multinode)
             self.pt.create_shared_array('dbdrindx', dgrad_len, 3, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
+                                        tm=self.config.sections["SOLVER"].multinode)
 
             # make an index for which the 'a' array starts on a particular proc
             self.pt.new_slice_a()
@@ -211,18 +211,18 @@ class Calculator:
             neighlist_width = 2 # i j 
             xneigh_width = 3 # xj yj zj, with PBC corrections
             self.pt.create_shared_array('a', a_len, a_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
+                                        tm=self.config.sections["SOLVER"].multinode)
             self.pt.create_shared_array('neighlist', neighlist_len, neighlist_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
+                                        tm=self.config.sections["SOLVER"].multinode)
             self.pt.create_shared_array('xneigh', neighlist_len, xneigh_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
+                                        tm=self.config.sections["SOLVER"].multinode)
             self.pt.create_shared_array('transform_x', neighlist_len, xneigh_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('x', c_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('positions', a_len, 3, tm=self.config.sections["SOLVER"].true_multinode)
+                                        tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('x', c_len, tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('positions', a_len, 3, tm=self.config.sections["SOLVER"].multinode)
             
             # also need descriptors for network standardization
             # for pairwise networks, there are num_neigh*num_descriptors total descriptors to store
@@ -231,7 +231,7 @@ class Calculator:
             self.pt.create_shared_array('descriptors', neighlist_len, self.config.sections['CUSTOM'].num_descriptors)
 
             if self.config.sections["CALCULATOR"].force:
-                self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
+                self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].multinode)
 
             # make an index for which the 'a' array starts on a particular proc
             self.pt.new_slice_a()
@@ -284,9 +284,9 @@ class Calculator:
             elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
                 self.pt.single_print("Warning: > 50 % RAM. I hope you know what you are doing!")
 
-            self.pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('b', a_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('w', a_len, tm=self.config.sections["SOLVER"].true_multinode)
+            self.pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('b', a_len, tm=self.config.sections["SOLVER"].multinode)
+            self.pt.create_shared_array('w', a_len, tm=self.config.sections["SOLVER"].multinode)
             self.pt.new_slice_a()
             self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0]
             # pt.slice_array('a')

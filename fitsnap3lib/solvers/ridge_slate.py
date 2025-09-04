@@ -70,7 +70,8 @@ class RidgeSlate(Solver):
         pt.all_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
                      #f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
                      f"pt.fitsnap_dict\n{pt.fitsnap_dict}\n"
-                     f"a = {a}\nb = {b}\n"
+                     f"a _scraped_length {a._scraped_length} _total_length {a._total_length} _node_length {_node_length} _length {_length}\n{a}\n"
+                     f"b = {b}\n"
                      f"--------------------------------\n")
                 
         # IMPORTANT: With shared arrays, only rank 0 within each node handles data

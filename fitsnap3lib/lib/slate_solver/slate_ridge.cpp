@@ -49,7 +49,6 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         std::cerr << "Augmented size: " << m_aug << " x " << n << std::endl;
         std::cerr << "Tile size: " << mb << " x " << nb << std::endl;
         std::cerr << "Process grid: " << p << " x " << q << std::endl;
-        std::cerr << "Ranks with data: " << ranks_with_data << " out of " << mpi_size << std::endl;
         std::cerr << "Alpha (regularization): " << alpha << std::endl;
     }
     
@@ -67,12 +66,12 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         for (int j = 0; j < A_aug.nt(); ++j)
           for (int i = 0; i < A_aug.mt(); ++i)
             if (A_aug.tileIsLocal(i, j))
-              A_aug.tileInsert(i, j, tile_data.data());
+              A_aug.tileInsert(i, j, local_a_data);
             
         // Insert b vector data
         for (int i = 0; i < b_aug.mt(); ++i)
           if (b_aug.tileIsLocal(i, 0))
-            b_aug.tileInsert(i, 0, tile_data.data());
+            b_aug.tileInsert(i, 0, local_b_data);
           
         if (mpi_rank == 0) {
             std::cerr << "Solving with SLATE QR decomposition..." << std::endl;

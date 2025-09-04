@@ -27,3 +27,6 @@ docs/build/
 
 # ignore PACE library files
 fitsnap3lib/lib/sym_ACE/lib/*.pickle
+/fitsnap3lib/lib/slate_solver/slate_solver.egg-info
+fitsnap3lib/lib/slate_solver/slate_wrapper.cpp
+*.so

@@ -38,13 +38,14 @@ include_dirs = [
     np.get_include(),
     f"{slate_dir}/include",
     "/usr/include/eigen3",  # Often needed for SLATE
+    "/opt/homebrew/Cellar/libomp/20.1.8/include",  # OpenMP headers
 ] + mpi_include_dirs
 
 # Library directories - just SLATE's location
-library_dirs = [f"{slate_dir}/lib", f"{slate_dir}/lib64"]
+library_dirs = [f"{slate_dir}/lib", f"{slate_dir}/lib64", "/opt/homebrew/Cellar/libomp/20.1.8/lib"]
 
 # Libraries - only SLATE and MPI
-libraries = ["slate", "mpi"]
+libraries = ["slate", "mpi", "omp"]
 
 print(f"Libraries to link: {libraries}")
 print(f"Library directories: {library_dirs}")

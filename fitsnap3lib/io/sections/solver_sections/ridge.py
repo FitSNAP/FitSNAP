@@ -14,6 +14,6 @@ class Ridge(Section):
             raise UserWarning("{} solver section is in input, but solver is set to {}".format(self.name, solver_type))
 
         self.alpha = self.get_value("RIDGE", "alpha", "1.0E-8", "float")
-        self.local_solver = self.get_value("RIDGE", "local_solver", "1", "bool")
+        self.local_solver = self.get_value("RIDGE", "local_solver", "0", "bool")
         self.tile_size = self.get_value("RIDGE", "tile_size", "256", "int")  # For RidgeSlate
         self.delete()

@@ -374,16 +374,12 @@ class ParallelTools():
                         self.shared_arrays[name].win.Free()
                     except Exception as e:
                         self.single_print(f"Trouble deallocating shared array with name {name}: {e}.")
-                comms = [[self._comm, self._rank, self._size],
-                         [self._sub_comm, self._sub_rank, self._sub_size],
-                         [self._head_group_comm, self._node_index, self._number_of_nodes]]
+                #comms = [[self._comm, self._rank, self._size],
+                #         [self._sub_comm, self._sub_rank, self._sub_size],
+                #         [self._head_group_comm, self._node_index, self._number_of_nodes]]
 
-                self.shared_arrays[name] = SharedArray(size1, size2=size2,
-                                                       dtype=dtype,
-                                                       multinode=tm,
-                                                       comms=comms,
-                                                       MPI=self.MPI)
-            else:   
+                self.shared_arrays[name] = SharedArray(self, size1, size2, dtype=dtype, tm=tm)
+            else:
                 self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)
         else:
             raise TypeError("name must be a string")
@@ -956,16 +952,29 @@ class SharedArray:
         size1 (int): First dimension of the array.
         size2 (int): Optional second dimension of the array, defaults to 1.
         dtype (str): Optional data type, defaults to `d` for double.
+        pt (ParallelTools): MPI communicator.
         multinode (int): Optional multinode flag used for scalapack purposes.
-        comms (MPI.Comm): MPI communicator.
 
     Attributes:
         array (np.ndarray): Array of numbers that share memory across processes in the communicator.
     """
 
-    def __init__(self, size1, size2=1, dtype='d', multinode=False, comms=None, MPI=None):
+    def __init__(self, pt, size1, size2=1, dtype='d', tm=False):
         
-        self.MPI = MPI
+        # ParallelTools (passed in but not stored to avoid circular refs)
+        # REPLACES comms[][] for code readability
+        # comms = [[self._comm, self._rank, self._size],
+        #         [self._sub_comm, self._sub_rank, self._sub_size],
+        #         [self._head_group_comm, self._node_index, self._number_of_nodes]]
+        self.MPI = pt.MPI
+        self._comm = pt._comm
+        self._rank = pt._rank
+        self._size = pt._size
+        self._sub_comm = pt._sub_comm
+        self._sub_rank = pt._sub_rank
+        self._sub_size = pt._sub_size
+        self._node_index = pt._node_index
+        self._number_of_nodes = pt._number_of_nodes
 
         # total array for all procs
         self.array = None
@@ -982,13 +991,8 @@ class SharedArray:
         self._node_length = None
         self._width = size2
 
-        # These are sub comm and sub rank
-        # Comm, sub_com, head_node_comm
-        # comm, rank, size
-        self._comms = comms
-
-        self._multinode = multinode
-        if multinode:
+        self._multinode = tm
+        if self._multinode:
             self.multinode_lengths()
 
         if dtype == 'd':
@@ -997,13 +1001,14 @@ class SharedArray:
             item_size = self.MPI.INT.Get_size()
         else:
             raise TypeError("dtype {} has not been implemented yet".format(dtype))
-        if self._comms[1][1] == 0:
+            
+        if self._sub_rank == 0:
             self._nbytes = self._length * self._width * item_size
         else:
             self._nbytes = 0
 
         #win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
-        self.win = self.MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
+        self.win = self.MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._sub_comm)
 
         buff, item_size = self.win.Shared_query(0)
 
@@ -1016,7 +1021,8 @@ class SharedArray:
         else:
             # create shared array in column major for SLATE if multinode
             self.array = np.ndarray(buffer=buff, dtype=dtype,
-                                    shape=(self._length, self._width), order = 'F' if multinode else 'C')
+                                    shape=(self._length, self._width),
+                                    order = 'F' if self._multinode else 'C')
 
     def get_memory(self):
         return self._nbytes
@@ -1039,18 +1045,19 @@ class SharedArray:
 
     def multinode_lengths(self):
         # Each head node needs to have mb or its scraped length if longer
-        # Solvers which require this: ScaLAPACK & RidgeSlate
+        # Solvers which require this: ScaLAPACK (deprecated/obsolete) & RidgeSlate (NEW !)
         remainder = 0
         self._scraped_length = self._length
-        if self._comms[1][1] == 0:
-            self._total_length = self._comms[2][0].allreduce(self._scraped_length)
+        
+        if self._sub_rank == 0:
+            self._total_length = self._head_group_comm.allreduce(self._scraped_length)
             # mb is the floored average array length, extra elements are dumped into the first array
-            self._node_length = int(np.floor(self._total_length / self._comms[2][2]))
-            if self._comms[2][1] == 0:
-                remainder = self._total_length - self._node_length*self._comms[2][2]
+            self._node_length = int(np.floor(self._total_length / self._number_of_nodes))
+            if self._node_index == 0:
+                remainder = self._total_length - self._node_length*self._number_of_nodes
             self._node_length += remainder
-        self._total_length = self._comms[1][0].bcast(self._total_length)
-        self._node_length = self._comms[1][0].bcast(self._node_length)
+        self._total_length = self._sub_comm.bcast(self._total_length)
+        self._node_length = self._sub_comm.bcast(self._node_length)
         self._length = max(self._node_length, self._scraped_length)
 
 

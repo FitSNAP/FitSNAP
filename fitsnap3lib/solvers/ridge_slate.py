@@ -60,14 +60,17 @@ class RidgeSlate(Solver):
         """
         
         pt = self.pt
+        a = pt.shared_arrays['a'].array
+        b = pt.shared_arrays['b'].array
+        w = pt.shared_arrays['w'].array
         
         # Debug output - print all in one statement to avoid tangled output
         # *** DO NOT REMOVE !!! ***
         np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
         pt.all_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
-                     f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
-                     f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}\n"
-                     f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}\n"
+                     #f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
+                     f"pt.fitsnap_dict\n{pt.fitsnap_dict}\n"
+                     f"a = {a}\nb = {b}\n"
                      f"--------------------------------\n")
                 
         # IMPORTANT: With shared arrays, only rank 0 within each node handles data
@@ -77,14 +80,14 @@ class RidgeSlate(Solver):
             # Handle train/test split
             if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
                 training = [(elem==False) for elem in pt.fitsnap_dict['Testing']]
-                a_train = pt.shared_arrays['a'].array[training]
-                b_train = pt.shared_arrays['b'].array[training]
+                a_train = a[training]
+                b_train = b[training]
                 w_train = pt.shared_arrays['w'].array[training]
             else:
                 # No test/train split
-                a_train = pt.shared_arrays['a'].array
-                b_train = pt.shared_arrays['b'].array
-                w_train = pt.shared_arrays['w'].array
+                a_train = a.array
+                b_train = b.array
+                w_train = w.array
                 
             # Debug output to verify filtering - print one statement to avoid tangled output
             # *** DO NOT REMOVE !!! ***
@@ -97,13 +100,7 @@ class RidgeSlate(Solver):
             # Only rank 0 in each node handles the shared array data
             aw = w_train[:, np.newaxis] * a_train
             bw = w_train * b_train
-        else:
-            # Other ranks within the node send empty arrays
-            # Need to get the number of columns from the shared array
-            n_cols = pt.shared_arrays['a'].array.shape[1] if len(pt.shared_arrays['a'].array.shape) > 1 else 1
-            aw = np.zeros((0, n_cols), dtype=np.float64)
-            bw = np.zeros(0, dtype=np.float64)
-                        
+                       
         # Debug output on all ranks
         # *** DO NOT REMOVE !!! ***
         pt.all_print(f"\nsending to SLATE:\naw\n{aw}\nbw{bw}")

@@ -14,9 +14,6 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
     int mpi_rank, mpi_size;
     MPI_Comm_rank(comm, &mpi_rank);
     MPI_Comm_size(comm, &mpi_size);
-        
-    // Augmented system for ridge regression
-    int m = m + n;  // [A; sqrt(alpha)*I]
     
     /*
     // Tile size configuration
@@ -59,9 +56,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         
         // APPROACH: Each rank with data inserts its local tiles into SLATE's matrix
         // SLATE will manage the tile distribution and storage
-        
-        double sqrt_alpha = std::sqrt(alpha);
-        
+                
         // Insert A matrix data
         for (int j = 0; j < A.nt(); ++j)
           for (int i = 0; i < A.mt(); ++i)

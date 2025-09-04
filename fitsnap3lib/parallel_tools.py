@@ -630,6 +630,9 @@ class ParallelTools():
 
         # This assert only works on a single node.
         # TODO: Should be way to generalize for all nodes, take closer look at variables.
+        
+        self.all_print(f"*** sub_a_sizes {sub_a_sizes} |a| {len(self.shared_arrays['a'].array)}")
+        
         if self._number_of_nodes == 1:
             assert sum(sub_a_sizes) == len(self.shared_arrays['a'].array)
 
@@ -973,6 +976,7 @@ class SharedArray:
         self._sub_comm = pt._sub_comm
         self._sub_rank = pt._sub_rank
         self._sub_size = pt._sub_size
+        self._head_group_comm = pt._head_group_comm
         self._node_index = pt._node_index
         self._number_of_nodes = pt._number_of_nodes
 

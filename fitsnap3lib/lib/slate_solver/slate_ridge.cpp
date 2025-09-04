@@ -66,12 +66,20 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         for (int j = 0; j < A_aug.nt(); ++j)
           for (int i = 0; i < A_aug.mt(); ++i)
             if (A_aug.tileIsLocal(i, j))
-              A_aug.tileInsert(i, j, local_a_data);
+              A_aug.tileInsert(i, j, local_a_data, n);
             
         // Insert b vector data
         for (int i = 0; i < b_aug.mt(); ++i)
           if (b_aug.tileIsLocal(i, 0))
-            b_aug.tileInsert(i, 0, local_b_data);
+            b_aug.tileInsert(i, 0, local_b_data, 1);
+            
+        slate::Options opts = {
+          { slate::Option::PrintVerbose, 4 },     // Abbreviated
+          { slate::Option::PrintPrecision, 4 },
+          { slate::Option::PrintWidth, 8 }
+        };
+    
+        slate::print("A", A, opts);
           
         if (mpi_rank == 0) {
             std::cerr << "Solving with SLATE QR decomposition..." << std::endl;

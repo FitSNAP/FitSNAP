@@ -387,10 +387,14 @@ class Solver:
             if self.fit is not None and not self.config.sections["SOLVER"].multinode:
 
                 # Return data for each group.
+                
+                # resolve pandas FutureWarning by explicitly excluding the grouping columns
+                # from the operation, which will be the default behavior in future versions
 
-                grouped = self.df.groupby(['Groups', \
-                    'Testing', \
-                    'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
+                grouped = self.df.groupby(['Groups', 'Testing', 'Row_Type']).apply(
+                  self._ncount_mae_rmse_rsq_unweighted_and_weighted,
+                  include_groups=False
+                )
 
                 # reformat the weighted and unweighted data into separate rows
 
@@ -401,8 +405,13 @@ class Solver:
 
                 # return data for dataset as a whole
 
-                all = self.df.groupby(['Testing', 'Row_Type']).\
-                    apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
+                # resolve pandas FutureWarning by explicitly excluding the grouping columns
+                # from the operation, which will be the default behavior in future versions
+
+                all = self.df.groupby(['Testing', 'Row_Type']).apply(
+                    self._ncount_mae_rmse_rsq_unweighted_and_weighted,
+                    include_groups=False
+                )
 
                 # reformat the weighted and unweighted data into separate rows
 

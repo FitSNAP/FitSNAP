@@ -272,6 +272,9 @@ class Calculator:
             a_width = self.get_width()
             assert isinstance(a_width, int)
 
+            # Store the original data size before augmentation
+            original_a_len = a_len
+            
             if (self.config.sections["SOLVER"].solver.lower() == "ridgeslate"):
             
                 # TODO: dont bother checking memory on multinode for now
@@ -280,17 +283,23 @@ class Calculator:
                 # preallocate more rows for augmented QR
                 # do hard work upfront to avoid pain later
                     
-                # spread regularization rows across nodes instead of all at bottom
-                # to balance tiles for SLATE
+                # spread regularization rows across nodes/ranks instead of all
+                # at bottom of global matrix to balance tiles for SLATE
                     
                 # waste a little memory to be more robust
-                # optimal is roughly same amount of configs per node
+                # optimal is same amount of configs per node
                     
-                pt.all_print("*** ok 1")
                 max_a_len = pt._comm.allreduce(a_len, op=pt.MPI.MAX)
-                pt.all_print("*** ok 2")
                 a_len = int(np.ceil((max_a_len*pt._number_of_nodes + a_width)/pt._number_of_nodes))
                 pt.all_print(f"*** max_a_len {max_a_len} a_len {a_len}")
+                # Store info about ridgeslate augmentation
+                pt.add_2_fitsnap("is_ridgeslate", True)
+                pt.add_2_fitsnap("original_a_len", original_a_len)
+                pt.add_2_fitsnap("augmented_a_len", a_len)
+                
+                # RidgeSlate always uses column-major arrays for SLATE performance
+                # Even in single-node mode
+                multinode = True
               
             else:
 
@@ -303,7 +312,7 @@ class Calculator:
                   raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
               elif a_size / pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
                   pt.single_print("Warning: > 50 % RAM. I hope you know what you are doing!")
-
+            
             pt.create_shared_array('a', a_len, a_width, tm=multinode)
             pt.create_shared_array('b', a_len, tm=multinode)
             pt.create_shared_array('w', a_len, tm=multinode)

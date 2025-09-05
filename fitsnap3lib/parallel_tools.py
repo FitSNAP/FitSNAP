@@ -276,6 +276,7 @@ class ParallelTools():
 
     def all_print(self, *args, **kw):
         printf(f"[Node {self._node_index} Rank {self._rank}]", *args, file=self._fp, flush=True)
+        (sys.stdout if self._fp is None else self._fp).flush()
 
     def set_output(self, output_file, ns=False, ps=False):
         if ps:
@@ -595,14 +596,21 @@ class ParallelTools():
         For nonlinear solvers, the A matrix is composed of per-atom quantities like bispectrum 
         components, etc.
         """
+        
+        is_ridgeslate = self.fitsnap_dict.get("is_ridgeslate", False)
+
         nof = len(self.shared_arrays["number_of_atoms"].array)
         if self._sub_rank != 0:
             # wait for head proc on node to fill indices
+            if is_ridgeslate:
+                self._bcast_fitsnap("reg_idx")
+                self.fitsnap_dict["reg_idx"] = self.fitsnap_dict["reg_idx"][self._sub_rank]
             self._bcast_fitsnap("sub_a_size")
             self.fitsnap_dict["sub_a_size"] = int(self.fitsnap_dict["sub_a_size"][self._sub_rank])
             self._bcast_fitsnap("sub_a_indices")
             self.fitsnap_dict["sub_a_indices"] = self.fitsnap_dict["sub_a_indices"][self._sub_rank]
             return
+            
         sub_a_sizes = np.zeros((self._sub_size, ), dtype=int)
 
         for i in range(nof):
@@ -628,13 +636,39 @@ class ParallelTools():
             if self.fitsnap_dict["per_atom_scalar"]:
                 sub_a_sizes[proc_number] += self.shared_arrays["number_of_atoms"].array[i]
 
-        # This assert only works on a single node.
-        # TODO: Should be way to generalize for all nodes, take closer look at variables.
+        # Debug print to see the sizes
+        data_size = sum(sub_a_sizes)
+        array_size = len(self.shared_arrays['a'].array)
+        self.all_print(f"*** sub_a_sizes {sub_a_sizes} sum={data_size} |a| {array_size}")
         
-        self.all_print(f"*** sub_a_sizes {sub_a_sizes} |a| {len(self.shared_arrays['a'].array)}")
-        
-        if self._number_of_nodes == 1:
-            assert sum(sub_a_sizes) == len(self.shared_arrays['a'].array)
+        # Handle ridgeslate augmented arrays
+        if is_ridgeslate:
+            # For ridgeslate, the array was augmented with extra rows for regularization
+            # We need to distribute the extra space across processors
+            extra_rows = array_size - data_size
+
+            # Distribute extra rows evenly across processors, with remainder to first procs
+            extra_per_proc = extra_rows // self._sub_size
+            extra_remainder = extra_rows % self._sub_size
+            
+            reg_indices = np.zeros(self._sub_size, dtype=int)
+                
+            for proc in range(self._sub_size):
+                reg_num_rows = extra_per_proc + (1 if proc < extra_remainder else 0)
+                reg_num_rows_all[proc] = reg_num_rows
+                sub_a_sizes[proc] += reg_num_rows
+                    
+            self.add_2_fitsnap("reg_idx", reg_indices)
+            self._bcast_fitsnap("reg_idx")
+                
+            self.all_print(f"*** ridgeslate: distributed {extra_rows} extra rows, new sub_a_sizes {sub_a_sizes}, reg_indices {reg_indices}")
+
+            self.fitsnap_dict["reg_idx"] = reg_indices[self._sub_rank]
+
+        # Verify sizes match after any adjustments
+        if sum(sub_a_sizes) != len(self.shared_arrays['a'].array):
+            # This should not happen if everything is set up correctly
+            assert False, f"Data size {sum(sub_a_sizes)} doesn't match array size {len(self.shared_arrays['a'].array)} on node {self._node_index}"
 
         self.add_2_fitsnap("sub_a_size", sub_a_sizes)
         self._bcast_fitsnap("sub_a_size")
@@ -648,6 +682,7 @@ class ParallelTools():
         self.add_2_fitsnap("sub_a_indices", indices)
         self._bcast_fitsnap("sub_a_indices")
         self.fitsnap_dict["sub_a_indices"] = indices[self._sub_rank]
+        
 
     def new_slice_b(self):
         """ Create array to show which sub b matrix indices belong to which proc. """

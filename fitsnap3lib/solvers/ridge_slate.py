@@ -45,6 +45,12 @@ class RidgeSlate(Solver):
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
         
+        # Check that SLATE is available
+        if not SLATE_AVAILABLE:
+            error_msg = f"[Rank {self.pt._rank}, Node {self.pt._node_index}] SLATE module not available. Please compile it first."
+            pt.single_print(error_msg)
+            raise RuntimeError(error_msg)
+        
         # Get regularization parameter and tile size from RIDGE section
         if 'RIDGE' in self.config.sections:
             self.alpha = self.config.sections['RIDGE'].alpha
@@ -61,109 +67,87 @@ class RidgeSlate(Solver):
         
         pt = self.pt
         a = pt.shared_arrays['a'].array
-        ap = pt.shared_arrays['a']
         b = pt.shared_arrays['b'].array
         w = pt.shared_arrays['w'].array
         
         # Debug output - print all in one statement to avoid tangled output
         # *** DO NOT REMOVE !!! ***
         np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
-        pt.all_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
-                     #f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
-                     f"pt.fitsnap_dict\n{pt.fitsnap_dict}\n"
-                     f"a _scraped_length {ap._scraped_length} _total_length {ap._total_length} _node_length {ap._node_length} _length {ap._length}\n{a}\n"
-                     f"b = {b}\n"
+        pt.single_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
+                     f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
+                     f"a = {a}\n"
+                     #f"b = {b}\n"
                      f"--------------------------------\n")
         
-        if pt._sub_rank == 0:
-            # Handle train/test split
-            if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
-                training = [(elem==False) for elem in pt.fitsnap_dict['Testing']]
-                a_train = a[training]
-                b_train = b[training]
-                w_train = pt.shared_arrays['w'].array[training]
-            else:
-                # No test/train split
-                a_train = a.array
-                b_train = b.array
-                w_train = w.array
-                
-            # Debug output to verify filtering - print one statement to avoid tangled output
-            # *** DO NOT REMOVE !!! ***
-            pt.all_print(
-                f"----------------\nSLATE solver AFTER filtering:\n"
-                f"aw\n{w_train[:, np.newaxis] * a_train}\n"
-                f"bw\n{w_train * b_train}\n"
-                f"--------------------------------\n")
+        pt.sub_barrier()
+
+        # Each rank works on its portion of the shared array
+        # Get this rank's portion indices
+        start_idx, end_idx = pt.fitsnap_dict["sub_a_indices"]
+        reg_idx = pt.fitsnap_dict["reg_idx"]
+        #pt.all_print(f"pt.fitsnap_dict {pt.fitsnap_dict}")
+        pt.all_print(f"start_idx {start_idx} end_idx {end_idx} reg_idx {reg_idx}")
+        
+        # Apply weights to my portion
+        #my_aw = my_w[:, np.newaxis] * my_a
+        #my_bw = my_w * my_b
+        
+        # Handle train/test split: test rows should have weight=0
+        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
             
-            # Only rank 0 in each node handles the shared array data
-            aw = w_train[:, np.newaxis] * a_train
-            bw = w_train * b_train
-                       
+            # The Testing list has markers for each row
+            # We need to map it to our local rows
+            testing_mask = pt.fitsnap_dict['Testing']
+            
+            
+        # -------- REGULARIZATION_ROWS --------
+
+        sqrt_alpha = np.sqrt(self.alpha)
+        n = a.shape[1]
+        a[reg_idx:end_idx+1,:] = 99
+    
+        # Set diagonal elements for the last n_reg_rows in my block
+        for i in range(n):
+          local_row = reg_idx + i
+          diag_idx = pt._rank * int(np.ceil(n/pt._size)) + i
+          if local_row <= end_idx :
+            a[local_row, diag_idx] = sqrt_alpha
+            b[local_row] = 0.0
+
+        
+        # Synchronize all ranks on this node
+        pt.sub_barrier()
+                               
         # Debug output on all ranks
         # *** DO NOT REMOVE !!! ***
-        pt.all_print(f"\nsending to SLATE:\naw\n{aw}\nbw{bw}")
-        
-        # ALL processes participate in the SLATE solve
-        self.fit = self._slate_ridge_solve_qr(aw, bw, pt)
+        #pt.all_print(f"\nsending to SLATE:\na\n{a}\nb{b}")
+                
+        # Call the SLATE augmented Q ridge solver with all node/ranks
+        m = a.shape[0] * self.pt._number_of_nodes
+        ridge_solve_qr(a, b, m, self.pt._comm, self.tile_size)
+        self.fit = b[:n]
         
         # Solution is available on all processes
         # *** DO NOT REMOVE !!! ***
         pt.all_print(f"------------------------\nself.fit\n{self.fit}\n--------------------------------\n")
     
-    def _slate_ridge_solve_qr(self, aw, bw, pt):
-        """
-        Solve ridge regression using SLATE with augmented least squares and QR.
-        
-        Args:
-            aw: Local weighted matrix A (m_local x n)
-            bw: Local weighted vector b (m_local,)
-            m_local: Number of local rows
-            pt: Parallel tools instance
-        
-        Returns:
-            Solution vector (coefficients)
-        """
-        if not SLATE_AVAILABLE:
-            error_msg = f"[Rank {pt._rank}, Node {pt._node_index}] SLATE module not available. Please compile it first."
-            pt.single_print(error_msg)
-            raise RuntimeError(error_msg)
-        
-        # Calculate total number of rows across all processes
-        m_local = aw.shape[0]
-        m_total_local = np.array([m_local], dtype=np.int32)
-        m_total = np.array([0], dtype=np.int32)
-        pt._comm.Allreduce(m_total_local, m_total, op=MPI.SUM)
-        
-        # Debug output
-        pt.all_print(f"SLATE solver: m_local={m_local}, m_total={m_total[0]}, n={aw.shape[1]}")
-        
-        # Call the SLATE ridge solver with QR directly
-        # Use the full communicator (pt._comm) to use ALL MPI ranks
-        solution = ridge_solve_qr(
-            aw, 
-            bw, 
-            m_total[0],  # Total number of rows
-            self.alpha, 
-            pt._comm,  # Use full communicator with ALL processes
-            self.tile_size
-        )
-        
-        return solution
-            
+    
     def _dump_a(self):
         """Save the A matrix to file."""
         np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)
+
 
     def _dump_x(self):
         """Save the solution vector to file."""
         np.savez_compressed('x.npz', x=self.fit)
 
+
     def _dump_b(self):
         """Save the predicted values to file."""
         b = self.pt.shared_arrays['a'].array @ self.fit
         np.savez_compressed('b.npz', b=b)
-    
+
+
     def evaluate_errors(self):
         """Evaluate training and testing errors using distributed computation."""
         pt = self.pt

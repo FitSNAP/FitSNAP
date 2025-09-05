@@ -7,46 +7,43 @@
 
 extern "C" {
 
-void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* solution,
-                          int m_local, int m, int n, double alpha, void* comm_ptr, int tile_size) {
+void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
+                          int m, int n, void* comm_ptr, int tile_size) {
     
     MPI_Comm comm = (MPI_Comm)comm_ptr;
     int mpi_rank, mpi_size;
     MPI_Comm_rank(comm, &mpi_rank);
     MPI_Comm_size(comm, &mpi_size);
     
-    /*
     // Tile size configuration
+    // For augmented matrix with regularization rows, ensure tiles are appropriate
     int mb = tile_size;
-    int nb = tile_size;
+    int nb = std::min(tile_size, n);  // Column tiles shouldn't exceed n
     
-    // Ensure tiles are appropriate for QR
-    if (m < 100) {
-        mb = std::max(32, (m + mpi_size - 1) / mpi_size);
-        nb = std::min(32, n);
-    }
-    mb = std::max(mb, nb);  // QR needs tall tiles
+    // Ensure mb divides well into the problem
+    mb = std::min(mb, std::max(1, m / mpi_size));
     
-    // Create process grid - use all MPI ranks for SLATE computation
-    int p = 1, q = mpi_size;
+    // Create process grid - prefer column distribution for QR
+    int p = mpi_size, q = 1;
+    // Try to create a more square grid if possible
     for (int i = (int)std::sqrt(mpi_size); i >= 1; i--) {
         if (mpi_size % i == 0) {
             p = i;
             q = mpi_size / i;
-            break;
+            if (p >= q) break;  // Prefer p >= q for QR
         }
     }
-    */
     
-    int mb = 6, nb = 10, p = mpi_size, q = 1;
+    p = mpi_size;
+    q = 1;
+    mb = m / mpi_size;
+    nb = n;
     
     if (mpi_rank == 0) {
         std::cerr << "\n=== Clean SLATE Ridge Solver ===" << std::endl;
-        std::cerr << "Problem size: " << m << " x " << n << std::endl;
         std::cerr << "Augmented size: " << m << " x " << n << std::endl;
         std::cerr << "Tile size: " << mb << " x " << nb << std::endl;
         std::cerr << "Process grid: " << p << " x " << q << std::endl;
-        std::cerr << "Alpha (regularization): " << alpha << std::endl;
     }
     
     try {
@@ -54,65 +51,35 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data, double* so
         slate::Matrix<double> A(m, n, mb, nb, p, q, comm);
         slate::Matrix<double> b(m, 1, mb, 1, p, q, comm);
         
-        // APPROACH: Each rank with data inserts its local tiles into SLATE's matrix
-        // SLATE will manage the tile distribution and storage
-                
-        // Insert A matrix data
-        for (int j = 0; j < A.nt(); ++j)
-          for (int i = 0; i < A.mt(); ++i)
-            if (A.tileIsLocal(i, j))
-              A.tileInsert(i, j, local_a_data, n);
+        // Insert A matrix
+        for ( int j = 0; j < A.nt (); ++j)
+          for ( int i = 0; i < A.mt (); ++i)
+            if (A.tileIsLocal( i, j ))
+              A.tileInsert( i, j, local_a_data + i*mb, m );
             
-        // Insert b vector data
-        for (int i = 0; i < b.mt(); ++i)
-          if (b.tileIsLocal(i, 0))
-            b.tileInsert(i, 0, local_b_data, 1);
+        // Insert b vector
+        for ( int i = 0; i < b.mt(); ++i)
+          if (b.tileIsLocal( i, 0 ))
+            b.tileInsert( i, 0, local_b_data + i*mb, m );
             
+        // Make sure every node/rank done building global matrix
+        MPI_Barrier(MPI_COMM_WORLD);
+        
         slate::Options opts = {
-          { slate::Option::PrintVerbose, 4 },     // Abbreviated
+          { slate::Option::PrintVerbose, 4 },
           { slate::Option::PrintPrecision, 4 },
           { slate::Option::PrintWidth, 8 }
         };
     
         slate::print("A", A, opts);
-          
-        if (mpi_rank == 0) {
-            std::cerr << "Solving with SLATE QR decomposition..." << std::endl;
-        }
+        slate::print("b", b, opts);
         
+        if (mpi_rank == 0) std::cerr << "Solving with SLATE QR decomposition..." << std::endl;
         // Solve using QR decomposition
-        slate::gels(A, b);
-        
-        // Extract solution from first n elements of b
-        std::vector<double> solution_local(n, 0.0);
-        
-        for (int i = 0; i < b.mt(); ++i) {
-            if (b.tileIsLocal(i, 0)) {
-                int tile_row_start = i * mb;
-                int tile_row_end = std::min((i + 1) * mb, m);
-                
-                // Only extract from tiles containing solution (first n rows)
-                if (tile_row_start < n) {
-                    auto tile = b(i, 0);
-                    
-                    int tile_m = std::min(tile_row_end, n) - tile_row_start;
-                    
-                    for (int ti = 0; ti < tile_m; ++ti) {
-                        int global_row = tile_row_start + ti;
-                        if (global_row < n) {
-                            solution_local[global_row] = tile(ti, 0);
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Reduce solution to all processes
-        MPI_Allreduce(solution_local.data(), solution, n, MPI_DOUBLE, MPI_SUM, comm);
-        
-        if (mpi_rank == 0) {
-            std::cerr << "SLATE solve completed successfully" << std::endl;
-        }
+        slate::least_squares_solve(A, b);
+        if (mpi_rank == 0) std::cerr << "SLATE solve completed successfully" << std::endl;
+        slate::print("b", b, opts);
+
         
     } catch (const std::exception& e) {
         std::cerr << "[Rank " << mpi_rank << "] SLATE error: " << e.what() << std::endl;

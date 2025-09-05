@@ -113,7 +113,7 @@ class HDF5(Scraper):
 
                 # Add ALL configs, not just 80%
                 #for j in range(conformations.shape[0]):
-                for j in range(27):
+                for j in range(25):
                     self.local_configs.append((group_name, j))
 
         if self.pt.stubs==0:
@@ -206,7 +206,7 @@ class HDF5(Scraper):
                         "NumAtoms": len(atomic_numbers),
                         "Lattice": meta["lattice"],
                         "Bounds": meta["bounds"],
-                        "test_bool": config_assignments[(group_name, i)],
+                        "test_bool": False, #config_assignments[(group_name, i)],
                         "eweight": meta["eweight"],
                         "fweight": meta["fweight"] / len(atomic_numbers),
                     })

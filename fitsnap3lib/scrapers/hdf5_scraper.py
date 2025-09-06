@@ -115,6 +115,7 @@ class HDF5(Scraper):
                 #for j in range(conformations.shape[0]):
                 for j in range(25):
                     self.local_configs.append((group_name, j))
+                print(f"[Rank {self.rank}] Added 25 configs from group {group_name}", flush=True)
 
         if self.pt.stubs==0:
             # Ensure all ranks have finished processing before allgather
@@ -139,6 +140,8 @@ class HDF5(Scraper):
             all_configs = self.comm.allgather(self.local_configs)
             flat_configs = [cfg for sub in all_configs for cfg in sub]
             flat_configs.sort()
+            
+            self.pt.all_print(f"all_configs {all_configs} flat_configs {flat_configs}")
 
             total = len(flat_configs)
             #total = 1*(self.size)

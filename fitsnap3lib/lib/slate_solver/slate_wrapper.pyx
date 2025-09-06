@@ -25,4 +25,4 @@ def ridge_solve_qr(double[::1, :] local_a,  # F-contiguous (column-major) for SL
     cdef int n = <int>local_a.shape[1]
     from mpi4py import MPI
     cdef size_t comm_ptr = MPI._handleof(comm)
-    slate_ridge_solve_qr(&local_a[0, 0], &local_b[0], m, n, <void*>comm_ptr, tile_size)
+    slate_ridge_solve_qr(&local_a[0, 0], &local_b[0], m, n, lld, <void*>comm_ptr, tile_size)

@@ -21,6 +21,7 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
     int q = 1;
     int mb = m / mpi_size;
     int nb = n;
+    int mpi_sub_size = mpi_size * lld / m;
 
     // CRITICAL: For QR decomposition, tile rows (mb) must be >= number of columns (n)
     // This is because the QR process needs to handle all n Householder reflectors
@@ -50,17 +51,18 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
         
         // TODO: only cpu tiles pointing directly to fitsnap shared array for now
         // for gpu support use insertLocalTiles( slate::Target::Devices ) instead
+        // and sync fitsnap shared array to slate gpu tile memory
         
         // Insert A matrix
         for ( int j = 0; j < A.nt (); ++j)
           for ( int i = 0; i < A.mt (); ++i)
             if (A.tileIsLocal( i, j ))
-              A.tileInsert( i, j, local_a_data + i*mb, lld );
+              A.tileInsert( i, j, local_a_data + (i % mpi_sub_size)*mb, lld );
             
         // Insert b vector
         for ( int i = 0; i < b.mt(); ++i)
           if (b.tileIsLocal( i, 0 ))
-            b.tileInsert( i, 0, local_b_data + i*mb, lld );
+            b.tileInsert( i, 0, local_b_data + (i % mpi_sub_size)*mb, lld );
             
         // Make sure every node/rank done building global matrix
         // Doesnt seem to be needed only the barrier after the QR is needed

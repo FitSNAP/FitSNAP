@@ -115,7 +115,6 @@ class HDF5(Scraper):
                 #for j in range(conformations.shape[0]):
                 for j in range(25):
                     self.local_configs.append((group_name, j))
-                print(f"[Rank {self.rank}] Added 25 configs from group {group_name}", flush=True)
 
         if self.pt.stubs==0:
             # Ensure all ranks have finished processing before allgather
@@ -158,7 +157,7 @@ class HDF5(Scraper):
             expected = base + (1 if self.rank < remainder else 0)
             self.my_configs = flat_configs[start:stop]
             actual = len(self.my_configs)
-            #print(f"[Rank {self.rank}] Expected {expected} configs, got {actual}. total {total} base {base}, remainder {remainder}")
+            print(f"[Rank {self.rank}] Expected {expected} configs, got {actual}. total {total} base {base}, remainder {remainder}")
             if actual != expected:
                 raise RuntimeError(f"[Rank {self.rank}] Expected {expected} configs, got {actual}")
 
@@ -166,6 +165,9 @@ class HDF5(Scraper):
 
     def scrape_configs(self):
         self.data = []
+        
+        # DEBUG: Print what configs each rank is processing
+        print(f"[Rank {self.rank}] Processing {len(self.my_configs)} configs: {self.my_configs[:3]}...", flush=True)
         
         #self.pt.all_print(f"Total configs: {len(self.my_configs)} Training: {n_training} Validation: {n_validation}")
         

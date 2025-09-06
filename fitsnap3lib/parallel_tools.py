@@ -653,7 +653,7 @@ class ParallelTools():
             extra_per_proc = extra_rows // self._sub_size
             extra_remainder = extra_rows % self._sub_size
             
-            row_index, col_index = 0, 0
+            row_index, col_index, total_reg_num_rows = 0, 0, 0
             reg_row_indices = np.zeros(self._sub_size, dtype=int)
             reg_col_indices = np.zeros(self._sub_size, dtype=int)
                 
@@ -665,18 +665,18 @@ class ParallelTools():
                 sub_a_sizes[proc] += reg_num_rows
                 row_index += reg_num_rows
                 col_index += reg_num_rows
+                total_reg_num_rows += reg_num_rows
                 
-            # Exclusive prefix sum = inclusive - local value
-            inclusive_prefix_sum = self._head_group_comm.scan(reg_num_rows)
-            reg_col_indices[proc] += inclusive_prefix_sum
+            # Exclusive prefix sum = inclusive prefix sum - local value
+            inclusive_prefix_sum = self._head_group_comm.scan(total_reg_num_rows)
+            reg_col_indices += inclusive_prefix_sum - total_reg_num_rows
 
-                    
             self.add_2_fitsnap("reg_row_idx", reg_row_indices)
             self._bcast_fitsnap("reg_row_idx")
             self.add_2_fitsnap("reg_col_idx", reg_col_indices)
             self._bcast_fitsnap("reg_col_idx")
                 
-            self.all_print(f"*** ridgeslate: extra_rows {extra_rows} sub_a_sizes {sub_a_sizes}, reg_row_indices {reg_row_indices} inclusive_prefix_sum {inclusive_prefix_sum} reg_col_indices {reg_col_indices}")
+            self.all_print(f"*** extra_rows {extra_rows} sub_a_sizes {sub_a_sizes}, reg_row_indices {reg_row_indices} inclusive_prefix_sum {inclusive_prefix_sum} reg_col_indices {reg_col_indices}")
 
             self.fitsnap_dict["reg_row_idx"] = reg_row_indices[self._sub_rank]
             self.fitsnap_dict["reg_col_idx"] = reg_col_indices[self._sub_rank]

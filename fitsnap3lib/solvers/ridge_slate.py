@@ -73,10 +73,10 @@ class RidgeSlate(Solver):
         # Debug output - print all in one statement to avoid tangled output
         # *** DO NOT REMOVE !!! ***
         np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
-        pt.sub_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
-                     f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
-                     f"a = {a}\n"
-                     f"b = {b}\n"
+        pt.sub_print(f"------------------------\n"
+                     #f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
+                     f"a\n{a}\n"
+                     f"b {b}\n"
                      f"--------------------------------\n")
         
         pt.sub_barrier()

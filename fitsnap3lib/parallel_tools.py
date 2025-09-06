@@ -653,31 +653,17 @@ class ParallelTools():
             extra_per_proc = extra_rows // self._sub_size
             extra_remainder = extra_rows % self._sub_size
             
+            row_index, col_index = 0, 0
             reg_row_indices = np.zeros(self._sub_size, dtype=int)
             reg_col_indices = np.zeros(self._sub_size, dtype=int)
-            
-            # Calculate starting positions for each processor's segment
-            # Each proc owns a contiguous block of rows: its data rows followed by its reg rows
-            cumulative_start = 0
-            col_index = 0
-            
+                
             for proc in range(self._sub_size):
-                # This proc's data rows
-                data_rows = sub_a_sizes[proc]
-                
-                # Regularization rows for this proc start after its data rows
-                # In the proc's local view, reg rows start at cumulative_start + data_rows
-                reg_row_indices[proc] = cumulative_start + data_rows
+                row_index += sub_a_sizes[proc]
+                reg_row_indices[proc] = row_index
                 reg_col_indices[proc] = col_index
-                
-                # How many regularization rows this proc gets
                 reg_num_rows = extra_per_proc + (1 if proc < extra_remainder else 0)
-                
-                # Update this proc's total size
                 sub_a_sizes[proc] += reg_num_rows
-                
-                # Next proc starts after this proc's data + reg rows
-                cumulative_start += sub_a_sizes[proc]
+                row_index += reg_num_rows
                 col_index += reg_num_rows
                     
             self.add_2_fitsnap("reg_row_idx", reg_row_indices)

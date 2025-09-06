@@ -165,12 +165,7 @@ class HDF5(Scraper):
 
     def scrape_configs(self):
         self.data = []
-        
-        # DEBUG: Print what configs each rank is processing
-        print(f"[Rank {self.rank}] Processing {len(self.my_configs)} configs: {self.my_configs[:3]}...", flush=True)
-        
-        #self.pt.all_print(f"Total configs: {len(self.my_configs)} Training: {n_training} Validation: {n_validation}")
-        
+                
         # Create a deterministic assignment of training/validation
         config_assignments = {}
         for idx, (g, i) in enumerate(self.my_configs):

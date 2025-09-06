@@ -43,7 +43,7 @@ class RidgeSlate(Solver):
     """
 
     def __init__(self, name, pt, config):
-        super().__init__(name, pt, config)
+        super().__init__(name, pt, config, linear=True)
         
         # Check that SLATE is available
         if not SLATE_AVAILABLE:
@@ -72,8 +72,8 @@ class RidgeSlate(Solver):
         
         # Debug output - print all in one statement to avoid tangled output
         # *** DO NOT REMOVE !!! ***
-        np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
-        pt.sub_print(f"------------------------\n"
+        np.set_printoptions(precision=4, suppress=True, floatmode='fixed', linewidth=np.inf)
+        pt.sub_print(f"*** ------------------------\n"
                      #f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
                      f"a\n{a}\n"
                      f"b {b}\n"
@@ -88,19 +88,25 @@ class RidgeSlate(Solver):
         reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
         reg_num_rows = end_idx - reg_row_idx + 1
         #pt.all_print(f"pt.fitsnap_dict {pt.fitsnap_dict}")
-        pt.all_print(f"start_idx {start_idx} end_idx {end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
+        pt.all_print(f"*** start_idx {start_idx} end_idx {end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
         
         # -------- TRAINING/TESTING SPLIT --------
         
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
             
-            # set weights to 0 in place for testing rows instead of copying/moving data
-            # avoid python "magic" because it doesnt work
+            # set weights to 0 in place for testing rows
             testing_mask = pt.fitsnap_dict['Testing']
             for i in range(start_idx, reg_row_idx):
                 if testing_mask[i]:
                     w[i] = 0.0
-        
+
+            testing_mask_local = testing_mask[start_idx:reg_row_idx]
+            a_test_local = a[start_idx:reg_row_idx][testing_mask_local]
+            b_test_local = b[start_idx:reg_row_idx][testing_mask_local]
+            
+            pt.all_print(f"***testing_mask_local {testing_mask_local}\n"
+                f"a_test_local\n{a_test_local}\nb_test_local {b_test_local}")
+
         # -------- WEIGHTS --------
   
         # Apply weights in place to my slice
@@ -127,7 +133,7 @@ class RidgeSlate(Solver):
         
         # Solution is available on all processes
         # *** DO NOT REMOVE !!! ***
-        pt.all_print(f"self.fit ------------------------\n"
+        pt.all_print(f"*** self.fit ------------------------\n"
             f"{self.fit}\n-------------------------------------------------\n")
     
     
@@ -146,130 +152,94 @@ class RidgeSlate(Solver):
         b = self.pt.shared_arrays['a'].array @ self.fit
         np.savez_compressed('b.npz', b=b)
 
+"""
+            self.df = DataFrame(a)
+            self.df['truths'] = b.tolist()
+            if self.fit is not None:
+                self.df['preds'] = a @ self.fit
+            self.df['weights'] = w.tolist()
+            for key in fs_dict.keys():
+                if isinstance(fs_dict[key], list) and \
+                    len(fs_dict[key]) == len(self.df.index):
+                    self.df[key] = fs_dict[key]
+            if self.config.sections["EXTRAS"].dump_dataframe:
+                self.df.to_pickle(self.config.sections['EXTRAS'].dataframe_file)
 
-    def evaluate_errors(self):
-        """Evaluate training and testing errors using distributed computation."""
+            # Proceed with error analysis if doing a fit.
+            # if self.fit is not None and not self.config.sections["SOLVER"].multinode:
+            if self.fit is not None:
+
+                # Return data for each group.
+                
+                # resolve pandas FutureWarning by explicitly excluding the grouping columns
+                # from the operation, which will be the default behavior in future versions
+
+                grouped = self.df.groupby(['Groups', 'Testing', 'Row_Type']).apply(
+                  self._ncount_mae_rmse_rsq_unweighted_and_weighted,
+                  include_groups=False
+                )
+
+                # reformat the weighted and unweighted data into separate rows
+
+                grouped = concat({'Unweighted':grouped[['ncount', 'mae', 'rmse', 'rsq']], \
+                    'weighted':grouped[['w_ncount', 'w_mae', 'w_rmse', 'w_rsq']].\
+                        rename(columns={'w_ncount':'ncount', 'w_mae':'mae', 'w_rmse':'rmse', 'w_rsq':'rsq'})}, \
+                    names=['Weighting']).reorder_levels(['Groups','Weighting','Testing', 'Row_Type']).sort_index()
+
+                # return data for dataset as a whole
+
+                # resolve pandas FutureWarning by explicitly excluding the grouping columns
+                # from the operation, which will be the default behavior in future versions
+
+                all = self.df.groupby(['Testing', 'Row_Type']).apply(
+                    self._ncount_mae_rmse_rsq_unweighted_and_weighted,
+                    include_groups=False
+                )
+
+                # reformat the weighted and unweighted data into separate rows
+
+                all = concat({'Unweighted':all[['ncount', 'mae', 'rmse', 'rsq']], \
+                    'weighted':all[['w_ncount', 'w_mae', 'w_rmse', 'w_rsq']].\
+                        rename(columns={'w_ncount':'ncount', 'w_mae':'mae', 'w_rmse':'rmse', 'w_rsq':'rsq'})}, \
+                        names=['Weighting']).\
+                            reorder_levels(['Weighting','Testing', 'Row_Type']).sort_index()
+
+                # combine dataframes
+                self.errors = concat([concat({'*ALL':all}, names=['Groups']), grouped])
+                #print(self.errors['mae'].keys())
+                #print(self.errors['mae'][('*ALL', 'Unweighted', False, 'Energy')])
+
+                #assert(False)
+                self.errors.ncount = self.errors.ncount.astype(int)
+                self.errors.index.rename(["Group", "Weighting", "Testing", "Subsystem", ], inplace=True)
+
+                # format for markdown printing
+                self.errors.index = self.errors.index.set_levels(
+                    ['Testing' if e else 'Training' for e in self.errors.index.levels[2]],
+                    level=2)
+
+
+"""
+
+    def error_analysis(self):
+    
+    
+
         pt = self.pt
+
+        # -------- LOCAL SLICE OF SHARED ARRAY AND REGULARIZATION ROWS --------
+
+        a = pt.shared_arrays['a'].array
+        b = pt.shared_arrays['b'].array
+        w = pt.shared_arrays['w'].array
+        start_idx, end_idx = pt.fitsnap_dict["sub_a_indices"]
+        reg_row_idx = pt.fitsnap_dict["reg_row_idx"]
+        reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
+        reg_num_rows = end_idx - reg_row_idx + 1
+        #pt.all_print(f"pt.fitsnap_dict {pt.fitsnap_dict}")
+        pt.all_print(f"*** start_idx {start_idx} end_idx {end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
+
+        # -------- FIXME: HEY SONNET PUT YOUR CODE HERE --------
         
-        # Get raw arrays
-        a_full = pt.shared_arrays['a'].array
-        b_full = pt.shared_arrays['b'].array
-        w_full = pt.shared_arrays['w'].array
         
-        # Find actual data vs padding
-        non_zero_mask = w_full != 0
         
-        if np.any(non_zero_mask):
-            a_node = a_full[non_zero_mask]
-            b_node = b_full[non_zero_mask]
-            w_node = w_full[non_zero_mask]
-        else:
-            a_node = np.zeros((0, a_full.shape[1] if len(a_full.shape) > 1 else 0), dtype=np.float64)
-            b_node = np.zeros(0, dtype=np.float64)
-            w_node = np.zeros(0, dtype=np.float64)
-        
-        # Local predictions
-        predictions_node = a_node @ self.fit
-        
-        # Calculate weighted errors
-        errors_node = (predictions_node - b_node) * w_node
-        
-        # Get testing mask for this node's data
-        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing']:
-            testing_gathered = pt.fitsnap_dict['Testing']
-            
-            # Filter out padding markers (' ') to get actual Testing mask for this node
-            testing_bools = []
-            if isinstance(testing_gathered, list):
-                for item in testing_gathered:
-                    if isinstance(item, bool):
-                        testing_bools.append(item)
-                    elif isinstance(item, list):
-                        # Handle nested lists if they exist
-                        for val in item:
-                            if isinstance(val, bool):
-                                testing_bools.append(val)
-                    # Skip padding markers (' ') - they correspond to padded rows already filtered out
-            else:
-                # If not a list, use as is
-                testing_bools = testing_gathered
-            
-            testing_node = np.array(testing_bools, dtype=bool)
-            
-            if len(testing_node) == len(errors_node):
-                training_node = ~testing_node
-                
-                # Calculate local error statistics
-                train_errors_local = errors_node[training_node]
-                test_errors_local = errors_node[testing_node]
-                
-                # Calculate local sums and counts for distributed RMSE
-                train_sum_sq = np.sum(train_errors_local**2) if len(train_errors_local) > 0 else 0.0
-                train_count = len(train_errors_local)
-                test_sum_sq = np.sum(test_errors_local**2) if len(test_errors_local) > 0 else 0.0
-                test_count = len(test_errors_local)
-                
-                # Reduce across all nodes to get global statistics
-                train_stats = np.array([train_sum_sq, train_count], dtype=np.float64)
-                test_stats = np.array([test_sum_sq, test_count], dtype=np.float64)
-                
-                if pt._sub_rank == 0:
-                    # Head node of each node participates in reduction
-                    pt._head_group_comm.Allreduce(MPI.IN_PLACE, train_stats, op=MPI.SUM)
-                    pt._head_group_comm.Allreduce(MPI.IN_PLACE, test_stats, op=MPI.SUM)
-                
-                # Broadcast from head to all procs on node
-                pt._sub_comm.Bcast(train_stats, root=0)
-                pt._sub_comm.Bcast(test_stats, root=0)
-                
-                # Calculate global RMSE
-                train_rmse = np.sqrt(train_stats[0] / train_stats[1]) if train_stats[1] > 0 else 0.0
-                test_rmse = np.sqrt(test_stats[0] / test_stats[1]) if test_stats[1] > 0 else 0.0
-                
-                if pt._rank == 0:
-                    print(f"\nDistributed Evaluation Results:")
-                    print(f"Training RMSE: {train_rmse:.6f}")
-                    print(f"Testing RMSE: {test_rmse:.6f}")
-                    print(f"Training samples: {int(train_stats[1])}")
-                    print(f"Testing samples: {int(test_stats[1])}")
-                    print(f"Data distributed across {pt._number_of_nodes} nodes, {pt._size} total processes")
-            else:
-                # Size mismatch - calculate overall RMSE without split
-                sum_sq_local = np.sum(errors_node**2)
-                count_local = len(errors_node)
-                
-                stats = np.array([sum_sq_local, count_local], dtype=np.float64)
-                
-                if pt._sub_rank == 0:
-                    pt._head_group_comm.Allreduce(MPI.IN_PLACE, stats, op=MPI.SUM)
-                
-                pt._sub_comm.Bcast(stats, root=0)
-                
-                rmse = np.sqrt(stats[0] / stats[1]) if stats[1] > 0 else 0.0
-                
-                if pt._rank == 0:
-                    print(f"\nDistributed Evaluation Results:")
-                    print(f"Overall RMSE: {rmse:.6f}")
-                    print(f"Total samples: {int(stats[1])}")
-                    print(f"Data distributed across {pt._number_of_nodes} nodes")
-        else:
-            # No test/train split - calculate overall RMSE
-            sum_sq_local = np.sum(errors_node**2)
-            count_local = len(errors_node)
-            
-            stats = np.array([sum_sq_local, count_local], dtype=np.float64)
-            
-            if pt._sub_rank == 0:
-                pt._head_group_comm.Allreduce(MPI.IN_PLACE, stats, op=MPI.SUM)
-            
-            pt._sub_comm.Bcast(stats, root=0)
-            
-            rmse = np.sqrt(stats[0] / stats[1]) if stats[1] > 0 else 0.0
-            
-            if pt._rank == 0:
-                print(f"\nDistributed Evaluation Results:")
-                print(f"Overall RMSE: {rmse:.6f}")
-                print(f"Total samples: {int(stats[1])}")
-                print(f"Data distributed across {pt._number_of_nodes} nodes")
-        
-        return errors_node  # Return local errors only

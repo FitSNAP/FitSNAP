@@ -275,7 +275,8 @@ class ParallelTools():
         printf("Node", self._node_index, ":", *args, file=self._fp)
 
     def all_print(self, *args, **kw):
-        printf("Rank", self._rank, ":", *args, file=self._fp)
+        printf(f"[Node {self._node_index} Rank {self._rank}]", *args, file=self._fp, flush=True)
+        (sys.stdout if self._fp is None else self._fp).flush()
 
     def set_output(self, output_file, ns=False, ps=False):
         if ps:
@@ -349,7 +350,7 @@ class ParallelTools():
             #self.single_print("No need to free a stubs array.")
             pass
 
-    def create_shared_array(self, name, size1, size2=1, dtype='d', tm=0):
+    def create_shared_array(self, name, size1, size2=1, dtype='d', tm=False):
         """
         Create a shared memory array as a key in the ``pt.shared_array`` dictionary. This function uses the ``SharedArray`` 
         class to instantiate a shared memory array in the supplied dictionary key ``name``.
@@ -374,16 +375,12 @@ class ParallelTools():
                         self.shared_arrays[name].win.Free()
                     except Exception as e:
                         self.single_print(f"Trouble deallocating shared array with name {name}: {e}.")
-                comms = [[self._comm, self._rank, self._size],
-                         [self._sub_comm, self._sub_rank, self._sub_size],
-                         [self._head_group_comm, self._node_index, self._number_of_nodes]]
+                #comms = [[self._comm, self._rank, self._size],
+                #         [self._sub_comm, self._sub_rank, self._sub_size],
+                #         [self._head_group_comm, self._node_index, self._number_of_nodes]]
 
-                self.shared_arrays[name] = SharedArray(size1, size2=size2,
-                                                       dtype=dtype,
-                                                       multinode=tm,
-                                                       comms=comms,
-                                                       MPI=self.MPI)
-            else:   
+                self.shared_arrays[name] = SharedArray(self, size1, size2, dtype=dtype, tm=tm)
+            else:
                 self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)
         else:
             raise TypeError("name must be a string")
@@ -572,7 +569,7 @@ class ParallelTools():
         if not self.stubs:
             ncpp = np.array([nconfigs]) # Num. configs per proc.
             ncpn = np.array([0]) # Num. configs per node.
-            self._comm.Allreduce([ncpp, self.MPI.INT], [ncpn, self.MPI.INT])
+            self._sub_comm.Allreduce([ncpp, self.MPI.INT], [ncpn, self.MPI.INT])
             return ncpn[0]
         return nconfigs
 
@@ -599,14 +596,23 @@ class ParallelTools():
         For nonlinear solvers, the A matrix is composed of per-atom quantities like bispectrum 
         components, etc.
         """
+        
+        is_ridgeslate = self.fitsnap_dict.get("is_ridgeslate", False)
+
         nof = len(self.shared_arrays["number_of_atoms"].array)
         if self._sub_rank != 0:
             # wait for head proc on node to fill indices
+            if is_ridgeslate:
+                self._bcast_fitsnap("reg_row_idx")
+                self.fitsnap_dict["reg_row_idx"] = self.fitsnap_dict["reg_row_idx"][self._sub_rank]
+                self._bcast_fitsnap("reg_col_idx")
+                self.fitsnap_dict["reg_col_idx"] = self.fitsnap_dict["reg_col_idx"][self._sub_rank]
             self._bcast_fitsnap("sub_a_size")
             self.fitsnap_dict["sub_a_size"] = int(self.fitsnap_dict["sub_a_size"][self._sub_rank])
             self._bcast_fitsnap("sub_a_indices")
             self.fitsnap_dict["sub_a_indices"] = self.fitsnap_dict["sub_a_indices"][self._sub_rank]
             return
+            
         sub_a_sizes = np.zeros((self._sub_size, ), dtype=int)
 
         for i in range(nof):
@@ -632,10 +638,54 @@ class ParallelTools():
             if self.fitsnap_dict["per_atom_scalar"]:
                 sub_a_sizes[proc_number] += self.shared_arrays["number_of_atoms"].array[i]
 
-        # This assert only works on a single node.
-        # TODO: Should be way to generalize for all nodes, take closer look at variables.
-        if self._number_of_nodes == 1:
-            assert sum(sub_a_sizes) == len(self.shared_arrays['a'].array)
+        
+        # Handle ridgeslate augmented arrays
+        if is_ridgeslate:
+            # For ridgeslate, the array was augmented with extra rows for regularization
+            # We need to distribute the extra space across processors
+            array_size = len(self.shared_arrays['a'].array)
+            data_size = sum(sub_a_sizes)
+            self.all_print(f"*** sub_a_sizes {sub_a_sizes} sum={data_size} |a| {array_size}")
+            extra_rows = array_size - data_size
+            self.shared_arrays['a'].array[data_size:,:] = 0.0
+            self.shared_arrays['b'].array[data_size:] = 0.0
+
+            # Distribute extra rows evenly across processors, with remainder to first procs
+            extra_per_proc = extra_rows // self._sub_size
+            extra_remainder = extra_rows % self._sub_size
+            
+            row_index, col_index, total_reg_num_rows = 0, 0, 0
+            reg_row_indices = np.zeros(self._sub_size, dtype=int)
+            reg_col_indices = np.zeros(self._sub_size, dtype=int)
+                
+            for proc in range(self._sub_size):
+                row_index += sub_a_sizes[proc]
+                reg_row_indices[proc] = row_index
+                reg_col_indices[proc] = col_index
+                reg_num_rows = extra_per_proc + (1 if proc < extra_remainder else 0)
+                sub_a_sizes[proc] += reg_num_rows
+                row_index += reg_num_rows
+                col_index += reg_num_rows
+                total_reg_num_rows += reg_num_rows
+                
+            # Exclusive prefix sum = inclusive prefix sum - local value
+            inclusive_prefix_sum = self._head_group_comm.scan(total_reg_num_rows)
+            reg_col_indices += inclusive_prefix_sum - total_reg_num_rows
+
+            self.add_2_fitsnap("reg_row_idx", reg_row_indices)
+            self._bcast_fitsnap("reg_row_idx")
+            self.add_2_fitsnap("reg_col_idx", reg_col_indices)
+            self._bcast_fitsnap("reg_col_idx")
+                
+            self.all_print(f"*** extra_rows {extra_rows} sub_a_sizes {sub_a_sizes}, reg_row_indices {reg_row_indices} inclusive_prefix_sum {inclusive_prefix_sum} reg_col_indices {reg_col_indices}")
+
+            self.fitsnap_dict["reg_row_idx"] = reg_row_indices[self._sub_rank]
+            self.fitsnap_dict["reg_col_idx"] = reg_col_indices[self._sub_rank]
+
+        # Verify sizes match after any adjustments
+        if sum(sub_a_sizes) != len(self.shared_arrays['a'].array):
+            # This should not happen if everything is set up correctly
+            assert False, f"Data size {sum(sub_a_sizes)} doesn't match array size {len(self.shared_arrays['a'].array)} on node {self._node_index}"
 
         self.add_2_fitsnap("sub_a_size", sub_a_sizes)
         self._bcast_fitsnap("sub_a_size")
@@ -649,6 +699,7 @@ class ParallelTools():
         self.add_2_fitsnap("sub_a_indices", indices)
         self._bcast_fitsnap("sub_a_indices")
         self.fitsnap_dict["sub_a_indices"] = indices[self._sub_rank]
+        
 
     def new_slice_b(self):
         """ Create array to show which sub b matrix indices belong to which proc. """
@@ -844,21 +895,41 @@ class ParallelTools():
         Args:
             err (str): Error message to exit with.
         """
+        import traceback
+        import sys
+        
         self.killer.already_killed = True
+        
+        # Get the full original stack trace if there's an active exception
+        if sys.exc_info()[0] is not None:
+            # There's an active exception, get its full traceback
+            trace_str = traceback.format_exc()
+        else:
+            # No active exception, get current stack trace
+            trace_info = traceback.format_stack()
+            trace_str = ''.join(trace_info[:-1])  # Exclude current frame
+        
+        # Add node, rank, and trace information to the exception
+        err_with_rank_and_trace = f"[Node {self._node_index} Rank {self._rank}] {err}\n\nFull trace:\n{trace_str}"
 
         if self.logger is None and self._rank == 0:
-            raise err
+            raise Exception(err_with_rank_and_trace)
 
         self.close_lammps()
         if self._rank == 0:
-            self.logger.exception(err)
+            if self.logger is not None:
+                self.logger.exception(err_with_rank_and_trace)
             if self.pytest:
-                raise err
+                raise Exception(err_with_rank_and_trace)
+        else:
+            # Non-rank-0 processes also print their errors
+            print(f"ERROR: {err_with_rank_and_trace}", flush=True)
 
         sleep(5)
         if self._comm is not None:
             self.abort()
-
+           
+            
     # Where The Object Oriented Magic Happens
     # from files in this_file's directory import subclass of this_class
     @staticmethod
@@ -949,16 +1020,30 @@ class SharedArray:
         size1 (int): First dimension of the array.
         size2 (int): Optional second dimension of the array, defaults to 1.
         dtype (str): Optional data type, defaults to `d` for double.
+        pt (ParallelTools): MPI communicator.
         multinode (int): Optional multinode flag used for scalapack purposes.
-        comms (MPI.Comm): MPI communicator.
 
     Attributes:
         array (np.ndarray): Array of numbers that share memory across processes in the communicator.
     """
 
-    def __init__(self, size1, size2=1, dtype='d', multinode=0, comms=None, MPI=None):
+    def __init__(self, pt, size1, size2=1, dtype='d', tm=False):
         
-        self.MPI = MPI
+        # ParallelTools (passed in but not stored to avoid circular refs)
+        # REPLACES comms[][] for code readability
+        # comms = [[self._comm, self._rank, self._size],
+        #         [self._sub_comm, self._sub_rank, self._sub_size],
+        #         [self._head_group_comm, self._node_index, self._number_of_nodes]]
+        self.MPI = pt.MPI
+        self._comm = pt._comm
+        self._rank = pt._rank
+        self._size = pt._size
+        self._sub_comm = pt._sub_comm
+        self._sub_rank = pt._sub_rank
+        self._sub_size = pt._sub_size
+        self._head_group_comm = pt._head_group_comm
+        self._node_index = pt._node_index
+        self._number_of_nodes = pt._number_of_nodes
 
         # total array for all procs
         self.array = None
@@ -975,12 +1060,8 @@ class SharedArray:
         self._node_length = None
         self._width = size2
 
-        # These are sub comm and sub rank
-        # Comm, sub_com, head_node_comm
-        # comm, rank, size
-        self._comms = comms
-
-        if multinode:
+        self._multinode = tm
+        if self._multinode:
             self.multinode_lengths()
 
         if dtype == 'd':
@@ -989,13 +1070,14 @@ class SharedArray:
             item_size = self.MPI.INT.Get_size()
         else:
             raise TypeError("dtype {} has not been implemented yet".format(dtype))
-        if self._comms[1][1] == 0:
+            
+        if self._sub_rank == 0:
             self._nbytes = self._length * self._width * item_size
         else:
             self._nbytes = 0
 
         #win = MPI.Win.Allocate_shared(self._nbytes, item_size, Intracomm_comm=self._comms[1][0])
-        self.win = self.MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._comms[1][0])
+        self.win = self.MPI.Win.Allocate_shared(self._nbytes, item_size, comm=self._sub_comm)
 
         buff, item_size = self.win.Shared_query(0)
 
@@ -1006,7 +1088,10 @@ class SharedArray:
         if self._width == 1:
             self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, ))
         else:
-            self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, self._width))
+            # create shared array in column major for SLATE if multinode
+            self.array = np.ndarray(buffer=buff, dtype=dtype,
+                                    shape=(self._length, self._width),
+                                    order = 'F' if self._multinode else 'C')
 
     def get_memory(self):
         return self._nbytes
@@ -1029,18 +1114,19 @@ class SharedArray:
 
     def multinode_lengths(self):
         # Each head node needs to have mb or its scraped length if longer
-        # Solvers which require this: ScaLAPACK
+        # Solvers which require this: ScaLAPACK (deprecated/obsolete) & RidgeSlate (NEW !)
         remainder = 0
         self._scraped_length = self._length
-        if self._comms[1][1] == 0:
-            self._total_length = self._comms[2][0].allreduce(self._scraped_length)
+        
+        if self._sub_rank == 0:
+            self._total_length = self._head_group_comm.allreduce(self._scraped_length)
             # mb is the floored average array length, extra elements are dumped into the first array
-            self._node_length = int(np.floor(self._total_length / self._comms[2][2]))
-            if self._comms[2][1] == 0:
-                remainder = self._total_length - self._node_length*self._comms[2][2]
+            self._node_length = int(np.floor(self._total_length / self._number_of_nodes))
+            if self._node_index == 0:
+                remainder = self._total_length - self._node_length*self._number_of_nodes
             self._node_length += remainder
-        self._total_length = self._comms[1][0].bcast(self._total_length)
-        self._node_length = self._comms[1][0].bcast(self._node_length)
+        self._total_length = self._sub_comm.bcast(self._total_length)
+        self._node_length = self._sub_comm.bcast(self._node_length)
         self._length = max(self._node_length, self._scraped_length)
 
 

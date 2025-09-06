@@ -106,7 +106,7 @@ class Output:
                 function(file, **arguments)
 
         # Don't write errors if using scalapack.
-        if not self.config.sections["SOLVER"].true_multinode: 
+        if not self.config.sections["SOLVER"].multinode: 
             # Don't write errors if `errors` is a list (default is empty list).
             if type(errors) != type([]):
                 decorated_write_errors()

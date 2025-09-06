@@ -13,11 +13,7 @@ class Solver(Section):
         self._check_section()
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
-
-        self.true_multinode = 0
-        if self.solver == "ScaLAPACK":
-            self.true_multinode = 1
-
+        self.multinode = self.solver.lower() in ["scalapack", "ridgeslate"]
         self.normalweight = self.get_value("SOLVER", "normalweight", "-12", "float")
         self.normratio = self.get_value("SOLVER", "normratio", "0.5", "float")
         self.compute_testerrs = self.get_value("SOLVER", "compute_testerrs", "0", "bool")

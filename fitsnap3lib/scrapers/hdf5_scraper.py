@@ -111,9 +111,9 @@ class HDF5(Scraper):
                 #print(f"*** {group_name} formation_energy {formation_energy} weights {weights} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
                 #print(f"*** {group_name} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
 
-                # Add ALL configs, not just 80%
-                for j in range(conformations.shape[0]):
-                #for j in range(25):
+                # Divide conformations across all ranks
+                n_confs = conformations.shape[0]
+                for j in range(self.rank, n_confs, self.size):
                     self.local_configs.append((group_name, j))
 
         if self.pt.stubs==0:
@@ -181,9 +181,6 @@ class HDF5(Scraper):
         BOHR_TO_ANGSTROM = 0.52917721092
         HARTREE_TO_KCAL_MOL = 627.509474
         FORCE_CONV = HARTREE_TO_KCAL_MOL / BOHR_TO_ANGSTROM
-
-        import logging
-        logging.getLogger("numba").setLevel(logging.WARNING)
 
         with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
             for group_name in sorted(grouped):

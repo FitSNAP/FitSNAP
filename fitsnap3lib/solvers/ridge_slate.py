@@ -114,7 +114,8 @@ class RidgeSlate(Solver):
         a[reg_row_idx:end_idx+1,:] = 0
     
         for i in range(reg_num_rows):
-            a[reg_row_idx+i, reg_col_idx+i] = sqrt_alpha
+            if reg_col_idx+i < n: # avoid out of bounds padding from multiple nodes
+                a[reg_row_idx+i, reg_col_idx+i] = sqrt_alpha
             b[reg_row_idx+i] = 0.0
 
         # -------- SLATE AUGMENTED QR --------

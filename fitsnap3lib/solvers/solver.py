@@ -59,6 +59,9 @@ class Solver:
 
         Returns:
             aw, bw (np.array): design matrix and truth array multiplied by weights.
+            
+        *** FIXME: ORPHANED CODE prepare_data() NEVER CALLED FROM ANYWHERE ELSE ***    
+            
         """
 
         if fs_dict is not None:

@@ -80,8 +80,9 @@ class RidgeSlate(Solver):
                      f"--------------------------------\n")
         
         pt.sub_barrier()
+        
+        # -------- LOCAL SLICE OF SHARED ARRAY AND REGULARIZATION ROWS --------
 
-        # Each rank works on its portion of the shared array
         start_idx, end_idx = pt.fitsnap_dict["sub_a_indices"]
         reg_row_idx = pt.fitsnap_dict["reg_row_idx"]
         reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
@@ -93,7 +94,8 @@ class RidgeSlate(Solver):
         
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
             
-            # set weights to 0 for testing rows instead of copying/moving data
+            # set weights to 0 in place for testing rows instead of copying/moving data
+            # avoid python "magic" because it doesnt work
             testing_mask = pt.fitsnap_dict['Testing']
             for i in range(start_idx, reg_row_idx):
                 if testing_mask[i]:
@@ -115,13 +117,11 @@ class RidgeSlate(Solver):
             a[reg_row_idx+i, reg_col_idx+i] = sqrt_alpha
             b[reg_row_idx+i] = 0.0
 
-        
-        # Synchronize all ranks on this node
-        pt.sub_barrier()
-                                               
-        # Call SLATE augmented QR ridge solver with all node/ranks
-        m = a.shape[0] * self.pt._number_of_nodes
-        ridge_solve_qr(a, b, m, self.pt._comm, self.tile_size)
+        # -------- SLATE AUGMENTED QR --------
+        pt.sub_barrier() # make sure all sub ranks done filling local tiles
+        m = a.shape[0] * self.pt._number_of_nodes # global matrix total rows
+        lld = a.shape[0]  # local leading dimension column-major shared array
+        ridge_solve_qr(a, b, m, lld, self.pt._comm)
         self.fit = b[:n]
         
         # Solution is available on all processes

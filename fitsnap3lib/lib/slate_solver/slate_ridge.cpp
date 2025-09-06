@@ -8,18 +8,20 @@
 extern "C" {
 
 void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
-                          int m, int n, void* comm_ptr, int tile_size) {
+                          int m, int n, int lld, void* comm_ptr, int tile_size) {
     
     MPI_Comm comm = (MPI_Comm)comm_ptr;
     int mpi_rank, mpi_size;
     MPI_Comm_rank(comm, &mpi_rank);
     MPI_Comm_size(comm, &mpi_size);
         
+    // TODO: tile_size ignored, one tile per rank for now
+    // should be optimized to be 16MB-64MB for most architectures
     int p = mpi_size;
     int q = 1;
     int mb = m / mpi_size;
     int nb = n;
-    
+
     // CRITICAL: For QR decomposition, tile rows (mb) must be >= number of columns (n)
     // This is because the QR process needs to handle all n Householder reflectors
     // If mb < n, the tpqrt function will fail with assertion A1.mb() >= k
@@ -46,21 +48,23 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
         slate::Matrix<double> A(m, n, mb, nb, p, q, comm);
         slate::Matrix<double> b(m, 1, mb, 1, p, q, comm);
         
+        // TODO: only cpu tiles pointing directly to fitsnap shared array for now
+        // for gpu support use insertLocalTiles( slate::Target::Devices ) instead
+        
         // Insert A matrix
         for ( int j = 0; j < A.nt (); ++j)
           for ( int i = 0; i < A.mt (); ++i)
             if (A.tileIsLocal( i, j ))
-              A.tileInsert( i, j, local_a_data + i*mb, m );
+              A.tileInsert( i, j, local_a_data + i*mb, lld );
             
         // Insert b vector
         for ( int i = 0; i < b.mt(); ++i)
           if (b.tileIsLocal( i, 0 ))
-            b.tileInsert( i, 0, local_b_data + i*mb, m );
+            b.tileInsert( i, 0, local_b_data + i*mb, lld );
             
         // Make sure every node/rank done building global matrix
         // Doesnt seem to be needed only the barrier after the QR is needed
         // 	slate::least_squares_solve(A, b) is collective and internally synchronized. SLATE’s QR path triggers plenty of MPI collectives (broadcasts, reductions, etc.). Even if one rank reaches the call earlier, it will block at the first collective until everyone is in. That implicitly synchronizes construction + entry to the solve. Hence a barrier before the call is unnecessary for correctness. [chatgpt 5]
-
         // MPI_Barrier(MPI_COMM_WORLD);
         
         slate::Options opts = {
@@ -75,7 +79,6 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
         // Solve using QR decomposition
         slate::least_squares_solve(A, b);
         MPI_Barrier(MPI_COMM_WORLD);
-
         
     } catch (const std::exception& e) {
         std::cerr << "[Rank " << mpi_rank << "] SLATE error: " << e.what() << std::endl;

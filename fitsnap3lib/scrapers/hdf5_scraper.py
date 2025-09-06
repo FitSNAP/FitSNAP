@@ -140,7 +140,7 @@ class HDF5(Scraper):
             flat_configs = [cfg for sub in all_configs for cfg in sub]
             flat_configs.sort()
             
-            #self.pt.all_print(f"all_configs {all_configs} flat_configs {flat_configs}")
+            # self.pt.all_print(f"all_configs {all_configs} flat_configs {flat_configs}")
 
             total = len(flat_configs)
             #total = 1*(self.size)
@@ -157,7 +157,7 @@ class HDF5(Scraper):
             expected = base + (1 if self.rank < remainder else 0)
             self.my_configs = flat_configs[start:stop]
             actual = len(self.my_configs)
-            print(f"[Rank {self.rank}] Expected {expected} configs, got {actual}. total {total} base {base}, remainder {remainder}")
+            # print(f"[Rank {self.rank}] Expected {expected} configs, got {actual}. total {total} base {base}, remainder {remainder}")
             if actual != expected:
                 raise RuntimeError(f"[Rank {self.rank}] Expected {expected} configs, got {actual}")
 

@@ -894,28 +894,35 @@ class ParallelTools():
         Args:
             err (str): Error message to exit with.
         """
+        import traceback
+        
         self.killer.already_killed = True
         
-        # Add rank and node information to the exception
-        err_with_rank = f"[Rank {self._rank}, Node {self._node_index}] {err}"
+        # Get the current stack trace
+        trace_info = traceback.format_stack()
+        trace_str = ''.join(trace_info[:-1])  # Exclude current frame
+        
+        # Add node, rank, and trace information to the exception
+        err_with_rank_and_trace = f"[Node {self._node_index} Rank {self._rank}] {err}\n\nStack trace:\n{trace_str}"
 
         if self.logger is None and self._rank == 0:
-            raise Exception(err_with_rank)
+            raise Exception(err_with_rank_and_trace)
 
         self.close_lammps()
         if self._rank == 0:
             if self.logger is not None:
-                self.logger.exception(err_with_rank)
+                self.logger.exception(err_with_rank_and_trace)
             if self.pytest:
-                raise Exception(err_with_rank)
+                raise Exception(err_with_rank_and_trace)
         else:
             # Non-rank-0 processes also print their errors
-            print(f"ERROR: {err_with_rank}", flush=True)
+            print(f"ERROR: {err_with_rank_and_trace}", flush=True)
 
         sleep(5)
         if self._comm is not None:
             self.abort()
-
+            
+            
     # Where The Object Oriented Magic Happens
     # from files in this_file's directory import subclass of this_class
     @staticmethod

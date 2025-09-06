@@ -65,8 +65,8 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
         
         slate::Options opts = {
           { slate::Option::PrintVerbose, 4 },
-          { slate::Option::PrintPrecision, 4 },
-          { slate::Option::PrintWidth, 8 }
+          { slate::Option::PrintPrecision, 3 },
+          { slate::Option::PrintWidth, 7 }
         };
     
         slate::print("A", A, opts);

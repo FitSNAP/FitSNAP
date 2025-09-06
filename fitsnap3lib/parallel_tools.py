@@ -665,13 +665,18 @@ class ParallelTools():
                 sub_a_sizes[proc] += reg_num_rows
                 row_index += reg_num_rows
                 col_index += reg_num_rows
+                
+            # Exclusive prefix sum = inclusive - local value
+            inclusive_prefix_sum = self._head_group_comm.scan(reg_num_rows, op=MPI.SUM)
+            reg_col_indices[proc] += inclusive_prefix_sum
+
                     
             self.add_2_fitsnap("reg_row_idx", reg_row_indices)
             self._bcast_fitsnap("reg_row_idx")
             self.add_2_fitsnap("reg_col_idx", reg_col_indices)
             self._bcast_fitsnap("reg_col_idx")
                 
-            self.all_print(f"*** ridgeslate: extra_rows {extra_rows} sub_a_sizes {sub_a_sizes}, reg_row_indices {reg_row_indices} reg_col_indices {reg_col_indices}")
+            self.all_print(f"*** ridgeslate: extra_rows {extra_rows} sub_a_sizes {sub_a_sizes}, reg_row_indices {reg_row_indices} inclusive_prefix_sum {inclusive_prefix_sum} reg_col_indices {reg_col_indices}")
 
             self.fitsnap_dict["reg_row_idx"] = reg_row_indices[self._sub_rank]
             self.fitsnap_dict["reg_col_idx"] = reg_col_indices[self._sub_rank]

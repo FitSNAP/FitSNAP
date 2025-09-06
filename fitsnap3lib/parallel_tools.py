@@ -638,16 +638,17 @@ class ParallelTools():
             if self.fitsnap_dict["per_atom_scalar"]:
                 sub_a_sizes[proc_number] += self.shared_arrays["number_of_atoms"].array[i]
 
-        # Debug print to see the sizes
-        data_size = sum(sub_a_sizes)
-        array_size = len(self.shared_arrays['a'].array)
-        self.all_print(f"*** sub_a_sizes {sub_a_sizes} sum={data_size} |a| {array_size}")
         
         # Handle ridgeslate augmented arrays
         if is_ridgeslate:
             # For ridgeslate, the array was augmented with extra rows for regularization
             # We need to distribute the extra space across processors
+            array_size = len(self.shared_arrays['a'].array)
+            data_size = sum(sub_a_sizes)
+            self.all_print(f"*** sub_a_sizes {sub_a_sizes} sum={data_size} |a| {array_size}")
             extra_rows = array_size - data_size
+            self.shared_arrays['a'].array[data_size:,:] = 0.0
+            self.shared_arrays['b'].array[data_size:] = 0.0
 
             # Distribute extra rows evenly across processors, with remainder to first procs
             extra_per_proc = extra_rows // self._sub_size

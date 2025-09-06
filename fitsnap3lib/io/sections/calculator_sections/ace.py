@@ -274,18 +274,18 @@ try:
                     try:
                         with open('cg_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
                             ccs = pickle.load(handle)
-                            self.pt.single_print(f"Loaded existing CG coupling coefficients from pickle")
+                            #self.pt.single_print(f"Loaded existing CG coupling coefficients from pickle")
                     except FileNotFoundError:
-                        self.pt.single_print(f"Creating CG coupling coefficients...")
+                        #self.pt.single_print(f"Creating CG coupling coefficients...")
                         ccs = get_cg_coupling(ldict,L_R=L_R)
                         store_generalized(ccs, coupling_type='cg',L_R=L_R)
                 else:
                     try:
                         with open('wig_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
                             ccs = pickle.load(handle)
-                            self.pt.single_print(f"Loaded existing Wigner coupling coefficients from pickle")
+                            #self.pt.single_print(f"Loaded existing Wigner coupling coefficients from pickle")
                     except FileNotFoundError:
-                        self.pt.single_print(f"Creating Wigner coupling coefficients...")
+                        #self.pt.single_print(f"Creating Wigner coupling coefficients...")
                         ccs = get_wig_coupling(ldict,L_R)
                         store_generalized(ccs, coupling_type='wig',L_R=L_R)
                 

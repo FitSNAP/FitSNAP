@@ -14,33 +14,28 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
     int mpi_rank, mpi_size;
     MPI_Comm_rank(comm, &mpi_rank);
     MPI_Comm_size(comm, &mpi_size);
+        
+    int p = mpi_size;
+    int q = 1;
+    int mb = m / mpi_size;
+    int nb = n;
     
-    // Tile size configuration
-    // For augmented matrix with regularization rows, ensure tiles are appropriate
-    int mb = tile_size;
-    int nb = std::min(tile_size, n);  // Column tiles shouldn't exceed n
-    
-    // Ensure mb divides well into the problem
-    mb = std::min(mb, std::max(1, m / mpi_size));
-    
-    // Create process grid - prefer column distribution for QR
-    int p = mpi_size, q = 1;
-    // Try to create a more square grid if possible
-    for (int i = (int)std::sqrt(mpi_size); i >= 1; i--) {
-        if (mpi_size % i == 0) {
-            p = i;
-            q = mpi_size / i;
-            if (p >= q) break;  // Prefer p >= q for QR
+    // CRITICAL: For QR decomposition, tile rows (mb) must be >= number of columns (n)
+    // This is because the QR process needs to handle all n Householder reflectors
+    // If mb < n, the tpqrt function will fail with assertion A1.mb() >= k
+    if (mb < n) {
+        // Adjust tile size to be at least n
+        mb = std::max(n, m / mpi_size);
+        // If we can't fit n rows in a tile with current process count,
+        // we need to reduce the process grid or increase tile size
+        if (mpi_rank == 0) {
+            std::cerr << "WARNING: Adjusting tile size from " << m/mpi_size
+                      << " to " << mb << " to satisfy QR requirements (mb >= n)" << std::endl;
         }
     }
     
-    p = mpi_size;
-    q = 1;
-    mb = m / mpi_size;
-    nb = n;
-    
     if (mpi_rank == 0) {
-        std::cerr << "\n=== Clean SLATE Ridge Solver ===" << std::endl;
+        std::cerr << "\n=== SLATE Ridge Solver ===" << std::endl;
         std::cerr << "Augmented size: " << m << " x " << n << std::endl;
         std::cerr << "Tile size: " << mb << " x " << nb << std::endl;
         std::cerr << "Process grid: " << p << " x " << q << std::endl;
@@ -63,7 +58,10 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
             b.tileInsert( i, 0, local_b_data + i*mb, m );
             
         // Make sure every node/rank done building global matrix
-        MPI_Barrier(MPI_COMM_WORLD);
+        // Doesnt seem to be needed only the barrier after the QR is needed
+        // 	slate::least_squares_solve(A, b) is collective and internally synchronized. SLATE’s QR path triggers plenty of MPI collectives (broadcasts, reductions, etc.). Even if one rank reaches the call earlier, it will block at the first collective until everyone is in. That implicitly synchronizes construction + entry to the solve. Hence a barrier before the call is unnecessary for correctness. [chatgpt 5]
+
+        // MPI_Barrier(MPI_COMM_WORLD);
         
         slate::Options opts = {
           { slate::Option::PrintVerbose, 4 },
@@ -71,14 +69,12 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
           { slate::Option::PrintWidth, 8 }
         };
     
-        slate::print("A", A, opts);
-        slate::print("b", b, opts);
+        //slate::print("A", A, opts);
+        //slate::print("b", b, opts);
         
-        if (mpi_rank == 0) std::cerr << "Solving with SLATE QR decomposition..." << std::endl;
         // Solve using QR decomposition
         slate::least_squares_solve(A, b);
-        if (mpi_rank == 0) std::cerr << "SLATE solve completed successfully" << std::endl;
-        slate::print("b", b, opts);
+        MPI_Barrier(MPI_COMM_WORLD);
 
         
     } catch (const std::exception& e) {

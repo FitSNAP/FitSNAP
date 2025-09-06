@@ -603,8 +603,10 @@ class ParallelTools():
         if self._sub_rank != 0:
             # wait for head proc on node to fill indices
             if is_ridgeslate:
-                self._bcast_fitsnap("reg_idx")
-                self.fitsnap_dict["reg_idx"] = self.fitsnap_dict["reg_idx"][self._sub_rank]
+                self._bcast_fitsnap("reg_row_idx")
+                self.fitsnap_dict["reg_row_idx"] = self.fitsnap_dict["reg_row_idx"][self._sub_rank]
+                self._bcast_fitsnap("reg_col_idx")
+                self.fitsnap_dict["reg_col_idx"] = self.fitsnap_dict["reg_col_idx"][self._sub_rank]
             self._bcast_fitsnap("sub_a_size")
             self.fitsnap_dict["sub_a_size"] = int(self.fitsnap_dict["sub_a_size"][self._sub_rank])
             self._bcast_fitsnap("sub_a_indices")
@@ -651,19 +653,28 @@ class ParallelTools():
             extra_per_proc = extra_rows // self._sub_size
             extra_remainder = extra_rows % self._sub_size
             
-            reg_indices = np.zeros(self._sub_size, dtype=int)
+            row_index, col_index = 0, 0
+            reg_row_indices = np.zeros(self._sub_size, dtype=int)
+            reg_col_indices = np.zeros(self._sub_size, dtype=int)
                 
             for proc in range(self._sub_size):
+                row_index += sub_a_sizes[proc]
+                reg_row_indices[proc] = row_index
+                reg_col_indices[proc] = col_index
                 reg_num_rows = extra_per_proc + (1 if proc < extra_remainder else 0)
-                reg_num_rows_all[proc] = reg_num_rows
                 sub_a_sizes[proc] += reg_num_rows
+                row_index += reg_num_rows
+                col_index += reg_num_rows
                     
-            self.add_2_fitsnap("reg_idx", reg_indices)
-            self._bcast_fitsnap("reg_idx")
+            self.add_2_fitsnap("reg_row_idx", reg_row_indices)
+            self._bcast_fitsnap("reg_row_idx")
+            self.add_2_fitsnap("reg_col_idx", reg_col_indices)
+            self._bcast_fitsnap("reg_col_idx")
                 
-            self.all_print(f"*** ridgeslate: distributed {extra_rows} extra rows, new sub_a_sizes {sub_a_sizes}, reg_indices {reg_indices}")
+            self.all_print(f"*** ridgeslate: extra_rows {extra_rows} sub_a_sizes {sub_a_sizes}, reg_row_indices {reg_row_indices} reg_col_indices {reg_col_indices}")
 
-            self.fitsnap_dict["reg_idx"] = reg_indices[self._sub_rank]
+            self.fitsnap_dict["reg_row_idx"] = reg_row_indices[self._sub_rank]
+            self.fitsnap_dict["reg_col_idx"] = reg_col_indices[self._sub_rank]
 
         # Verify sizes match after any adjustments
         if sum(sub_a_sizes) != len(self.shared_arrays['a'].array):

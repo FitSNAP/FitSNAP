@@ -73,63 +73,61 @@ class RidgeSlate(Solver):
         # Debug output - print all in one statement to avoid tangled output
         # *** DO NOT REMOVE !!! ***
         np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
-        pt.single_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
-                     f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
-                     f"a = {a}\n"
+        #pt.single_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
+                     #f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
+                     #f"a = {a}\n"
                      #f"b = {b}\n"
-                     f"--------------------------------\n")
+        #             f"--------------------------------\n")
         
         pt.sub_barrier()
 
         # Each rank works on its portion of the shared array
-        # Get this rank's portion indices
         start_idx, end_idx = pt.fitsnap_dict["sub_a_indices"]
-        reg_idx = pt.fitsnap_dict["reg_idx"]
+        reg_row_idx = pt.fitsnap_dict["reg_row_idx"]
+        reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
+        reg_num_rows = end_idx - reg_row_idx + 1
         #pt.all_print(f"pt.fitsnap_dict {pt.fitsnap_dict}")
-        pt.all_print(f"start_idx {start_idx} end_idx {end_idx} reg_idx {reg_idx}")
+        #pt.all_print(f"start_idx {start_idx} end_idx {end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
         
-        # Apply weights to my portion
-        #my_aw = my_w[:, np.newaxis] * my_a
-        #my_bw = my_w * my_b
+        # -------- TRAINING/TESTING SPLIT --------
         
-        # Handle train/test split: test rows should have weight=0
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
             
-            # The Testing list has markers for each row
-            # We need to map it to our local rows
+            # set weights to 0 for testing rows instead of copying/moving data
             testing_mask = pt.fitsnap_dict['Testing']
-            
-            
-        # -------- REGULARIZATION_ROWS --------
+            for i in range(start_idx, reg_row_idx):
+                if testing_mask[i]:
+                    w[i] = 0.0
+        
+        # -------- WEIGHTS --------
+  
+        # Apply weights in place to my slice
+        a[start_idx:reg_row_idx] *= w[start_idx:reg_row_idx, np.newaxis]
+        b[start_idx:reg_row_idx] *= w[start_idx:reg_row_idx]
+
+        # -------- REGULARIZATION ROWS --------
 
         sqrt_alpha = np.sqrt(self.alpha)
         n = a.shape[1]
-        a[reg_idx:end_idx+1,:] = 99
+        a[reg_row_idx:end_idx+1,:] = 0
     
-        # Set diagonal elements for the last n_reg_rows in my block
-        for i in range(n):
-          local_row = reg_idx + i
-          diag_idx = pt._rank * int(np.ceil(n/pt._size)) + i
-          if local_row <= end_idx :
-            a[local_row, diag_idx] = sqrt_alpha
-            b[local_row] = 0.0
+        for i in range(reg_num_rows):
+            a[reg_row_idx+i, reg_col_idx+i] = sqrt_alpha
+            b[reg_row_idx+i] = 0.0
 
         
         # Synchronize all ranks on this node
         pt.sub_barrier()
-                               
-        # Debug output on all ranks
-        # *** DO NOT REMOVE !!! ***
-        #pt.all_print(f"\nsending to SLATE:\na\n{a}\nb{b}")
-                
-        # Call the SLATE augmented Q ridge solver with all node/ranks
+                                               
+        # Call SLATE augmented QR ridge solver with all node/ranks
         m = a.shape[0] * self.pt._number_of_nodes
         ridge_solve_qr(a, b, m, self.pt._comm, self.tile_size)
         self.fit = b[:n]
         
         # Solution is available on all processes
         # *** DO NOT REMOVE !!! ***
-        pt.all_print(f"------------------------\nself.fit\n{self.fit}\n--------------------------------\n")
+        pt.all_print(f"self.fit ------------------------\n"
+            f"{self.fit}\n-------------------------------------------------\n")
     
     
     def _dump_a(self):

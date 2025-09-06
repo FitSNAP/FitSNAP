@@ -667,7 +667,7 @@ class ParallelTools():
                 col_index += reg_num_rows
                 
             # Exclusive prefix sum = inclusive - local value
-            inclusive_prefix_sum = self._head_group_comm.scan(reg_num_rows, op=MPI.SUM)
+            inclusive_prefix_sum = self._head_group_comm.scan(reg_num_rows)
             reg_col_indices[proc] += inclusive_prefix_sum
 
                     

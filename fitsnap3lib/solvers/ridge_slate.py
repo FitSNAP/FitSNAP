@@ -73,11 +73,11 @@ class RidgeSlate(Solver):
         # Debug output - print all in one statement to avoid tangled output
         # *** DO NOT REMOVE !!! ***
         np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
-        #pt.single_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
-                     #f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
-                     #f"a = {a}\n"
-                     #f"b = {b}\n"
-        #             f"--------------------------------\n")
+        pt.single_print(f"------------------------\nSLATE solver BEFORE filtering:\n"
+                     f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
+                     f"a = {a}\n"
+                     f"b = {b}\n"
+                     f"--------------------------------\n")
         
         pt.sub_barrier()
 
@@ -87,7 +87,7 @@ class RidgeSlate(Solver):
         reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
         reg_num_rows = end_idx - reg_row_idx + 1
         #pt.all_print(f"pt.fitsnap_dict {pt.fitsnap_dict}")
-        #pt.all_print(f"start_idx {start_idx} end_idx {end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
+        pt.all_print(f"start_idx {start_idx} end_idx {end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
         
         # -------- TRAINING/TESTING SPLIT --------
         

@@ -271,9 +271,6 @@ class Calculator:
 
             a_width = self.get_width()
             assert isinstance(a_width, int)
-
-            # Store the original data size before augmentation
-            original_a_len = a_len
             
             if (self.config.sections["SOLVER"].solver.lower() == "ridgeslate"):
             
@@ -291,11 +288,8 @@ class Calculator:
                     
                 max_a_len = pt._comm.allreduce(a_len, op=pt.MPI.MAX)
                 a_len = int(np.ceil((max_a_len*pt._number_of_nodes + a_width)/pt._number_of_nodes))
-                pt.all_print(f"*** max_a_len {max_a_len} a_len {a_len}")
                 # Store info about ridgeslate augmentation
                 pt.add_2_fitsnap("is_ridgeslate", True)
-                pt.add_2_fitsnap("original_a_len", original_a_len)
-                pt.add_2_fitsnap("augmented_a_len", a_len)
                 
                 # RidgeSlate always uses column-major arrays for SLATE performance
                 # Even in single-node mode

@@ -69,8 +69,8 @@ void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
           { slate::Option::PrintWidth, 8 }
         };
     
-        //slate::print("A", A, opts);
-        //slate::print("b", b, opts);
+        slate::print("A", A, opts);
+        slate::print("b", b, opts);
         
         // Solve using QR decomposition
         slate::least_squares_solve(A, b);

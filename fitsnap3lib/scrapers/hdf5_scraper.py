@@ -140,7 +140,7 @@ class HDF5(Scraper):
             flat_configs = [cfg for sub in all_configs for cfg in sub]
             flat_configs.sort()
             
-            self.pt.all_print(f"all_configs {all_configs} flat_configs {flat_configs}")
+            #self.pt.all_print(f"all_configs {all_configs} flat_configs {flat_configs}")
 
             total = len(flat_configs)
             #total = 1*(self.size)

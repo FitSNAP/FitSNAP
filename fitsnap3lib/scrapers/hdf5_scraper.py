@@ -112,7 +112,7 @@ class HDF5(Scraper):
                 #print(f"*** {group_name} {[atomic_number_to_symbol(n) for n in atomic_numbers]}")
 
                 # Divide conformations across all ranks
-                n_confs = conformations.shape[0]
+                n_confs = 25 # conformations.shape[0]
                 for j in range(self.rank, n_confs, self.size):
                     self.local_configs.append((group_name, j))
 

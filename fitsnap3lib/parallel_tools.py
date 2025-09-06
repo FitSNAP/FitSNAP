@@ -895,15 +895,21 @@ class ParallelTools():
             err (str): Error message to exit with.
         """
         import traceback
+        import sys
         
         self.killer.already_killed = True
         
-        # Get the current stack trace
-        trace_info = traceback.format_stack()
-        trace_str = ''.join(trace_info[:-1])  # Exclude current frame
+        # Get the full original stack trace if there's an active exception
+        if sys.exc_info()[0] is not None:
+            # There's an active exception, get its full traceback
+            trace_str = traceback.format_exc()
+        else:
+            # No active exception, get current stack trace
+            trace_info = traceback.format_stack()
+            trace_str = ''.join(trace_info[:-1])  # Exclude current frame
         
         # Add node, rank, and trace information to the exception
-        err_with_rank_and_trace = f"[Node {self._node_index} Rank {self._rank}] {err}\n\nStack trace:\n{trace_str}"
+        err_with_rank_and_trace = f"[Node {self._node_index} Rank {self._rank}] {err}\n\nFull trace:\n{trace_str}"
 
         if self.logger is None and self._rank == 0:
             raise Exception(err_with_rank_and_trace)
@@ -921,7 +927,7 @@ class ParallelTools():
         sleep(5)
         if self._comm is not None:
             self.abort()
-            
+           
             
     # Where The Object Oriented Magic Happens
     # from files in this_file's directory import subclass of this_class

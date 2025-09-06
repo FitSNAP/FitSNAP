@@ -569,7 +569,7 @@ class ParallelTools():
         if not self.stubs:
             ncpp = np.array([nconfigs]) # Num. configs per proc.
             ncpn = np.array([0]) # Num. configs per node.
-            self._comm.Allreduce([ncpp, self.MPI.INT], [ncpn, self.MPI.INT])
+            self._sub_comm.Allreduce([ncpp, self.MPI.INT], [ncpn, self.MPI.INT])
             return ncpn[0]
         return nconfigs
 

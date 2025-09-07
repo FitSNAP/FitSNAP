@@ -125,14 +125,20 @@ class Solver:
         nconfig = len(g['truths'])
         mse = ssr / nconfig
         rmse = np.sqrt(mse)
-        rsq = 1 - ssr / np.sum(np.square(g['truths'] - (g['truths'] / nconfig).sum()))
+        rsq = 1 - ssr / np.sum(np.square(g['truths'] - g['truths'].mean()))
+        
         w_res = g['weights'] * (g['truths'] - g['preds'])
         w_mae = np.mean(abs(w_res))
         w_ssr = np.square(w_res).sum()
         w_nconfig = np.count_nonzero(g['weights'])
         w_mse = w_ssr / w_nconfig
         w_rmse = np.sqrt(w_mse)
-        w_rsq = 1 - w_ssr / np.sum(np.square((g['weights'] * g['truths']) - (g['weights'] * g['truths'] / w_nconfig).sum()))
+        
+        # Fixed weighted R² calculation
+        weighted_mean = np.sum(g['weights'] * g['truths']) / np.sum(g['weights']) if np.sum(g['weights']) > 0 else 0
+        weighted_ss_tot = np.sum(g['weights'] * np.square(g['truths'] - weighted_mean))
+        w_rsq = 1 - w_ssr / weighted_ss_tot if weighted_ss_tot != 0 else 0
+        
         return Series({'ncount':nconfig, 'mae':mae, 'rmse':rmse, 'rsq':rsq, 'w_ncount':w_nconfig, 'w_mae':w_mae, 'w_rmse':w_rmse, 'w_rsq':w_rsq})
 
     

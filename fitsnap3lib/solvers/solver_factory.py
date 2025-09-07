@@ -5,7 +5,6 @@ from fitsnap3lib.solvers.jax import JAX
 from fitsnap3lib.solvers.lasso import LASSO
 from fitsnap3lib.solvers.ridge import RIDGE
 from fitsnap3lib.solvers.pytorch import PYTORCH
-from fitsnap3lib.solvers.scalapack import ScaLAPACK
 from fitsnap3lib.solvers.svd import SVD
 from fitsnap3lib.solvers.tensorflowsvd import TensorflowSVD
 from fitsnap3lib.solvers.anl import ANL

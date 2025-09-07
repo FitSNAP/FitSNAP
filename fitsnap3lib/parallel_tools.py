@@ -350,7 +350,7 @@ class ParallelTools():
             #self.single_print("No need to free a stubs array.")
             pass
 
-    def create_shared_array(self, name, size1, size2=1, dtype='d', order='C', tm=False):
+    def create_shared_array(self, name, size1, size2=1, dtype='d', order='C'):
         """
         Create a shared memory array as a key in the ``pt.shared_array`` dictionary. This function uses the ``SharedArray`` 
         class to instantiate a shared memory array in the supplied dictionary key ``name``.
@@ -381,8 +381,7 @@ class ParallelTools():
                 #         [self._sub_comm, self._sub_rank, self._sub_size],
                 #         [self._head_group_comm, self._node_index, self._number_of_nodes]]
 
-                self.shared_arrays[name] = SharedArray(self, size1, size2,
-                                                       dtype=dtype, order=order, tm=tm)
+                self.shared_arrays[name] = SharedArray(self, size1, size2, dtype=dtype, order=order)
             else:
                 self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)
         else:
@@ -1046,13 +1045,12 @@ class SharedArray:
         dtype (str): Optional data type, defaults to `d` for double.
         order (char): Optional layout, 'C' row-major (default), 'F' column-major (needed for SLATE).
         pt (ParallelTools): MPI communicator.
-        multinode (int): Optional multinode flag used for scalapack purposes.
 
     Attributes:
         array (np.ndarray): Array of numbers that share memory across processes in the communicator.
     """
 
-    def __init__(self, pt, size1, size2=1, dtype='d', order='C', tm=False):
+    def __init__(self, pt, size1, size2=1, dtype='d', order='C'):
         
         # ParallelTools (passed in but not stored to avoid circular refs)
         # REPLACES comms[][] for code readability
@@ -1085,10 +1083,6 @@ class SharedArray:
         self._node_length = None
         self._width = size2
 
-        self._multinode = tm
-        if self._multinode:
-            self.multinode_lengths()
-
         if dtype == 'd':
             item_size = self.MPI.DOUBLE.Get_size()
         elif dtype == 'i':
@@ -1113,7 +1107,6 @@ class SharedArray:
         if self._width == 1:
             self.array = np.ndarray(buffer=buff, dtype=dtype, shape=(self._length, ))
         else:
-            # create shared array in column major for SLATE if multinode
             self.array = np.ndarray(buffer=buff, dtype=dtype,
                                     shape=(self._length, self._width),
                                     order=order)
@@ -1136,23 +1129,6 @@ class SharedArray:
     def get_total_length(self):
         # True Length of A
         return self._total_length
-
-    def multinode_lengths(self):
-        # Each head node needs to have mb or its scraped length if longer
-        # Solvers which require this: ScaLAPACK (deprecated/obsolete) & RidgeSlate (NEW !)
-        remainder = 0
-        self._scraped_length = self._length
-        
-        if self._sub_rank == 0:
-            self._total_length = self._head_group_comm.allreduce(self._scraped_length)
-            # mb is the floored average array length, extra elements are dumped into the first array
-            self._node_length = int(np.floor(self._total_length / self._number_of_nodes))
-            if self._node_index == 0:
-                remainder = self._total_length - self._node_length*self._number_of_nodes
-            self._node_length += remainder
-        self._total_length = self._sub_comm.bcast(self._total_length)
-        self._node_length = self._sub_comm.bcast(self._node_length)
-        self._length = max(self._node_length, self._scraped_length)
 
 
 class StubsArray:

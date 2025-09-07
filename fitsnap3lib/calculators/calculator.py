@@ -74,7 +74,6 @@ class Calculator:
         """
 
         pt = self.pt
-        multinode = self.config.sections["SOLVER"].multinode
 
         # TODO : Any extra config pulls should be done before this
 
@@ -133,18 +132,18 @@ class Calculator:
             elif a_size / pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
                 pt.single_print("Warning: > 50% RAM. I hope you know what you are doing!")
 
-            pt.create_shared_array('a', a_len, a_width, tm=multinode)
-            pt.create_shared_array('b', b_len, tm=multinode)
-            pt.create_shared_array('c', c_len, tm=multinode)
-            pt.create_shared_array('w', b_len, 2, tm=multinode)
-            pt.create_shared_array('t', a_len, 1, tm=multinode)
+            pt.create_shared_array('a', a_len, a_width)
+            pt.create_shared_array('b', b_len)
+            pt.create_shared_array('c', c_len)
+            pt.create_shared_array('w', b_len, 2)
+            pt.create_shared_array('t', a_len, 1)
             if self.config.sections["CALCULATOR"].per_atom_scalar:
                 # create per-atom scalar arrays
-                pt.create_shared_array('pas', a_len, 1, tm=multinode)
+                pt.create_shared_array('pas', a_len, 1)
 
             #if self.config.sections["CALCULATOR"].force:
-            pt.create_shared_array('dgrad', dgrad_len, a_width, tm=multinode)
-            pt.create_shared_array('dbdrindx', dgrad_len, 3, tm=multinode)
+            pt.create_shared_array('dgrad', dgrad_len, a_width)
+            pt.create_shared_array('dbdrindx', dgrad_len, 3)
 
             # make an index for which the 'a' array starts on a particular proc
             pt.new_slice_a()
@@ -212,15 +211,15 @@ class Calculator:
             a_width = 5
             neighlist_width = 2 # i j 
             xneigh_width = 3 # xj yj zj, with PBC corrections
-            pt.create_shared_array('a', a_len, a_width, tm=multinode)
-            pt.create_shared_array('neighlist', neighlist_len, neighlist_width, tm=multinode)
-            pt.create_shared_array('xneigh', neighlist_len, xneigh_width, tm=multinode)
-            pt.create_shared_array('transform_x', neighlist_len, xneigh_width, tm=multinode)
-            pt.create_shared_array('b', b_len, tm=multinode)
-            pt.create_shared_array('x', c_len, tm=multinode)
-            pt.create_shared_array('w', b_len, 2, tm=multinode)
-            pt.create_shared_array('t', a_len, 1, tm=multinode)
-            pt.create_shared_array('positions', a_len, 3, tm=multinode)
+            pt.create_shared_array('a', a_len, a_width)
+            pt.create_shared_array('neighlist', neighlist_len, neighlist_width)
+            pt.create_shared_array('xneigh', neighlist_len, xneigh_width)
+            pt.create_shared_array('transform_x', neighlist_len, xneigh_width)
+            pt.create_shared_array('b', b_len)
+            pt.create_shared_array('x', c_len)
+            pt.create_shared_array('w', b_len, 2)
+            pt.create_shared_array('t', a_len, 1)
+            pt.create_shared_array('positions', a_len, 3)
             
             # also need descriptors for network standardization
             # for pairwise networks, there are num_neigh*num_descriptors total descriptors to store
@@ -229,7 +228,7 @@ class Calculator:
             pt.create_shared_array('descriptors', neighlist_len, self.config.sections['CUSTOM'].num_descriptors)
 
             if self.config.sections["CALCULATOR"].force:
-                pt.create_shared_array('c', c_len, tm=multinode)
+                pt.create_shared_array('c', c_len)
 
             # make an index for which the 'a' array starts on a particular proc
             pt.new_slice_a()
@@ -306,9 +305,9 @@ class Calculator:
               elif a_size / pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
                   pt.single_print("Warning: > 50 % RAM. I hope you know what you are doing!")
             
-            pt.create_shared_array('a', a_len, a_width, tm=multinode)
-            pt.create_shared_array('b', a_len, tm=multinode)
-            pt.create_shared_array('w', a_len, tm=multinode)
+            pt.create_shared_array('a', a_len, a_width)
+            pt.create_shared_array('b', a_len)
+            pt.create_shared_array('w', a_len)
             pt.new_slice_a()
             self.shared_index = pt.fitsnap_dict["sub_a_indices"][0]
             # pt.slice_array('a')

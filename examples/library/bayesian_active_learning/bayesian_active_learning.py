@@ -105,9 +105,9 @@ def deepcopy_pt_internals(snap):
         array_dims = pt.shared_arrays[array_name].array.shape
         if array_dims[0] == a_len:
             if len(array_dims) == 2:
-                pt.create_shared_array(array_name+'_copy', array_dims[0], array_dims[1], tm=snap.config.sections["SOLVER"].multinode)
+                pt.create_shared_array(array_name+'_copy', array_dims[0], array_dims[1])
             elif len(array_dims) == 1:
-                pt.create_shared_array(array_name+'_copy', array_dims[0], tm=snap.config.sections["SOLVER"].multinode)
+                pt.create_shared_array(array_name+'_copy', array_dims[0])
             else:
                 raise Error('I did not code for more than 2d arrays.')
             if rank == 0:

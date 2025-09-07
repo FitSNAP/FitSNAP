@@ -287,13 +287,12 @@ class Calculator:
                 # optimal is same amount of configs per node
                     
                 max_a_len = pt._comm.allreduce(a_len, op=pt.MPI.MAX)
-                a_len = int(np.ceil((max_a_len*pt._number_of_nodes + a_width)/pt._number_of_nodes))
+                aw_len = int(np.ceil((max_a_len*pt._number_of_nodes + a_width)/pt._number_of_nodes))
                 # Store info about ridgeslate augmentation
                 pt.add_2_fitsnap("is_ridgeslate", True)
-                
-                # RidgeSlate always uses column-major arrays for SLATE performance
-                # Even in single-node mode
-                multinode = True
+                pt.create_shared_array('aw', aw_len, a_width, order='F')
+                pt.create_shared_array('bw', aw_len, order='F')
+               
               
             else:
 

@@ -350,7 +350,7 @@ class ParallelTools():
             #self.single_print("No need to free a stubs array.")
             pass
 
-    def create_shared_array(self, name, size1, size2=1, dtype='d', tm=False):
+    def create_shared_array(self, name, size1, size2=1, dtype='d', order='C', tm=False):
         """
         Create a shared memory array as a key in the ``pt.shared_array`` dictionary. This function uses the ``SharedArray`` 
         class to instantiate a shared memory array in the supplied dictionary key ``name``.
@@ -364,6 +364,8 @@ class ParallelTools():
             size1 (int): First dimension size.
             size2 (int): Optional second dimension size, defaults to 1.
             dtype (str): Optional data type character, defaults to `d` for double.
+            order (char): Optional 'C' row-major (default), 'F' column-major (needed for SLATE).
+            
         """
 
         if isinstance(name, str):
@@ -379,7 +381,8 @@ class ParallelTools():
                 #         [self._sub_comm, self._sub_rank, self._sub_size],
                 #         [self._head_group_comm, self._node_index, self._number_of_nodes]]
 
-                self.shared_arrays[name] = SharedArray(self, size1, size2, dtype=dtype, tm=tm)
+                self.shared_arrays[name] = SharedArray(self, size1, size2,
+                                                       dtype=dtype, order=order, tm=tm)
             else:
                 self.shared_arrays[name] = StubsArray(size1, size2, dtype=dtype)
         else:
@@ -607,6 +610,11 @@ class ParallelTools():
                 self.fitsnap_dict["reg_row_idx"] = self.fitsnap_dict["reg_row_idx"][self._sub_rank]
                 self._bcast_fitsnap("reg_col_idx")
                 self.fitsnap_dict["reg_col_idx"] = self.fitsnap_dict["reg_col_idx"][self._sub_rank]
+                self._bcast_fitsnap("reg_num_rows")
+                self.fitsnap_dict["reg_num_rows"] = self.fitsnap_dict["reg_num_rows"][self._sub_rank]
+                self._bcast_fitsnap("sub_aw_indices")
+                self.fitsnap_dict["sub_aw_indices"] = self.fitsnap_dict["sub_aw_indices"][self._sub_rank]
+
             self._bcast_fitsnap("sub_a_size")
             self.fitsnap_dict["sub_a_size"] = int(self.fitsnap_dict["sub_a_size"][self._sub_rank])
             self._bcast_fitsnap("sub_a_indices")
@@ -643,12 +651,13 @@ class ParallelTools():
         if is_ridgeslate:
             # For ridgeslate, the array was augmented with extra rows for regularization
             # We need to distribute the extra space across processors
-            array_size = len(self.shared_arrays['a'].array)
+            array_size = len(self.shared_arrays['aw'].array)
             data_size = sum(sub_a_sizes)
+            sub_aw_sizes = sub_a_sizes.copy()
             self.all_print(f"*** sub_a_sizes {sub_a_sizes} sum={data_size} |a| {array_size}")
             extra_rows = array_size - data_size
-            self.shared_arrays['a'].array[data_size:,:] = 0.0
-            self.shared_arrays['b'].array[data_size:] = 0.0
+            self.shared_arrays['aw'].array[:,:] = 0.0
+            self.shared_arrays['bw'].array[:] = 0.0
 
             # Distribute extra rows evenly across processors, with remainder to first procs
             extra_per_proc = extra_rows // self._sub_size
@@ -663,7 +672,7 @@ class ParallelTools():
                 reg_row_indices[proc] = row_index
                 reg_col_indices[proc] = col_index
                 reg_num_rows = extra_per_proc + (1 if proc < extra_remainder else 0)
-                sub_a_sizes[proc] += reg_num_rows
+                sub_aw_sizes[proc] += reg_num_rows
                 row_index += reg_num_rows
                 col_index += reg_num_rows
                 total_reg_num_rows += reg_num_rows
@@ -674,13 +683,28 @@ class ParallelTools():
 
             self.add_2_fitsnap("reg_row_idx", reg_row_indices)
             self._bcast_fitsnap("reg_row_idx")
+            self.fitsnap_dict["reg_row_idx"] = reg_row_indices[self._sub_rank]
+            
             self.add_2_fitsnap("reg_col_idx", reg_col_indices)
             self._bcast_fitsnap("reg_col_idx")
-                
-            self.all_print(f"*** extra_rows {extra_rows} sub_a_sizes {sub_a_sizes}, reg_row_indices {reg_row_indices} inclusive_prefix_sum {inclusive_prefix_sum} reg_col_indices {reg_col_indices}")
-
-            self.fitsnap_dict["reg_row_idx"] = reg_row_indices[self._sub_rank]
             self.fitsnap_dict["reg_col_idx"] = reg_col_indices[self._sub_rank]
+
+            reg_num_rows_all = np.maximum(sub_aw_sizes - sub_a_sizes, 0)
+            self.add_2_fitsnap("reg_num_rows", reg_num_rows_all)
+            self._bcast_fitsnap("reg_num_rows")
+            self.fitsnap_dict["reg_num_rows"] = reg_num_rows_all[self._sub_rank]
+
+            aw_count = 0
+            aw_indices = np.zeros((self._sub_size, 2), dtype=int)
+            for i, value in enumerate(sub_aw_sizes):
+                aw_indices[i] = aw_count, aw_count+value-1
+                aw_count += value
+            self.add_2_fitsnap("sub_aw_indices", aw_indices)
+            self._bcast_fitsnap("sub_aw_indices")
+            self.fitsnap_dict["sub_aw_indices"] = aw_indices[self._sub_rank]
+
+            self.all_print(f"*** extra_rows {extra_rows} sub_aw_sizes {sub_aw_sizes}, reg_row_indices {reg_row_indices} inclusive_prefix_sum {inclusive_prefix_sum} reg_col_indices {reg_col_indices} reg_num_rows_all {reg_num_rows_all}")
+
 
         # Verify sizes match after any adjustments
         if sum(sub_a_sizes) != len(self.shared_arrays['a'].array):
@@ -1020,6 +1044,7 @@ class SharedArray:
         size1 (int): First dimension of the array.
         size2 (int): Optional second dimension of the array, defaults to 1.
         dtype (str): Optional data type, defaults to `d` for double.
+        order (char): Optional layout, 'C' row-major (default), 'F' column-major (needed for SLATE).
         pt (ParallelTools): MPI communicator.
         multinode (int): Optional multinode flag used for scalapack purposes.
 
@@ -1027,7 +1052,7 @@ class SharedArray:
         array (np.ndarray): Array of numbers that share memory across processes in the communicator.
     """
 
-    def __init__(self, pt, size1, size2=1, dtype='d', tm=False):
+    def __init__(self, pt, size1, size2=1, dtype='d', order='C', tm=False):
         
         # ParallelTools (passed in but not stored to avoid circular refs)
         # REPLACES comms[][] for code readability
@@ -1091,7 +1116,7 @@ class SharedArray:
             # create shared array in column major for SLATE if multinode
             self.array = np.ndarray(buffer=buff, dtype=dtype,
                                     shape=(self._length, self._width),
-                                    order = 'F' if self._multinode else 'C')
+                                    order=order)
 
     def get_memory(self):
         return self._nbytes

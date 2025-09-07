@@ -69,12 +69,15 @@ class RidgeSlate(Solver):
         a = pt.shared_arrays['a'].array
         b = pt.shared_arrays['b'].array
         w = pt.shared_arrays['w'].array
+        aw = pt.shared_arrays['aw'].array
+        bw = pt.shared_arrays['bw'].array
         
         # Debug output - print all in one statement to avoid tangled output
         # *** DO NOT REMOVE !!! ***
         np.set_printoptions(precision=4, suppress=True, floatmode='fixed', linewidth=np.inf)
+        np.set_printoptions(formatter={'float': '{:.4f}'.format})
         pt.sub_print(f"*** ------------------------\n"
-                     #f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
+                     f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
                      f"a\n{a}\n"
                      f"b {b}\n"
                      f"--------------------------------\n")
@@ -83,55 +86,60 @@ class RidgeSlate(Solver):
         
         # -------- LOCAL SLICE OF SHARED ARRAY AND REGULARIZATION ROWS --------
 
-        start_idx, end_idx = pt.fitsnap_dict["sub_a_indices"]
+        a_start_idx, a_end_idx = pt.fitsnap_dict["sub_a_indices"]
+        aw_start_idx, aw_end_idx = pt.fitsnap_dict["sub_aw_indices"]
         reg_row_idx = pt.fitsnap_dict["reg_row_idx"]
         reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
-        reg_num_rows = end_idx - reg_row_idx + 1
+        reg_num_rows = pt.fitsnap_dict["reg_num_rows"]
         #pt.all_print(f"pt.fitsnap_dict {pt.fitsnap_dict}")
-        pt.all_print(f"*** start_idx {start_idx} end_idx {end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
+        pt.all_print(f"*** aw_start_idx {aw_start_idx} aw_end_idx {aw_end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
         
+        # -------- WEIGHTS --------
+  
+        # Apply weights to my slice
+        
+        aw[aw_start_idx:(aw_end_idx-reg_num_rows+1)] = \
+            w[a_start_idx:a_end_idx+1, np.newaxis] * a[a_start_idx:a_end_idx+1]
+        
+        bw[aw_start_idx:(aw_end_idx-reg_num_rows+1)] = \
+            w[a_start_idx:a_end_idx+1] * b[a_start_idx:a_end_idx+1]
+
         # -------- TRAINING/TESTING SPLIT --------
         
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
-            
-            # set weights to 0 in place for testing rows
-            testing_mask = pt.fitsnap_dict['Testing']
-            for i in range(start_idx, reg_row_idx):
+            testing_mask = pt.fitsnap_dict['Testing'][a_start_idx:a_end_idx+1]
+            for i in range(a_end_idx-a_start_idx+1):
                 if testing_mask[i]:
-                    w[i] = 0.0
+                    pt.all_print(f"*** removing i {i} aw_start_idx+i {aw_start_idx+i}")
+                    aw[aw_start_idx+i,:] = 0.0
+                    bw[aw_start_idx+i] = 0.0
 
-            testing_mask_local = testing_mask[start_idx:reg_row_idx]
-            a_test_local = a[start_idx:reg_row_idx][testing_mask_local]
-            b_test_local = b[start_idx:reg_row_idx][testing_mask_local]
-            
-            pt.all_print(f"***testing_mask_local {testing_mask_local}\n"
-                f"a_test_local\n{a_test_local}\nb_test_local {b_test_local}")
-
-        # -------- WEIGHTS --------
-  
-        # Apply weights in place to my slice
-        a[start_idx:reg_row_idx] *= w[start_idx:reg_row_idx, np.newaxis]
-        b[start_idx:reg_row_idx] *= w[start_idx:reg_row_idx]
+        
 
         # -------- REGULARIZATION ROWS --------
 
         sqrt_alpha = np.sqrt(self.alpha)
         n = a.shape[1]
-        a[reg_row_idx:end_idx+1,:] = 0
     
         for i in range(reg_num_rows):
             if reg_col_idx+i < n: # avoid out of bounds padding from multiple nodes
-                a[reg_row_idx+i, reg_col_idx+i] = sqrt_alpha
-            b[reg_row_idx+i] = 0.0
+                aw[reg_row_idx+i, reg_col_idx+i] = sqrt_alpha
+            bw[reg_row_idx+i] = 0.0
 
         # -------- SLATE AUGMENTED QR --------
         pt.sub_barrier() # make sure all sub ranks done filling local tiles
-        m = a.shape[0] * self.pt._number_of_nodes # global matrix total rows
-        lld = a.shape[0]  # local leading dimension column-major shared array
-        ridge_solve_qr(a, b, m, lld, self.pt._comm)
-        self.fit = b[:n]
+        m = aw.shape[0] * self.pt._number_of_nodes # global matrix total rows
+        lld = aw.shape[0]  # local leading dimension column-major shared array
         
-        # Solution is available on all processes
+        np.set_printoptions(precision=3, suppress=True, floatmode='fixed', linewidth=np.inf)
+        pt.sub_print(f"*** SENDING TO SLATE ------------------------\n"
+                     f"aw\n{aw}\n"
+                     f"bw {bw}\n"
+                     f"--------------------------------\n")
+                     
+        ridge_solve_qr(aw, bw, m, lld, self.pt._comm)
+        self.fit = bw[:n]
+                
         # *** DO NOT REMOVE !!! ***
         pt.all_print(f"*** self.fit ------------------------\n"
             f"{self.fit}\n-------------------------------------------------\n")
@@ -169,7 +177,7 @@ class RidgeSlate(Solver):
         start_idx, end_idx = pt.fitsnap_dict["sub_a_indices"]
         reg_row_idx = pt.fitsnap_dict["reg_row_idx"]
         reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
-        reg_num_rows = end_idx - reg_row_idx + 1
+        reg_num_rows = pt.fitsnap_dict["reg_num_rows"]
         #pt.all_print(f"pt.fitsnap_dict {pt.fitsnap_dict}")
         pt.all_print(f"*** start_idx {start_idx} end_idx {end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
 

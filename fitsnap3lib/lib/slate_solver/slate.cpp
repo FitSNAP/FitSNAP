@@ -19,7 +19,7 @@ void slate_augmented_qr(double* local_a_data, double* local_b_data,
     // should be optimized to be 16MB-64MB for most architectures
     int p = mpi_size;
     int q = 1;
-    int mb = m / mpi_size;
+    int mb = (m + mpi_size - 1) / mpi_size;  // integer version of ceil( m / mpi_size )
     int nb = n;
     int mpi_sub_size = mpi_size * lld / m;
 

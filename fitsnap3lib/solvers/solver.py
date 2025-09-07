@@ -119,6 +119,7 @@ class Solver:
         Returns:
             A Pandas series of floats, although some quantities like nconfig are cast to int later.
         """
+        # Unweighted metrics
         res = g['truths'] - g['preds']
         mae = np.mean(abs(res))
         ssr = np.square(res).sum()
@@ -127,19 +128,35 @@ class Solver:
         rmse = np.sqrt(mse)
         rsq = 1 - ssr / np.sum(np.square(g['truths'] - g['truths'].mean()))
         
-        w_res = g['weights'] * (g['truths'] - g['preds'])
-        w_mae = np.mean(abs(w_res))
-        w_ssr = np.square(w_res).sum()
-        w_nconfig = np.count_nonzero(g['weights'])
-        w_mse = w_ssr / w_nconfig
-        w_rmse = np.sqrt(w_mse)
+        # Weighted metrics (using proper statistical methodology)
+        sum_weights = np.sum(g['weights'])
+        if sum_weights > 0:
+            # Weighted absolute error
+            w_ae = g['weights'] * abs(g['truths'] - g['preds'])
+            w_mae = np.sum(w_ae) / sum_weights
+            
+            # Weighted squared error
+            w_se = g['weights'] * np.square(g['truths'] - g['preds'])
+            w_ssr = np.sum(w_se)
+            w_mse = w_ssr / sum_weights
+            w_rmse = np.sqrt(w_mse)
+            
+            # Weighted R² (using weighted mean)
+            weighted_mean = np.sum(g['weights'] * g['truths']) / sum_weights
+            weighted_ss_tot = np.sum(g['weights'] * np.square(g['truths'] - weighted_mean))
+            w_rsq = 1 - (w_ssr / weighted_ss_tot) if weighted_ss_tot != 0 else 0
+            
+            # Count non-zero weights for compatibility
+            w_nconfig = np.count_nonzero(g['weights'])
+        else:
+            # If all weights are zero, return unweighted metrics
+            w_mae = mae
+            w_rmse = rmse
+            w_rsq = rsq
+            w_nconfig = nconfig
         
-        # Fixed weighted R² calculation
-        weighted_mean = np.sum(g['weights'] * g['truths']) / np.sum(g['weights']) if np.sum(g['weights']) > 0 else 0
-        weighted_ss_tot = np.sum(g['weights'] * np.square(g['truths'] - weighted_mean))
-        w_rsq = 1 - w_ssr / weighted_ss_tot if weighted_ss_tot != 0 else 0
-        
-        return Series({'ncount':nconfig, 'mae':mae, 'rmse':rmse, 'rsq':rsq, 'w_ncount':w_nconfig, 'w_mae':w_mae, 'w_rmse':w_rmse, 'w_rsq':w_rsq})
+        return Series({'ncount':nconfig, 'mae':mae, 'rmse':rmse, 'rsq':rsq, 
+                      'w_ncount':w_nconfig, 'w_mae':w_mae, 'w_rmse':w_rmse, 'w_rsq':w_rsq})
 
     
     #@pt.rank_zero

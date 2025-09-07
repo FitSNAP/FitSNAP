@@ -8,6 +8,8 @@ from scipy.spatial import KDTree
 
 # ------------------------------------------------------------------------------------------------
 
+HARTREE_TO_KCAL_MOL = 627.509474
+
 def atomic_number_to_symbol(n):
     return {1:"H",6:"C",7:"N",8:"O",9:"F",11:"Na",12:"Mg",15:"P",16:"S",17:"Cl",19:"K",20:"Ca"}[n]
 
@@ -102,6 +104,7 @@ class HDF5(Scraper):
                 self.group_metadata[group_name] = {
                     "subset": subset,
                     "is_solvated": is_solvated,
+                    "ground_energy": np.min(formation_energy) * HARTREE_TO_KCAL_MOL,
                     "eweight": weights["energy"],
                     "fweight": weights["force"],
                     "bounds": (bounds_min, bounds_max),
@@ -179,7 +182,6 @@ class HDF5(Scraper):
             grouped[g].append(i)
 
         BOHR_TO_ANGSTROM = 0.52917721092
-        HARTREE_TO_KCAL_MOL = 627.509474
         FORCE_CONV = HARTREE_TO_KCAL_MOL / BOHR_TO_ANGSTROM
 
         with h5py.File(self.hdf5_path, "r", **file_kwargs) as f:
@@ -188,9 +190,12 @@ class HDF5(Scraper):
                 meta = self.group_metadata[group_name]
                 conformations = group["conformations"][()] * BOHR_TO_ANGSTROM
                 formation_energy = group["formation_energy"][()] * HARTREE_TO_KCAL_MOL
+                formation_energy -= meta["ground_energy"]
                 dft_total_gradient = group["dft_total_gradient"][()] * FORCE_CONV
                 atomic_numbers = group["atomic_numbers"][()]
                 for i in grouped[group_name]:
+                
+                    #print(f"*** ground_energy {meta['ground_energy']} formation_energy[i] {formation_energy[i]} eweight {np.exp(-formation_energy[i]/(0.00198720425864083*298))}")
 
                     self.data.append({
                         "Group": group.name,
@@ -205,6 +210,7 @@ class HDF5(Scraper):
                         "Bounds": meta["bounds"],
                         "test_bool": config_assignments[(group_name, i)],
                         "eweight": meta["eweight"],
+                        # "eweight": np.exp(-formation_energy[i]/(0.00198720425864083*298)),
                         "fweight": meta["fweight"] / len(atomic_numbers),
                     })
 

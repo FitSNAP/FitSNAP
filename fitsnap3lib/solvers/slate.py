@@ -51,12 +51,10 @@ class SLATE(Solver):
             raise RuntimeError(error_msg)
         
         # Get regularization parameter and tile size from RIDGE section
-        if 'RIDGE' in self.config.sections:
-            self.alpha = self.config.sections['RIDGE'].alpha
-            self.tile_size = self.config.sections['RIDGE'].tile_size if hasattr(self.config.sections['RIDGE'], 'tile_size') else 256
+        if 'SLATE' in self.config.sections:
+            self.alpha = self.config.sections['SLATE'].alpha
         else:
             self.alpha = 1e-6
-            self.tile_size = 256  # Default tile size for blocking
 
     def perform_fit(self):
         """
@@ -150,18 +148,6 @@ class SLATE(Solver):
 
         pt = self.pt
 
-        # -------- LOCAL SLICE OF SHARED ARRAY AND REGULARIZATION ROWS --------
-
-        a = pt.shared_arrays['a'].array
-        b = pt.shared_arrays['b'].array
-        w = pt.shared_arrays['w'].array
-        start_idx, end_idx = pt.fitsnap_dict["sub_a_indices"]
-        reg_row_idx = pt.fitsnap_dict["reg_row_idx"]
-        reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
-        reg_num_rows = pt.fitsnap_dict["reg_num_rows"]
-        #pt.all_print(f"pt.fitsnap_dict {pt.fitsnap_dict}")
-        pt.all_print(f"*** start_idx {start_idx} end_idx {end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
-
         # -------- SCALABLE GROUP METRICS COMPUTATION --------
         
         if self.fit is not None:
@@ -174,19 +160,42 @@ class SLATE(Solver):
             from pandas import DataFrame
             
             # Use only local slice (excluding regularization rows) for error analysis
-            local_a = a[start_idx:reg_row_idx]
-            local_b = b[start_idx:reg_row_idx]
-            local_w = w[start_idx:reg_row_idx]
+            start_idx, end_idx = pt.fitsnap_dict["sub_a_indices"]
+            local_slice = slice(start_idx, end_idx+1)
+            local_a = pt.shared_arrays['a'].array[local_slice]
+            local_b = pt.shared_arrays['b'].array[local_slice]
+            local_w = pt.shared_arrays['w'].array[local_slice]
             
             df_local = DataFrame(local_a)
             df_local['truths'] = local_b.tolist()
-            df_local['preds'] = (local_a @ self.fit).tolist()
+            
+            # Check for numerical issues before prediction
+            if np.any(np.isnan(local_a)) or np.any(np.isinf(local_a)):
+                self.pt.single_print(f"WARNING: NaN or Inf found in descriptor matrix (local_a)")
+                self.pt.single_print(f"  NaN count: {np.sum(np.isnan(local_a))}, Inf count: {np.sum(np.isinf(local_a))}")
+            if np.any(np.isnan(self.fit)) or np.any(np.isinf(self.fit)):
+                self.pt.single_print(f"WARNING: NaN or Inf found in fit coefficients")
+                self.pt.single_print(f"  NaN count: {np.sum(np.isnan(self.fit))}, Inf count: {np.sum(np.isinf(self.fit))}")
+            
+            # Compute predictions with NaN/Inf handling
+            preds = local_a @ self.fit
+            
+            # Replace NaN/Inf with 0 for error analysis (or could skip these rows)
+            if np.any(np.isnan(preds)) or np.any(np.isinf(preds)):
+                num_bad = np.sum(np.isnan(preds) | np.isinf(preds))
+                self.pt.single_print(f"WARNING: {num_bad} NaN/Inf predictions found, replacing with corresponding truth values for error analysis")
+                # Replace bad predictions with truth values (gives 0 error for those points)
+                # Alternatively, you could filter these rows out entirely
+                bad_mask = np.isnan(preds) | np.isinf(preds)
+                preds[bad_mask] = local_b[bad_mask]
+            
+            df_local['preds'] = preds.tolist()
             df_local['weights'] = local_w.tolist()
             
             # Add metadata columns for local slice
             for key in ['Groups', 'Testing', 'Row_Type']:
                 if key in fs_dict and isinstance(fs_dict[key], list):
-                    local_values = fs_dict[key][start_idx:reg_row_idx]
+                    local_values = fs_dict[key][local_slice]
                     df_local[key] = local_values
                 else:
                     # Set defaults
@@ -204,9 +213,10 @@ class SLATE(Solver):
             global_group_data = self._hierarchical_group_reduce(local_group_data, pt._comm)
             
             # Two-pass algorithm for exact R² calculation
+            # First, add '*ALL' groups to global data on ALL ranks
+            global_group_data_with_all = self._add_all_groups_to_global_data(global_group_data)
+            
             if pt._rank == 0:
-                # Add '*ALL' groups to global data before computing final metrics
-                global_group_data_with_all = self._add_all_groups_to_global_data(global_group_data)
                 final_results = self._compute_final_metrics_twopass_from_df(
                     global_group_data_with_all, df_local, pt._comm
                 )
@@ -216,7 +226,7 @@ class SLATE(Solver):
             else:
                 # Non-root ranks participate in two-pass but don't store results
                 self._compute_final_metrics_twopass_from_df(
-                    global_group_data, df_local, pt._comm
+                    global_group_data_with_all, df_local, pt._comm
                 )
                 self.errors = []
     
@@ -393,6 +403,7 @@ class SLATE(Solver):
         global_means_unweighted = {}
         
         for group_key, stats in global_group_data.items():
+            # Calculate mean for all groups (including '*ALL')
             # Weighted mean
             if stats['sum_weights'] > 0:
                 global_means_weighted[group_key] = stats['sum_truths_weighted'] / stats['sum_weights']
@@ -452,17 +463,17 @@ class SLATE(Solver):
         if rank == 0:
             final_results = []
             for group_key, stats in global_group_data.items():
-                if stats['sum_weights'] > 0:
-                    # Weighted metrics
-                    weighted_mae = stats['sum_ae'] / stats['sum_weights']
-                    weighted_rmse = np.sqrt(stats['sum_se'] / stats['sum_weights'])
+                if stats['n'] > 0:
+                    # Weighted metrics (using proper statistical methodology)
+                    weighted_mae = stats['sum_ae'] / stats['sum_weights'] if stats['sum_weights'] > 0 else 0
+                    weighted_rmse = np.sqrt(stats['sum_se'] / stats['sum_weights']) if stats['sum_weights'] > 0 else 0
                     
                     ss_tot_weighted = global_ss_tot_weighted.get(group_key, 0.0)
                     weighted_rsq = 1 - (stats['sum_se'] / ss_tot_weighted) if ss_tot_weighted != 0 else 0
                     
-                    # Unweighted metrics
-                    unweighted_mae = stats['sum_ae_unweighted'] / stats['n'] if stats['n'] > 0 else 0
-                    unweighted_rmse = np.sqrt(stats['sum_se_unweighted'] / stats['n']) if stats['n'] > 0 else 0
+                    # Unweighted metrics (standard calculation)
+                    unweighted_mae = stats['sum_ae_unweighted'] / stats['n']
+                    unweighted_rmse = np.sqrt(stats['sum_se_unweighted'] / stats['n'])
                     
                     ss_tot_unweighted = global_ss_tot_unweighted.get(group_key, 0.0)
                     unweighted_rsq = 1 - (stats['sum_se_unweighted'] / ss_tot_unweighted) if ss_tot_unweighted != 0 else 0

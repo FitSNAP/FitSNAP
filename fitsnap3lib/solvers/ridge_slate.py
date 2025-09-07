@@ -69,6 +69,8 @@ class RidgeSlate(Solver):
         a = pt.shared_arrays['a'].array
         b = pt.shared_arrays['b'].array
         w = pt.shared_arrays['w'].array
+        
+        # Note: a, b, w remain unchanged - only aw, bw get modified by SLATE
         aw = pt.shared_arrays['aw'].array
         bw = pt.shared_arrays['bw'].array
         
@@ -78,8 +80,8 @@ class RidgeSlate(Solver):
         np.set_printoptions(formatter={'float': '{:.4f}'.format})
         pt.sub_print(f"*** ------------------------\n"
                      f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
-                     f"a\n{a}\n"
-                     f"b {b}\n"
+                     #f"a\n{a}\n"
+                     #f"b {b}\n"
                      f"--------------------------------\n")
         
         pt.sub_barrier()
@@ -96,25 +98,21 @@ class RidgeSlate(Solver):
         
         # -------- WEIGHTS --------
   
-        # Apply weights to my slice
-        
-        aw[aw_start_idx:(aw_end_idx-reg_num_rows+1)] = \
-            w[a_start_idx:a_end_idx+1, np.newaxis] * a[a_start_idx:a_end_idx+1]
-        
-        bw[aw_start_idx:(aw_end_idx-reg_num_rows+1)] = \
-            w[a_start_idx:a_end_idx+1] * b[a_start_idx:a_end_idx+1]
+        # Apply weights to my local slice
+        local_slice = slice(a_start_idx, a_end_idx+1)
+        w_local_slice = slice(aw_start_idx, (aw_end_idx-reg_num_rows+1))
+        aw[w_local_slice] = w[local_slice, np.newaxis] * a[local_slice]
+        bw[w_local_slice] = w[local_slice] * b[local_slice]
 
         # -------- TRAINING/TESTING SPLIT --------
         
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
-            testing_mask = pt.fitsnap_dict['Testing'][a_start_idx:a_end_idx+1]
+            testing_mask = pt.fitsnap_dict['Testing'][local_slice]
             for i in range(a_end_idx-a_start_idx+1):
                 if testing_mask[i]:
                     pt.all_print(f"*** removing i {i} aw_start_idx+i {aw_start_idx+i}")
                     aw[aw_start_idx+i,:] = 0.0
                     bw[aw_start_idx+i] = 0.0
-
-        
 
         # -------- REGULARIZATION ROWS --------
 
@@ -143,23 +141,7 @@ class RidgeSlate(Solver):
         # *** DO NOT REMOVE !!! ***
         pt.all_print(f"*** self.fit ------------------------\n"
             f"{self.fit}\n-------------------------------------------------\n")
-    
-    
-    def _dump_a(self):
-        """Save the A matrix to file."""
-        np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)
-
-
-    def _dump_x(self):
-        """Save the solution vector to file."""
-        np.savez_compressed('x.npz', x=self.fit)
-
-
-    def _dump_b(self):
-        """Save the predicted values to file."""
-        b = self.pt.shared_arrays['a'].array @ self.fit
-        np.savez_compressed('b.npz', b=b)
-
+            
 
     def error_analysis(self):
         """
@@ -185,9 +167,8 @@ class RidgeSlate(Solver):
         
         if self.fit is not None:
             # Only compute error analysis if we have a fit
-            # Use the same approach as legacy solver for consistency
+            # a, b, w are unchanged from original data (only aw, bw were modified by SLATE)
             
-            # Get data arrays (may be modified by perform_fit, but that's how legacy solver works too)
             fs_dict = pt.fitsnap_dict
             
             # Create DataFrame like the legacy solver does
@@ -225,8 +206,10 @@ class RidgeSlate(Solver):
             
             # Two-pass algorithm for exact R² calculation
             if pt._rank == 0:
+                # Add '*ALL' groups to global data before computing final metrics
+                global_group_data_with_all = self._add_all_groups_to_global_data(global_group_data)
                 final_results = self._compute_final_metrics_twopass_from_df(
-                    global_group_data, df_local, pt._comm
+                    global_group_data_with_all, df_local, pt._comm
                 )
                 
                 # Convert to pandas DataFrame format matching solver.py
@@ -275,7 +258,11 @@ class RidgeSlate(Solver):
             'sum_weights': 0.0,
             'sum_truths_weighted': 0.0,
             'sum_ae': 0.0,
-            'sum_se': 0.0
+            'sum_se': 0.0,
+            # Add unweighted sums for correct unweighted metrics
+            'sum_truths_unweighted': 0.0,
+            'sum_ae_unweighted': 0.0,
+            'sum_se_unweighted': 0.0
         })
         
         for _, row in df_local.iterrows():
@@ -287,10 +274,17 @@ class RidgeSlate(Solver):
             
             stats = local_group_data[group_key]
             stats['n'] += 1
+            
+            # Weighted sums
             stats['sum_weights'] += weight
             stats['sum_truths_weighted'] += weight * truth
             stats['sum_ae'] += weight * abs(truth - pred)
             stats['sum_se'] += weight * (truth - pred)**2
+            
+            # Unweighted sums (ignore weights entirely)
+            stats['sum_truths_unweighted'] += truth
+            stats['sum_ae_unweighted'] += abs(truth - pred)
+            stats['sum_se_unweighted'] += (truth - pred)**2
         
         return dict(local_group_data)
     
@@ -316,7 +310,8 @@ class RidgeSlate(Solver):
                             current_data[group_key] = group_stats.copy()
                         else:
                             # Aggregate the sums
-                            for key in ['n', 'sum_weights', 'sum_truths_weighted', 'sum_ae', 'sum_se']:
+                            for key in ['n', 'sum_weights', 'sum_truths_weighted', 'sum_ae', 'sum_se',
+                                       'sum_truths_unweighted', 'sum_ae_unweighted', 'sum_se_unweighted']:
                                 current_data[group_key][key] += group_stats[key]
             
             elif rank % (2 * step) == step:  # Sender
@@ -394,51 +389,99 @@ class RidgeSlate(Solver):
         """Two-pass algorithm for exact R² with DataFrame input"""
         rank = comm.Get_rank()
         
-        # Pass 1: Compute global means (already have this from reduction)
-        global_means = {}
+        # Pass 1: Compute global means (both weighted and unweighted)
+        global_means_weighted = {}
+        global_means_unweighted = {}
+        
         for group_key, stats in global_group_data.items():
+            # Weighted mean
             if stats['sum_weights'] > 0:
-                global_means[group_key] = stats['sum_truths_weighted'] / stats['sum_weights']
+                global_means_weighted[group_key] = stats['sum_truths_weighted'] / stats['sum_weights']
             else:
-                global_means[group_key] = 0.0
+                global_means_weighted[group_key] = 0.0
+            
+            # Unweighted mean  
+            if stats['n'] > 0:
+                global_means_unweighted[group_key] = stats['sum_truths_unweighted'] / stats['n']
+            else:
+                global_means_unweighted[group_key] = 0.0
         
         # Pass 2: Compute SS_tot using global means
-        local_ss_tot = {}
+        local_ss_tot_weighted = {}
+        local_ss_tot_unweighted = {}
+        
         for _, row in df_local.iterrows():
             group_key = (row['Groups'], row['Testing'], row['Row_Type'])
-            if group_key in global_means:
+            
+            if group_key in global_means_weighted:
                 weight = row['weights']
                 truth = row['truths']
-                global_mean = global_means[group_key]
                 
-                if group_key not in local_ss_tot:
-                    local_ss_tot[group_key] = 0.0
-                local_ss_tot[group_key] += weight * (truth - global_mean)**2
+                # Weighted SS_tot for individual group
+                weighted_mean = global_means_weighted[group_key]
+                if group_key not in local_ss_tot_weighted:
+                    local_ss_tot_weighted[group_key] = 0.0
+                local_ss_tot_weighted[group_key] += weight * (truth - weighted_mean)**2
+                
+                # Unweighted SS_tot for individual group
+                unweighted_mean = global_means_unweighted[group_key]
+                if group_key not in local_ss_tot_unweighted:
+                    local_ss_tot_unweighted[group_key] = 0.0
+                local_ss_tot_unweighted[group_key] += (truth - unweighted_mean)**2
+                
+                # Also contribute to "*ALL" groups
+                all_key = ('*ALL',) + group_key[1:]  # Replace Groups with '*ALL'
+                
+                if all_key in global_means_weighted:
+                    # Weighted SS_tot for *ALL group
+                    all_weighted_mean = global_means_weighted[all_key]
+                    if all_key not in local_ss_tot_weighted:
+                        local_ss_tot_weighted[all_key] = 0.0
+                    local_ss_tot_weighted[all_key] += weight * (truth - all_weighted_mean)**2
+                    
+                    # Unweighted SS_tot for *ALL group
+                    all_unweighted_mean = global_means_unweighted[all_key]
+                    if all_key not in local_ss_tot_unweighted:
+                        local_ss_tot_unweighted[all_key] = 0.0
+                    local_ss_tot_unweighted[all_key] += (truth - all_unweighted_mean)**2
         
         # Reduce SS_tot values (much smaller than full data)
-        global_ss_tot = self._hierarchical_reduce_dict(local_ss_tot, comm)
+        global_ss_tot_weighted = self._hierarchical_reduce_dict(local_ss_tot_weighted, comm)
+        global_ss_tot_unweighted = self._hierarchical_reduce_dict(local_ss_tot_unweighted, comm)
         
         # Compute final metrics (only on rank 0)
         if rank == 0:
             final_results = []
             for group_key, stats in global_group_data.items():
                 if stats['sum_weights'] > 0:
-                    mae = stats['sum_ae'] / stats['sum_weights']
-                    rmse = np.sqrt(stats['sum_se'] / stats['sum_weights'])
+                    # Weighted metrics
+                    weighted_mae = stats['sum_ae'] / stats['sum_weights']
+                    weighted_rmse = np.sqrt(stats['sum_se'] / stats['sum_weights'])
                     
-                    ss_tot = global_ss_tot.get(group_key, 0.0)
-                    rsq = 1 - (stats['sum_se'] / ss_tot) if ss_tot != 0 else 0
+                    ss_tot_weighted = global_ss_tot_weighted.get(group_key, 0.0)
+                    weighted_rsq = 1 - (stats['sum_se'] / ss_tot_weighted) if ss_tot_weighted != 0 else 0
+                    
+                    # Unweighted metrics
+                    unweighted_mae = stats['sum_ae_unweighted'] / stats['n'] if stats['n'] > 0 else 0
+                    unweighted_rmse = np.sqrt(stats['sum_se_unweighted'] / stats['n']) if stats['n'] > 0 else 0
+                    
+                    ss_tot_unweighted = global_ss_tot_unweighted.get(group_key, 0.0)
+                    unweighted_rsq = 1 - (stats['sum_se_unweighted'] / ss_tot_unweighted) if ss_tot_unweighted != 0 else 0
                     
                     final_results.append({
                         'group': group_key,
                         'ncount': stats['n'],
-                        'mae': mae,
-                        'rmse': rmse,
-                        'rsq': rsq,
+                        'weighted_mae': weighted_mae,
+                        'weighted_rmse': weighted_rmse,
+                        'weighted_rsq': weighted_rsq,
+                        'unweighted_mae': unweighted_mae,
+                        'unweighted_rmse': unweighted_rmse,
+                        'unweighted_rsq': unweighted_rsq,
                         '_sum_weights': stats['sum_weights'],
                         '_sum_ae': stats['sum_ae'],
                         '_sum_se': stats['sum_se'],
-                        '_sum_ss_tot': ss_tot
+                        '_sum_ss_tot_weighted': ss_tot_weighted,
+                        '_sum_ss_tot_unweighted': ss_tot_unweighted
                     })
             
             return final_results
@@ -485,15 +528,14 @@ class RidgeSlate(Solver):
         for result in all_results:
             group_key = result['group']
             
-            # For unweighted: divide by number of samples instead of sum of weights
-            # This matches the original FitSNAP behavior
-            unweighted_mae = result['_sum_ae'] / result['ncount'] if result['ncount'] > 0 else 0
-            unweighted_rmse = np.sqrt(result['_sum_se'] / result['ncount']) if result['ncount'] > 0 else 0
+            # Use the correctly computed weighted and unweighted metrics
+            unweighted_mae = result['unweighted_mae']
+            unweighted_rmse = result['unweighted_rmse']
+            unweighted_rsq = result['unweighted_rsq']
             
-            # Weighted version (current metrics)
-            weighted_mae = result['mae']
-            weighted_rmse = result['rmse']
-            rsq = result['rsq']  # R² is same for both if weights are uniform
+            weighted_mae = result['weighted_mae']
+            weighted_rmse = result['weighted_rmse']
+            weighted_rsq = result['weighted_rsq']
             
             # Add both versions with proper indexing
             testing_str = 'Testing' if group_key[1] else 'Training'
@@ -507,7 +549,7 @@ class RidgeSlate(Solver):
                     'ncount': result['ncount'],
                     'mae': unweighted_mae,
                     'rmse': unweighted_rmse,
-                    'rsq': rsq
+                    'rsq': unweighted_rsq
                 },
                 {
                     'Groups': group_key[0],
@@ -517,7 +559,7 @@ class RidgeSlate(Solver):
                     'ncount': result['ncount'],
                     'mae': weighted_mae,
                     'rmse': weighted_rmse,
-                    'rsq': rsq
+                    'rsq': weighted_rsq
                 }
             ])
         
@@ -530,14 +572,16 @@ class RidgeSlate(Solver):
         self.errors = df
     
     def _add_all_groups(self, group_results):
-        """Add '*ALL' groups by aggregating across Groups dimension"""
+        """Add '*ALL' groups - now just returns results since aggregation happens earlier"""
+        return group_results
+    
+    def _add_all_groups_to_global_data(self, global_group_data):
+        """Add '*ALL' groups by aggregating raw sums at the global_group_data level"""
         
         # Organize by aggregation keys
         aggregations = {}
         
-        for result in group_results:
-            group_key = result['group']
-            
+        for group_key, stats in global_group_data.items():
             # Skip if already an '*ALL' group
             if group_key[0] == '*ALL':
                 continue
@@ -549,38 +593,22 @@ class RidgeSlate(Solver):
                 aggregations[agg_key] = {
                     'n': 0,
                     'sum_weights': 0.0,
+                    'sum_truths_weighted': 0.0,
                     'sum_ae': 0.0,
                     'sum_se': 0.0,
-                    'sum_ss_tot': 0.0
+                    'sum_truths_unweighted': 0.0,
+                    'sum_ae_unweighted': 0.0,
+                    'sum_se_unweighted': 0.0
                 }
             
             # Aggregate the raw sums
             agg = aggregations[agg_key]
-            agg['n'] += result['ncount']
-            agg['sum_weights'] += result['_sum_weights']
-            agg['sum_ae'] += result['_sum_ae']
-            agg['sum_se'] += result['_sum_se']
-            agg['sum_ss_tot'] += result['_sum_ss_tot']
+            for key in ['n', 'sum_weights', 'sum_truths_weighted', 'sum_ae', 'sum_se',
+                       'sum_truths_unweighted', 'sum_ae_unweighted', 'sum_se_unweighted']:
+                agg[key] += stats[key]
         
-        # Compute metrics for aggregated groups
-        all_results = group_results.copy()
+        # Add aggregated groups to global data
+        result = global_group_data.copy()
+        result.update(aggregations)
         
-        for agg_key, agg in aggregations.items():
-            if agg['sum_weights'] > 0:
-                mae = agg['sum_ae'] / agg['sum_weights']
-                rmse = np.sqrt(agg['sum_se'] / agg['sum_weights'])
-                rsq = 1 - (agg['sum_se'] / agg['sum_ss_tot']) if agg['sum_ss_tot'] != 0 else 0
-                
-                all_results.append({
-                    'group': agg_key,
-                    'ncount': agg['n'],
-                    'mae': mae,
-                    'rmse': rmse,
-                    'rsq': rsq,
-                    '_sum_weights': agg['sum_weights'],
-                    '_sum_ae': agg['sum_ae'],
-                    '_sum_se': agg['sum_se'],
-                    '_sum_ss_tot': agg['sum_ss_tot']
-                })
-        
-        return all_results
+        return result

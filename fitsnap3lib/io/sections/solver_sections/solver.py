@@ -9,11 +9,11 @@ class Solver(Section):
                             'compute_testerrs', 'detailed_errors', \
                             'nsam', 'cov_nugget', \
                             'mcmc_num', 'mcmc_gamma', 'mcmc_sigma', \
-                            'merr_mult', 'merr_method', "merr_cfs"]
+                            'merr_mult', 'merr_method', 'merr_cfs']
         self._check_section()
 
         self.solver = self.get_value("SOLVER", "solver", "SVD")
-        self.multinode = self.solver.lower() in ["ridgeslate"]
+        self.multinode = self.solver.lower() in ["slate"]
         self.normalweight = self.get_value("SOLVER", "normalweight", "-12", "float")
         self.normratio = self.get_value("SOLVER", "normratio", "0.5", "float")
         self.compute_testerrs = self.get_value("SOLVER", "compute_testerrs", "0", "bool")

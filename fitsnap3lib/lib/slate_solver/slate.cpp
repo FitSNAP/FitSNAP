@@ -7,7 +7,7 @@
 
 extern "C" {
 
-void slate_ridge_solve_qr(double* local_a_data, double* local_b_data,
+void slate_augmented_qr(double* local_a_data, double* local_b_data,
                           int m, int n, int lld, void* comm_ptr, int tile_size) {
     
     MPI_Comm comm = (MPI_Comm)comm_ptr;

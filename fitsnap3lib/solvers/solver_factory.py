@@ -10,7 +10,7 @@ from fitsnap3lib.solvers.tensorflowsvd import TensorflowSVD
 from fitsnap3lib.solvers.anl import ANL
 from fitsnap3lib.solvers.merr import MERR
 from fitsnap3lib.solvers.network import NETWORK
-from fitsnap3lib.solvers.ridge_slate import RidgeSlate
+from fitsnap3lib.solvers.slate import SLATE
 
 #pt = ParallelTools()
 

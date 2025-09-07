@@ -107,7 +107,7 @@ print(f"Extra link args: {extra_link_args}")
 
 ext = Extension(
     "slate_wrapper",
-    sources=["slate_wrapper.pyx", "slate_ridge.cpp"],
+    sources=["slate_wrapper.pyx", "slate.cpp"],
     include_dirs=include_dirs,
     library_dirs=library_dirs,
     libraries=libraries,

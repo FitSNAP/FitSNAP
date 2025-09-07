@@ -23,8 +23,7 @@ except ImportError as e:
         slate_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lib', 'slate_solver')
         if slate_path not in sys.path:
             sys.path.insert(0, slate_path)
-        import slate_wrapper
-        ridge_solve_qr = slate_wrapper.ridge_solve_qr
+        from slate_wrapper import slate_augmented_qr_cython
         SLATE_AVAILABLE = True
     except ImportError:
         print(f"Warning: SLATE module import failed: {e}")
@@ -32,7 +31,7 @@ except ImportError as e:
         ridge_solve_qr = None
         SLATE_AVAILABLE = False
 
-class RidgeSlate(Solver):
+class SLATE(Solver):
     """
     Multi-node Ridge regression solver using SLATE (Software for Linear Algebra Targeting Exascale).
     
@@ -135,7 +134,7 @@ class RidgeSlate(Solver):
                      f"bw {bw}\n"
                      f"--------------------------------\n")
                      
-        ridge_solve_qr(aw, bw, m, lld, self.pt._comm)
+        slate_augmented_qr_cython(aw, bw, m, lld, self.pt._comm)
         self.fit = bw[:n]
                 
         # *** DO NOT REMOVE !!! ***

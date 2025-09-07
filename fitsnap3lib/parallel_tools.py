@@ -599,12 +599,12 @@ class ParallelTools():
         components, etc.
         """
         
-        is_ridgeslate = self.fitsnap_dict.get("is_ridgeslate", False)
+        is_slate = self.fitsnap_dict.get("is_slate", False)
 
         nof = len(self.shared_arrays["number_of_atoms"].array)
         if self._sub_rank != 0:
             # wait for head proc on node to fill indices
-            if is_ridgeslate:
+            if is_slate:
                 self._bcast_fitsnap("reg_row_idx")
                 self.fitsnap_dict["reg_row_idx"] = self.fitsnap_dict["reg_row_idx"][self._sub_rank]
                 self._bcast_fitsnap("reg_col_idx")
@@ -646,9 +646,9 @@ class ParallelTools():
                 sub_a_sizes[proc_number] += self.shared_arrays["number_of_atoms"].array[i]
 
         
-        # Handle ridgeslate augmented arrays
-        if is_ridgeslate:
-            # For ridgeslate, the array was augmented with extra rows for regularization
+        # Handle SLATE augmented arrays
+        if is_slate:
+            # For SLATE, the array was augmented with extra rows for regularization
             # We need to distribute the extra space across processors
             array_size = len(self.shared_arrays['aw'].array)
             data_size = sum(sub_a_sizes)

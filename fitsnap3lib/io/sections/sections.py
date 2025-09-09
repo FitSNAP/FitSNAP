@@ -67,9 +67,15 @@ class Section:
             raise ValueError("{} is not an implemented interpreter.")
 
         if section not in self._config:
-            value = convert(fallback)
+            raw_value = fallback
         else:
-            value = convert(self._config.get(section, key, fallback=fallback))
+            raw_value = self._config.get(section, key, fallback=fallback)
+        
+        # Handle None values - return None directly instead of trying to convert
+        if raw_value is None:
+            value = None
+        else:
+            value = convert(raw_value)
 
         return value
 

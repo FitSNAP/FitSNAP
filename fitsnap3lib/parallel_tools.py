@@ -685,7 +685,7 @@ class ParallelTools():
             array_size = len(self.shared_arrays['aw'].array)
             data_size = sum(sub_a_sizes)
             sub_aw_sizes = sub_a_sizes.copy()
-            self.all_print(f"*** sub_a_sizes {sub_a_sizes} sum={data_size} |a| {array_size}")
+            self.debug_all_print(f"*** sub_a_sizes {sub_a_sizes} sum={data_size} |a| {array_size}")
             extra_rows = array_size - data_size
             self.shared_arrays['aw'].array[:,:] = 0.0
             self.shared_arrays['bw'].array[:] = 0.0
@@ -734,7 +734,7 @@ class ParallelTools():
             self._bcast_fitsnap("sub_aw_indices")
             self.fitsnap_dict["sub_aw_indices"] = aw_indices[self._sub_rank]
 
-            self.all_print(f"*** extra_rows {extra_rows} sub_aw_sizes {sub_aw_sizes}, reg_row_indices {reg_row_indices} inclusive_prefix_sum {inclusive_prefix_sum} reg_col_indices {reg_col_indices} reg_num_rows_all {reg_num_rows_all}")
+            self.debug_all_print(f"*** extra_rows {extra_rows} sub_aw_sizes {sub_aw_sizes}, reg_row_indices {reg_row_indices} inclusive_prefix_sum {inclusive_prefix_sum} reg_col_indices {reg_col_indices} reg_num_rows_all {reg_num_rows_all}")
 
 
         # Verify sizes match after any adjustments

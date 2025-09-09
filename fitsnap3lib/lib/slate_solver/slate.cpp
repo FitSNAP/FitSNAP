@@ -34,10 +34,14 @@ void slate_augmented_qr(double* local_a, double* local_b, int m, int n, int lld,
     nb = std::max(nb, int(std::max<int64_t>(1, ceil_div(n, mt))));
 
     if (mpi_rank == 0) {
-        std::cerr << "\n=== SLATE Ridge Solver ===" << std::endl;
+        std::cerr << "\n---------------- SLATE Ridge Solver ----------------" << std::endl;
+        std::cerr << "MPI: " << mpi_size << " ranks, ";
+        std::cerr            << mpi_number_of_nodes << " node(s), ";
+        std::cerr            << mpi_sub_size << " ranks/node" << std::endl;
         std::cerr << "Global A size: " << m << " x " << n << std::endl;
         std::cerr << "Tile size: " << mb << " x " << nb << std::endl;
         std::cerr << "Process grid: " << p << " x " << q << std::endl;
+        std::cerr << "----------------------------------------------------" << std::endl;
     }
     
     try {

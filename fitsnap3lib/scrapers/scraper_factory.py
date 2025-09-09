@@ -11,6 +11,13 @@ if importlib.util.find_spec("h5py") is not None:
 else:
     HDF5 = None
 
+# only import LMDB scraper if required modules are available
+if (importlib.util.find_spec("lmdb") is not None and 
+    importlib.util.find_spec("ase") is not None):
+    from fitsnap3lib.scrapers.fairchem_scraper import FAIRChem
+else:
+    FAIRChem = None
+
 #pt = ParallelTools()
 
 

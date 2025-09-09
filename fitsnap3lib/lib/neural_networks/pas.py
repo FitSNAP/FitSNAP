@@ -6,7 +6,12 @@ into a separate file because there are many differences in the forward pass.
 We use the `create_networks` function in pytorch.py since the structure is the same.
 """
 
-import torch
+import warnings
+
+# Suppress the PyTorch distributed elastic multiprocessing warning on macOS/Windows
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message=".*Redirects are currently not supported in Windows or MacOs.*")
+    import torch
 
 """
 Try to import mliap package after: https://github.com/lammps/lammps/pull/3388

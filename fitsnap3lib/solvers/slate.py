@@ -132,7 +132,12 @@ class SLATE(Solver):
                      f"bw {bw}\n"
                      f"--------------------------------\n")
                      
-        slate_augmented_qr_cython(aw, bw, m, lld, self.pt._comm)
+        slate_augmented_qr_cython(aw, bw, m, lld)
+        
+        # Broadcast solution from Node 0 to all nodes via head ranks
+        if pt._sub_rank == 0:  # This rank is head of its node
+            pt._head_group_comm.Bcast(bw[:n], root=0)
+
         self.fit = bw[:n]
                 
         # *** DO NOT REMOVE !!! ***

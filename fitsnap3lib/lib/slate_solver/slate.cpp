@@ -1,74 +1,86 @@
 #include <slate/slate.hh>
 #include <mpi.h>
-#include <vector>
-#include <cmath>
-#include <algorithm>
 #include <iostream>
+#include <cstdio>
 
 extern "C" {
 
-void slate_augmented_qr(double* local_a_data, double* local_b_data,
-                          int m, int n, int lld, void* comm_ptr, int tile_size) {
+void slate_augmented_qr(double* local_a, double* local_b, int m, int n, int lld) {
     
-    MPI_Comm comm = (MPI_Comm)comm_ptr;
-    int mpi_rank, mpi_size;
-    MPI_Comm_rank(comm, &mpi_rank);
-    MPI_Comm_size(comm, &mpi_size);
-        
-    // TODO: tile_size ignored, one tile per rank for now
-    // should be optimized to be 16MB-64MB for most architectures
-    int p = mpi_size;
-    int q = 1;
-    int mb = (m + mpi_size - 1) / mpi_size;  // integer version of ceil( m / mpi_size )
-    int nb = n;
-    int mpi_sub_size = mpi_size * lld / m;
+    // -------- MPI --------
 
-    // CRITICAL: For QR decomposition, tile rows (mb) must be >= number of columns (n)
-    // This is because the QR process needs to handle all n Householder reflectors
-    // If mb < n, the tpqrt function will fail with assertion A1.mb() >= k
-    if (mb < n) {
-        // Adjust tile size to be at least n
-        mb = std::max(n, m / mpi_size);
-        // If we can't fit n rows in a tile with current process count,
-        // we need to reduce the process grid or increase tile size
-        if (mpi_rank == 0) {
-            std::cerr << "WARNING: Adjusting tile size from " << m/mpi_size
-                      << " to " << mb << " to satisfy QR requirements (mb >= n)" << std::endl;
-        }
-    }
+    int mpi_rank, mpi_size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    int mpi_number_of_nodes = m / lld;  // m always integer multiple of lld
+    int mpi_sub_size = mpi_size / mpi_number_of_nodes;
     
+    // -------- PROCESS GRID AND TILE SIZE --------
+    
+    auto ceil_div = [](int64_t a, int64_t b) -> int64_t { return (a + b - 1) / b; };
+
+    int num_nodes = m / lld;          // exact by your design
+    int p = num_nodes;                // rows split by node
+    int q = mpi_size / num_nodes;     // ranks per node (column dimension)
+    int mb = lld;                     // one tile-row per node
+    int64_t mt = num_nodes;           // known without computing
+
+    // Heuristic near-square starting point for nb
+    int64_t tile_area = 256 * 256;
+    double nb_ideal = std::sqrt(double(tile_area) / double(mb));
+    int nb = std::max(1, std::min<int>(n, int(std::llround(nb_ideal))));
+
+    // Enforce QR constraint mt >= nt  <=>  nb >= ceil(n/mt)
+    nb = std::max(nb, int(std::max<int64_t>(1, ceil_div(n, mt))));
+
     if (mpi_rank == 0) {
         std::cerr << "\n=== SLATE Ridge Solver ===" << std::endl;
-        std::cerr << "Augmented size: " << m << " x " << n << std::endl;
+        std::cerr << "Global A size: " << m << " x " << n << std::endl;
         std::cerr << "Tile size: " << mb << " x " << nb << std::endl;
         std::cerr << "Process grid: " << p << " x " << q << std::endl;
     }
     
     try {
-        // Create SLATE matrices 
-        slate::Matrix<double> A(m, n, mb, nb, p, q, comm);
-        slate::Matrix<double> b(m, 1, mb, 1, p, q, comm);
+        // -------- CREATE SLATE MATRICES --------
+        slate::Matrix<double> A(m, n, mb, nb, slate::GridOrder::Row, p, q, MPI_COMM_WORLD);
+        slate::Matrix<double> b(m, 1, mb, 1,  slate::GridOrder::Row, p, q, MPI_COMM_WORLD);
         
         // TODO: only cpu tiles pointing directly to fitsnap shared array for now
         // for gpu support use insertLocalTiles( slate::Target::Devices ) instead
         // and sync fitsnap shared array to slate gpu tile memory
         
-        // Insert A matrix
+        // -------- INSERT A MATRIX TILES --------
         for ( int j = 0; j < A.nt (); ++j)
           for ( int i = 0; i < A.mt (); ++i)
-            if (A.tileIsLocal( i, j ))
-              A.tileInsert( i, j, local_a_data + (i % mpi_sub_size)*mb, lld );
+            if (A.tileIsLocal( i, j )) {
+                int64_t offset = int64_t(j) * int64_t(nb) * int64_t(lld);
+              
+                std::fprintf(stderr, "rank %d i %d j %d offset %d\n",
+                  mpi_rank, i, j, offset);
+              
+                A.tileInsert( i, j, local_a + offset, lld );
+              
+            }
             
-        // Insert b vector
+        // -------- INSERT B VECTOR TILES --------
         for ( int i = 0; i < b.mt(); ++i)
-          if (b.tileIsLocal( i, 0 ))
-            b.tileInsert( i, 0, local_b_data + (i % mpi_sub_size)*mb, lld );
+          if (b.tileIsLocal( i, 0 )) {
+          
+            const int offset = (i % mpi_sub_size)*mb;
+
+            std::fprintf(stderr, "rank %d i %d offset %d\n", mpi_rank, i, offset);
+
+            b.tileInsert( i, 0, local_b + offset, lld );
+          
+          }
             
         // Make sure every node/rank done building global matrix
         // Doesnt seem to be needed only the barrier after the QR is needed
         // 	slate::least_squares_solve(A, b) is collective and internally synchronized. SLATE’s QR path triggers plenty of MPI collectives (broadcasts, reductions, etc.). Even if one rank reaches the call earlier, it will block at the first collective until everyone is in. That implicitly synchronizes construction + entry to the solve. Hence a barrier before the call is unnecessary for correctness. [chatgpt 5]
         // MPI_Barrier(MPI_COMM_WORLD);
         
+        // -------- DEBUG --------
+
         slate::Options opts = {
           { slate::Option::PrintVerbose, 4 },
           { slate::Option::PrintPrecision, 3 },
@@ -78,13 +90,13 @@ void slate_augmented_qr(double* local_a_data, double* local_b_data,
         slate::print("A", A, opts);
         slate::print("b", b, opts);
         
-        // Solve using QR decomposition
+        // -------- LEAST SQUARES AUGMENTED QR --------
         slate::least_squares_solve(A, b);
         MPI_Barrier(MPI_COMM_WORLD);
         
     } catch (const std::exception& e) {
         std::cerr << "[Rank " << mpi_rank << "] SLATE error: " << e.what() << std::endl;
-        MPI_Abort(comm, 1);
+        MPI_Abort(MPI_COMM_WORLD, 1);
     }
 }
 

@@ -152,9 +152,10 @@ class ParallelTools():
     Attributes:
         check_fitsnap_exist (bool): Checks whether fitsnap dictionaries exist before creating a new 
             one, set to `False` to allow recreating a dictionary.
+        debug (bool): Debug flag for conditional debug printing.
     """
 
-    def __init__(self, comm=None):
+    def __init__(self, comm=None, config=None):
         self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
         if comm is None:
             self.stubs = 1
@@ -201,6 +202,13 @@ class ParallelTools():
         self.logger = None
         self.pytest = False
         self._fp = None
+        
+        # Set debug flag from config if available
+        self.debug = False
+        if config is not None:
+            self.debug = getattr(config, 'debug', False) or (hasattr(config, 'sections') and 
+                            'EXTRAS' in config.sections and 
+                            getattr(config.sections['EXTRAS'], 'debug', False))
 
     """
     def __del__(self):
@@ -277,6 +285,30 @@ class ParallelTools():
     def all_print(self, *args, **kw):
         printf(f"[Node {self._node_index} Rank {self._rank}]", *args, file=self._fp, flush=True)
         (sys.stdout if self._fp is None else self._fp).flush()
+    
+    # Debug print methods - only print if debug flag is enabled
+    
+    @_rank_zero
+    def debug_print(self, *args, **kw):
+        """Debug print that only prints on rank 0 when debug flag is enabled."""
+        if self.debug:
+            printf("[DEBUG]", *args, file=self._fp)
+    
+    @_sub_rank_zero  
+    def debug_sub_print(self, *args, **kw):
+        """Debug print that only prints on sub-rank 0 when debug flag is enabled."""
+        if self.debug:
+            printf(f"[DEBUG Node {self._node_index}]", *args, file=self._fp)
+    
+    def debug_all_print(self, *args, **kw):
+        """Debug print that prints on all ranks when debug flag is enabled."""
+        if self.debug:
+            printf(f"[DEBUG Node {self._node_index} Rank {self._rank}]", *args, file=self._fp, flush=True)
+            (sys.stdout if self._fp is None else self._fp).flush()
+    
+    def set_debug(self, debug_flag: bool):
+        """Set the debug flag after initialization."""
+        self.debug = debug_flag
 
     def set_output(self, output_file, ns=False, ps=False):
         if ps:

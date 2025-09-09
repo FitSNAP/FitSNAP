@@ -73,13 +73,14 @@ class SLATE(Solver):
         
         # Debug output - print all in one statement to avoid tangled output
         # *** DO NOT REMOVE !!! ***
-        np.set_printoptions(precision=4, suppress=True, floatmode='fixed', linewidth=np.inf)
-        np.set_printoptions(formatter={'float': '{:.4f}'.format})
-        pt.sub_print(f"*** ------------------------\n"
-                     f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
-                     #f"a\n{a}\n"
-                     #f"b {b}\n"
-                     f"--------------------------------\n")
+        if self.config.debug:
+            np.set_printoptions(precision=4, suppress=True, floatmode='fixed', linewidth=np.inf)
+            np.set_printoptions(formatter={'float': '{:.4f}'.format})
+            pt.sub_print(f"*** ------------------------\n"
+                         f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
+                         #f"a\n{a}\n"
+                         #f"b {b}\n"
+                         f"--------------------------------\n")
         
         pt.sub_barrier()
         
@@ -91,7 +92,8 @@ class SLATE(Solver):
         reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
         reg_num_rows = pt.fitsnap_dict["reg_num_rows"]
         #pt.all_print(f"pt.fitsnap_dict {pt.fitsnap_dict}")
-        pt.all_print(f"*** aw_start_idx {aw_start_idx} aw_end_idx {aw_end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
+        if self.config.debug:
+            pt.all_print(f"*** aw_start_idx {aw_start_idx} aw_end_idx {aw_end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
         
         # -------- WEIGHTS --------
   
@@ -107,7 +109,8 @@ class SLATE(Solver):
             testing_mask = pt.fitsnap_dict['Testing'][local_slice]
             for i in range(a_end_idx-a_start_idx+1):
                 if testing_mask[i]:
-                    pt.all_print(f"*** removing i {i} aw_start_idx+i {aw_start_idx+i}")
+                    if self.config.debug:
+                        pt.all_print(f"*** removing i {i} aw_start_idx+i {aw_start_idx+i}")
                     aw[aw_start_idx+i,:] = 0.0
                     bw[aw_start_idx+i] = 0.0
 
@@ -127,12 +130,18 @@ class SLATE(Solver):
         lld = aw.shape[0]  # local leading dimension column-major shared array
         
         np.set_printoptions(precision=3, suppress=True, floatmode='fixed', linewidth=np.inf)
-        pt.sub_print(f"*** SENDING TO SLATE ------------------------\n"
-                     f"aw\n{aw}\n"
-                     f"bw {bw}\n"
-                     f"--------------------------------\n")
+        if self.config.debug:
+            pt.sub_print(f"*** SENDING TO SLATE ------------------------\n"
+                         f"aw\n{aw}\n"
+                         f"bw {bw}\n"
+                         f"--------------------------------\n")
                      
-        slate_augmented_qr_cython(aw, bw, m, lld)
+        # Determine debug flag from EXTRAS section
+        debug_flag = 0
+        if self.config.debug:
+            debug_flag = 1
+            
+        slate_augmented_qr_cython(aw, bw, m, lld, debug_flag)
         
         # Broadcast solution from Node 0 to all nodes via head ranks
         if pt._sub_rank == 0:  # This rank is head of its node
@@ -141,8 +150,9 @@ class SLATE(Solver):
         self.fit = bw[:n]
                 
         # *** DO NOT REMOVE !!! ***
-        pt.all_print(f"*** self.fit ------------------------\n"
-            f"{self.fit}\n-------------------------------------------------\n")
+        if self.config.debug:
+            pt.all_print(f"*** self.fit ------------------------\n"
+                f"{self.fit}\n-------------------------------------------------\n")
             
 
     def error_analysis(self):

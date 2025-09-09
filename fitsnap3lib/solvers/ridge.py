@@ -24,11 +24,12 @@ class RIDGE(Solver):
         pt = self.pt
         
         # Debug: print FULL matrices before filtering DO NOT REMOVE
-        np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
-        self.pt.all_print(f"Ridge solver BEFORE filtering:")
-        self.pt.all_print(f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}")
-        self.pt.all_print(f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}")
-        self.pt.all_print(f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}")
+        if self.config.debug:
+            np.set_printoptions(precision=4, suppress=True, linewidth=np.inf)
+            self.pt.all_print(f"Ridge solver BEFORE filtering:")
+            self.pt.all_print(f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}")
+            self.pt.all_print(f"pt.shared_arrays['a'].array\n{pt.shared_arrays['a'].array}")
+            self.pt.all_print(f"pt.shared_arrays['b'].array\n{pt.shared_arrays['b'].array}")
 
         # Only fit on rank 0 to prevent unnecessary memory and work.
         if pt._rank == 0:
@@ -69,11 +70,12 @@ class RIDGE(Solver):
             
             # Debug: print dimensions and first few coefficients
             # *** DO NOT REMOVE !!! ***
-            pt.all_print(f"\nRidge solver AFTER filtering (training only):")
-            pt.all_print(f'aw\n{aw}')
-            pt.all_print(f'bw\n{bw}')
-            pt.all_print(f'Training samples used: {len(training)} total, {sum(training)} for training')
-            pt.all_print(f"--------\nself.fit\n{self.fit}\n--------\n")
+            if self.config.debug:
+                pt.all_print(f"\nRidge solver AFTER filtering (training only):")
+                pt.all_print(f'aw\n{aw}')
+                pt.all_print(f'bw\n{bw}')
+                pt.all_print(f'Training samples used: {len(training)} total, {sum(training)} for training')
+                pt.all_print(f"--------\nself.fit\n{self.fit}\n--------\n")
 
             residues = np.matmul(aw,reg.coef_) - bw
 

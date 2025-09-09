@@ -70,6 +70,11 @@ class FitSnap:
         self.pt = ParallelTools(comm=comm)
         self.pt.all_barrier()
         self.config = Config(self.pt, input, arguments_lst=arglist)
+        
+        # Update ParallelTools with config for debug support
+        self.pt.debug = getattr(self.config, 'debug', False) or (
+            hasattr(self.config, 'sections') and 'EXTRAS' in self.config.sections and 
+            getattr(self.config.sections['EXTRAS'], 'debug', False))
         if self.config.args.verbose:
             self.pt.single_print(f"FitSNAP instance hash: {self.config.hash}")
         # Instantiate other backbone attributes.

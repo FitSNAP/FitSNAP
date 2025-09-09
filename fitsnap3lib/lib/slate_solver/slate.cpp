@@ -5,7 +5,7 @@
 
 extern "C" {
 
-void slate_augmented_qr(double* local_a, double* local_b, int m, int n, int lld) {
+void slate_augmented_qr(double* local_a, double* local_b, int m, int n, int lld, int debug) {
     
     // -------- MPI --------
 
@@ -55,8 +55,7 @@ void slate_augmented_qr(double* local_a, double* local_b, int m, int n, int lld)
             if (A.tileIsLocal( i, j )) {
                 int64_t offset = int64_t(j) * int64_t(nb) * int64_t(lld);
               
-                std::fprintf(stderr, "rank %d i %d j %d offset %d\n",
-                  mpi_rank, i, j, offset);
+                //std::fprintf(stderr, "rank %d i %d j %d offset %d\n", mpi_rank, i, j, offset);
               
                 A.tileInsert( i, j, local_a + offset, lld );
               
@@ -68,7 +67,7 @@ void slate_augmented_qr(double* local_a, double* local_b, int m, int n, int lld)
           
             const int offset = (i % mpi_sub_size)*mb;
 
-            std::fprintf(stderr, "rank %d i %d offset %d\n", mpi_rank, i, offset);
+            //std::fprintf(stderr, "rank %d i %d offset %d\n", mpi_rank, i, offset);
 
             b.tileInsert( i, 0, local_b + offset, lld );
           
@@ -81,14 +80,16 @@ void slate_augmented_qr(double* local_a, double* local_b, int m, int n, int lld)
         
         // -------- DEBUG --------
 
-        slate::Options opts = {
-          { slate::Option::PrintVerbose, 4 },
-          { slate::Option::PrintPrecision, 3 },
-          { slate::Option::PrintWidth, 7 }
-        };
-    
-        slate::print("A", A, opts);
-        slate::print("b", b, opts);
+        if (debug) {
+            slate::Options opts = {
+              { slate::Option::PrintVerbose, 4 },
+              { slate::Option::PrintPrecision, 3 },
+              { slate::Option::PrintWidth, 7 }
+            };
+        
+            slate::print("A", A, opts);
+            slate::print("b", b, opts);
+        }
         
         // -------- LEAST SQUARES AUGMENTED QR --------
         slate::least_squares_solve(A, b);

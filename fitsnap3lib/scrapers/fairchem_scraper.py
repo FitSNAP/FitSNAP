@@ -5,9 +5,10 @@ import random
 from os import path
 from copy import copy
 
+# Suppress logging warnings from PyTorch distributed
+logging.getLogger("torch.distributed.elastic.multiprocessing.redirects").setLevel(logging.ERROR)
+
 try:
-    import lmdb
-    import pickle
     from ase import Atoms
     from fairchem.core.datasets import AseDBDataset
     HAS_LMDB = True

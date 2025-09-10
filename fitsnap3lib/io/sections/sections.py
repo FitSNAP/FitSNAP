@@ -85,7 +85,7 @@ class Section:
         return self._config.items(section)
 
     def check_path(self, name):
-        if name == 'None':
+        if name is None or name == 'None':
             return None
         name = path.join(Section.get_outfile_directory(self), name)
         if self._args.overwrite is None:

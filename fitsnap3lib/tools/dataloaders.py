@@ -1,12 +1,7 @@
-import warnings
+import torch.utils.data
 from sys import float_info
 import numpy as np
-
-# Suppress the PyTorch distributed elastic multiprocessing warning on macOS/Windows
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", message=".*Redirects are currently not supported in Windows or MacOs.*")
-    import torch.utils.data
-    from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader
 
 class InRAMDataset(torch.utils.data.Dataset):
     """

@@ -1,11 +1,6 @@
 import numpy as np
-import warnings
+import torch
 import math
-
-# Suppress the PyTorch distributed elastic multiprocessing warning on macOS/Windows
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", message=".*Redirects are currently not supported in Windows or MacOs.*")
-    import torch
 
 def calc_n_params(model):
     """

@@ -6,18 +6,13 @@ import numpy as np
 import psutil
 import sys
 from copy import deepcopy
-import warnings
 
 try:
     from fitsnap3lib.lib.neural_networks.pytorch import FitTorch, create_torch_network
     from fitsnap3lib.lib.neural_networks.pas import FitTorchPAS
     from fitsnap3lib.tools.dataloaders import InRAMDatasetPyTorch, torch_collate, DataLoader
     from fitsnap3lib.tools.configuration import Configuration
-    
-    # Suppress the PyTorch distributed elastic multiprocessing warning on macOS/Windows
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message=".*Redirects are currently not supported in Windows or MacOs.*")
-        import torch
+    import torch
 
     class PYTORCH(Solver):
         """

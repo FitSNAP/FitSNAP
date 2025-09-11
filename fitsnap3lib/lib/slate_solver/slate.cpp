@@ -1,11 +1,21 @@
 #include <slate/slate.hh>
 #include <mpi.h>
+
+#include <cstdint>
+#include <cmath>
+#include <utility>
+#include <limits>
+
 #include <iostream>
 #include <cstdio>
 
+
+
 extern "C" {
 
-void slate_augmented_qr(double* local_a, double* local_b, int m, int n, int lld, int debug) {
+constexpr int64_t ceil_div64(int64_t a, int64_t b) { return (a + b - 1) / b; }
+
+void slate_augmented_qr(double* local_a, double* local_b, int64_t m, int64_t n, int64_t lld, int debug) {
     
     // -------- MPI --------
 
@@ -16,31 +26,43 @@ void slate_augmented_qr(double* local_a, double* local_b, int m, int n, int lld,
     int mpi_sub_size = mpi_size / mpi_number_of_nodes;
     
     // -------- PROCESS GRID AND TILE SIZE --------
+
+    // orig.mt() <= 1 || orig.nt() <= 1 || orig.tileMb(0) == orig.tileNb(0)
+    // one of three must hold:
+    // 1.	only one tile row (mt <= 1),
+    // 2.	or only one tile column (nt <= 1),
+    // 3.	or square tiles (mb == nb).
     
-    auto ceil_div = [](int64_t a, int64_t b) -> int64_t { return (a + b - 1) / b; };
+    int64_t mb, nb, p, q = 1;
+    
+    // Find the largest nt such that nt*nt <= mpi_sub_size
+    int64_t nt_start = 1;
+    while ((nt_start + 1) * (nt_start + 1) <= mpi_sub_size) ++nt_start;
 
-    int num_nodes = m / lld;          // exact by your design
-    int p = num_nodes;                // rows split by node
-    int q = mpi_size / num_nodes;     // ranks per node (column dimension)
-    int mb = lld;                     // one tile-row per node
-    int64_t mt = num_nodes;           // known without computing
+    for (int64_t nt = nt_start; nt >= 1; --nt) {
+        if (mpi_sub_size % nt) continue;
+        int64_t size = ceil_div64(n, nt);
+        if( size*size*sizeof(double) > 16*1024*1024 ) break; // pick biggest tile <= 16MB
+        mb = nb = size;
+        q = nt;
+        p = mpi_size / q;
 
-    // Heuristic near-square starting point for nb
-    int64_t tile_area = 256 * 256;
-    double nb_ideal = std::sqrt(double(tile_area) / double(mb));
-    int nb = std::max(1, std::min<int>(n, int(std::llround(nb_ideal))));
+        if (mpi_rank == 0)
+            std::fprintf(stderr, "*** nt %lld p %lld q %lld tile %lld x %lld (%lld bytes)\n", nt, p, q, nb, nb, nb*nb*8);
 
+    }
+    
     // Enforce QR constraint mt >= nt  <=>  nb >= ceil(n/mt)
-    nb = std::max(nb, int(std::max<int64_t>(1, ceil_div(n, mt))));
+    //nb = std::max(nb, int(std::max<int64_t>(1, ceil_div(n, mt))));
 
     if (mpi_rank == 0) {
         std::cerr << "\n---------------- SLATE Ridge Solver ----------------" << std::endl;
         std::cerr << "MPI: " << mpi_size << " ranks, ";
         std::cerr            << mpi_number_of_nodes << " node(s), ";
         std::cerr            << mpi_sub_size << " ranks/node" << std::endl;
-        std::cerr << "Global A size: " << m << " x " << n << std::endl;
-        std::cerr << "Tile size: " << mb << " x " << nb << std::endl;
         std::cerr << "Process grid: " << p << " x " << q << std::endl;
+        std::cerr << "Matrix size: " << m << " x " << n << std::endl;
+        std::cerr << "Tile size: " << mb << " x " << nb << std::endl;
         std::cerr << "----------------------------------------------------" << std::endl;
     }
     
@@ -54,24 +76,24 @@ void slate_augmented_qr(double* local_a, double* local_b, int m, int n, int lld,
         // and sync fitsnap shared array to slate gpu tile memory
         
         // -------- INSERT A MATRIX TILES --------
-        for ( int j = 0; j < A.nt (); ++j)
-          for ( int i = 0; i < A.mt (); ++i)
+        for ( int64_t j = 0; j < A.nt (); ++j)
+          for ( int64_t i = 0; i < A.mt (); ++i)
             if (A.tileIsLocal( i, j )) {
-                int64_t offset = int64_t(j) * int64_t(nb) * int64_t(lld);
+                int64_t offset = i * mb + j * nb * lld;
               
-                //std::fprintf(stderr, "rank %d i %d j %d offset %d\n", mpi_rank, i, j, offset);
+                //std::fprintf(stderr, "rank %d i %lld j %lld offset %lld\n", mpi_rank, i, j, offset);
               
                 A.tileInsert( i, j, local_a + offset, lld );
               
             }
             
         // -------- INSERT B VECTOR TILES --------
-        for ( int i = 0; i < b.mt(); ++i)
+        for ( int64_t i = 0; i < b.mt(); ++i)
           if (b.tileIsLocal( i, 0 )) {
           
             const int offset = (i % mpi_sub_size)*mb;
 
-            //std::fprintf(stderr, "rank %d i %d offset %d\n", mpi_rank, i, offset);
+            //std::fprintf(stderr, "rank %d i %lld offset %lld\n", mpi_rank, i, offset);
 
             b.tileInsert( i, 0, local_b + offset, lld );
           

@@ -220,6 +220,16 @@ This section contains settings for the Atomic Cluster Expansion (ACE) descriptor
 
 .. WARNING:: Only change ACE basis flags if you know what you are doing!
 
+[PYACE]
+^^^^^^^
+
+This section allows more control over details of the PACE parameters based on the `pyace` python package used by `pacemaker`.
+
+... warning:
+
+    PYACE is currently EXPERIMENTAL and in development. For production runs, ACE is recommended.
+    
+
 [CALCULATOR]
 ^^^^^^^^^^^^
 

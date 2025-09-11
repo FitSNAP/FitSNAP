@@ -1,32 +1,16 @@
 
-# fitsnap3lib/calculators/lammps_pyace.py
-
 import numpy as np
 from fitsnap3lib.calculators.lammps_base import LammpsBase
-from pyace import PyACECalculator, ACEBBasisSet
-from pyace.basis import ACECTildeBasisSet
 import lammps
+
+# Avoid circular import by importing pyace components when needed
+# Will import PyACECalculator, ACEBBasisSet, ACECTildeBasisSet in setup_pyace()
 
 
 class LammpsPyACE(LammpsBase):
 
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
-        self._data = {}
-        self._i = 0
-        self._lmp = None
-        self._row_index = 0
-        self.pt.check_lammps()
-
-    def get_width(self):
-        if (self.config.sections["CALCULATOR"].nonlinear):
-            a_width = self.config.sections["ACE"].ncoeff
-        else:
-            num_types = self.config.sections["ACE"].numtypes
-            a_width = self.config.sections["ACE"].ncoeff  * num_types
-            if not self.config.sections["ACE"].bzeroflag:
-                a_width += num_types
-        return a_width
 
 
 
@@ -41,10 +25,29 @@ class LammpsPyace(LammpsBase):
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
         
+        self._data = {}
+        self._i = 0
+        self._row_index = 0
+        
         # Initialize pyace specific parameters
         self.ace_basis = None
         self.pyace_calc = None
         self.setup_pyace()
+        
+        
+    def get_width(self):
+    
+        # FIXME
+    
+        if (self.config.sections["CALCULATOR"].nonlinear):
+            a_width = self.config.sections["ACE"].ncoeff
+        else:
+            num_types = self.config.sections["ACE"].numtypes
+            a_width = self.config.sections["ACE"].ncoeff  * num_types
+            if not self.config.sections["ACE"].bzeroflag:
+                a_width += num_types
+        return a_width
+
     
     def setup_pyace(self):
         """Initialize pyace calculator with basis functions"""

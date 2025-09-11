@@ -1,5 +1,5 @@
-FAIRChem Dataset Scraper
-========================
+FAIRChem Datasets
+=================
 
 The FAIRChem scraper enables FitSNAP to read and process datasets from Meta's FAIR Chemistry project, including large-scale catalysis and materials datasets stored in LMDB format.
 
@@ -77,11 +77,11 @@ The scraper supports all FAIRChem datasets that use the LMDB format:
 Installation Requirements
 -------------------------
 
-The FAIRChem scraper requires additional dependencies:
+The FAIRChem scraper requires additional dependency:
 
 .. code-block:: bash
 
-   pip install lmdb fairchem-core
+   pip install fairchem-core
 
 Or for development installations:
 
@@ -103,7 +103,7 @@ Configure the scraper in your FitSNAP input file:
    scraper_name = fairchem
 
    [PATH]
-   datapath = /path/to/fairchem/datasets
+   datapath = /path/to/fairchem/dataset
 
    [GROUPS]
    group_sections = group1 group2

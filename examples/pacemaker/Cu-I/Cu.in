@@ -13,7 +13,7 @@ bonds = {"ALL": {"radbase": "ChebExpCos", "radparameters": [5.25], "rcut": 7.0, 
 functions = {"UNARY": {"nradmax_by_orders": [15, 3, 2, 2, 1], "lmax_by_orders": [0, 2, 2, 1, 1]}}
 
 [CALCULATOR]
-calculator = LAMMPSPYACE
+calculator = PYACE
 energy = 1
 force = 1 
 stress = 0

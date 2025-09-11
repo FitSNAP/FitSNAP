@@ -32,7 +32,7 @@ except ImportError:
             class ACECTildeBasisSet: pass
 
 
-class LammpsPyACE(LammpsBase):
+class PyACE(LammpsBase):
     """
     Calculator using pyace for ACE descriptor calculations
     instead of LAMMPS compute pace

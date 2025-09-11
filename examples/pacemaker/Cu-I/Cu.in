@@ -1,0 +1,68 @@
+[PYACE]
+elements = Cu
+cutoff = 7.0
+delta_spline_bins = 0.001
+
+# Embeddings (converted from pacemaker format)
+embeddings = {"ALL": {"npot": "FinnisSinclairShiftedScaled", "fs_parameters": [1, 1, 1, 0.5], "ndensity": 2}}
+
+# Bonds (converted from pacemaker format)  
+bonds = {"ALL": {"radbase": "ChebExpCos", "radparameters": [5.25], "rcut": 7.0, "dcut": 0.01, "NameOfCutoffFunction": "cos"}}
+
+# Functions (converted from pacemaker format)
+functions = {"UNARY": {"nradmax_by_orders": [15, 3, 2, 2, 1], "lmax_by_orders": [0, 2, 2, 1, 1]}}
+
+[CALCULATOR]
+calculator = LAMMPSPYACE
+energy = 1
+force = 1 
+stress = 0
+
+[ESHIFT]
+Cu = 0.0
+
+[SOLVER]
+solver = SVD
+compute_testerrs = 1
+detailed_errors = 1
+
+[SCRAPER]
+scraper = PACEMAKER
+
+[PATH]
+dataPath = .
+
+[OUTFILE]
+output_style = PACE
+metrics = Cu_metrics.md
+potential = Cu_pot
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = zero 10.0
+pair_coeff = * *
+
+[GROUPS]
+# name size eweight fweight vweight
+group_sections = name training_size testing_size eweight fweight vweight
+group_types = str float float float float float
+smartweights = 0
+random_sampling = 0
+Cu_df1_A1_A2_A3_EV_elast_phon =  1.0    0.0    1.0    1.0    1.00E-08
+
+[EXTRAS]
+dump_descriptors = 1
+dump_truth = 1
+dump_weights = 1
+
+[MEMORY]
+override = 0
+
+[FIT]
+# Pacemaker-style fit settings (converted)
+# loss: kappa=0.35, L1_coeffs=1e-8, L2_coeffs=1e-8
+# optimizer: BFGS
+# maxiter: 1000
+# ladder_step: 15 
+# ladder_type: body_order

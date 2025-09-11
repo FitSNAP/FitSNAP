@@ -1,201 +1,264 @@
 import numpy as np
+import json
 import itertools
-#from fitsnap3lib.lib.sym_ACE.rpi_lib import *
-#from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import  *
 from fitsnap3lib.io.sections.sections import Section
 
-try:
 
-    from fitsnap3lib.lib.sym_ACE.pa_gen import *
-    from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import  *
-    from fitsnap3lib.lib.sym_ACE.wigner_couple import *
-    from fitsnap3lib.lib.sym_ACE.clebsch_couple import *
-
-    class PyAce(Section):
-
-        def __init__(self, name, config, pt, infile, args):
-            super().__init__(name, config, pt, infile, args)
-            
-            allowedkeys = ['numTypes', 'ranks', 'lmax', 'nmax', 'mumax', 'nmaxbase', 'rcutfac', 'lambda', 
-                          'type', 'bzeroflag', 'erefs', 'rcinner', 'drcinner', 'RPI_heuristic', 'lmin', 
-                          'bikflag', 'dgradflag','wigner_flag','b_basis','manuallabs']
-            for value_name in config['ACE']:
-                if value_name in allowedkeys: continue
-                else:
-                    raise RuntimeError(">>> Found unmatched variable in ACE section of input: ",value_name)
-            self.numtypes = self.get_value("ACE", "numTypes", "1", "int")
-            self.ranks = self.get_value("ACE","ranks","3").split()
-            self.lmin = self.get_value("ACE", "lmin", "0").split() 
-            self.lmax = self.get_value("ACE", "lmax", "2").split()
-            self.nmax = self.get_value("ACE", "nmax", "2").split() 
-            #self.mumax = self.get_value("ACE","mumax", "1")
-            self.nmaxbase = self.get_value("ACE", "nmaxbase", "16","int")
-            self.rcutfac = self.get_value("ACE", "rcutfac", "4.5").split()
-            self.lmbda = self.get_value("ACE","lambda",'1.35').split()
-            self.rcinner = self.get_value("ACE","rcinner",'0.0').split()
-            self.drcinner = self.get_value("ACE","drcinner",'0.01').split()
-            self.types = self.get_value("ACE", "type", "H").split()
-            self.mumax = len(self.types)
-            #self.erefs = self.get_value("ACE", "erefs", "0.0").split() 
-            self.erefs = [0.0] * len(self.types)
-            self.bikflag = self.get_value("ACE", "bikflag", "0", "bool")
-            self.dgradflag = self.get_value("ACE", "dgradflag", "0", "bool")
-            self.b_basis = self.get_value("ACE" , "b_basis" , "pa_tabulated") 
-            self.manuallabs = self.get_value("ACE", "manuallabs", 'None')
-            self.type_mapping = {}
-            for i, atom_type in enumerate(self.types):
-                self.type_mapping[atom_type] = i+1
-
-            self.bzeroflag = self.get_value("ACE", "bzeroflag", "0", "bool")
-            self.wigner_flag = self.get_value("ACE", "wigner_flag", "1", "bool")
-
-            #if self.bikflag:
-            #    self._assert_dependency('bikflag', "CALCULATOR", "per_atom_energy", True)
-            self.lmax_dct = {int(rnk):int(lmx) for rnk,lmx in zip(self.ranks,self.lmax)}
-            if self.b_basis != 'pa_tabulated':
-                self.pt.single_print('WARNING: Only change ACE basis flags if you know what you are doing!')
-            self._generate_b_list()
-            self._write_couple()
-            Section.num_desc = len(self.blist)
-            self.delete()
-
-        def _generate_b_list(self):
-            self.blist = []
-            self.nus = []
-            self.blank2J = []
-            prefac = 1.0
-            i = 0
-
-            if self.manuallabs != 'None':
-                with open(self.manuallabs,'r') as readjson:
-                    labdata = json.load(readjson)
-                ranked_chem_nus = [list(ik) for ik in list(labdata.values())]
-            elif self.manuallabs == 'None' and self.b_basis == 'minsub':
-                from fitsnap3lib.lib.sym_ACE.rpi_lib import descriptor_labels_YSG
-                if type(self.lmin) == list:
-                    if len(self.lmin) == 1:
-                        self.lmin = self.lmin * len(self.ranks)
-                    ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin[ind]) ) for ind,rnk in enumerate(self.ranks)]
-                else:
-                    ranked_chem_nus = [descriptor_labels_YSG(int(rnk), int(self.nmax[ind]), int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin) ) for ind,rnk in enumerate(self.ranks)]
-            elif self.manuallabs == 'None' and self.b_basis == 'pa_tabulated':
-                ranked_chem_nus = []
-                if len(self.lmin) == 1:
-                    self.lmin = self.lmin * len(self.ranks)
-                for ind,rank in enumerate(self.ranks):
-                    rank = int(rank)
-                    PA_lammps, not_compat = pa_labels_raw(rank,int(self.nmax[ind]),int(self.lmax[ind]), int(self.mumax),lmin = int(self.lmin[ind]) )
-                    ranked_chem_nus.append(PA_lammps)
-                    if len(not_compat) > 0:
-                        self.pt.single_print('Functions incompatible with lammps for rank %d : '% rank, not_compat)
-            highranks = [int(r) for r in self.ranks if int(r) >= 5]
-            warnflag = any([ self.lmax_dct[rank] >= 5 and self.lmin[ind] > 1 for ind,rank in enumerate(highranks)])
-            if warnflag:
-                self.pt.single_print('WARNING: lmax and lmin for your current max rank will generate descriptors that cannot be entered into LAMMPS_PACE - try a lower lmax for ranks >= 4' % warnflag[0])
-            nus_unsort = [item for sublist in ranked_chem_nus for item in sublist]
-            nus = nus_unsort.copy()
-            mu0s = []
-            mus =[]
-            ns = []
-            ls = []
-            for nu in nus_unsort:
-                mu0ii,muii,nii,lii = get_mu_n_l(nu)
-                mu0s.append(mu0ii)
-                mus.append(tuple(muii))
-                ns.append(tuple(nii))
-                ls.append(tuple(lii))
-            nus.sort(key = lambda x : mus[nus_unsort.index(x)],reverse = False)
-            nus.sort(key = lambda x : ns[nus_unsort.index(x)],reverse = False)
-            nus.sort(key = lambda x : ls[nus_unsort.index(x)],reverse = False)
-            nus.sort(key = lambda x : mu0s[nus_unsort.index(x)],reverse = False)
-            nus.sort(key = lambda x : len(x),reverse = False)
-            nus.sort(key = lambda x : mu0s[nus_unsort.index(x)],reverse = False)
-            byattyp = srt_by_attyp(nus)
-            #config.nus = [item for sublist in list(byattyp.values()) for item in sublist]
-            for atype in range(self.numtypes):
-                nus = byattyp[str(atype)]
-                for nu in nus:
-                    i += 1
-                    mu0,mu,n,l,L = get_mu_n_l(nu,return_L=True)
-                    if L != None:
-                        flat_nu = [mu0] + mu + n + l + list(L)
-                    else:
-                        flat_nu = [mu0] + mu + n + l
-                    self.blist.append([i] + flat_nu)
-                    self.nus.append(nu)
-                    self.blank2J.append([prefac])
-            self.ncoeff = int(len(self.blist)/self.numtypes)
-            if not self.bzeroflag:
-                self.blank2J = np.reshape(self.blank2J, (self.numtypes, int(len(self.blist)/self.numtypes)))
-                onehot_atoms = np.ones((self.numtypes, 1))
-                self.blank2J = np.concatenate((onehot_atoms, self.blank2J), axis=1)
-                self.blank2J = np.reshape(self.blank2J, (len(self.blist) + self.numtypes))
-            else:
-                self.blank2J = np.reshape(self.blank2J, len(self.blist))
+class PyAce(Section):
+    """
+    Calculator section for PyACE (pacemaker-compatible) descriptor calculations.
+    This uses the pyace Python package and supports pacemaker-style configurations.
+    """
+    
+    def __init__(self, name, config, pt, infile, args):
+        super().__init__(name, config, pt, infile, args)
         
-        def _write_couple(self):
-            @self.pt.sub_rank_zero
-            def decorated_write_couple():
-                if self.bzeroflag:
-                    assert len(self.types) ==  len(self.erefs), "must provide reference energy for each atom type"
-                    reference_ens = [float(e0) for e0 in self.erefs]
-                elif not self.bzeroflag:
-                    reference_ens = [0.0] * len(self.types)
-                bondinds=range(len(self.types))
-                bonds = [b for b in itertools.product(bondinds,bondinds)]
-                bondstrs = ['[%d, %d]' % b for b in bonds]
-                assert len(self.rcutfac) == len(bondstrs), "must provide rc (radial cutoff) for each BOND type" 
-                assert len(self.lmbda) == len(bondstrs), "must provide lambda (radial decay parameter) for each BOND type" 
-                assert len(self.rcinner) == len(bondstrs), "must provide rcinner for each BOND type" 
-                assert len(self.drcinner) == len(bondstrs), "must provide drcinner for each BOND type" 
-                if len(self.lmbda) == 1:
-                    lmbdavals = self.lmbda
-                    rcvals = self.rcutfac
-                    rcinnervals = self.rcinner
-                    drcinnervals = self.drcinner
-                if len(self.lmbda) > 1:
-                    lmbdavals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.lmbda)}
-                    rcvals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcutfac)}
-                    rcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcinner)}
-                    drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
-
-                ldict = {int(rank):int(lmax) for rank,lmax in zip(self.ranks,self.lmax)}
-                L_R = 0 
-                M_R = 0
-                rankstrlst = ['%s']*len(self.ranks)
-                rankstr = ''.join(rankstrlst) % tuple(self.ranks)
-                lstrlst = ['%s']*len(self.ranks)
-                lstr = ''.join(lstrlst) % tuple(self.lmax)
-                if not self.wigner_flag:
-                    try:
-                        with open('cg_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
-                            ccs = pickle.load(handle)
-                    except FileNotFoundError:
-                        ccs = get_cg_coupling(ldict,L_R=L_R)
-                        #print (ccs)
-                        #store them for later so they don't need to be recalculated
-                        store_generalized(ccs, coupling_type='cg',L_R=L_R)
-                else:
-                    try:
-                        with open('wig_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
-                            ccs = pickle.load(handle)
-                    except FileNotFoundError:
-                        ccs = get_wig_coupling(ldict,L_R)
-                        #print (ccs)
-                        #store them for later so they don't need to be recalculated
-                        store_generalized(ccs, coupling_type='wig',L_R=L_R)
-
-                apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.b_basis, **{'ccs':ccs[M_R]})
-                apot.write_pot('coupling_coefficients')
-
-            decorated_write_couple()
-
-except ModuleNotFoundError:
-
-    class Ace(Section):
+        # Define allowed keys for PYACE section
+        allowedkeys = [
+            # Basic settings
+            'elements', 'cutoff', 'delta_spline_bins',
+            
+            # Embedding settings (JSON format)
+            'embeddings',
+            
+            # Bond settings (JSON format) 
+            'bonds',
+            
+            # Function settings (JSON format)
+            'functions',
+            
+            # Alternative: flattened key format for simple cases
+            'embedding_npot', 'embedding_fs_parameters', 'embedding_ndensity',
+            'embedding_rho_core_cut', 'embedding_drho_core_cut',
+            
+            'bond_radbase', 'bond_radparameters', 'bond_rcut', 'bond_dcut',
+            'bond_r_in', 'bond_delta_in', 'bond_core_repulsion',
+            
+            'function_nradmax_by_orders', 'function_lmax_by_orders',
+            'function_coefs_init',
+            
+            # Backwards compatibility with ACE section (flattened lists)
+            'numTypes', 'type', 'bzeroflag', 'ranks', 'lmin', 'lmax', 'nmax',
+            'nmaxbase', 'rcutfac', 'lambda', 'rcinner', 'drcinner'
+        ]
+        
+        # Check for unknown keys
+        for value_name in config['PYACE']:
+            if value_name in allowedkeys: 
+                continue
+            else:
+                raise RuntimeError(f">>> Found unmatched variable in PYACE section of input: {value_name}")
+        
+        # Parse configuration
+        self._parse_basic_settings(config)
+        self._parse_embeddings(config)
+        self._parse_bonds(config) 
+        self._parse_functions(config)
+        self._setup_type_mapping()
+        
+        # Store for later use by calculator
+        self.ace_config = self._build_ace_config()
+        
+    def _parse_basic_settings(self, config):
+        """Parse basic PYACE settings"""
+        # Elements list - either from 'elements' or legacy 'type'
+        elements_str = self.get_value("PYACE", "elements", 
+                                     self.get_value("PYACE", "type", "H"))
+        self.elements = elements_str.split()
+        self.numtypes = len(self.elements)
+        
+        # Global cutoff
+        self.cutoff = self.get_value("PYACE", "cutoff", "10.0", "float")
+        
+        # Delta spline bins
+        self.delta_spline_bins = self.get_value("PYACE", "delta_spline_bins", "0.001", "float")
+        
+        # Legacy compatibility
+        self.bzeroflag = self.get_value("PYACE", "bzeroflag", "0", "bool")
+        
+    def _parse_embeddings(self, config):
+        """Parse embedding configuration"""
+        # Try JSON format first
+        embeddings_str = self.get_value("PYACE", "embeddings", "")
+        
+        if embeddings_str:
+            try:
+                self.embeddings = json.loads(embeddings_str)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"Error parsing embeddings: {e}")
+        else:
+            # Use simple/default embedding for all elements
+            npot = self.get_value("PYACE", "embedding_npot", "FinnisSinclairShiftedScaled")
+            fs_params_str = self.get_value("PYACE", "embedding_fs_parameters", "[1, 1]")
+            fs_parameters = json.loads(fs_params_str)
+            ndensity = self.get_value("PYACE", "embedding_ndensity", "1", "int")
+            rho_core_cut = self.get_value("PYACE", "embedding_rho_core_cut", "200000", "float")
+            drho_core_cut = self.get_value("PYACE", "embedding_drho_core_cut", "250", "float")
+            
+            # Apply same embedding to all elements
+            self.embeddings = {}
+            for element in self.elements:
+                self.embeddings[element] = {
+                    'npot': npot,
+                    'fs_parameters': fs_parameters,
+                    'ndensity': ndensity,
+                    'rho_core_cut': rho_core_cut,
+                    'drho_core_cut': drho_core_cut
+                }
+                
+    def _parse_bonds(self, config):
+        """Parse bond configuration"""
+        # Try JSON format first
+        bonds_str = self.get_value("PYACE", "bonds", "")
+        
+        if bonds_str:
+            try:
+                self.bonds = json.loads(bonds_str)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"Error parsing bonds: {e}")
+        else:
+            # Check for ACE-style flattened lists (backwards compatibility)
+            rcutfac_str = self.get_value("PYACE", "rcutfac", "")
+            lambda_str = self.get_value("PYACE", "lambda", "")
+            rcinner_str = self.get_value("PYACE", "rcinner", "")
+            drcinner_str = self.get_value("PYACE", "drcinner", "")
+            
+            if rcutfac_str:  # ACE-style flattened format
+                rcutfac_vals = [float(x) for x in rcutfac_str.split()]
+                lambda_vals = [float(x) for x in lambda_str.split()] if lambda_str else [1.35] * len(rcutfac_vals)
+                rcinner_vals = [float(x) for x in rcinner_str.split()] if rcinner_str else [0.0] * len(rcutfac_vals)
+                drcinner_vals = [float(x) for x in drcinner_str.split()] if drcinner_str else [0.01] * len(rcutfac_vals)
+                
+                # Map to bond pairs
+                self.bonds = {}
+                for i, bond_name in enumerate(self.bond_pair_names):
+                    if i < len(rcutfac_vals):
+                        self.bonds[bond_name] = {
+                            'radbase': 'ChebExpCos',
+                            'radparameters': [lambda_vals[i]],
+                            'rcut': rcutfac_vals[i],
+                            'dcut': 0.01,
+                            'r_in': rcinner_vals[i],
+                            'delta_in': drcinner_vals[i],
+                            'core-repulsion': [100.0, 5.0]
+                        }
+            else:
+                # Use simple/default bonds for ALL pairs
+                radbase = self.get_value("PYACE", "bond_radbase", "ChebExpCos")
+                radparams_str = self.get_value("PYACE", "bond_radparameters", "[5.25]")
+                radparameters = json.loads(radparams_str)
+                rcut = self.get_value("PYACE", "bond_rcut", "5.0", "float")
+                dcut = self.get_value("PYACE", "bond_dcut", "0.01", "float")
+                r_in = self.get_value("PYACE", "bond_r_in", "1.0", "float")
+                delta_in = self.get_value("PYACE", "bond_delta_in", "0.5", "float")
+                core_rep_str = self.get_value("PYACE", "bond_core_repulsion", "[100.0, 5.0]")
+                core_repulsion = json.loads(core_rep_str)
+                
+                self.bonds = {
+                    'ALL': {
+                        'radbase': radbase,
+                        'radparameters': radparameters,
+                        'rcut': rcut,
+                        'dcut': dcut,
+                        'r_in': r_in,
+                        'delta_in': delta_in,
+                        'core-repulsion': core_repulsion
+                    }
+                }
+            
+    def _parse_functions(self, config):
+        """Parse function configuration"""
+        # Try JSON format first
+        functions_str = self.get_value("PYACE", "functions", "")
+        
+        if functions_str:
+            try:
+                self.functions = json.loads(functions_str)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"Error parsing functions: {e}")
+        else:
+            # Check for ACE-style ranks/lmin/lmax/nmax (backwards compatibility)
+            ranks_str = self.get_value("PYACE", "ranks", "")
+            lmin_str = self.get_value("PYACE", "lmin", "")
+            lmax_str = self.get_value("PYACE", "lmax", "")
+            nmax_str = self.get_value("PYACE", "nmax", "")
+            
+            if ranks_str:  # ACE-style format
+                ranks = [int(x) for x in ranks_str.split()]
+                lmin_vals = [int(x) for x in lmin_str.split()] if lmin_str else [0] * len(ranks)
+                lmax_vals = [int(x) for x in lmax_str.split()] if lmax_str else [2] * len(ranks)
+                nmax_vals = [int(x) for x in nmax_str.split()] if nmax_str else [2] * len(ranks)
+                
+                # Convert to pyace format
+                self.functions = {
+                    'UNARY': {
+                        'nradmax_by_orders': nmax_vals,
+                        'lmax_by_orders': lmax_vals,
+                        'coefs_init': 'zero'
+                    },
+                    'BINARY': {
+                        'nradmax_by_orders': nmax_vals,
+                        'lmax_by_orders': lmax_vals,
+                        'coefs_init': 'zero'
+                    }
+                }
+            else:
+                # Use simple/default functions
+                nradmax_str = self.get_value("PYACE", "function_nradmax_by_orders", "[15, 3, 2, 2, 1]")
+                lmax_str = self.get_value("PYACE", "function_lmax_by_orders", "[0, 2, 2, 1, 1]")
+                nradmax_by_orders = json.loads(nradmax_str)
+                lmax_by_orders = json.loads(lmax_str)
+                coefs_init = self.get_value("PYACE", "function_coefs_init", "zero")
+                
+                self.functions = {
+                    'UNARY': {
+                        'nradmax_by_orders': nradmax_by_orders,
+                        'lmax_by_orders': lmax_by_orders,
+                        'coefs_init': coefs_init
+                    },
+                    'BINARY': {
+                        'nradmax_by_orders': nradmax_by_orders[:-1],  # One less order for binary
+                        'lmax_by_orders': lmax_by_orders[:-1],
+                        'coefs_init': coefs_init
+                    }
+                }
+            
+    def _setup_type_mapping(self):
+        """Setup type mapping and bond pairs for compatibility"""
+        self.type_mapping = {}
+        for i, element in enumerate(self.elements):
+            self.type_mapping[element] = i + 1
+            
+        # Generate bond pairs (like ACE does with itertools.product)
+        self.bond_pairs = []
+        self.bond_pair_names = []
+        for elem1, elem2 in itertools.product(self.elements, repeat=2):
+            self.bond_pairs.append((elem1, elem2))
+            self.bond_pair_names.append(f"{elem1}{elem2}")
+            
+        # For backwards compatibility with ACE flattened lists
+        self.num_bond_types = len(self.bond_pairs)
+            
+    def _build_ace_config(self):
+        """Build the ACE configuration dictionary for pyace"""
+        ace_config = {
+            'cutoff': self.cutoff,
+            'deltaSplineBins': self.delta_spline_bins,
+            'elements': self.elements,
+            'embeddings': self.embeddings,
+            'bonds': self.bonds,
+            'functions': self.functions
+        }
+        return ace_config
+        
+    def get_width(self):
         """
-        Dummy class for factory to read if torch is not available for import.
+        Get width of descriptor vector for PYACE calculator.
+        This is a placeholder - actual width calculation is done in the calculator.
         """
-        def __init__(self, name, config, pt, infile, args):
-            super().__init__(name, config, pt, infile, args)
-            raise ModuleNotFoundError("Missing sympy or pyyaml modules.")
+        # Return None to indicate calculator should determine width
+        return None
+        
+    def get_ace_config(self):
+        """Return the ACE configuration for use by calculator"""
+        return self.ace_config

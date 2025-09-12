@@ -5,31 +5,19 @@ import lammps
 
 # Import pyace components directly to avoid circular imports
 try:
-    from pyace.basis import ACEBBasisSet, ACECTildeBasisSet
-    from pyace.calculators import PyACECalculator
+    from pyace.basis import ACEBBasisSet, ACECTildeBasisSet, BBasisConfiguration
+    from pyace.asecalc import PyACECalculator
+    from pyace import create_multispecies_basis_config
     PYACE_AVAILABLE = True
-except ImportError:
-    try:
-        # Alternative import paths
-        import pyace.basis as pyace_basis
-        import pyace.calculators as pyace_calc
-        ACEBBasisSet = pyace_basis.ACEBBasisSet
-        ACECTildeBasisSet = pyace_basis.ACECTildeBasisSet
-        PyACECalculator = pyace_calc.PyACECalculator
-        PYACE_AVAILABLE = True
-    except ImportError:
-        try:
-            # Try importing individual components
-            from pyace import PyACECalculator
-            from pyace import ACEBBasisSet, ACECTildeBasisSet
-            PYACE_AVAILABLE = True
-        except ImportError as e:
-            print(f"Warning: Could not import pyace: {e}")
-            PYACE_AVAILABLE = False
-            # Define dummy classes to prevent errors
-            class PyACECalculator: pass
-            class ACEBBasisSet: pass
-            class ACECTildeBasisSet: pass
+except ImportError as e:
+    print(f"Warning: Could not import pyace: {e}")
+    PYACE_AVAILABLE = False
+    # Define dummy classes to prevent errors
+    class PyACECalculator: pass
+    class ACEBBasisSet: pass
+    class ACECTildeBasisSet: pass
+    class BBasisConfiguration: pass
+    def create_multispecies_basis_config(*args, **kwargs): pass
 
 
 class PyACE(LammpsBase):
@@ -62,12 +50,13 @@ class PyACE(LammpsBase):
         if self.ace_basis is not None:
             try:
                 # Get exact number of basis functions from pyace
-                if hasattr(self.ace_basis, 'get_number_of_functions'):
+                # For ACEBBasisSet, the standard method is total_number_of_functions
+                if hasattr(self.ace_basis, 'total_number_of_functions'):
+                    ncoeff = self.ace_basis.total_number_of_functions
+                elif hasattr(self.ace_basis, 'get_number_of_functions'):
                     ncoeff = self.ace_basis.get_number_of_functions()
                 elif hasattr(self.ace_basis, 'get_basis_size'):
                     ncoeff = self.ace_basis.get_basis_size()
-                elif hasattr(self.ace_basis, 'total_number_of_functions'):
-                    ncoeff = self.ace_basis.total_number_of_functions
                 elif hasattr(self.ace_basis, 'basis_size'):
                     ncoeff = self.ace_basis.basis_size
                 else:
@@ -139,6 +128,8 @@ class PyACE(LammpsBase):
                 'functions': getattr(pyace_config, 'functions', {})
             }
         
+        self.pt.single_print(f"PyACE config: elements={ace_config_dict['elements']}, cutoff={ace_config_dict['cutoff']}")
+        
         try:
             # Create pyace basis from configuration using the imported pyace classes
             self.ace_basis = self._create_basis_from_config(ace_config_dict)
@@ -146,61 +137,38 @@ class PyACE(LammpsBase):
             # Create pyace calculator
             if self.ace_basis is not None:
                 self.pyace_calc = PyACECalculator(self.ace_basis)
-                self.pt.single_print(f"Successfully created pyace calculator with {self.get_width()} basis functions")
+                width = self.get_width()
+                self.pt.single_print(f"Successfully created pyace calculator with {width} basis functions")
             else:
                 self.pt.single_print("Warning: Could not create pyace basis, calculator not initialized")
                 
         except Exception as e:
             self.pt.single_print(f"Warning: Error setting up pyace calculator: {e}")
+            import traceback
+            self.pt.single_print(f"Traceback: {traceback.format_exc()}")
             self.ace_basis = None
             self.pyace_calc = None
     
     def _create_basis_from_config(self, config_dict):
         """Create pyace basis from configuration dictionary"""
         try:
-            # Use pyace to create basis from configuration
-            # This depends on the specific pyace API for your version
+            self.pt.single_print(f"Creating BBasisConfiguration using create_multispecies_basis_config")
+            self.pt.single_print(f"Config: elements={config_dict.get('elements')}, cutoff={config_dict.get('cutoff')}")
             
-            # Try different pyace basis creation methods
-            if hasattr(ACEBBasisSet, 'from_config'):
-                # Method 1: Direct config creation
-                return ACEBBasisSet.from_config(config_dict)
-            elif hasattr(ACEBBasisSet, 'from_dict'):
-                # Method 2: From dictionary
-                return ACEBBasisSet.from_dict(config_dict)
-            else:
-                # Method 3: Try creating with constructor parameters
-                # Extract key parameters
-                elements = config_dict.get('elements', ['H'])
-                cutoff = config_dict.get('cutoff', 10.0)
-                embeddings = config_dict.get('embeddings', {})
-                bonds = config_dict.get('bonds', {})
-                functions = config_dict.get('functions', {})
-                
-                # Try to create basis with available constructor
-                try:
-                    return ACEBBasisSet(
-                        elements=elements,
-                        cutoff=cutoff,
-                        embeddings=embeddings,
-                        bonds=bonds,
-                        functions=functions
-                    )
-                except TypeError:
-                    # Constructor doesn't accept these parameters
-                    # Try with minimal parameters
-                    return ACEBBasisSet(elements=elements, cutoff=cutoff)
+            # Use the proper PyACE function to create BBasisConfiguration
+            basis_config = create_multispecies_basis_config(config_dict)
+            
+            # Create ACEBBasisSet using the BBasisConfiguration
+            ace_basis = ACEBBasisSet(basis_config)
+            self.pt.single_print("Successfully created ACEBBasisSet using proper PyACE API")
+            return ace_basis
                     
         except Exception as e:
             self.pt.single_print(f"Error creating pyace basis from config: {e}")
-            # Try alternative approaches
-            try:
-                # Fallback: try creating with just elements
-                elements = config_dict.get('elements', ['H'])
-                return ACEBBasisSet(elements)
-            except Exception as e2:
-                self.pt.single_print(f"Fallback basis creation also failed: {e2}")
-                return None
+            self.pt.single_print(f"Invoked with: config_dict: {config_dict}")
+            import traceback
+            self.pt.single_print(f"Traceback: {traceback.format_exc()}")
+            return None
     
     def calculate_descriptors(self, data):
         """

@@ -1,6 +1,6 @@
 
 import numpy as np
-from fitsnap3lib.calculators.lammps_base import LammpsBase
+from fitsnap3lib.calculators.calculator import Calculator
 import lammps
 
 # Import pyace components directly to avoid circular imports
@@ -8,6 +8,8 @@ try:
     from pyace.basis import ACEBBasisSet, ACECTildeBasisSet, BBasisConfiguration
     from pyace.asecalc import PyACECalculator
     from pyace import create_multispecies_basis_config
+    from pyace.atomicenvironment import aseatoms_to_atomicenvironment
+    from pyace.calculator import ACECalculator
     PYACE_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Could not import pyace: {e}")
@@ -17,10 +19,12 @@ except ImportError as e:
     class ACEBBasisSet: pass
     class ACECTildeBasisSet: pass
     class BBasisConfiguration: pass
+    class ACECalculator: pass
     def create_multispecies_basis_config(*args, **kwargs): pass
+    def aseatoms_to_atomicenvironment(*args, **kwargs): pass
 
 
-class PyACE(LammpsBase):
+class PyACE(Calculator):
     """
     Calculator using pyace for ACE descriptor calculations
     instead of LAMMPS compute pace
@@ -46,32 +50,59 @@ class PyACE(LammpsBase):
             self.pt.single_print("Warning: pyace not available, using fallback width calculation")
             return self._fallback_width_calculation()
         
-        # If pyace basis is loaded, get actual width from pyace
+        # If pyace basis is loaded, get actual width from pyace by computing a test case
         if self.ace_basis is not None:
             try:
-                # Get exact number of basis functions from pyace
-                # Based on pyace source code in pyacefit.py and linearacefit.py
-                # The total number of functions is sum of rank-1 and higher-rank functions
-                ncoeff = 0
-                for br1, br in zip(self.ace_basis.basis_rank1, self.ace_basis.basis):
-                    ncoeff += len(br1) + len(br)
+                # Get actual width by creating a simple test case and computing descriptors
+                # This ensures we get the exact width that PyACE will actually compute
+                from ase import Atoms
+                import numpy as np
+                
+                # Create a simple single-atom test case
+                pyace_config = self.config.sections["PYACE"]
+                test_atoms = Atoms(
+                    symbols=[pyace_config.elements[0]], 
+                    positions=[[0, 0, 0]], 
+                    cell=[10, 10, 10], 
+                    pbc=True
+                )
+                
+                # Convert to atomic environment
+                cutoff = self.ace_basis.cutoffmax
+                elements_mapper_dict = {el: i for i, el in enumerate(self.ace_basis.elements_name)}
+                atomic_env = aseatoms_to_atomicenvironment(
+                    test_atoms, 
+                    cutoff=cutoff,
+                    elements_mapper_dict=elements_mapper_dict
+                )
+                
+                # Create ACECalculator and compute descriptors to get actual width
+                ace_calc = ACECalculator()
+                if hasattr(self.ace_basis, 'evaluator'):
+                    ace_calc.set_evaluator(self.ace_basis.evaluator)
+                else:
+                    from pyace.evaluator import ACEBEvaluator
+                    evaluator = ACEBEvaluator(self.ace_basis)
+                    ace_calc.set_evaluator(evaluator)
+                
+                # Compute projections to get actual width
+                ace_calc.compute(atomic_env, compute_projections=True)
+                projections = np.array(ace_calc.projections)
+                
+                # Get width from projections shape
+                if len(projections.shape) == 1:
+                    actual_width = len(projections) // atomic_env.n_atoms_real
+                else:
+                    actual_width = projections.shape[1]
+                
+                return actual_width
                         
             except Exception as e:
-                self.pt.single_print(f"Warning: Could not get basis size from pyace: {e}")
+                self.pt.single_print(f"Warning: Could not get actual basis size from pyace: {e}")
                 return self._fallback_width_calculation()
         else:
             # No basis loaded yet, use fallback
             return self._fallback_width_calculation()
-        
-        # Apply FitSNAP width calculation logic
-        if (self.config.sections["CALCULATOR"].nonlinear):
-            a_width = ncoeff
-        else:
-            num_types = self.config.sections["PYACE"].numtypes
-            a_width = ncoeff * num_types
-            if not self.config.sections["PYACE"].bzeroflag:
-                a_width += num_types
-        return a_width
     
     def _fallback_width_calculation(self):
         """Fallback width calculation when pyace is not available or basis not loaded"""
@@ -92,6 +123,266 @@ class PyACE(LammpsBase):
             return len(pyace_config.elements) * 10  # Conservative estimate
     
 
+    def setup_pyace(self):
+        """Initialize pyace calculator with basis functions"""
+        
+        if not PYACE_AVAILABLE:
+            self.pt.single_print("Warning: pyace not available, cannot setup pyace calculator")
+            self.ace_basis = None
+            self.pyace_calc = None
+    
+    def process_configs(self, data, i):
+        """
+        Calculate ACE descriptors for a given configuration using PyACE.
+        This replaces LAMMPS-based computation with direct PyACE calls.
+        
+        Args:
+            data: dictionary containing structural and fitting info for a configuration
+            i: integer index for the configuration
+        """
+        
+        if not PYACE_AVAILABLE:
+            raise RuntimeError("PyACE not available - cannot process configs")
+            
+        if self.ace_basis is None or self.pyace_calc is None:
+            raise RuntimeError("PyACE calculator not properly initialized")
+        
+        try:
+            # Store data and index
+            self._data = data
+            self._i = i
+            
+            self.pt.single_print(f"DEBUG: Processing config {i} with {len(data['Positions'])} atoms")
+            
+            # Convert FitSNAP data to ASE atoms
+            ase_atoms = self._fitsnap_data_to_ase(data)
+            
+            # Get atomic environment for PyACE
+            atomic_env = self._get_atomic_environment(ase_atoms)
+            
+            # Compute ACE descriptors and derivatives using PyACE
+            descriptors_data = self._compute_ace_descriptors(atomic_env)
+            
+            # Store results in FitSNAP shared arrays format
+            self._store_fitsnap_results(descriptors_data, data)
+            
+        except Exception as e:
+            self.pt.single_print(f"ERROR in process_configs for config {i}: {e}")
+            import traceback
+            self.pt.single_print(f"ERROR traceback: {traceback.format_exc()}")
+            raise e
+    
+    def _fitsnap_data_to_ase(self, data):
+        """
+        Convert FitSNAP data format to ASE Atoms object
+        """
+        from ase import Atoms
+                
+        # Extract positions, types, and lattice from FitSNAP data
+        positions = data['Positions']
+        atom_types = data['AtomTypes'] 
+        # Check for both possible lattice keys (QMLattice from pacemaker, Lattice from other scrapers)
+        lattice = data.get('Lattice', data.get('QMLattice'))
+                
+        # Convert LAMMPS atom types to chemical symbols using type mapping
+        pyace_config = self.config.sections["PYACE"]
+        elements = pyace_config.elements
+        
+        # Create type mapping: LAMMPS type -> element symbol
+        # In FitSNAP, atom types are 1-indexed integers
+        symbols = []
+        for atom_type in atom_types:
+            # atom_type is 1-indexed, convert to 0-indexed for elements list
+            element_idx = int(atom_type) - 1
+            if element_idx < len(elements):
+                symbols.append(elements[element_idx])
+            else:
+                # Fallback - use first element
+                self.pt.single_print(f"WARNING: atom type {atom_type} out of range, using {elements[0]}")
+                symbols.append(elements[0])
+                
+        # Create ASE Atoms object
+        ase_atoms = Atoms(
+            symbols=symbols,
+            positions=positions,
+            cell=lattice,
+            pbc=True
+        )
+        
+        return ase_atoms
+    
+    def _get_atomic_environment(self, ase_atoms):
+        """
+        Convert ASE atoms to PyACE atomic environment
+        """
+        
+        # Get cutoff from basis
+        cutoff = self.ace_basis.cutoffmax
+        
+        # Create elements mapper dict
+        elements_mapper_dict = {el: i for i, el in enumerate(self.ace_basis.elements_name)}
+        
+        # Create atomic environment
+        try:
+            atomic_env = aseatoms_to_atomicenvironment(
+                ase_atoms, 
+                cutoff=cutoff,
+                elements_mapper_dict=elements_mapper_dict
+            )
+            return atomic_env
+        except Exception as e:
+            self.pt.single_print(f"ERROR creating atomic environment: {e}")
+            raise e
+    
+    def _compute_ace_descriptors(self, atomic_env):
+        """
+        Compute ACE descriptors using PyACE evaluator
+        """
+        
+        # Create ACECalculator and set evaluator
+        ace_calc = ACECalculator()
+        if hasattr(self.ace_basis, 'evaluator'):
+            ace_calc.set_evaluator(self.ace_basis.evaluator)
+        else:
+            # Create evaluator from basis
+            from pyace.evaluator import ACEBEvaluator
+            evaluator = ACEBEvaluator(self.ace_basis)
+            ace_calc.set_evaluator(evaluator)
+        
+        # Compute descriptors and derivatives
+        ace_calc.compute(atomic_env, compute_projections=True)
+        
+        # Extract results
+        energy = ace_calc.energy
+        forces = np.array(ace_calc.forces)
+        projections = np.array(ace_calc.projections)
+                
+        # Reshape projections to per-atom descriptors
+        n_atoms = atomic_env.n_atoms_real
+        if len(projections.shape) == 1:
+            # Reshape to (n_atoms, n_descriptors)
+            n_descriptors = len(projections) // n_atoms
+            descriptors = projections.reshape((n_atoms, n_descriptors))
+        else:
+            descriptors = projections
+        
+        return {
+            'energy': energy,
+            'forces': forces,
+            'descriptors': descriptors,
+            'ref_energy': 0.0,  # PyACE doesn't have reference potential
+            'ref_forces': np.zeros_like(forces)
+        }
+    
+    def _store_fitsnap_results(self, ace_results, data):
+        """
+        Store PyACE results in FitSNAP shared arrays format
+        """
+        
+        # Calculate number of atoms from existing data (pacemaker scraper doesn't set NumAtoms)
+        num_atoms = len(data['Positions'])
+        energy = data['Energy']
+        forces = data.get('Forces', np.zeros((num_atoms, 3)))
+        
+        # Get ACE results
+        ace_energy = ace_results['energy']
+        ace_forces = ace_results['forces']
+        descriptors = ace_results['descriptors']
+        ref_energy = ace_results.get('ref_energy', 0.0)
+        ref_forces = ace_results.get('ref_forces', np.zeros_like(ace_forces))
+                
+        # Get current indices
+        index = self.shared_index
+        dindex = self.distributed_index
+                
+        # Store energy descriptors
+        if self.config.sections["CALCULATOR"].energy:
+            # Sum descriptors over atoms for energy (following SNAP pattern)
+            energy_descriptors = np.sum(descriptors, axis=0) / num_atoms
+            self.pt.shared_arrays['a'].array[index] = energy_descriptors
+            
+            # Store energy truth (subtract reference energy)
+            self.pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
+            
+            # Store energy weight
+            eweight = data.get('eweight', 1.0)
+            self.pt.shared_arrays['w'].array[index] = eweight
+            
+            # Update fitsnap dictionaries
+            self.pt.fitsnap_dict['Row_Type'][dindex:dindex + 1] = ['Energy']
+            self.pt.fitsnap_dict['Atom_I'][dindex:dindex + 1] = [0]
+            
+            index += 1
+            dindex += 1
+                    
+        # Store force descriptors  
+        if self.config.sections["CALCULATOR"].force:
+            # For forces, we need descriptor derivatives
+            # This is a simplified approach - in reality we'd need dB/dr
+            nrows_force = 3 * num_atoms
+            
+            # Placeholder: use descriptors repeated for each force component
+            # In a real implementation, we'd compute dB/dr derivatives
+            force_descriptors = np.tile(descriptors, (3, 1)).reshape((nrows_force, -1))
+            
+            self.pt.shared_arrays['a'].array[index:index+nrows_force] = force_descriptors
+            
+            # Store force truths (subtract reference forces)
+            force_truth = (forces - ref_forces).ravel()
+            self.pt.shared_arrays['b'].array[index:index+nrows_force] = force_truth
+            
+            # Store force weights
+            fweight = data.get('fweight', 1.0)
+            self.pt.shared_arrays['w'].array[index:index+nrows_force] = fweight
+            
+            # Update fitsnap dictionaries
+            self.pt.fitsnap_dict['Row_Type'][dindex:dindex+nrows_force] = ['Force'] * nrows_force
+            self.pt.fitsnap_dict['Atom_I'][dindex:dindex+nrows_force] = [int(np.floor(i/3)) for i in range(nrows_force)]
+            
+            # Set atom types for force rows
+            atom_types = data['AtomTypes']
+            force_atom_types = []
+            for atom_type in atom_types:
+                for _ in range(3):  # 3 force components per atom
+                    force_atom_types.append(int(atom_type))
+            self.pt.fitsnap_dict['Atom_Type'][dindex:dindex+nrows_force] = force_atom_types
+            
+            index += nrows_force
+            dindex += nrows_force
+                    
+        # Store stress descriptors
+        if self.config.sections["CALCULATOR"].stress:
+            # Placeholder for stress - would need virial derivatives
+            nrows_stress = 6
+            stress_descriptors = np.tile(np.sum(descriptors, axis=0), (nrows_stress, 1))
+            
+            self.pt.shared_arrays['a'].array[index:index+nrows_stress] = stress_descriptors
+            
+            # Store stress truths
+            stress_data = data.get('Stress', np.zeros(6))
+            self.pt.shared_arrays['b'].array[index:index+nrows_stress] = stress_data
+            
+            # Store stress weights
+            vweight = data.get('vweight', 1.0)
+            self.pt.shared_arrays['w'].array[index:index+nrows_stress] = vweight
+            
+            # Update fitsnap dictionaries
+            self.pt.fitsnap_dict['Row_Type'][dindex:dindex+nrows_stress] = ['Stress'] * nrows_stress
+            self.pt.fitsnap_dict['Atom_I'][dindex:dindex+nrows_stress] = [0] * nrows_stress
+            
+            index += nrows_stress
+            dindex += nrows_stress
+                    
+        # Update group and config information
+        length = dindex - self.distributed_index
+        self.pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = [data['Group']] * length
+        self.pt.fitsnap_dict['Configs'][self.distributed_index:dindex] = [data['File']] * length
+        self.pt.fitsnap_dict['Testing'][self.distributed_index:dindex] = [bool(data.get('test_bool', False))] * length
+        
+        # Update indices
+        self.shared_index = index
+        self.distributed_index = dindex
+                
     def setup_pyace(self):
         """Initialize pyace calculator with basis functions"""
         

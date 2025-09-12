@@ -1,5 +1,5 @@
 # ignoring run example files
-examples/*
+#examples/*
 examples/library/genetic_algorithm/__pycache__
 
 # ignoring built test docs
@@ -30,3 +30,6 @@ fitsnap3lib/lib/sym_ACE/lib/*.pickle
 /fitsnap3lib/lib/slate_solver/slate_solver.egg-info
 fitsnap3lib/lib/slate_solver/slate_wrapper.cpp
 *.so
+
+.ipynb_checkpoints
+.jupyter

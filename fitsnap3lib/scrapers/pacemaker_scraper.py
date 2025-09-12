@@ -172,19 +172,34 @@ class Pacemaker(Scraper):
         Load and process pacemaker pckl.gzip dataframes
         """
         self.all_data = []  # Reset to empty list in case running scraper twice
-        self.files = self.configs
         self.conversions = copy(self.default_conversions)
         data_path = self.config.sections["PATH"].datapath
 
-        for i, file_name in enumerate(self.files):
+        # self.configs is organized as {folder: [[filepath, filesize], ...]}
+        # We need to flatten this to get all file paths
+        all_files = []
+        for folder, file_list in self.configs.items():
+            for file_entry in file_list:
+                if isinstance(file_entry, list):
+                    all_files.append(file_entry[0])  # filepath is first element
+                else:
+                    all_files.append(file_entry)
+                    
+        # Also add test files if they exist
+        if hasattr(self, 'tests') and self.tests:
+            for folder, test_file_list in self.tests.items():
+                for file_entry in test_file_list:
+                    if isinstance(file_entry, list):
+                        all_files.append(file_entry[0])  # filepath is first element
+                    else:
+                        all_files.append(file_entry)
+
+        for i, file_name in enumerate(all_files):
             if file_name.endswith('.pckl.gzip') or file_name.endswith('.pkl.gzip'):
                 try:
-                    # Load pacemaker dataframe
+                    # Load pacemaker dataframe - pandas automatically handles gzip compression
                     self.pt.single_print(f"Loading pacemaker file: {file_name}")
-                    
-                    # Handle gzipped pickle files properly
-                    with gzip.open(file_name, 'rb') as f:
-                        df = pickle.load(f)
+                    df = pd.read_pickle(file_name, compression='infer')
                     
                     # Process each structure in the dataframe
                     for idx, row in df.iterrows():

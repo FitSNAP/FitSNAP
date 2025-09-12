@@ -50,21 +50,11 @@ class PyACE(LammpsBase):
         if self.ace_basis is not None:
             try:
                 # Get exact number of basis functions from pyace
-                # For ACEBBasisSet, the standard method is total_number_of_functions
-                if hasattr(self.ace_basis, 'total_number_of_functions'):
-                    ncoeff = self.ace_basis.total_number_of_functions
-                elif hasattr(self.ace_basis, 'get_number_of_functions'):
-                    ncoeff = self.ace_basis.get_number_of_functions()
-                elif hasattr(self.ace_basis, 'get_basis_size'):
-                    ncoeff = self.ace_basis.get_basis_size()
-                elif hasattr(self.ace_basis, 'basis_size'):
-                    ncoeff = self.ace_basis.basis_size
-                else:
-                    # Try to get from pyace calculator if basis doesn't have the method
-                    if self.pyace_calc is not None and hasattr(self.pyace_calc, 'get_number_of_basis_functions'):
-                        ncoeff = self.pyace_calc.get_number_of_basis_functions()
-                    else:
-                        raise AttributeError("Cannot find method to get basis function count")
+                # Based on pyace source code in pyacefit.py and linearacefit.py
+                # The total number of functions is sum of rank-1 and higher-rank functions
+                ncoeff = 0
+                for br1, br in zip(self.ace_basis.basis_rank1, self.ace_basis.basis):
+                    ncoeff += len(br1) + len(br)
                         
             except Exception as e:
                 self.pt.single_print(f"Warning: Could not get basis size from pyace: {e}")

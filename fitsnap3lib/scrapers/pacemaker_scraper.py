@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import gzip
 import pickle
-import os
+from os import path, listdir
 
 
 class Pacemaker(Scraper):
@@ -18,11 +18,154 @@ class Pacemaker(Scraper):
 
     def scrape_groups(self):
         """
-        Scrape groups from pacemaker pckl.gzip files
+        Scrape groups from pacemaker pckl.gzip files.
+        For pacemaker format, each pckl.gzip file IS the group, not a directory containing files.
         """
-        super().scrape_groups()
+        # Reset as empty dict in case running scrape twice.
+        self.files = {}
+        
+        group_dict = {k: self.config.sections["GROUPS"].group_types[i]
+                      for i, k in enumerate(self.config.sections["GROUPS"].group_sections)}
+        self.group_table = self.config.sections["GROUPS"].group_table
+        size_type = None
+        testing_size_type = None
+        user_set_random_seed = self.config.sections["GROUPS"].random_seed
+        
+        if self.config.sections["GROUPS"].random_sampling:
+            self.pt.single_print(f"Random sampling of groups toggled on.")
+            if not user_set_random_seed:
+                sampling_seed = self.pt.get_seed()
+                seed_txt = f"FitSNAP-generated seed for random sampling: {self.pt.get_seed()}"
+            else:
+                if user_set_random_seed.is_integer():
+                    sampling_seed = int(user_set_random_seed)
+                seed_txt = f"User-set seed for random sampling: {sampling_seed}"
+            self.pt.single_print(seed_txt)
+            from random import seed, shuffle
+            seed(sampling_seed)
+            self._write_seed_file(seed_txt)
+        
+        for key in self.group_table:
+            bc_bool = False
+            training_size = None
+            
+            # Handle training and testing size logic (copied from base class)
+            if 'size' in self.group_table[key]:
+                training_size = self.group_table[key]['size']
+                bc_bool = True
+                size_type = group_dict['size']
+            if 'training_size' in self.group_table[key]:
+                if training_size is not None:
+                    raise ValueError("Do not set both size and training size")
+                training_size = self.group_table[key]['training_size']
+                size_type = group_dict['training_size']
+            if 'testing_size' in self.group_table[key]:
+                testing_size = self.group_table[key]['testing_size']
+                testing_size_type = group_dict['testing_size']
+            else:
+                testing_size = 0
+            if training_size is None:
+                raise ValueError("Please set training size for {}".format(key))
+                
+            # For pacemaker: the "group" key should be a file path or pattern
+            pckl_file_path = path.join(self.config.sections["PATH"].datapath, key)
+            
+            # Check if it's a direct file path
+            if path.isfile(pckl_file_path) and pckl_file_path.endswith(('.pckl.gzip', '.pkl.gzip')):
+                # Single file case
+                folder_files = [path.basename(pckl_file_path)]
+                folder = path.dirname(pckl_file_path)
+            else:
+                # Pattern/directory case - look for pckl.gzip files
+                folder = path.dirname(pckl_file_path) if path.dirname(pckl_file_path) else self.config.sections["PATH"].datapath
+                if path.isdir(folder):
+                    all_files = listdir(folder)
+                    # Filter for pckl.gzip files matching the pattern
+                    if '*' in key or '?' in key:
+                        import fnmatch
+                        pattern = path.basename(pckl_file_path)
+                        folder_files = [f for f in all_files if fnmatch.fnmatch(f, pattern) and f.endswith(('.pckl.gzip', '.pkl.gzip'))]
+                    else:
+                        folder_files = [f for f in all_files if f.endswith(('.pckl.gzip', '.pkl.gzip'))]
+                else:
+                    raise FileNotFoundError(f"Cannot find pacemaker files for group {key} at path {pckl_file_path}")
+            
+            # Store file paths with sizes
+            if folder not in self.files:
+                self.files[folder] = []
+            
+            for file_name in folder_files:
+                full_path = path.join(folder, file_name)
+                file_size = path.getsize(full_path)
+                self.files[folder].append([full_path, file_size])
+                
+            if self.config.sections["GROUPS"].random_sampling:
+                from random import shuffle
+                shuffle(self.files[folder])
+                
+            # Handle size calculations (copied from base class logic)
+            nfiles = len(folder_files)
+            if training_size < 1 or (training_size == 1 and size_type == float):
+                if training_size == 1:
+                    training_size = abs(training_size) * nfiles
+                elif training_size == 0:
+                    pass
+                else:
+                    training_size = max(1, int(abs(training_size) * nfiles + 0.5))
+                if bc_bool and testing_size == 0:
+                    testing_size = nfiles - training_size
+            if testing_size != 0 and (testing_size < 1 or (testing_size == 1 and testing_size_type == float)):
+                testing_size = max(1, int(abs(testing_size) * nfiles + 0.5))
+                
+            training_size = self._float_to_int(training_size)
+            testing_size = self._float_to_int(testing_size)
+            
+            if nfiles - testing_size - training_size < 0:
+                warnstr = f"\nWARNING: {key} train size {training_size} + test size {testing_size} > nfiles {nfiles}\n"
+                warnstr += "         Forcing testing size to add up properly.\n"
+                self.pt.single_print(warnstr)
+                testing_size = nfiles - training_size
+                
+            if (self.config.args.verbose):
+                self.pt.single_print(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
+                
+            # Handle test files
+            if self.tests is None:
+                self.tests = {}
+            self.tests[folder] = []
+            
+            # Remove excess files
+            for i in range(nfiles - training_size - testing_size):
+                if self.files[folder]:
+                    self.files[folder].pop()
+                    
+            # Move testing files
+            for i in range(testing_size):
+                if self.files[folder]:
+                    self.tests[folder].append(self.files[folder].pop())
+                    
+            self.group_table[key]['training_size'] = training_size
+            self.group_table[key]['testing_size'] = testing_size
+        
         # For pacemaker format, each pckl.gzip file is a group
         self.configs = self.files
+    
+    @staticmethod
+    def _float_to_int(a_float):
+        """Convert float to int with validation"""
+        if a_float == 0:
+            return int(a_float)
+        if a_float / int(a_float) != 1:
+            raise ValueError("Training and testing Size must be interpretable as integers")
+        return int(a_float)
+    
+    def _write_seed_file(self, txt):
+        """Write random sampling seed to file"""
+        @self.pt.rank_zero
+        def decorated_write_seed_file(txt):
+            with open("RandomSamplingSeed.txt", 'w') as f:
+                f.write(txt+'\n')
+        decorated_write_seed_file(txt)
 
     def scrape_configs(self):
         """
@@ -38,7 +181,10 @@ class Pacemaker(Scraper):
                 try:
                     # Load pacemaker dataframe
                     self.pt.single_print(f"Loading pacemaker file: {file_name}")
-                    df = pd.read_pickle(file_name)
+                    
+                    # Handle gzipped pickle files properly
+                    with gzip.open(file_name, 'rb') as f:
+                        df = pickle.load(f)
                     
                     # Process each structure in the dataframe
                     for idx, row in df.iterrows():
@@ -49,6 +195,8 @@ class Pacemaker(Scraper):
                             
                 except Exception as e:
                     self.pt.single_print(f"Error reading pacemaker file {file_name}: {e}")
+                    import traceback
+                    self.pt.single_print(f"Traceback: {traceback.format_exc()}")
                     continue
             else:
                 self.pt.single_print(f"! WARNING: Non-pacemaker file found: {file_name}")

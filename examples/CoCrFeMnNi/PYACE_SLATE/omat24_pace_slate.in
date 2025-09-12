@@ -1,0 +1,77 @@
+[ACE]
+
+numTypes = 2
+type = H O
+b_basis = minsub
+bzeroflag = 1
+
+ranks = 1 2
+lmin  = 0 0
+lmax  = 0 0
+nmax  = 1 1
+nmaxbase = 1
+
+rcutfac = 2.383  3.221  3.221  4.058
+lambda = 0.119  0.161  0.161  0.203
+rcinner = 0.125  0.212  0.212  0.300
+drcinner = 0.01  0.01  0.01  0.01
+
+
+[CALCULATOR]
+calculator = LAMMPSPACE
+energy = 1
+force = 0
+stress = 0
+
+[REFERENCE]
+units = real
+atom_style = atomic
+pair_style = zero 6.0
+pair_coeff = * *
+
+
+[ESHIFT]
+H = 0.0
+C = 0.0
+N = 0.0
+O = 0.0
+
+[SOLVER]
+solver = ridge
+compute_testerrs = 1
+detailed_errors = 1
+
+[RIDGE]
+alpha = 1e-6
+
+[SCRAPER]
+scraper = fairchem
+# Optional: limit configurations per MPI rank to manage memory
+max_configs_per_rank = 100
+
+[PATH]
+dataPath = /path/to/omat24/train
+
+[OUTFILE]
+metrics = omat24_metrics.md
+potential = omat24_pot
+
+
+[GROUPS]
+# Each group corresponds to an OMat24 subdataset directory
+# Group names should match subdataset directory names
+group_sections = name training_size testing_size eweight fweight vweight
+group_types = str float float float float float
+smartweights = 1
+random_sampling = 0
+# OMat24 subdatasets (adjust paths and weights as needed)
+rattled-relax = 0.8 0.2 1.0 1.0 1.0e-8
+rattled-1000-subsampled = 0.8 0.2 1.0 1.0 1.0e-8
+
+[EXTRAS]
+dump_descriptors = 1
+dump_truth = 1
+dump_weights = 1
+
+[MEMORY]
+override = 0

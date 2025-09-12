@@ -37,6 +37,7 @@ Indices and tables
    Linear
    Pytorch
    fairchem
+   pacemaker
 
 .. _programmer_documentation:
 .. toctree::

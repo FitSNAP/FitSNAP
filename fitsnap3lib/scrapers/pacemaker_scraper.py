@@ -175,31 +175,37 @@ class Pacemaker(Scraper):
         self.conversions = copy(self.default_conversions)
         data_path = self.config.sections["PATH"].datapath
 
-        # self.configs is organized as {folder: [[filepath, filesize], ...]}
-        # We need to flatten this to get all file paths
+        # Handle both dictionary format (before divvy_up_configs) and list format (after divvy_up_configs)
         all_files = []
-        for folder, file_list in self.configs.items():
-            for file_entry in file_list:
-                if isinstance(file_entry, list):
-                    all_files.append(file_entry[0])  # filepath is first element
-                else:
-                    all_files.append(file_entry)
-                    
-        # Also add test files if they exist
-        if hasattr(self, 'tests') and self.tests:
-            for folder, test_file_list in self.tests.items():
-                for file_entry in test_file_list:
+        
+        if isinstance(self.configs, dict):
+            # Dictionary format: {folder: [[filepath, filesize], ...]}
+            for folder, file_list in self.configs.items():
+                for file_entry in file_list:
                     if isinstance(file_entry, list):
                         all_files.append(file_entry[0])  # filepath is first element
                     else:
                         all_files.append(file_entry)
+                        
+            # Also add test files if they exist
+            if hasattr(self, 'tests') and self.tests:
+                for folder, test_file_list in self.tests.items():
+                    for file_entry in test_file_list:
+                        if isinstance(file_entry, list):
+                            all_files.append(file_entry[0])  # filepath is first element
+                        else:
+                            all_files.append(file_entry)
+        else:
+            # List format (after divvy_up_configs): each entry is a filepath
+            all_files = self.configs
 
         for i, file_name in enumerate(all_files):
             if file_name.endswith('.pckl.gzip') or file_name.endswith('.pkl.gzip'):
                 try:
                     # Load pacemaker dataframe - pandas automatically handles gzip compression
                     self.pt.single_print(f"Loading pacemaker file: {file_name}")
-                    df = pd.read_pickle(file_name, compression='infer')
+                    df = pd.read_pickle(file_name, compression='gzip')
+                    print(df)
                     
                     # Process each structure in the dataframe
                     for idx, row in df.iterrows():

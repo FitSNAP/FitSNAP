@@ -5,6 +5,7 @@ import numpy as np
 import gzip
 import pickle
 from os import path, listdir
+from os.path import basename, splitext
 
 
 class Pacemaker(Scraper):
@@ -15,6 +16,7 @@ class Pacemaker(Scraper):
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config)
         self.all_data = []
+        self.file_to_group_mapping = {}
 
     def scrape_groups(self):
         """
@@ -23,6 +25,8 @@ class Pacemaker(Scraper):
         """
         # Reset as empty dict in case running scrape twice.
         self.files = {}
+        # Create a mapping from file paths to group names
+        self.file_to_group_mapping = {}
         
         group_dict = {k: self.config.sections["GROUPS"].group_types[i]
                       for i, k in enumerate(self.config.sections["GROUPS"].group_sections)}
@@ -90,7 +94,7 @@ class Pacemaker(Scraper):
                 else:
                     raise FileNotFoundError(f"Cannot find pacemaker files for group {key} at path {pckl_file_path}")
             
-            # Store file paths with sizes
+            # Store file paths with sizes and map files to group names
             if folder not in self.files:
                 self.files[folder] = []
             
@@ -98,6 +102,13 @@ class Pacemaker(Scraper):
                 full_path = path.join(folder, file_name)
                 file_size = path.getsize(full_path)
                 self.files[folder].append([full_path, file_size])
+                # Map this file to its config group name, removing .pckl.gzip extension
+                clean_group_name = key
+                if clean_group_name.endswith('.pckl.gzip'):
+                    clean_group_name = clean_group_name[:-11]  # Remove .pckl.gzip (11 chars)
+                elif clean_group_name.endswith('.pkl.gzip'):
+                    clean_group_name = clean_group_name[:-10]  # Remove .pkl.gzip (10 chars)
+                self.file_to_group_mapping[full_path] = clean_group_name
                 
             if self.config.sections["GROUPS"].random_sampling:
                 from random import shuffle
@@ -137,7 +148,12 @@ class Pacemaker(Scraper):
             # Remove excess files
             for i in range(nfiles - training_size - testing_size):
                 if self.files[folder]:
-                    self.files[folder].pop()
+                    removed_file = self.files[folder].pop()
+                    # Remove from mapping too
+                    if isinstance(removed_file, list):
+                        del self.file_to_group_mapping[removed_file[0]]
+                    else:
+                        del self.file_to_group_mapping[removed_file]
                     
             # Move testing files
             for i in range(testing_size):
@@ -146,6 +162,17 @@ class Pacemaker(Scraper):
                     
             self.group_table[key]['training_size'] = training_size
             self.group_table[key]['testing_size'] = testing_size
+        
+        # Clean up group names in group_table by removing .pckl.gzip extensions
+        cleaned_group_table = {}
+        for key, value in self.group_table.items():
+            clean_key = key
+            if clean_key.endswith('.pckl.gzip'):
+                clean_key = clean_key[:-11]  # Remove .pckl.gzip (11 chars)
+            elif clean_key.endswith('.pkl.gzip'):
+                clean_key = clean_key[:-10]  # Remove .pkl.gzip (10 chars)
+            cleaned_group_table[clean_key] = value
+        self.group_table = cleaned_group_table
         
         # For pacemaker format, each pckl.gzip file is a group
         self.configs = self.files
@@ -205,7 +232,6 @@ class Pacemaker(Scraper):
                     # Load pacemaker dataframe - pandas automatically handles gzip compression
                     self.pt.single_print(f"Loading pacemaker file: {file_name}")
                     df = pd.read_pickle(file_name, compression='gzip')
-                    print(df)
                     
                     # Process each structure in the dataframe
                     for idx, row in df.iterrows():
@@ -237,13 +263,28 @@ class Pacemaker(Scraper):
             data = {}
             
             # Basic structure info
-            training_file = os.path.basename(file_name)
+            training_file = basename(file_name)
             data['File'] = training_file
             
-            # Group name from file path
-            group_name = file_name.replace(data_path, '').replace(training_file, '').replace("/", "")
-            if not group_name:
-                group_name = os.path.splitext(os.path.splitext(training_file)[0])[0]  # Remove .pckl.gzip
+            # Group name should match the config group, not derived from filename
+            # Use the mapping we created during scrape_groups
+            if hasattr(self, 'file_to_group_mapping') and file_name in self.file_to_group_mapping:
+                group_name = self.file_to_group_mapping[file_name]
+            else:
+                # Fallback: try to find which group this file belongs to by checking group_table keys
+                group_name = None
+                # Clean up the filename for comparison
+                clean_file_base = splitext(splitext(basename(file_name))[0])[0]  # Remove .pckl.gzip
+                for group_key in self.group_table.keys():
+                    if group_key == clean_file_base or group_key in clean_file_base or clean_file_base.startswith(group_key):
+                        group_name = group_key
+                        break
+                if group_name is None:
+                    # Last resort: use the first group key if only one group exists
+                    if len(self.group_table) == 1:
+                        group_name = list(self.group_table.keys())[0]
+                    else:
+                        raise ValueError(f"Cannot determine group for file {file_name}. Available groups: {list(self.group_table.keys())}")
             data['Group'] = group_name
             
             # Positions and atomic numbers
@@ -267,7 +308,10 @@ class Pacemaker(Scraper):
                 data["QMLattice"] = np.diag(box_size) * self.conversions["Lattice"]
             
             # Energy (total energy of the structure)
-            if 'energy' in row:
+            # Try different energy field names commonly used in pacemaker dataframes
+            if 'energy_corrected' in row:
+                data["Energy"] = float(row['energy_corrected']) * self.conversions["Energy"]
+            elif 'energy' in row:
                 data["Energy"] = float(row['energy']) * self.conversions["Energy"]
             elif hasattr(atoms, 'info') and 'energy' in atoms.info:
                 data["Energy"] = float(atoms.info['energy']) * self.conversions["Energy"]
@@ -324,4 +368,8 @@ class Pacemaker(Scraper):
             
         except Exception as e:
             self.pt.single_print(f"Error converting pacemaker row: {e}")
+            self.pt.single_print(f"Row data keys: {list(row.keys()) if hasattr(row, 'keys') else 'Unknown'}")
+            self.pt.single_print(f"File: {file_name}")
+            import traceback
+            self.pt.single_print(f"Traceback: {traceback.format_exc()}")
             return None

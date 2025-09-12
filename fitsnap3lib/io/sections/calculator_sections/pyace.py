@@ -79,13 +79,24 @@ class PyAce(Section):
     def _parse_embeddings(self, config):
         """Parse embedding configuration"""
         # Try JSON format first
-        embeddings_str = self.get_value("PYACE", "embeddings", "")
+        embeddings_raw = self.get_value("PYACE", "embeddings", "")
         
-        if embeddings_str:
-            try:
-                self.embeddings = json.loads(embeddings_str)
-            except json.JSONDecodeError as e:
-                raise RuntimeError(f"Error parsing embeddings: {e}")
+        if embeddings_raw:
+            # Check if it's already a dictionary (from API mode)
+            if isinstance(embeddings_raw, dict):
+                self.embeddings = embeddings_raw
+            else:
+                # It's a string, try to parse as JSON
+                try:
+                    self.embeddings = json.loads(embeddings_raw)
+                except json.JSONDecodeError as e:
+                    # Try to fix common JSON issues (single quotes -> double quotes)
+                    try:
+                        import ast
+                        # Use ast.literal_eval for Python dict strings
+                        self.embeddings = ast.literal_eval(embeddings_raw)
+                    except (ValueError, SyntaxError):
+                        raise RuntimeError(f"Error parsing embeddings: {e}")
         else:
             # Use simple/default embedding for all elements
             npot = self.get_value("PYACE", "embedding_npot", "FinnisSinclairShiftedScaled")
@@ -109,13 +120,24 @@ class PyAce(Section):
     def _parse_bonds(self, config):
         """Parse bond configuration"""
         # Try JSON format first
-        bonds_str = self.get_value("PYACE", "bonds", "")
+        bonds_raw = self.get_value("PYACE", "bonds", "")
         
-        if bonds_str:
-            try:
-                self.bonds = json.loads(bonds_str)
-            except json.JSONDecodeError as e:
-                raise RuntimeError(f"Error parsing bonds: {e}")
+        if bonds_raw:
+            # Check if it's already a dictionary (from API mode)
+            if isinstance(bonds_raw, dict):
+                self.bonds = bonds_raw
+            else:
+                # It's a string, try to parse as JSON
+                try:
+                    self.bonds = json.loads(bonds_raw)
+                except json.JSONDecodeError as e:
+                    # Try to fix common JSON issues (single quotes -> double quotes)
+                    try:
+                        import ast
+                        # Use ast.literal_eval for Python dict strings
+                        self.bonds = ast.literal_eval(bonds_raw)
+                    except (ValueError, SyntaxError):
+                        raise RuntimeError(f"Error parsing bonds: {e}")
         else:
             # Check for ACE-style flattened lists (backwards compatibility)
             rcutfac_str = self.get_value("PYACE", "rcutfac", "")
@@ -169,13 +191,24 @@ class PyAce(Section):
     def _parse_functions(self, config):
         """Parse function configuration"""
         # Try JSON format first
-        functions_str = self.get_value("PYACE", "functions", "")
+        functions_raw = self.get_value("PYACE", "functions", "")
         
-        if functions_str:
-            try:
-                self.functions = json.loads(functions_str)
-            except json.JSONDecodeError as e:
-                raise RuntimeError(f"Error parsing functions: {e}")
+        if functions_raw:
+            # Check if it's already a dictionary (from API mode)
+            if isinstance(functions_raw, dict):
+                self.functions = functions_raw
+            else:
+                # It's a string, try to parse as JSON
+                try:
+                    self.functions = json.loads(functions_raw)
+                except json.JSONDecodeError as e:
+                    # Try to fix common JSON issues (single quotes -> double quotes)
+                    try:
+                        import ast
+                        # Use ast.literal_eval for Python dict strings
+                        self.functions = ast.literal_eval(functions_raw)
+                    except (ValueError, SyntaxError):
+                        raise RuntimeError(f"Error parsing functions: {e}")
         else:
             # Check for ACE-style ranks/lmin/lmax/nmax (backwards compatibility)
             ranks_str = self.get_value("PYACE", "ranks", "")

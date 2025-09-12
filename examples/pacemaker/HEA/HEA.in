@@ -1,5 +1,5 @@
 [PYACE]
-elements = Cr Fe Ni Mn Co
+elements =  Co Cr Fe Ni Mn
 cutoff = 7.0
 delta_spline_bins = 0.001
 

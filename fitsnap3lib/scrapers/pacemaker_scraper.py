@@ -21,11 +21,12 @@ class Pacemaker(Scraper):
     def scrape_groups(self):
         """
         Scrape groups from pacemaker pckl.gzip files.
-        For pacemaker format, each pckl.gzip file IS the group, not a directory containing files.
+        For pacemaker format, each pckl.gzip file IS the group, containing multiple structures.
         """
         # Reset as empty dict in case running scrape twice.
         self.files = {}
-        # Create a mapping from file paths to group names
+        self.configs = {}
+        # Create mapping from file paths to group names
         self.file_to_group_mapping = {}
         
         group_dict = {k: self.config.sections["GROUPS"].group_types[i]
@@ -53,7 +54,7 @@ class Pacemaker(Scraper):
             bc_bool = False
             training_size = None
             
-            # Handle training and testing size logic (copied from base class)
+            # Handle training and testing size logic
             if 'size' in self.group_table[key]:
                 training_size = self.group_table[key]['size']
                 bc_bool = True
@@ -71,111 +72,83 @@ class Pacemaker(Scraper):
             if training_size is None:
                 raise ValueError("Please set training size for {}".format(key))
                 
-            # For pacemaker: the "group" key should be a file path or pattern
+            # For pacemaker: the "key" should be a pckl.gzip file path
             pckl_file_path = path.join(self.config.sections["PATH"].datapath, key)
             
-            # Check if it's a direct file path
-            if path.isfile(pckl_file_path) and pckl_file_path.endswith(('.pckl.gzip', '.pkl.gzip')):
-                # Single file case
-                folder_files = [path.basename(pckl_file_path)]
-                folder = path.dirname(pckl_file_path)
-            else:
-                # Pattern/directory case - look for pckl.gzip files
-                folder = path.dirname(pckl_file_path) if path.dirname(pckl_file_path) else self.config.sections["PATH"].datapath
-                if path.isdir(folder):
-                    all_files = listdir(folder)
-                    # Filter for pckl.gzip files matching the pattern
-                    if '*' in key or '?' in key:
-                        import fnmatch
-                        pattern = path.basename(pckl_file_path)
-                        folder_files = [f for f in all_files if fnmatch.fnmatch(f, pattern) and f.endswith(('.pckl.gzip', '.pkl.gzip'))]
-                    else:
-                        folder_files = [f for f in all_files if f.endswith(('.pckl.gzip', '.pkl.gzip'))]
-                else:
-                    raise FileNotFoundError(f"Cannot find pacemaker files for group {key} at path {pckl_file_path}")
+            if not path.isfile(pckl_file_path):
+                raise FileNotFoundError(f"Pacemaker file not found: {pckl_file_path}")
             
-            # Store file paths with sizes and map files to group names
-            if folder not in self.files:
-                self.files[folder] = []
+            # Load the file to count structures inside it
+            try:
+                df = pd.read_pickle(pckl_file_path, compression='gzip')
+                nconfigs = len(df)
+            except Exception as e:
+                raise RuntimeError(f"Could not read pacemaker file {pckl_file_path}: {e}")
             
-            for file_name in folder_files:
-                full_path = path.join(folder, file_name)
-                file_size = path.getsize(full_path)
-                self.files[folder].append([full_path, file_size])
-                # Map this file to its config group name, removing .pckl.gzip extension
-                clean_group_name = key
-                if clean_group_name.endswith('.pckl.gzip'):
-                    clean_group_name = clean_group_name[:-11]  # Remove .pckl.gzip (11 chars)
-                elif clean_group_name.endswith('.pkl.gzip'):
-                    clean_group_name = clean_group_name[:-10]  # Remove .pkl.gzip (10 chars)
-                self.file_to_group_mapping[full_path] = clean_group_name
-                
-            if self.config.sections["GROUPS"].random_sampling:
-                from random import shuffle
-                shuffle(self.files[folder])
-                
-            # Handle size calculations (copied from base class logic)
-            nfiles = len(folder_files)
+            # Apply size calculations to the structures within the file
             if training_size < 1 or (training_size == 1 and size_type == float):
                 if training_size == 1:
-                    training_size = abs(training_size) * nfiles
+                    training_size = abs(training_size) * nconfigs
                 elif training_size == 0:
                     pass
                 else:
-                    training_size = max(1, int(abs(training_size) * nfiles + 0.5))
+                    training_size = max(1, int(abs(training_size) * nconfigs + 0.5))
                 if bc_bool and testing_size == 0:
-                    testing_size = nfiles - training_size
+                    testing_size = nconfigs - training_size
             if testing_size != 0 and (testing_size < 1 or (testing_size == 1 and testing_size_type == float)):
-                testing_size = max(1, int(abs(testing_size) * nfiles + 0.5))
+                testing_size = max(1, int(abs(testing_size) * nconfigs + 0.5))
                 
             training_size = self._float_to_int(training_size)
             testing_size = self._float_to_int(testing_size)
             
-            if nfiles - testing_size - training_size < 0:
-                warnstr = f"\nWARNING: {key} train size {training_size} + test size {testing_size} > nfiles {nfiles}\n"
+            if nconfigs - testing_size - training_size < 0:
+                warnstr = f"\nWARNING: {key} train size {training_size} + test size {testing_size} > nconfigs {nconfigs}\n"
                 warnstr += "         Forcing testing size to add up properly.\n"
                 self.pt.single_print(warnstr)
-                testing_size = nfiles - training_size
+                testing_size = nconfigs - training_size
                 
             if (self.config.args.verbose):
-                self.pt.single_print(key, ": Detected ", nfiles, " fitting on ", training_size, " testing on ", testing_size)
+                self.pt.single_print(key, ": Detected ", nconfigs, " fitting on ", training_size, " testing on ", testing_size)
                 
-            # Handle test files
+            # Store the file and configuration counts
+            # Use a dummy "folder" key since base class expects folder structure
+            dummy_folder = path.dirname(pckl_file_path) or "."
+            if dummy_folder not in self.files:
+                self.files[dummy_folder] = []
+            if dummy_folder not in self.configs:
+                self.configs[dummy_folder] = []
+            
+            # Store filename once per folder (like xyz_scraper)
+            if pckl_file_path not in [f[0] if isinstance(f, list) else f for f in self.files[dummy_folder]]:
+                self.files[dummy_folder].append(pckl_file_path)
+            
+            # Map file path to group key for later lookup
+            self.file_to_group_mapping[pckl_file_path] = key
+            
+            # Store structure indices for configurations (like xyz_scraper stores file positions)
+            structure_indices = list(range(nconfigs))
+            if self.config.sections["GROUPS"].random_sampling:
+                from random import shuffle
+                shuffle(structure_indices)
+            
+            # Add training structure indices
+            for i in range(training_size):
+                self.configs[dummy_folder].append(structure_indices[i])
+            
+            # Handle test structures
             if self.tests is None:
                 self.tests = {}
-            self.tests[folder] = []
+            if dummy_folder not in self.tests:
+                self.tests[dummy_folder] = []
+                
+            # Add testing structure indices 
+            for i in range(training_size, training_size + testing_size):
+                self.tests[dummy_folder].append(structure_indices[i])
             
-            # Remove excess files
-            for i in range(nfiles - training_size - testing_size):
-                if self.files[folder]:
-                    removed_file = self.files[folder].pop()
-                    # Remove from mapping too
-                    if isinstance(removed_file, list):
-                        del self.file_to_group_mapping[removed_file[0]]
-                    else:
-                        del self.file_to_group_mapping[removed_file]
-                    
-            # Move testing files
-            for i in range(testing_size):
-                if self.files[folder]:
-                    self.tests[folder].append(self.files[folder].pop())
-                    
             self.group_table[key]['training_size'] = training_size
             self.group_table[key]['testing_size'] = testing_size
         
-        # Clean up group names in group_table by removing .pckl.gzip extensions
-        cleaned_group_table = {}
-        for key, value in self.group_table.items():
-            clean_key = key
-            if clean_key.endswith('.pckl.gzip'):
-                clean_key = clean_key[:-11]  # Remove .pckl.gzip (11 chars)
-            elif clean_key.endswith('.pkl.gzip'):
-                clean_key = clean_key[:-10]  # Remove .pkl.gzip (10 chars)
-            cleaned_group_table[clean_key] = value
-        self.group_table = cleaned_group_table
-        
-        # For pacemaker format, each pckl.gzip file is a group
-        self.configs = self.files
+        # Note: self.configs is already set up properly for divvy_up_configs()
     
     @staticmethod
     def _float_to_int(a_float):
@@ -202,51 +175,34 @@ class Pacemaker(Scraper):
         self.conversions = copy(self.default_conversions)
         data_path = self.config.sections["PATH"].datapath
 
-        # Handle both dictionary format (before divvy_up_configs) and list format (after divvy_up_configs)
-        all_files = []
-        
-        if isinstance(self.configs, dict):
-            # Dictionary format: {folder: [[filepath, filesize], ...]}
-            for folder, file_list in self.configs.items():
-                for file_entry in file_list:
-                    if isinstance(file_entry, list):
-                        all_files.append(file_entry[0])  # filepath is first element
-                    else:
-                        all_files.append(file_entry)
-                        
-            # Also add test files if they exist
-            if hasattr(self, 'tests') and self.tests:
-                for folder, test_file_list in self.tests.items():
-                    for file_entry in test_file_list:
-                        if isinstance(file_entry, list):
-                            all_files.append(file_entry[0])  # filepath is first element
-                        else:
-                            all_files.append(file_entry)
-        else:
-            # List format (after divvy_up_configs): each entry is a filepath
-            all_files = self.configs
-
-        for i, file_name in enumerate(all_files):
-            if file_name.endswith('.pckl.gzip') or file_name.endswith('.pkl.gzip'):
-                try:
-                    # Load pacemaker dataframe - pandas automatically handles gzip compression
-                    self.pt.single_print(f"Loading pacemaker file: {file_name}")
-                    df = pd.read_pickle(file_name, compression='gzip')
-                    
-                    # Process each structure in the dataframe
-                    for idx, row in df.iterrows():
-                        data = self._convert_pacemaker_row(row, file_name, data_path)
-                        if data is not None:
-                            data["test_bool"] = self.test_bool[i] if i < len(self.test_bool) else False
-                            self.all_data.append(data)
-                            
-                except Exception as e:
-                    self.pt.single_print(f"Error reading pacemaker file {file_name}: {e}")
-                    import traceback
-                    self.pt.single_print(f"Traceback: {traceback.format_exc()}")
+        # After divvy_up_configs, self.configs is a flat list where each entry is [structure_index, folder]
+        for i, configuration in enumerate(self.configs):
+            structure_index = configuration[0]  # Extract structure index 
+            folder = configuration[1]           # Extract folder
+            pckl_file_path = self.files[folder][0]  # Get filename from folder
+            
+            try:
+                # Load pacemaker dataframe - pandas automatically handles gzip compression
+                df = pd.read_pickle(pckl_file_path, compression='gzip')
+                
+                # Extract the specific structure (row) from the dataframe
+                if structure_index >= len(df):
+                    self.pt.single_print(f"Warning: structure index {structure_index} out of range for {pckl_file_path}")
                     continue
-            else:
-                self.pt.single_print(f"! WARNING: Non-pacemaker file found: {file_name}")
+                    
+                row = df.iloc[structure_index]
+                data = self._convert_pacemaker_row(row, pckl_file_path, data_path)
+                
+                if data is not None:
+                    # Use test_bool from divvy_up_configs
+                    data["test_bool"] = self.test_bool[i]
+                    self.all_data.append(data)
+                    
+            except Exception as e:
+                self.pt.single_print(f"Error reading pacemaker file {pckl_file_path}: {e}")
+                import traceback
+                self.pt.single_print(f"Traceback: {traceback.format_exc()}")
+                continue
 
         self.pt.single_print(f"Loaded {len(self.all_data)} configurations from pacemaker files")
         return self.all_data
@@ -266,30 +222,18 @@ class Pacemaker(Scraper):
             training_file = basename(file_name)
             data['File'] = training_file
             
-            # Group name should match the config group, not derived from filename
-            # Use the mapping we created during scrape_groups
+            # Group name from the mapping we created during scrape_groups
             if hasattr(self, 'file_to_group_mapping') and file_name in self.file_to_group_mapping:
                 group_name = self.file_to_group_mapping[file_name]
             else:
-                # Fallback: try to find which group this file belongs to by checking group_table keys
-                group_name = None
-                # Clean up the filename for comparison
-                clean_file_base = splitext(splitext(basename(file_name))[0])[0]  # Remove .pckl.gzip
-                for group_key in self.group_table.keys():
-                    if group_key == clean_file_base or group_key in clean_file_base or clean_file_base.startswith(group_key):
-                        group_name = group_key
-                        break
-                if group_name is None:
-                    # Last resort: use the first group key if only one group exists
-                    if len(self.group_table) == 1:
-                        group_name = list(self.group_table.keys())[0]
-                    else:
-                        raise ValueError(f"Cannot determine group for file {file_name}. Available groups: {list(self.group_table.keys())}")
+                # Fallback: derive from filename
+                group_name = splitext(splitext(basename(file_name))[0])[0]  # Remove .pckl.gzip
             data['Group'] = group_name
             
             # Positions and atomic numbers
             data["Positions"] = atoms.get_positions()
             data["AtomTypes"] = atoms.get_atomic_numbers()
+            data["NumAtoms"] = len(atoms)
             
             # Convert atomic numbers to LAMMPS atom types (1-indexed)
             unique_types = sorted(list(set(data["AtomTypes"])))

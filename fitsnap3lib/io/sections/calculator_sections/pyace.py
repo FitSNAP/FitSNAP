@@ -2,6 +2,7 @@ import numpy as np
 import json
 import itertools
 from fitsnap3lib.io.sections.sections import Section
+import numpy as np
 
 
 class PyAce(Section):
@@ -41,7 +42,7 @@ class PyAce(Section):
             'numTypes', 'type', 'bzeroflag', 'ranks', 'lmin', 'lmax', 'nmax',
             'mumax', 'nmaxbase', 'rcutfac', 'lambda', 'rcinner', 'drcinner',
             'erefs', 'RPI_heuristic', 'bikflag', 'dgradflag', 'wigner_flag',
-            'b_basis', 'manuallabs'
+            'b_basis', 'manuallabs', 'ncoeff', 'blank2J'
         ]
         
         # Check for unknown keys
@@ -60,6 +61,28 @@ class PyAce(Section):
         
         # Store for later use by calculator
         self.ace_config = self._build_ace_config()
+        
+        # Initialize ncoeff and blank2J
+        # These will be properly set by the calculator after basis creation,
+        # but we need initial values for get_width()
+        # Estimate ncoeff from configuration parameters
+        estimated_ncoeff = self._estimate_ncoeff()
+        self.ncoeff = estimated_ncoeff
+        
+        # Set blank2J array (all ones for PyACE)
+        if not self.bzeroflag:
+            total_width = estimated_ncoeff * self.numtypes + self.numtypes
+        else:
+            total_width = estimated_ncoeff * self.numtypes
+        self.blank2J = np.ones(total_width)
+        
+        # Setup type mapping for compatibility with LAMMPS
+        self.type_mapping = {}
+        for i, element in enumerate(self.elements):
+            self.type_mapping[element] = i + 1
+            # Also map numeric types for backwards compatibility
+            self.type_mapping[i + 1] = i + 1
+            self.type_mapping[str(i + 1)] = i + 1
         
     def _parse_basic_settings(self, config):
         """Parse basic PYACE settings"""
@@ -84,8 +107,18 @@ class PyAce(Section):
         
         self.numtypes = len(self.elements)
         
-        # Global cutoff
-        self.cutoff = self.get_value("PYACE", "cutoff", "10.0", "float")
+        # Global cutoff - use rcutfac if cutoff not specified
+        cutoff_str = self.get_value("PYACE", "cutoff", "")
+        if cutoff_str:
+            self.cutoff = float(cutoff_str)
+        else:
+            # Check for rcutfac and use max value
+            rcutfac_str = self.get_value("PYACE", "rcutfac", "")
+            if rcutfac_str:
+                rcutfac_vals = [float(x) for x in rcutfac_str.split()]
+                self.cutoff = max(rcutfac_vals)
+            else:
+                self.cutoff = 10.0  # Default
         
         # Delta spline bins
         self.delta_spline_bins = self.get_value("PYACE", "delta_spline_bins", "0.001", "float")
@@ -148,16 +181,28 @@ class PyAce(Section):
             rho_core_cut = self.get_value("PYACE", "embedding_rho_core_cut", "200000", "float")
             drho_core_cut = self.get_value("PYACE", "embedding_drho_core_cut", "250", "float")
             
-            # Apply same embedding to all elements
-            self.embeddings = {}
-            for element in self.elements:
-                self.embeddings[element] = {
-                    'npot': npot,
-                    'fs_parameters': fs_parameters,
-                    'ndensity': ndensity,
-                    'rho_core_cut': rho_core_cut,
-                    'drho_core_cut': drho_core_cut
+            # For single element, use 'ALL' key for consistency
+            if len(self.elements) == 1:
+                self.embeddings = {
+                    'ALL': {
+                        'npot': npot,
+                        'fs_parameters': fs_parameters,
+                        'ndensity': ndensity,
+                        'rho_core_cut': rho_core_cut,
+                        'drho_core_cut': drho_core_cut
+                    }
                 }
+            else:
+                # Apply same embedding to all elements
+                self.embeddings = {}
+                for element in self.elements:
+                    self.embeddings[element] = {
+                        'npot': npot,
+                        'fs_parameters': fs_parameters,
+                        'ndensity': ndensity,
+                        'rho_core_cut': rho_core_cut,
+                        'drho_core_cut': drho_core_cut
+                    }
                 
     def _parse_bonds(self, config):
         """Parse bond configuration"""
@@ -193,19 +238,36 @@ class PyAce(Section):
                 rcinner_vals = [float(x) for x in rcinner_str.split()] if rcinner_str else [0.0] * len(rcutfac_vals)
                 drcinner_vals = [float(x) for x in drcinner_str.split()] if drcinner_str else [0.01] * len(rcutfac_vals)
                 
-                # Map to bond pairs
-                self.bonds = {}
-                for i, bond_name in enumerate(self.bond_pair_names):
-                    if i < len(rcutfac_vals):
-                        self.bonds[bond_name] = {
+                # Map to bond pairs - for single element, use 'ALL' key
+                if len(self.elements) == 1:
+                    # Single element - use ALL key for bonds
+                    self.bonds = {
+                        'ALL': {
                             'radbase': 'ChebExpCos',
-                            'radparameters': [lambda_vals[i]],
-                            'rcut': rcutfac_vals[i],
+                            'radparameters': [lambda_vals[0]] if lambda_vals else [1.35],
+                            'rcut': rcutfac_vals[0] if rcutfac_vals else 5.0,
                             'dcut': 0.01,
-                            'r_in': rcinner_vals[i],
-                            'delta_in': drcinner_vals[i],
-                            'core-repulsion': [100.0, 5.0]
+                            'r_in': rcinner_vals[0] if rcinner_vals else 0.0,
+                            'delta_in': drcinner_vals[0] if drcinner_vals else 0.01,
+                            'core-repulsion': [100.0, 5.0],
+                            'nradbase': self.nmaxbase  # Use nmaxbase for radial basis
                         }
+                    }
+                else:
+                    # Multi-element - map to specific bond pairs
+                    self.bonds = {}
+                    for i, bond_name in enumerate(self.bond_pair_names):
+                        if i < len(rcutfac_vals):
+                            self.bonds[bond_name] = {
+                                'radbase': 'ChebExpCos',
+                                'radparameters': [lambda_vals[i]] if i < len(lambda_vals) else [1.35],
+                                'rcut': rcutfac_vals[i],
+                                'dcut': 0.01,
+                                'r_in': rcinner_vals[i] if i < len(rcinner_vals) else 0.0,
+                                'delta_in': drcinner_vals[i] if i < len(drcinner_vals) else 0.01,
+                                'core-repulsion': [100.0, 5.0],
+                                'nradbase': self.nmaxbase  # Use nmaxbase for radial basis
+                            }
             else:
                 # Use simple/default bonds for ALL pairs
                 radbase = self.get_value("PYACE", "bond_radbase", "ChebExpCos")
@@ -226,7 +288,8 @@ class PyAce(Section):
                         'dcut': dcut,
                         'r_in': r_in,
                         'delta_in': delta_in,
-                        'core-repulsion': core_repulsion
+                        'core-repulsion': core_repulsion,
+                        'nradbase': self.nmaxbase if hasattr(self, 'nmaxbase') else 16  # Use nmaxbase for radial basis
                     }
                 }
             
@@ -265,18 +328,29 @@ class PyAce(Section):
                 nmax_vals = [int(x) for x in nmax_str.split()] if nmax_str else [2] * len(ranks)
                 
                 # Convert to pyace format
-                self.functions = {
-                    'UNARY': {
-                        'nradmax_by_orders': nmax_vals,
-                        'lmax_by_orders': lmax_vals,
-                        'coefs_init': 'zero'
-                    },
-                    'BINARY': {
-                        'nradmax_by_orders': nmax_vals,
-                        'lmax_by_orders': lmax_vals,
-                        'coefs_init': 'zero'
+                # For single element, only use UNARY
+                if len(self.elements) == 1:
+                    self.functions = {
+                        'UNARY': {
+                            'nradmax_by_orders': nmax_vals,
+                            'lmax_by_orders': lmax_vals,
+                            'coefs_init': 'zero'
+                        }
                     }
-                }
+                else:
+                    # For multi-element, use both UNARY and BINARY
+                    self.functions = {
+                        'UNARY': {
+                            'nradmax_by_orders': nmax_vals,
+                            'lmax_by_orders': lmax_vals,
+                            'coefs_init': 'zero'
+                        },
+                        'BINARY': {
+                            'nradmax_by_orders': nmax_vals,
+                            'lmax_by_orders': lmax_vals,
+                            'coefs_init': 'zero'
+                        }
+                    }
             else:
                 # Use simple/default functions
                 nradmax_str = self.get_value("PYACE", "function_nradmax_by_orders", "[15, 3, 2, 2, 1]")
@@ -316,6 +390,14 @@ class PyAce(Section):
             
     def _build_ace_config(self):
         """Build the ACE configuration dictionary for pyace"""
+        # Build cutoff from rcutfac if not specified directly
+        if not hasattr(self, 'cutoff') or self.cutoff is None:
+            if hasattr(self, 'rcutfac') and self.rcutfac:
+                # Use max rcutfac value as cutoff
+                self.cutoff = max(float(x) for x in self.rcutfac)
+            else:
+                self.cutoff = 10.0  # Default
+        
         ace_config = {
             'cutoff': self.cutoff,
             'deltaSplineBins': self.delta_spline_bins,
@@ -326,13 +408,39 @@ class PyAce(Section):
         }
         return ace_config
         
+    def _estimate_ncoeff(self):
+        """Estimate the number of basis functions based on configuration."""
+        # This is a rough estimate based on ACE parameters
+        # The actual value will be computed by the calculator
+        if hasattr(self, 'ranks') and hasattr(self, 'nmax'):
+            # Based on typical ACE basis generation
+            # For Ta example with ranks=[1,2,3,4], nmax=[22,5,3,1], we get ~189 functions
+            total_estimate = 0
+            for rank, nmax_val in zip(self.ranks, self.nmax):
+                rank_int = int(rank)
+                nmax_int = int(nmax_val)
+                # Rough estimate: functions grow with nmax and rank
+                if rank_int == 1:
+                    total_estimate += nmax_int  # Rank 1 is simpler
+                else:
+                    # Higher ranks have more complex combinations
+                    total_estimate += nmax_int * (rank_int * 10)  # Very rough
+            return max(total_estimate, 100)  # At least 100 functions
+        else:
+            return 189  # Default for Ta
+    
     def get_width(self):
         """
         Get width of descriptor vector for PYACE calculator.
-        This is a placeholder - actual width calculation is done in the calculator.
         """
-        # Return None to indicate calculator should determine width
-        return None
+        if self.ncoeff is None:
+            return None  # Let calculator determine
+        
+        # Same calculation as ACE
+        if not self.bzeroflag:
+            return self.ncoeff * self.numtypes + self.numtypes
+        else:
+            return self.ncoeff * self.numtypes
         
     def get_ace_config(self):
         """Return the ACE configuration for use by calculator"""

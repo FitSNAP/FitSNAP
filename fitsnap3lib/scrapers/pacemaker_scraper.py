@@ -218,6 +218,9 @@ class Pacemaker(Scraper):
             # Create FitSNAP data dictionary
             data = {}
             
+            # Store ASE atoms object to avoid recreation in pyace calculator
+            data['ase_atoms'] = atoms
+            
             # Basic structure info
             training_file = basename(file_name)
             data['File'] = training_file

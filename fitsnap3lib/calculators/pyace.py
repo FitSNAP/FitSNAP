@@ -154,7 +154,8 @@ class PyACE(Calculator):
             
             #self.pt.single_print(f"DEBUG: Processing config {i} with {len(data['Positions'])} atoms")
             
-            # Convert FitSNAP data to ASE atoms
+            # Convert FitSNAP data to ASE atoms (or use existing ase_atoms if available)
+            # This avoids recreating ASE atoms when they're already stored (e.g., from pacemaker scraper)
             ase_atoms = self._fitsnap_data_to_ase(data)
             
             # Get atomic environment for PyACE
@@ -177,6 +178,10 @@ class PyACE(Calculator):
         Convert FitSNAP data format to ASE Atoms object
         """
         from ase import Atoms
+        
+        # If ase_atoms already exists in data (from pacemaker scraper), use it directly
+        if 'ase_atoms' in data:
+            return data['ase_atoms']
                 
         # Extract positions, types, and lattice from FitSNAP data
         positions = data['Positions']

@@ -1,3 +1,8 @@
+import os
+# Set threading environment variables before importing NumExpr/Pandas
+os.environ['NUMEXPR_MAX_THREADS'] = '192'
+os.environ['OMP_NUM_THREADS'] = '192'
+
 from fairchem.core.datasets import AseDBDataset
 import numpy as np
 from collections import Counter, defaultdict
@@ -5,7 +10,6 @@ import multiprocessing as mp
 from tqdm import tqdm
 import sys
 import pandas as pd
-import os
 
 def process_chunk(args):
     """Worker function to process a chunk of the dataset"""

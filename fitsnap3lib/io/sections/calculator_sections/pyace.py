@@ -37,9 +37,11 @@ class PyAce(Section):
             'function_nradmax_by_orders', 'function_lmax_by_orders',
             'function_coefs_init',
             
-            # Backwards compatibility with ACE section (flattened lists)
+            # Full backwards compatibility with ACE section
             'numTypes', 'type', 'bzeroflag', 'ranks', 'lmin', 'lmax', 'nmax',
-            'nmaxbase', 'rcutfac', 'lambda', 'rcinner', 'drcinner'
+            'mumax', 'nmaxbase', 'rcutfac', 'lambda', 'rcinner', 'drcinner',
+            'erefs', 'RPI_heuristic', 'bikflag', 'dgradflag', 'wigner_flag',
+            'b_basis', 'manuallabs'
         ]
         
         # Check for unknown keys
@@ -51,10 +53,10 @@ class PyAce(Section):
         
         # Parse configuration
         self._parse_basic_settings(config)
+        self._setup_type_mapping()  # Must come before _parse_bonds since it needs bond_pair_names
         self._parse_embeddings(config)
         self._parse_bonds(config) 
         self._parse_functions(config)
-        self._setup_type_mapping()
         
         # Store for later use by calculator
         self.ace_config = self._build_ace_config()
@@ -64,7 +66,22 @@ class PyAce(Section):
         # Elements list - either from 'elements' or legacy 'type'
         elements_str = self.get_value("PYACE", "elements", 
                                      self.get_value("PYACE", "type", "H"))
-        self.elements = elements_str.split()
+        elements_list = elements_str.split()
+        
+        # Convert numeric atom types to chemical symbols if needed
+        # This handles migration from ACE format where types might be numbers
+        self.elements = []
+        for elem in elements_list:
+            if elem.isdigit():
+                # If it's a number, we need to map it to a chemical symbol
+                # This should be specified in the input file properly, but let's warn the user
+                self.pt.single_print(f"WARNING: Found numeric atom type '{elem}' in PYACE section.")
+                self.pt.single_print(f"PyACE requires chemical element symbols (e.g., 'Ta', 'H', 'O').")
+                self.pt.single_print(f"Please update your input file to use: type = Ta (instead of type = 1)")
+                raise RuntimeError(f"PyACE requires chemical symbols, not numbers. Found: {elem}")
+            else:
+                self.elements.append(elem)
+        
         self.numtypes = len(self.elements)
         
         # Global cutoff
@@ -73,8 +90,33 @@ class PyAce(Section):
         # Delta spline bins
         self.delta_spline_bins = self.get_value("PYACE", "delta_spline_bins", "0.001", "float")
         
-        # Legacy compatibility
+        # ACE backwards compatibility parameters
         self.bzeroflag = self.get_value("PYACE", "bzeroflag", "0", "bool")
+        
+        # mumax: maximum number of chemical species (defaults to number of types)
+        self.mumax = self.get_value("PYACE", "mumax", str(self.numtypes), "int")
+        
+        # Other ACE parameters for backwards compatibility
+        self.nmaxbase = self.get_value("PYACE", "nmaxbase", "16", "int")
+        self.erefs = self.get_value("PYACE", "erefs", "0.0").split() if self.get_value("PYACE", "erefs", "") else ["0.0"] * self.numtypes
+        
+        # Store ACE parameters as attributes for output compatibility
+        self.ranks = self.get_value("PYACE", "ranks", "1 2 3 4").split()
+        self.lmin = self.get_value("PYACE", "lmin", "0 0 1 1").split() if self.get_value("PYACE", "lmin", "") else ["0"] * len(self.ranks)
+        self.lmax = self.get_value("PYACE", "lmax", "0 5 2 1").split() if self.get_value("PYACE", "lmax", "") else ["2"] * len(self.ranks) 
+        self.nmax = self.get_value("PYACE", "nmax", "22 5 3 1").split() if self.get_value("PYACE", "nmax", "") else ["2"] * len(self.ranks)
+        self.rcutfac = self.get_value("PYACE", "rcutfac", "4.25").split()
+        self.lmbda = self.get_value("PYACE", "lambda", "1.275").split() if self.get_value("PYACE", "lambda", "") else ["1.35"]
+        self.rcinner = self.get_value("PYACE", "rcinner", "1.2").split() if self.get_value("PYACE", "rcinner", "") else ["0.0"]
+        self.drcinner = self.get_value("PYACE", "drcinner", "0.01").split() if self.get_value("PYACE", "drcinner", "") else ["0.01"]
+        
+        # ACE basis/method flags (stored but not used in pyace)
+        self.RPI_heuristic = self.get_value("PYACE", "RPI_heuristic", "")
+        self.bikflag = self.get_value("PYACE", "bikflag", "0", "bool")
+        self.dgradflag = self.get_value("PYACE", "dgradflag", "0", "bool")
+        self.wigner_flag = self.get_value("PYACE", "wigner_flag", "1", "bool")
+        self.b_basis = self.get_value("PYACE", "b_basis", "pa_tabulated")
+        self.manuallabs = self.get_value("PYACE", "manuallabs", "None")
         
     def _parse_embeddings(self, config):
         """Parse embedding configuration"""

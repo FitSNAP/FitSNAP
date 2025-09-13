@@ -2,6 +2,7 @@ from fitsnap3lib.io.outputs.outputs import Output, optional_open
 from datetime import datetime
 import numpy as np
 import itertools
+import pickle
 
 #config = Config()
 #pt = ParallelTools()
@@ -37,14 +38,25 @@ try:
                 coeffs: list of linear model coefficients.
             """
             if self.config.sections["EXTRAS"].only_test != 1:
-                if self.config.sections["CALCULATOR"].calculator != "LAMMPSPACE":
-                    raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
-                with optional_open(self.config.sections["OUTFILE"].potential_name and
-                                  self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
-                    file.write(_to_coeff_string(coeffs, self.config))
-                self.write_potential(coeffs)
-                with optional_open(self.config.sections["OUTFILE"].potential_name and self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
-                    file.write(_to_potential_file(self.config))
+                if self.config.sections["CALCULATOR"].calculator not in ["LAMMPSPACE", "PYACE"]:
+                    raise TypeError("PACE output style must be paired with LAMMPSPACE or PYACE calculator")
+                
+                # For ACE section, write both .acecoeff and potential files
+                if "ACE" in self.config.sections and hasattr(self.config.sections["ACE"], 'blank2J'):
+                    with optional_open(self.config.sections["OUTFILE"].potential_name and
+                                      self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
+                        file.write(_to_coeff_string(coeffs, self.config))
+                    self.write_potential(coeffs)
+                    with optional_open(self.config.sections["OUTFILE"].potential_name and self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
+                        file.write(_to_potential_file(self.config))
+                # For PYACE section, only write potential files (skip .acecoeff)
+                elif "PYACE" in self.config.sections:
+                    self.pt.single_print("PYACE detected: Skipping .acecoeff output, generating .yace potential file only")
+                    self.write_potential(coeffs)
+                    with optional_open(self.config.sections["OUTFILE"].potential_name and self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
+                        file.write(_to_potential_file(self.config))
+                else:
+                    raise RuntimeError("No supported ACE or PYACE section found for output")
 
         #@pt.rank_zero
         def write(self, coeffs, errors):
@@ -85,24 +97,34 @@ try:
 
 
         def write_potential(self, coeffs):
+            
+            # Support both ACE and PYACE sections
+            if "ACE" in self.config.sections:
+                ace_section = self.config.sections["ACE"]
+            elif "PYACE" in self.config.sections:
+                ace_section = self.config.sections["PYACE"]
+            else:
+                raise RuntimeError("No ACE or PYACE section found for PACE output")
 
-            self.bzeroflag = self.config.sections["ACE"].bzeroflag 
-            self.numtypes = self.config.sections["ACE"].numtypes
-            self.ranks = self.config.sections["ACE"].ranks
-            self.lmin = self.config.sections["ACE"].lmin
-            self.lmax = self.config.sections["ACE"].lmax
-            self.nmax = self.config.sections["ACE"].nmax
-            self.mumax = self.config.sections["ACE"].mumax
-            self.nmaxbase = self.config.sections["ACE"].nmaxbase
-            self.rcutfac = self.config.sections["ACE"].rcutfac
-            self.lmbda =self.config.sections["ACE"].lmbda
-            self.rcinner = self.config.sections["ACE"].rcinner
-            self.drcinner = self.config.sections["ACE"].drcinner
-            self.types = self.config.sections["ACE"].types
-            self.erefs = self.config.sections["ACE"].erefs
-            self.bikflag = self.config.sections["ACE"].bikflag
-            self.b_basis = self.config.sections["ACE"].b_basis
-            self.wigner_flag = self.config.sections["ACE"].wigner_flag
+            self.bzeroflag = ace_section.bzeroflag 
+            self.numtypes = ace_section.numtypes
+            self.ranks = ace_section.ranks
+            self.lmin = ace_section.lmin
+            self.lmax = ace_section.lmax
+            self.nmax = ace_section.nmax
+            self.mumax = ace_section.mumax
+            self.nmaxbase = ace_section.nmaxbase
+            self.rcutfac = ace_section.rcutfac
+            self.lmbda = ace_section.lmbda
+            self.rcinner = ace_section.rcinner
+            self.drcinner = ace_section.drcinner
+            self.types = getattr(ace_section, 'types', getattr(ace_section, 'elements', ['H']))  # ACE uses 'types', PYACE uses 'elements'
+            self.erefs = ace_section.erefs
+            
+            # Handle attributes that may not exist in PYACE
+            self.bikflag = getattr(ace_section, 'bikflag', False)
+            self.b_basis = getattr(ace_section, 'b_basis', 'pa_tabulated')
+            self.wigner_flag = getattr(ace_section, 'wigner_flag', True)
 
             if self.bzeroflag:
                 #assert len(self.types) ==  len(self.erefs), "must provide reference energy for each atom type"
@@ -157,11 +179,15 @@ try:
 
 
             apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.b_basis, **{'ccs':ccs[M_R]})
-            if self.config.sections['ACE'].bzeroflag:
+            if ace_section.bzeroflag:
                 apot.set_betas(coeffs,has_zeros=False)
             else:
                 apot.set_betas(coeffs,has_zeros=True)
-            apot.set_funcs(nulst=self.config.sections['ACE'].nus)
+            
+            # Handle nus attribute - may not exist in PYACE
+            if hasattr(ace_section, 'nus'):
+                apot.set_funcs(nulst=ace_section.nus)
+            
             apot.write_pot(self.config.sections["OUTFILE"].potential_name)
             # Append metadata to .yace file
             unit = f"# units {self.config.sections['REFERENCE'].units}\n"
@@ -189,17 +215,30 @@ def _to_coeff_string(coeffs, config):
     Convert a set of coefficients along with descriptor options to a coeffs file.
     """
 
-    desc_str = "ACE"
-    coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))
-    blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
-    if config.sections[desc_str].bzeroflag:
-        coeff_names = config.sections[desc_str].blist
+    # Support both ACE and PYACE sections
+    if "ACE" in config.sections:
+        desc_str = "ACE"
+        ace_section = config.sections["ACE"]
+    elif "PYACE" in config.sections:
+        desc_str = "PYACE"
+        ace_section = config.sections["PYACE"]
     else:
-        coeff_names = [[0]]+config.sections[desc_str].blist
+        raise RuntimeError("No ACE or PYACE section found for coefficient output")
+    
+    # Check if we have the required attributes for coefficient output
+    if not hasattr(ace_section, 'blank2J') or not hasattr(ace_section, 'blist'):
+        raise RuntimeError(f"Section {desc_str} missing required attributes 'blank2J' or 'blist' for coefficient output. PYACE coefficient output may not be supported.")
+    
+    coeffs = coeffs.reshape((ace_section.numtypes, -1))
+    blank2Js = ace_section.blank2J.reshape((ace_section.numtypes, -1))
+    if ace_section.bzeroflag:
+        coeff_names = ace_section.blist
+    else:
+        coeff_names = [[0]]+ace_section.blist
     coeffs = np.multiply(coeffs, blank2Js)
-    type_names = config.sections[desc_str].types
+    type_names = getattr(ace_section, 'types', getattr(ace_section, 'elements', ['H']))
     out = f"# FitSNAP generated on {datetime.now()} with Hash: {config.hash}\n\n"
-    out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/config.sections[desc_str].numtypes)))
+    out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/ace_section.numtypes)))
     for elname, column in zip(type_names,
                         coeffs):
         out += "{}\n".format(elname)
@@ -212,6 +251,14 @@ def _to_potential_file(config):
     """
     Use config settings to write a LAMMPS potential .mod file.
     """
+    
+    # Support both ACE and PYACE sections
+    if "ACE" in config.sections:
+        ace_section = config.sections["ACE"]
+    elif "PYACE" in config.sections:
+        ace_section = config.sections["PYACE"]
+    else:
+        raise RuntimeError("No ACE or PYACE section found for potential file output")
 
     ps = config.sections["REFERENCE"].lmp_pairdecl[0]
     ace_filename = config.sections["OUTFILE"].potential_name.split("/")[-1]
@@ -232,13 +279,15 @@ def _to_potential_file(config):
         for pc in config.sections["REFERENCE"].lmp_pairdecl[1:]:
             out += f"{pc}\n" if "zero" not in pc else ""
         pc_ace = f"pair_coeff * * pace {ace_filename}.yace"
-        for t in config.sections["ACE"].types:
+        type_names = getattr(ace_section, 'types', getattr(ace_section, 'elements', ['H']))
+        for t in type_names:
             pc_ace += f" {t}"
         out += pc_ace
     else:
         out += "pair_style pace product\n"
         pc_ace = f"pair_coeff * * {ace_filename}.yace" 
-        for t in config.sections["ACE"].types:
+        type_names = getattr(ace_section, 'types', getattr(ace_section, 'elements', ['H']))
+        for t in type_names:
             pc_ace += f" {t}"
         out += pc_ace
 

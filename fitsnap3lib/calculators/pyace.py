@@ -152,7 +152,7 @@ class PyACE(Calculator):
             self._data = data
             self._i = i
             
-            self.pt.single_print(f"DEBUG: Processing config {i} with {len(data['Positions'])} atoms")
+            #self.pt.single_print(f"DEBUG: Processing config {i} with {len(data['Positions'])} atoms")
             
             # Convert FitSNAP data to ASE atoms
             ase_atoms = self._fitsnap_data_to_ase(data)
@@ -184,22 +184,34 @@ class PyACE(Calculator):
         # Check for both possible lattice keys (QMLattice from pacemaker, Lattice from other scrapers)
         lattice = data.get('Lattice', data.get('QMLattice'))
                 
-        # Convert LAMMPS atom types to chemical symbols using type mapping
+        # Handle atom types - can be either numeric indices or chemical symbols
         pyace_config = self.config.sections["PYACE"]
         elements = pyace_config.elements
         
-        # Create type mapping: LAMMPS type -> element symbol
-        # In FitSNAP, atom types are 1-indexed integers
         symbols = []
         for atom_type in atom_types:
-            # atom_type is 1-indexed, convert to 0-indexed for elements list
-            element_idx = int(atom_type) - 1
-            if element_idx < len(elements):
-                symbols.append(elements[element_idx])
+            if isinstance(atom_type, str) and not atom_type.isdigit():
+                # atom_type is already a chemical symbol (e.g., 'Ta', 'H')
+                if atom_type in elements:
+                    symbols.append(atom_type)
+                else:
+                    # Fallback - use first element if symbol not in elements list
+                    self.pt.single_print(f"WARNING: atom symbol {atom_type} not in elements list {elements}, using {elements[0]}")
+                    symbols.append(elements[0])
             else:
-                # Fallback - use first element
-                self.pt.single_print(f"WARNING: atom type {atom_type} out of range, using {elements[0]}")
-                symbols.append(elements[0])
+                # atom_type is numeric (LAMMPS style - 1-indexed integers)
+                try:
+                    element_idx = int(atom_type) - 1
+                    if 0 <= element_idx < len(elements):
+                        symbols.append(elements[element_idx])
+                    else:
+                        # Fallback - use first element
+                        self.pt.single_print(f"WARNING: atom type {atom_type} out of range, using {elements[0]}")
+                        symbols.append(elements[0])
+                except ValueError:
+                    # Shouldn't happen, but just in case
+                    self.pt.single_print(f"WARNING: could not parse atom type {atom_type}, using {elements[0]}")
+                    symbols.append(elements[0])
                 
         # Create ASE Atoms object
         ase_atoms = Atoms(
@@ -343,8 +355,23 @@ class PyACE(Calculator):
             atom_types = data['AtomTypes']
             force_atom_types = []
             for atom_type in atom_types:
+                if isinstance(atom_type, str) and not atom_type.isdigit():
+                    # atom_type is a chemical symbol, convert to numeric index
+                    pyace_config = self.config.sections["PYACE"]
+                    elements = pyace_config.elements
+                    if atom_type in elements:
+                        numeric_type = elements.index(atom_type) + 1  # 1-indexed
+                    else:
+                        numeric_type = 1  # Fallback to first type
+                else:
+                    # atom_type is already numeric
+                    try:
+                        numeric_type = int(atom_type)
+                    except ValueError:
+                        numeric_type = 1  # Fallback
+                
                 for _ in range(3):  # 3 force components per atom
-                    force_atom_types.append(int(atom_type))
+                    force_atom_types.append(numeric_type)
             self.pt.fitsnap_dict['Atom_Type'][dindex:dindex+nrows_force] = force_atom_types
             
             index += nrows_force

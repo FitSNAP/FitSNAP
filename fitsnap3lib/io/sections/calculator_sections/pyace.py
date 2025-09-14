@@ -546,6 +546,54 @@ class PyAce(Section):
         if 'lmin_by_orders' not in self.functions[func_type]:
             self.functions[func_type]['lmin_by_orders'] = lmin_by_orders
     
+    def create_coupling_coefficient_yace(self, output_filename="coupling_coefficient.yace"):
+        """Create a coupling_coefficient.yace file from the current pyace configuration
+        
+        This method creates a BBasisConfiguration from the ace_config,
+        converts it to ACECTildeBasisSet format, and saves it as a .yace file
+        for use with LAMMPS compute pace.
+        
+        Args:
+            output_filename (str): Name of the output .yace file
+            
+        Returns:
+            str: Path to the created .yace file
+        """
+        try:
+            # Import pyace components
+            from pyace.basis import ACEBBasisSet, BBasisConfiguration
+            from pyace import create_multispecies_basis_config
+            
+            self.pt.single_print(f"Creating coupling_coefficient.yace file: {output_filename}")
+            
+            # Create BBasisConfiguration from ace_config
+            basis_config = create_multispecies_basis_config(self.ace_config)
+            
+            # Apply lmin trimming if constraints are specified
+            if hasattr(self, 'lmin_constraints') and self.lmin_constraints:
+                self.pt.single_print(f"Applying lmin constraints: {self.lmin_constraints}")
+                basis_config = self.trim_basis_configuration_for_lmin(basis_config, self.lmin_constraints)
+            
+            # Create ACEBBasisSet from BBasisConfiguration
+            ace_bbasis = ACEBBasisSet(basis_config)
+            self.pt.single_print(f"Created ACEBBasisSet with {len(basis_config.funcspecs_blocks)} blocks")
+            
+            # Convert to ACECTildeBasisSet for .yace export
+            ace_ctilde_basis = ace_bbasis.to_ACECTildeBasisSet()
+            self.pt.single_print(f"Converted to ACECTildeBasisSet format")
+            
+            # Save to .yace file
+            ace_ctilde_basis.save(output_filename)
+            self.pt.single_print(f"Successfully created {output_filename}")
+            
+            return output_filename
+            
+        except Exception as e:
+            self.pt.single_print(f"Error creating coupling_coefficient.yace: {e}")
+            import traceback
+            self.pt.single_print(f"Traceback: {traceback.format_exc()}")
+            raise RuntimeError(f"Failed to create coupling_coefficient.yace: {e}")
+    
     @staticmethod
     def trim_basis_configuration_for_lmin(basis_config, lmin_constraints):
         """Static method to trim a BBasisConfiguration based on lmin constraints

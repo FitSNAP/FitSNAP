@@ -140,6 +140,15 @@ class PyAce(Section):
         self.b_basis = self.get_value("PYACE", "b_basis", "pa_tabulated")
         self.manuallabs = self.get_value("PYACE", "manuallabs", "None")
         
+        # Parse blank2J coefficients (for compatibility with LAMMPS PACE)
+        blank2J_str = self.get_value("PYACE", "blank2J", "")
+        if blank2J_str:
+            # Parse space-separated list of coefficients
+            self.blank2J = [float(x) for x in blank2J_str.split()]
+            self.pt.single_print(f"DEBUG: Parsed {len(self.blank2J)} blank2J coefficients")
+        else:
+            self.blank2J = None
+        
     def _parse_embeddings(self, config):
         """Parse embedding configuration"""
         # Try JSON format first
@@ -230,8 +239,28 @@ class PyAce(Section):
                 # Map to bond pairs - for single element, use 'ALL' key
                 if len(self.elements) == 1:
                     # Single element - use ALL key for bonds
-                    # Ensure nradbase meets the requirements from nmax_vals
+                    # Get nmax values from both ACE-style and simple parameters
+                    nmax_vals = []
+                    
+                    # Check ACE-style nmax parameter
+                    nmax_str = self.get_value("PYACE", "nmax", "")
+                    if nmax_str:
+                        nmax_vals = [int(x) for x in nmax_str.split()]
+                        print(f"DEBUG: Found ACE-style nmax = {nmax_vals}")
+                    
+                    # Check simple parameter format
+                    function_nradmax_str = self.get_value("PYACE", "function_nradmax_by_orders", "")
+                    if function_nradmax_str:
+                        try:
+                            func_nmax_vals = json.loads(function_nradmax_str)
+                            nmax_vals.extend(func_nmax_vals)
+                            print(f"DEBUG: Found function_nradmax_by_orders = {func_nmax_vals}")
+                        except (json.JSONDecodeError, ValueError):
+                            print(f"DEBUG: Failed to parse function_nradmax_by_orders: {function_nradmax_str}")
+                    
                     required_nradbase = max(self.nmaxbase, max(nmax_vals) if nmax_vals else self.nmaxbase)
+                    print(f"DEBUG: nmaxbase={self.nmaxbase}, nmax_vals={nmax_vals}, required_nradbase={required_nradbase}")
+                    
                     self.bonds = {
                         'ALL': {
                             'radbase': 'ChebExpCos',
@@ -246,7 +275,19 @@ class PyAce(Section):
                     }
                 else:
                     # Multi-element - map to specific bond pairs
-                    # Ensure nradbase meets the requirements from nmax_vals
+                    # Get nmax values from ACE-style parameters to determine required nradbase
+                    nmax_str = self.get_value("PYACE", "nmax", "")
+                    nmax_vals = [int(x) for x in nmax_str.split()] if nmax_str else []
+                    
+                    # Also check simple parameter format as fallback
+                    if not nmax_vals:
+                        function_nradmax_str = self.get_value("PYACE", "function_nradmax_by_orders", "")
+                        if function_nradmax_str:
+                            try:
+                                nmax_vals = json.loads(function_nradmax_str)
+                            except (json.JSONDecodeError, ValueError):
+                                nmax_vals = []
+                    
                     required_nradbase = max(self.nmaxbase, max(nmax_vals) if nmax_vals else self.nmaxbase)
                     self.bonds = {}
                     for i, bond_name in enumerate(self.bond_pair_names):
@@ -273,9 +314,16 @@ class PyAce(Section):
                 core_rep_str = self.get_value("PYACE", "bond_core_repulsion", "[100.0, 5.0]")
                 core_repulsion = json.loads(core_rep_str)
                 
-                # Determine required nradbase from functions
-                required_nradbase = self._get_required_nradbase()
-                actual_nradbase = max(required_nradbase, self.nmaxbase if hasattr(self, 'nmaxbase') else 16)
+                # Determine required nradbase from simple parameter format
+                nradmax_str = self.get_value("PYACE", "function_nradmax_by_orders", "")
+                if nradmax_str:
+                    try:
+                        nradmax_vals = json.loads(nradmax_str)
+                        required_nradbase = max(self.nmaxbase if hasattr(self, 'nmaxbase') else 16, max(nradmax_vals) if nradmax_vals else 16)
+                    except (json.JSONDecodeError, ValueError):
+                        required_nradbase = self.nmaxbase if hasattr(self, 'nmaxbase') else 16
+                else:
+                    required_nradbase = self.nmaxbase if hasattr(self, 'nmaxbase') else 16
                 
                 self.bonds = {
                     'ALL': {
@@ -286,7 +334,7 @@ class PyAce(Section):
                         'r_in': r_in,
                         'delta_in': delta_in,
                         'core-repulsion': core_repulsion,
-                        'nradbase': actual_nradbase
+                        'nradbase': required_nradbase
                     }
                 }
             

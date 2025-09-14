@@ -65,6 +65,9 @@ class PyAce(Section):
         # Apply lmin trimming if specified
         self._apply_lmin_trimming()
         
+        # CREATE ACTUAL BASIS TO GET REAL NCOEFF - NO ESTIMATES!
+        self._create_actual_basis()
+        
         # Setup type mapping for compatibility with LAMMPS
         self.type_mapping = {}
         for i, element in enumerate(self.elements):
@@ -147,7 +150,63 @@ class PyAce(Section):
             self.blank2J = [float(x) for x in blank2J_str.split()]
             self.pt.single_print(f"DEBUG: Parsed {len(self.blank2J)} blank2J coefficients")
         else:
-            self.blank2J = None
+            self.blank2J = None  # Will be set after basis creation
+        
+        # ncoeff will be determined from actual basis creation - no estimates!
+        ncoeff_str = self.get_value("PYACE", "ncoeff", "")
+        if ncoeff_str:
+            self.ncoeff = int(ncoeff_str)
+            self.pt.single_print(f"DEBUG: Using provided ncoeff = {self.ncoeff}")
+        else:
+            self.ncoeff = None  # Will be set from actual basis
+        
+    def _create_actual_basis(self):
+        """Create the actual PyACE basis to get real ncoeff and blank2J values
+        
+        This method creates the BBasisConfiguration and ACEBBasisSet to determine
+        the exact number of coefficients and other parameters.
+        """
+        try:
+            # Import pyace components
+            from pyace.basis import ACEBBasisSet
+            from pyace import create_multispecies_basis_config
+            
+            self.pt.single_print("Creating actual PyACE basis to determine ncoeff...")
+            
+            # Create BBasisConfiguration from ace_config
+            basis_config = create_multispecies_basis_config(self.ace_config)
+            
+            # Apply lmin trimming if constraints are specified
+            if hasattr(self, 'lmin_constraints') and self.lmin_constraints:
+                self.pt.single_print(f"Applying lmin constraints: {self.lmin_constraints}")
+                basis_config = self.trim_basis_configuration_for_lmin(basis_config, self.lmin_constraints)
+            
+            # Create ACEBBasisSet
+            ace_basis = ACEBBasisSet(basis_config)
+            
+            # Get the actual ncoeff from the basis
+            if self.ncoeff is None:
+                self.ncoeff = len(ace_basis.basis_coeffs)
+                self.pt.single_print(f"Set ncoeff = {self.ncoeff} from actual PyACE basis")
+            
+            # Create blank2J if not provided
+            if self.blank2J is None:
+                self.blank2J = [1.0] * self.ncoeff
+                self.pt.single_print(f"Created blank2J array with {len(self.blank2J)} coefficients")
+            
+            # Store the basis for later use
+            self.ace_basis_config = basis_config
+            self.ace_basis = ace_basis
+            
+            self.pt.single_print(f"Successfully created PyACE basis with {self.ncoeff} coefficients")
+            
+        except ImportError:
+            raise RuntimeError("PyACE not available - cannot create basis")
+        except Exception as e:
+            self.pt.single_print(f"Error creating PyACE basis: {e}")
+            import traceback
+            self.pt.single_print(f"Traceback: {traceback.format_exc()}")
+            raise RuntimeError(f"Failed to create PyACE basis: {e}")
         
     def _parse_embeddings(self, config):
         """Parse embedding configuration"""
@@ -547,11 +606,13 @@ class PyAce(Section):
             self.functions[func_type]['lmin_by_orders'] = lmin_by_orders
     
     def create_coupling_coefficient_yace(self, output_filename="coupling_coefficient.yace"):
-        """Create a coupling_coefficient.yace file from the current pyace configuration
+        """Create a coupling_coefficient.yace file using proper PyACE workflow
         
-        This method creates a BBasisConfiguration from the ace_config,
-        converts it to ACECTildeBasisSet format, and saves it as a .yace file
-        for use with LAMMPS compute pace.
+        This method follows the official PyACE pattern:
+        1. Use existing ACEBBasisSet (already created)
+        2. Set coefficients to 1.0 for descriptor calculation
+        3. Convert to ACECTildeBasisSet
+        4. Save as .yace
         
         Args:
             output_filename (str): Name of the output .yace file
@@ -560,39 +621,36 @@ class PyAce(Section):
             str: Path to the created .yace file
         """
         try:
-            # Import pyace components
-            from pyace.basis import ACEBBasisSet, BBasisConfiguration
-            from pyace import create_multispecies_basis_config
+            import numpy as np
             
-            self.pt.single_print(f"Creating coupling_coefficient.yace file: {output_filename}")
+            self.pt.single_print(f"Creating .yace file using proper PyACE workflow: {output_filename}")
             
-            # Create BBasisConfiguration from ace_config
-            basis_config = create_multispecies_basis_config(self.ace_config)
+            # Use the already-created ACE basis
+            if not hasattr(self, 'ace_basis') or self.ace_basis is None:
+                raise RuntimeError("ACE basis not created yet")
             
-            # Apply lmin trimming if constraints are specified
-            if hasattr(self, 'lmin_constraints') and self.lmin_constraints:
-                self.pt.single_print(f"Applying lmin constraints: {self.lmin_constraints}")
-                basis_config = self.trim_basis_configuration_for_lmin(basis_config, self.lmin_constraints)
+            # Set all coefficients to 1.0 for descriptor calculation
+            self.pt.single_print("Setting coefficients to 1.0 for descriptor calculation")
+            num_coeffs = len(self.ace_basis.basis_coeffs)
+            self.ace_basis.basis_coeffs = np.ones(num_coeffs)
             
-            # Create ACEBBasisSet from BBasisConfiguration
-            ace_bbasis = ACEBBasisSet(basis_config)
-            self.pt.single_print(f"Created ACEBBasisSet with {len(basis_config.funcspecs_blocks)} blocks")
+            # Convert B-basis to C-tilde basis
+            self.pt.single_print("Converting to Ctilde-basis")
+            cbasis = self.ace_basis.to_ACECTildeBasisSet()
             
-            # Convert to ACECTildeBasisSet for .yace export
-            ace_ctilde_basis = ace_bbasis.to_ACECTildeBasisSet()
-            self.pt.single_print(f"Converted to ACECTildeBasisSet format")
+            # Save as .yace file
+            self.pt.single_print(f"Saving Ctilde-basis to '{output_filename}'")
+            cbasis.save_yaml(output_filename)
             
-            # Save to .yace file
-            ace_ctilde_basis.save(output_filename)
             self.pt.single_print(f"Successfully created {output_filename}")
             
             return output_filename
             
         except Exception as e:
-            self.pt.single_print(f"Error creating coupling_coefficient.yace: {e}")
+            self.pt.single_print(f"Error creating .yace file: {e}")
             import traceback
             self.pt.single_print(f"Traceback: {traceback.format_exc()}")
-            raise RuntimeError(f"Failed to create coupling_coefficient.yace: {e}")
+            raise RuntimeError(f"Failed to create .yace file: {e}")
     
     @staticmethod
     def trim_basis_configuration_for_lmin(basis_config, lmin_constraints):

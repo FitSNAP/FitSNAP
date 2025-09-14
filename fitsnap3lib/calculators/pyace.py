@@ -246,12 +246,13 @@ class PyACE(Calculator):
             ace_calc.set_evaluator(evaluator)
         
         # Compute descriptors and derivatives
-        ace_calc.compute(atomic_env, compute_projections=True)
+        ace_calc.compute(atomic_env, compute_projections=True, compute_b_grad=True)
         
         # Extract results
         energy = ace_calc.energy
         forces = np.array(ace_calc.forces)
         projections = np.array(ace_calc.projections)
+        force_descriptors = np.array(ace_calc.forces_bfuncs)
                 
         # Reshape projections to per-atom descriptors
         n_atoms = atomic_env.n_atoms_real
@@ -266,6 +267,7 @@ class PyACE(Calculator):
             'energy': energy,
             'forces': forces,
             'descriptors': descriptors,
+            'force_descriptors': force_descriptors,
             'ref_energy': 0.0,  # PyACE doesn't have reference potential
             'ref_forces': np.zeros_like(forces)
         }
@@ -284,6 +286,7 @@ class PyACE(Calculator):
         ace_energy = ace_results['energy']
         ace_forces = ace_results['forces']
         descriptors = ace_results['descriptors']
+        force_descriptors = ace_results['force_descriptors']
         ref_energy = ace_results.get('ref_energy', 0.0)
         ref_forces = ace_results.get('ref_forces', np.zeros_like(ace_forces))
                 
@@ -317,14 +320,12 @@ class PyACE(Calculator):
             # This is a simplified approach - in reality we'd need dB/dr
             nrows_force = 3 * num_atoms
             
-            # Placeholder: use descriptors repeated for each force component
-            # In a real implementation, we'd compute dB/dr derivatives
-            force_descriptors = np.tile(descriptors, (3, 1)).reshape((nrows_force, -1))
-            
+            force_descriptors = force_descriptors.transpose(2, 0, 1).reshape(nrows_force, -1)
             self.pt.shared_arrays['a'].array[index:index+nrows_force] = force_descriptors
+            self.pt.single_print(f"*** force_descriptors {force_descriptors.shape} {force_descriptors}")
             
             # Store force truths (subtract reference forces)
-            force_truth = (forces - ref_forces).ravel()
+            force_truth = (self._data["Forces"] - ref_forces).ravel()
             self.pt.shared_arrays['b'].array[index:index+nrows_force] = force_truth
             
             # Store force weights
@@ -393,7 +394,10 @@ class PyACE(Calculator):
         # Update indices
         self.shared_index = index
         self.distributed_index = dindex
-                
+        
+        self.pt.single_print(self.pt.shared_arrays['a'].array[:3])
+        self.pt.single_print(self.pt.shared_arrays['b'].array[:10])
+
     def setup_pyace(self):
         """Initialize pyace calculator with basis functions"""
         

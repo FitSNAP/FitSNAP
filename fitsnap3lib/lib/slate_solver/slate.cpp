@@ -42,13 +42,15 @@ void slate_augmented_qr(double* local_a, double* local_b, int64_t m, int64_t n, 
     for (int64_t nt = nt_start; nt >= 1; --nt) {
         if (mpi_sub_size % nt) continue;
         int64_t size = ceil_div64(n, nt);
-        if( size*size*sizeof(double) > 16*1024*1024 ) break; // pick biggest tile <= 16MB
         mb = nb = size;
         q = nt;
         p = mpi_size / q;
 
         if (mpi_rank == 0)
             std::fprintf(stderr, "*** nt %lld p %lld q %lld tile %lld x %lld (%lld bytes)\n", nt, p, q, nb, nb, nb*nb*8);
+
+        if( p*size > m ) break; // make sure to cover matrix at least once
+        if( size*size*sizeof(double) > 16*1024*1024 ) break; // pick biggest tile <= 16MB
 
     }
     

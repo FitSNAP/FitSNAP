@@ -62,20 +62,6 @@ class PyAce(Section):
         # Store for later use by calculator
         self.ace_config = self._build_ace_config()
         
-        # Initialize ncoeff and blank2J
-        # These will be properly set by the calculator after basis creation,
-        # but we need initial values for get_width()
-        # Estimate ncoeff from configuration parameters
-        estimated_ncoeff = self._estimate_ncoeff()
-        self.ncoeff = estimated_ncoeff
-        
-        # Set blank2J array (all ones for PyACE)
-        if not self.bzeroflag:
-            total_width = estimated_ncoeff * self.numtypes + self.numtypes
-        else:
-            total_width = estimated_ncoeff * self.numtypes
-        self.blank2J = np.ones(total_width)
-        
         # Setup type mapping for compatibility with LAMMPS
         self.type_mapping = {}
         for i, element in enumerate(self.elements):
@@ -407,40 +393,6 @@ class PyAce(Section):
             'functions': self.functions
         }
         return ace_config
-        
-    def _estimate_ncoeff(self):
-        """Estimate the number of basis functions based on configuration."""
-        # This is a rough estimate based on ACE parameters
-        # The actual value will be computed by the calculator
-        if hasattr(self, 'ranks') and hasattr(self, 'nmax'):
-            # Based on typical ACE basis generation
-            # For Ta example with ranks=[1,2,3,4], nmax=[22,5,3,1], we get ~189 functions
-            total_estimate = 0
-            for rank, nmax_val in zip(self.ranks, self.nmax):
-                rank_int = int(rank)
-                nmax_int = int(nmax_val)
-                # Rough estimate: functions grow with nmax and rank
-                if rank_int == 1:
-                    total_estimate += nmax_int  # Rank 1 is simpler
-                else:
-                    # Higher ranks have more complex combinations
-                    total_estimate += nmax_int * (rank_int * 10)  # Very rough
-            return max(total_estimate, 100)  # At least 100 functions
-        else:
-            return 189  # Default for Ta
-    
-    def get_width(self):
-        """
-        Get width of descriptor vector for PYACE calculator.
-        """
-        if self.ncoeff is None:
-            return None  # Let calculator determine
-        
-        # Same calculation as ACE
-        if not self.bzeroflag:
-            return self.ncoeff * self.numtypes + self.numtypes
-        else:
-            return self.ncoeff * self.numtypes
         
     def get_ace_config(self):
         """Return the ACE configuration for use by calculator"""

@@ -13,19 +13,22 @@ class LammpsPace(LammpsBase):
         self.pt.check_lammps()
         
         calculator_config = self.config.sections[calculator_section]
-        self._ncoeff    = calculator_config.ncoeff
-        self._numtypes  = calculator_config.numtypes
-        self._bzeroflag = calculator_config.bzeroflag
-        
-        
+        self._ncoeff       = calculator_config.ncoeff
+        self._numtypes     = calculator_config.numtypes
+        self._type_mapping = calculator_config.type_mapping
+        self._rcutfac      = calculator_config.rcutfac
+        self._bzeroflag    = calculator_config.bzeroflag
+        self._bikflag      = calculator_config.bikflag
+        self._dgradflag    = calculator_config.dgradflag
+        self._blank2J      = calculator_config.blank2J        
 
     def get_width(self):
         if (self.config.sections["CALCULATOR"].nonlinear):
             a_width = self._ncoeff
         else:
-            a_width = self._ncoeff * self._num_types
+            a_width = self._ncoeff * self._numtypes
             if not self._bzeroflag:
-                a_width += num_types
+                a_width += self._numtypes
         return a_width
 
     def _prepare_lammps(self):

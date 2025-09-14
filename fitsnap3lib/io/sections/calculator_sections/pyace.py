@@ -36,7 +36,7 @@ class PyAce(Section):
             'bond_r_in', 'bond_delta_in', 'bond_core_repulsion',
             
             'function_nradmax_by_orders', 'function_lmax_by_orders',
-            'function_coefs_init',
+            'function_lmin_by_orders', 'function_coefs_init',
             
             # Full backwards compatibility with ACE section
             'numTypes', 'type', 'bzeroflag', 'ranks', 'lmin', 'lmax', 'nmax',
@@ -61,6 +61,9 @@ class PyAce(Section):
         
         # Store for later use by calculator
         self.ace_config = self._build_ace_config()
+        
+        # Apply lmin trimming if specified
+        self._apply_lmin_trimming()
         
         # Setup type mapping for compatibility with LAMMPS
         self.type_mapping = {}
@@ -227,6 +230,8 @@ class PyAce(Section):
                 # Map to bond pairs - for single element, use 'ALL' key
                 if len(self.elements) == 1:
                     # Single element - use ALL key for bonds
+                    # Ensure nradbase meets the requirements from nmax_vals
+                    required_nradbase = max(self.nmaxbase, max(nmax_vals) if nmax_vals else self.nmaxbase)
                     self.bonds = {
                         'ALL': {
                             'radbase': 'ChebExpCos',
@@ -236,11 +241,13 @@ class PyAce(Section):
                             'r_in': rcinner_vals[0] if rcinner_vals else 0.0,
                             'delta_in': drcinner_vals[0] if drcinner_vals else 0.01,
                             'core-repulsion': [100.0, 5.0],
-                            'nradbase': self.nmaxbase  # Use nmaxbase for radial basis
+                            'nradbase': required_nradbase
                         }
                     }
                 else:
                     # Multi-element - map to specific bond pairs
+                    # Ensure nradbase meets the requirements from nmax_vals
+                    required_nradbase = max(self.nmaxbase, max(nmax_vals) if nmax_vals else self.nmaxbase)
                     self.bonds = {}
                     for i, bond_name in enumerate(self.bond_pair_names):
                         if i < len(rcutfac_vals):
@@ -252,7 +259,7 @@ class PyAce(Section):
                                 'r_in': rcinner_vals[i] if i < len(rcinner_vals) else 0.0,
                                 'delta_in': drcinner_vals[i] if i < len(drcinner_vals) else 0.01,
                                 'core-repulsion': [100.0, 5.0],
-                                'nradbase': self.nmaxbase  # Use nmaxbase for radial basis
+                                'nradbase': required_nradbase
                             }
             else:
                 # Use simple/default bonds for ALL pairs
@@ -266,6 +273,10 @@ class PyAce(Section):
                 core_rep_str = self.get_value("PYACE", "bond_core_repulsion", "[100.0, 5.0]")
                 core_repulsion = json.loads(core_rep_str)
                 
+                # Determine required nradbase from functions
+                required_nradbase = self._get_required_nradbase()
+                actual_nradbase = max(required_nradbase, self.nmaxbase if hasattr(self, 'nmaxbase') else 16)
+                
                 self.bonds = {
                     'ALL': {
                         'radbase': radbase,
@@ -275,7 +286,7 @@ class PyAce(Section):
                         'r_in': r_in,
                         'delta_in': delta_in,
                         'core-repulsion': core_repulsion,
-                        'nradbase': self.nmaxbase if hasattr(self, 'nmaxbase') else 16  # Use nmaxbase for radial basis
+                        'nradbase': actual_nradbase
                     }
                 }
             
@@ -314,50 +325,86 @@ class PyAce(Section):
                 nmax_vals = [int(x) for x in nmax_str.split()] if nmax_str else [2] * len(ranks)
                 
                 # Convert to pyace format
+                unary_spec = {
+                    'nradmax_by_orders': nmax_vals,
+                    'lmax_by_orders': lmax_vals,
+                    'coefs_init': 'zero'
+                }
+                binary_spec = {
+                    'nradmax_by_orders': nmax_vals,
+                    'lmax_by_orders': lmax_vals,
+                    'coefs_init': 'zero'
+                }
+                
+                # Add lmin_by_orders if specified
+                if lmin_vals and any(val > 0 for val in lmin_vals):
+                    unary_spec['lmin_by_orders'] = lmin_vals
+                    binary_spec['lmin_by_orders'] = lmin_vals
+                
                 # For single element, only use UNARY
                 if len(self.elements) == 1:
                     self.functions = {
-                        'UNARY': {
-                            'nradmax_by_orders': nmax_vals,
-                            'lmax_by_orders': lmax_vals,
-                            'coefs_init': 'zero'
-                        }
+                        'UNARY': unary_spec
                     }
                 else:
                     # For multi-element, use both UNARY and BINARY
                     self.functions = {
-                        'UNARY': {
-                            'nradmax_by_orders': nmax_vals,
-                            'lmax_by_orders': lmax_vals,
-                            'coefs_init': 'zero'
-                        },
-                        'BINARY': {
-                            'nradmax_by_orders': nmax_vals,
-                            'lmax_by_orders': lmax_vals,
-                            'coefs_init': 'zero'
-                        }
+                        'UNARY': unary_spec,
+                        'BINARY': binary_spec
                     }
             else:
                 # Use simple/default functions
                 nradmax_str = self.get_value("PYACE", "function_nradmax_by_orders", "[15, 3, 2, 2, 1]")
                 lmax_str = self.get_value("PYACE", "function_lmax_by_orders", "[0, 2, 2, 1, 1]")
+                lmin_str = self.get_value("PYACE", "function_lmin_by_orders", "")
                 nradmax_by_orders = json.loads(nradmax_str)
                 lmax_by_orders = json.loads(lmax_str)
                 coefs_init = self.get_value("PYACE", "function_coefs_init", "zero")
                 
+                # Parse lmin_by_orders if provided
+                lmin_by_orders = None
+                if lmin_str:
+                    try:
+                        lmin_by_orders = json.loads(lmin_str)
+                    except json.JSONDecodeError:
+                        lmin_by_orders = [int(x) for x in lmin_str.split()]
+                
+                unary_spec = {
+                    'nradmax_by_orders': nradmax_by_orders,
+                    'lmax_by_orders': lmax_by_orders,
+                    'coefs_init': coefs_init
+                }
+                binary_spec = {
+                    'nradmax_by_orders': nradmax_by_orders[:-1],  # One less order for binary
+                    'lmax_by_orders': lmax_by_orders[:-1],
+                    'coefs_init': coefs_init
+                }
+                
+                # Add lmin_by_orders if specified
+                if lmin_by_orders:
+                    unary_spec['lmin_by_orders'] = lmin_by_orders
+                    binary_spec['lmin_by_orders'] = lmin_by_orders[:-1] if len(lmin_by_orders) > 1 else lmin_by_orders
+                
                 self.functions = {
-                    'UNARY': {
-                        'nradmax_by_orders': nradmax_by_orders,
-                        'lmax_by_orders': lmax_by_orders,
-                        'coefs_init': coefs_init
-                    },
-                    'BINARY': {
-                        'nradmax_by_orders': nradmax_by_orders[:-1],  # One less order for binary
-                        'lmax_by_orders': lmax_by_orders[:-1],
-                        'coefs_init': coefs_init
-                    }
+                    'UNARY': unary_spec,
+                    'BINARY': binary_spec
                 }
             
+    def _get_required_nradbase(self):
+        """Determine the required nradbase from function specifications"""
+        max_nradbase_needed = 16  # Default minimum
+        
+        # Check if we already have functions parsed
+        if hasattr(self, 'functions') and self.functions:
+            for func_type, func_spec in self.functions.items():
+                if 'nradmax_by_orders' in func_spec:
+                    nradmax_vals = func_spec['nradmax_by_orders']
+                    if nradmax_vals:
+                        # For unary functions, the first nradmax becomes nradbasemax
+                        max_nradbase_needed = max(max_nradbase_needed, max(nradmax_vals))
+        
+        return max_nradbase_needed
+    
     def _setup_type_mapping(self):
         """Setup type mapping and bond pairs for compatibility"""
         self.type_mapping = {}
@@ -397,3 +444,107 @@ class PyAce(Section):
     def get_ace_config(self):
         """Return the ACE configuration for use by calculator"""
         return self.ace_config
+    
+    def _apply_lmin_trimming(self):
+        """Apply lmin constraints by trimming basis functions after initialization"""
+        # Check if we have lmin constraints specified
+        lmin_by_orders = self._get_lmin_by_orders()
+        if lmin_by_orders is None:
+            return  # No trimming needed
+        
+        # Apply trimming to all function types
+        for func_type, func_spec in self.functions.items():
+            if 'lmin_by_orders' in func_spec:
+                # Modify the ace_config to apply the trimming
+                self._trim_ace_config_for_lmin(func_type, func_spec['lmin_by_orders'])
+    
+    def _get_lmin_by_orders(self):
+        """Get lmin_by_orders from configuration, with fallbacks to legacy lmin"""
+        # First try function-specific lmin_by_orders
+        func_lmin_str = self.get_value("PYACE", "function_lmin_by_orders", "")
+        if func_lmin_str:
+            try:
+                return json.loads(func_lmin_str)
+            except json.JSONDecodeError:
+                return [int(x) for x in func_lmin_str.split()]
+        
+        # Fall back to legacy lmin format
+        lmin_str = self.get_value("PYACE", "lmin", "")
+        if lmin_str:
+            lmin_vals = [int(x) for x in lmin_str.split()]
+            # Convert from ACE format (per rank) to pyace format (per order)
+            return lmin_vals
+        
+        return None
+    
+    def _trim_ace_config_for_lmin(self, func_type, lmin_by_orders):
+        """Trim ACE configuration to enforce lmin constraints
+        
+        This modifies the ace_config after it's built to remove basis functions
+        that don't meet the lmin criteria. This is a post-processing step since
+        PyACE doesn't natively support lmin_by_orders.
+        """
+        # Note: This method sets up the constraint information.
+        # The actual trimming will be done in the calculator when the 
+        # BBasisConfiguration is created from ace_config.
+        
+        # Store lmin constraints for use by calculator
+        if not hasattr(self, 'lmin_constraints'):
+            self.lmin_constraints = {}
+        
+        self.lmin_constraints[func_type] = lmin_by_orders
+        
+        # Add lmin info to functions spec for calculator to use
+        if 'lmin_by_orders' not in self.functions[func_type]:
+            self.functions[func_type]['lmin_by_orders'] = lmin_by_orders
+    
+    @staticmethod
+    def trim_basis_configuration_for_lmin(basis_config, lmin_constraints):
+        """Static method to trim a BBasisConfiguration based on lmin constraints
+        
+        This can be called from the calculator after the basis is created.
+        
+        Args:
+            basis_config: BBasisConfiguration object
+            lmin_constraints: dict mapping function type to lmin_by_orders list
+            
+        Returns:
+            Modified BBasisConfiguration with trimmed basis functions
+        """
+        if not lmin_constraints:
+            return basis_config
+            
+        for block in basis_config.funcspecs_blocks:
+            # Determine which constraint applies to this block
+            # This is a simplified approach - you may need to refine based on 
+            # your specific block naming conventions
+            
+            original_count = len(block.funcspecs)
+            filtered_funcspecs = []
+            
+            for funcspec in block.funcspecs:
+                # Get the rank (body order) of this function
+                rank = len(funcspec.ns)
+                order_index = rank - 1  # Convert to 0-based index
+                
+                # Check if we have an lmin constraint for this order
+                should_keep = True
+                for constraint_type, lmin_by_orders in lmin_constraints.items():
+                    if order_index < len(lmin_by_orders):
+                        lmin = lmin_by_orders[order_index]
+                        # Check if any l value is below lmin
+                        if any(l < lmin for l in funcspec.ls):
+                            should_keep = False
+                            break
+                
+                if should_keep:
+                    filtered_funcspecs.append(funcspec)
+            
+            # Update the block with filtered functions
+            block.funcspecs = filtered_funcspecs
+            trimmed_count = len(filtered_funcspecs)
+            
+            if trimmed_count != original_count:
+                print(f"Trimmed block '{block.block_name}': {original_count} -> {trimmed_count} functions")
+        
+        return basis_config

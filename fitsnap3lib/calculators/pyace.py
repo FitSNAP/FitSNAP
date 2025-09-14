@@ -47,8 +47,7 @@ class PyACE(Calculator):
         """Get width of descriptor vector for PYACE calculator"""
         
         if not PYACE_AVAILABLE:
-            self.pt.single_print("Warning: pyace not available, using fallback width calculation")
-            return self._fallback_width_calculation()
+            raise RuntimeError("pyace not available")
         
         # If pyace basis is loaded, get actual width from pyace by computing a test case
         if self.ace_basis is not None:
@@ -98,30 +97,10 @@ class PyACE(Calculator):
                 return actual_width
                         
             except Exception as e:
-                self.pt.single_print(f"Warning: Could not get actual basis size from pyace: {e}")
-                return self._fallback_width_calculation()
+                raise e
         else:
             # No basis loaded yet, use fallback
-            return self._fallback_width_calculation()
-    
-    def _fallback_width_calculation(self):
-        """Fallback width calculation when pyace is not available or basis not loaded"""
-        # Use basic ACE calculation for backwards compatibility
-        pyace_config = self.config.sections["PYACE"]
-        
-        if hasattr(pyace_config, 'ranks') and hasattr(pyace_config, 'nmax'):
-            # Simple count based on ranks and nmax
-            ranks = pyace_config.ranks if hasattr(pyace_config.ranks, '__iter__') else [pyace_config.ranks]
-            nmax_vals = pyace_config.nmax if hasattr(pyace_config.nmax, '__iter__') else [pyace_config.nmax]
-            
-            num_types = len(pyace_config.elements)
-            total_funcs = sum(int(nmax) * num_types for nmax in nmax_vals)
-            
-            return total_funcs
-        else:
-            # Minimal fallback
-            return len(pyace_config.elements) * 10  # Conservative estimate
-    
+            raise RuntimeError("self.ace_basis is None.")
 
     def setup_pyace(self):
         """Initialize pyace calculator with basis functions"""

@@ -49,6 +49,101 @@ class LammpsPyace(LammpsPace):
         
  
     
+    def create_coupling_coefficient_yace(self, output_filename="coupling_coefficient.yace"):
+        """Create coupling_coefficient.yace file for LAMMPS compute pace
+        
+        This method uses the PyAce configuration to create a .yace file
+        that can be used with LAMMPS compute pace command.
+        
+        Args:
+            output_filename (str): Name of the output .yace file
+            
+        Returns:
+            str: Path to the created .yace file
+        """
+        if not PYACE_AVAILABLE:
+            raise RuntimeError("pyace not available")
+            
+        try:
+            # Get the PyAce configuration section
+            pyace_config = self.config.sections["PYACE"]
+            
+            # Use the PyAce section's method to create the coupling coefficient file
+            coupling_file = pyace_config.create_coupling_coefficient_yace(output_filename)
+            
+            # Store the filename for later use
+            self.coupling_coefficient_file = coupling_file
+            
+            self.pt.single_print(f"Created coupling coefficient file: {coupling_file}")
+            self.pt.single_print(f"This file can be used with LAMMPS compute pace")
+            
+            # Print usage instructions
+            self.print_lammps_usage_instructions()
+            
+            return coupling_file
+            
+        except Exception as e:
+            self.pt.single_print(f"Error creating coupling_coefficient.yace: {e}")
+            import traceback
+            self.pt.single_print(f"Traceback: {traceback.format_exc()}")
+            raise RuntimeError(f"Failed to create coupling_coefficient.yace: {e}")
+    
+    def get_lammps_usage_instructions(self):
+        """Get instructions for using the coupling coefficient file with LAMMPS
+        
+        Returns:
+            str: Instructions for LAMMPS integration
+        """
+        if not self.coupling_coefficient_file:
+            return "No coupling coefficient file available. Create one first using create_coupling_coefficient_yace()"
+            
+        # Get element information from PyAce config
+        pyace_config = self.config.sections["PYACE"]
+        elements = pyace_config.elements
+        
+        instructions = f"""
+LAMMPS Integration Instructions for PyACE:
+==========================================
+
+1. Use the coupling coefficient file: {self.coupling_coefficient_file}
+
+2. In your LAMMPS input script, add:
+
+   # Define atom types for elements: {' '.join(elements)}
+   mass 1 <mass_of_{elements[0]}>"""
+        
+        if len(elements) > 1:
+            for i, elem in enumerate(elements[1:], 2):
+                instructions += f"\n   mass {i} <mass_of_{elem}>"
+        
+        instructions += f"""
+
+   # Set up the ACE potential
+   pair_style pace
+   pair_coeff * * {self.coupling_coefficient_file} {' '.join(elements)}
+
+   # Compute ACE descriptors
+   compute pace_desc all pace {self.coupling_coefficient_file}
+   
+   # Output descriptors (optional)
+   dump 1 all custom 1000 descriptors.dump id type c_pace_desc[*]
+
+3. Element mapping:"""
+        
+        for i, elem in enumerate(elements, 1):
+            instructions += f"\n   Type {i} = {elem}"
+            
+        instructions += f"""
+
+Note: Make sure the atom types in your data file match this mapping.
+"""
+        
+        return instructions
+    
+    def print_lammps_usage_instructions(self):
+        """Print instructions for using the coupling coefficient file with LAMMPS"""
+        self.pt.single_print(self.get_lammps_usage_instructions())
+    
     def _create_basis_from_config(self, config_dict):
         """Create pyace basis from configuration dictionary"""
         try:

@@ -450,6 +450,13 @@ class PyACE(Calculator):
             # Use the proper PyACE function to create BBasisConfiguration
             basis_config = create_multispecies_basis_config(config_dict)
             
+            # Apply lmin trimming if constraints are specified
+            pyace_config = self.config.sections["PYACE"]
+            if hasattr(pyace_config, 'lmin_constraints'):
+                self.pt.single_print(f"Applying lmin constraints: {pyace_config.lmin_constraints}")
+                from fitsnap3lib.io.sections.calculator_sections.pyace import PyAce
+                basis_config = PyAce.trim_basis_configuration_for_lmin(basis_config, pyace_config.lmin_constraints)
+            
             # Create ACEBBasisSet using the BBasisConfiguration
             ace_basis = ACEBBasisSet(basis_config)
             self.pt.single_print("Successfully created ACEBBasisSet using proper PyACE API")

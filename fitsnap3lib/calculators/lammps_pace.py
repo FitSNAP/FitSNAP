@@ -465,7 +465,10 @@ class LammpsPace(LammpsBase):
         if self.config.sections["CALCULATOR"].force:
             db_atom_temp = lmp_pace[irow:irow + nrows_force, :ncols_bispectrum]
             
-            self.pt.single_print(f"*** irow {irow} db_atom_temp {db_atom_temp.shape} {db_atom_temp}")
+            #self.pt.single_print(f"*** irow {irow} db_atom_temp {db_atom_temp.shape} {db_atom_temp}")
+            #self.pt.single_print(f"*** DEBUG: n_coeff={n_coeff}, self._ncoeff={self._ncoeff}")
+            #self.pt.single_print(f"*** DEBUG: len(self._blank2J)={len(self._blank2J)}, self._blank2J[:5]={self._blank2J[:5]}")
+            #self.pt.single_print(f"*** DEBUG: ncols_bispectrum={ncols_bispectrum}, num_types={num_types}")
                 
             db_atom_temp.shape = (num_atoms * ndim_force, n_coeff * num_types)
             if not self._bzeroflag:
@@ -514,9 +517,6 @@ class LammpsPace(LammpsBase):
         self.shared_index = index
         self.distributed_index = dindex
         
-        self.pt.single_print(self.pt.shared_arrays['a'].array[:3])
-        self.pt.single_print(self.pt.shared_arrays['b'].array[:10])
-
     def _collect_lammps_preprocess(self):
         num_atoms = self._data["NumAtoms"]
         num_types = self._numtypes

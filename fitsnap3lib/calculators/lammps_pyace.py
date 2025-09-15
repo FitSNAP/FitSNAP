@@ -77,8 +77,6 @@ class LammpsPyace(LammpsPace):
                 # Create the coupling coefficient file
                 pyace_config.create_coupling_coefficient_yace(coupling_filename)
                 self.pt.single_print(f"Successfully created {coupling_filename}")
-            else:
-                self.pt.single_print(f"Using existing {coupling_filename}")
         
         except Exception as e:
             self.pt.single_print(f"Error creating coupling coefficient file: {e}")
@@ -92,7 +90,7 @@ class LammpsPyace(LammpsPace):
         elif (self._bikflag and self._dgradflag):
             base_pace = f"compute pace all pace {coupling_filename} 1 1"
         
-        self.pt.single_print(f"LAMMPS command: {base_pace}")
+        # self.pt.single_print(f"LAMMPS command: {base_pace}")
         self._lmp.command(base_pace)
         
  

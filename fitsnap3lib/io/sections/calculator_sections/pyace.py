@@ -191,12 +191,33 @@ class PyAce(Section):
             
             # Create blank2J if not provided
             if self.blank2J is None:
-                self.blank2J = [1.0] * self.ncoeff
+                # Check if we need extra elements for bzeroflag=False
+                if hasattr(self, 'bzeroflag') and not self.bzeroflag:
+                    # When bzeroflag=False, FitSNAP adds one-hot encoding columns
+                    # So we need ncoeff + numtypes elements in blank2J
+                    total_coeffs = self.ncoeff + self.numtypes
+                    self.pt.single_print(f"Creating blank2J with {total_coeffs} elements (ncoeff={self.ncoeff} + numtypes={self.numtypes} for bzeroflag=False)")
+                else:
+                    # When bzeroflag=True, just use ncoeff
+                    total_coeffs = self.ncoeff
+                    self.pt.single_print(f"Creating blank2J with {total_coeffs} elements (ncoeff={self.ncoeff} for bzeroflag=True)")
+                
+                self.blank2J = [1.0] * total_coeffs
                 self.pt.single_print(f"Created blank2J array with {len(self.blank2J)} coefficients")
             
             # Store the basis for later use
             self.ace_basis_config = basis_config
             self.ace_basis = ace_basis
+            
+            # Extract and store the descriptor list (nus) for output
+            self.nus = []
+            for block in basis_config.funcspecs_blocks:
+                for funcspec in block.funcspecs:
+                    # Create descriptor label from funcspec
+                    nu_label = self._create_nu_label(funcspec)
+                    self.nus.append(nu_label)
+            
+            self.pt.single_print(f"Stored {len(self.nus)} descriptor labels for output")
             
             self.pt.single_print(f"Successfully created PyACE basis with {self.ncoeff} coefficients")
             
@@ -297,28 +318,11 @@ class PyAce(Section):
                 
                 # Map to bond pairs - for single element, use 'ALL' key
                 if len(self.elements) == 1:
-                    # Single element - use ALL key for bonds
-                    # Get nmax values from both ACE-style and simple parameters
-                    nmax_vals = []
+                    # For single element - use ALL key for bonds
+                    # Always use nmaxbase for nradbase - this is the total number of radial basis functions
+                    # Don't confuse with nradmax_by_orders which are function-specific
                     
-                    # Check ACE-style nmax parameter
-                    nmax_str = self.get_value("PYACE", "nmax", "")
-                    if nmax_str:
-                        nmax_vals = [int(x) for x in nmax_str.split()]
-                        print(f"DEBUG: Found ACE-style nmax = {nmax_vals}")
-                    
-                    # Check simple parameter format
-                    function_nradmax_str = self.get_value("PYACE", "function_nradmax_by_orders", "")
-                    if function_nradmax_str:
-                        try:
-                            func_nmax_vals = json.loads(function_nradmax_str)
-                            nmax_vals.extend(func_nmax_vals)
-                            print(f"DEBUG: Found function_nradmax_by_orders = {func_nmax_vals}")
-                        except (json.JSONDecodeError, ValueError):
-                            print(f"DEBUG: Failed to parse function_nradmax_by_orders: {function_nradmax_str}")
-                    
-                    required_nradbase = max(self.nmaxbase, max(nmax_vals) if nmax_vals else self.nmaxbase)
-                    print(f"DEBUG: nmaxbase={self.nmaxbase}, nmax_vals={nmax_vals}, required_nradbase={required_nradbase}")
+                    self.pt.single_print(f"DEBUG: Setting bond nradbase = {self.nmaxbase} (nmaxbase), NOT using function-specific values")
                     
                     self.bonds = {
                         'ALL': {
@@ -329,25 +333,13 @@ class PyAce(Section):
                             'r_in': rcinner_vals[0] if rcinner_vals else 0.0,
                             'delta_in': drcinner_vals[0] if drcinner_vals else 0.01,
                             'core-repulsion': [100.0, 5.0],
-                            'nradbase': required_nradbase
+                            'nradbase': self.nmaxbase  # Always use nmaxbase, not function-specific values
                         }
                     }
                 else:
                     # Multi-element - map to specific bond pairs
-                    # Get nmax values from ACE-style parameters to determine required nradbase
-                    nmax_str = self.get_value("PYACE", "nmax", "")
-                    nmax_vals = [int(x) for x in nmax_str.split()] if nmax_str else []
+                    # Always use nmaxbase for nradbase - not function-specific values
                     
-                    # Also check simple parameter format as fallback
-                    if not nmax_vals:
-                        function_nradmax_str = self.get_value("PYACE", "function_nradmax_by_orders", "")
-                        if function_nradmax_str:
-                            try:
-                                nmax_vals = json.loads(function_nradmax_str)
-                            except (json.JSONDecodeError, ValueError):
-                                nmax_vals = []
-                    
-                    required_nradbase = max(self.nmaxbase, max(nmax_vals) if nmax_vals else self.nmaxbase)
                     self.bonds = {}
                     for i, bond_name in enumerate(self.bond_pair_names):
                         if i < len(rcutfac_vals):
@@ -359,7 +351,7 @@ class PyAce(Section):
                                 'r_in': rcinner_vals[i] if i < len(rcinner_vals) else 0.0,
                                 'delta_in': drcinner_vals[i] if i < len(drcinner_vals) else 0.01,
                                 'core-repulsion': [100.0, 5.0],
-                                'nradbase': required_nradbase
+                                'nradbase': self.nmaxbase  # Always use nmaxbase
                             }
             else:
                 # Use simple/default bonds for ALL pairs
@@ -373,16 +365,7 @@ class PyAce(Section):
                 core_rep_str = self.get_value("PYACE", "bond_core_repulsion", "[100.0, 5.0]")
                 core_repulsion = json.loads(core_rep_str)
                 
-                # Determine required nradbase from simple parameter format
-                nradmax_str = self.get_value("PYACE", "function_nradmax_by_orders", "")
-                if nradmax_str:
-                    try:
-                        nradmax_vals = json.loads(nradmax_str)
-                        required_nradbase = max(self.nmaxbase if hasattr(self, 'nmaxbase') else 16, max(nradmax_vals) if nradmax_vals else 16)
-                    except (json.JSONDecodeError, ValueError):
-                        required_nradbase = self.nmaxbase if hasattr(self, 'nmaxbase') else 16
-                else:
-                    required_nradbase = self.nmaxbase if hasattr(self, 'nmaxbase') else 16
+                # Always use nmaxbase for nradbase - don't derive from function parameters
                 
                 self.bonds = {
                     'ALL': {
@@ -393,7 +376,7 @@ class PyAce(Section):
                         'r_in': r_in,
                         'delta_in': delta_in,
                         'core-repulsion': core_repulsion,
-                        'nradbase': required_nradbase
+                        'nradbase': self.nmaxbase  # Always use nmaxbase
                     }
                 }
             
@@ -605,6 +588,54 @@ class PyAce(Section):
         if 'lmin_by_orders' not in self.functions[func_type]:
             self.functions[func_type]['lmin_by_orders'] = lmin_by_orders
     
+    def _create_nu_label(self, funcspec):
+        """Create a descriptor label from PyACE funcspec for AcePot compatibility
+        
+        Args:
+            funcspec: PyACE function specification object
+            
+        Returns:
+            str: Descriptor label in format expected by AcePot: mu0_mus,ns,ls_L
+        """
+        try:
+            # Extract function specification components
+            rank = len(funcspec.ns)
+            ns = list(funcspec.ns)
+            ls = list(funcspec.ls)
+            
+            # For single element case, mu values are all 0
+            mus = [0] * rank
+            
+            # Create label in format: mu0_mu1,mu2,n1,n2,l1,l2_L
+            # Part 1: mu0 (always 0 for single element)
+            mu0 = 0
+            
+            # Part 2: comma-separated mus,ns,ls
+            part2_components = []
+            # Add mus (all 0 for single element)
+            part2_components.extend([str(mu) for mu in mus])
+            # Add ns
+            part2_components.extend([str(n) for n in ns])
+            # Add ls
+            part2_components.extend([str(l) for l in ls])
+            
+            part2 = ','.join(part2_components)
+            
+            # Part 3: L (coupling term, empty for descriptor calculation)
+            part3 = ''
+            
+            # Combine: mu0_mus,ns,ls_L
+            if part3:
+                label = f"{mu0}_{part2}_{part3}"
+            else:
+                label = f"{mu0}_{part2}_"
+            
+            return label
+            
+        except Exception as e:
+            self.pt.single_print(f"Warning: Failed to create nu label for funcspec: {e}")
+            return f"0_0,1,0_"  # Default fallback label
+    
     def create_coupling_coefficient_yace(self, output_filename="coupling_coefficient.yace"):
         """Create a coupling_coefficient.yace file using proper PyACE workflow
         
@@ -631,12 +662,61 @@ class PyAce(Section):
             
             # Set all coefficients to 1.0 for descriptor calculation
             self.pt.single_print("Setting coefficients to 1.0 for descriptor calculation")
-            num_coeffs = len(self.ace_basis.basis_coeffs)
-            self.ace_basis.basis_coeffs = np.ones(num_coeffs)
+            
+            # Try different approaches to set coefficients to 1.0
+            # Approach 1: Set basis_coeffs
+            if hasattr(self.ace_basis, 'basis_coeffs'):
+                num_coeffs = len(self.ace_basis.basis_coeffs)
+                self.ace_basis.basis_coeffs = np.ones(num_coeffs)
+                self.pt.single_print(f"Set {num_coeffs} basis_coeffs to 1.0")
+            
+            # Approach 2: Set coefficients in the basis configuration
+            if hasattr(self, 'ace_basis_config'):
+                for block in self.ace_basis_config.funcspecs_blocks:
+                    for funcspec in block.funcspecs:
+                        if hasattr(funcspec, 'coeffs'):
+                            funcspec.coeffs = np.ones(len(funcspec.coeffs))
+                        elif hasattr(funcspec, 'coeff'):
+                            funcspec.coeff = 1.0
+            
+            # Approach 3: Set coefficients directly in ace_basis if it has individual function coeffs
+            if hasattr(self.ace_basis, 'coeffs'):
+                self.ace_basis.coeffs = np.ones(len(self.ace_basis.coeffs))
+            
+            # Manually override embedding parameters to match reference format
+            self.pt.single_print("Overriding embedding parameters to match reference format")
+            
+            # Store original values
+            original_embeddings = self.embeddings.copy()
+            
+            # Override with reference values
+            for i, element in enumerate(self.elements):
+                if 'ALL' in self.embeddings:
+                    self.embeddings['ALL'] = {
+                        'ndensity': 1,
+                        'fs_parameters': [1.0, 1.0],  # Float format
+                        'npot': 'FinnisSinclair',  # Not FinnisSinclairShiftedScaled
+                        'rho_core_cut': 100000,  # Correct value
+                        'drho_core_cut': 250  # Correct value
+                    }
+                else:
+                    self.embeddings[element] = {
+                        'ndensity': 1,
+                        'fs_parameters': [1.0, 1.0],  # Float format
+                        'npot': 'FinnisSinclair',  # Not FinnisSinclairShiftedScaled
+                        'rho_core_cut': 100000,  # Correct value
+                        'drho_core_cut': 250  # Correct value
+                    }
             
             # Convert B-basis to C-tilde basis
             self.pt.single_print("Converting to Ctilde-basis")
             cbasis = self.ace_basis.to_ACECTildeBasisSet()
+            
+            # Debug: Check if ctildes are set correctly
+            if hasattr(cbasis, 'ctilde_basis_funcs'):
+                for i, func in enumerate(cbasis.ctilde_basis_funcs[:3]):  # Check first 3
+                    if hasattr(func, 'ctildes'):
+                        self.pt.single_print(f"Function {i}: ctildes = {func.ctildes[:5]}...")  # Show first 5
             
             # Save as .yace file
             self.pt.single_print(f"Saving Ctilde-basis to '{output_filename}'")

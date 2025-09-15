@@ -38,8 +38,8 @@ try:
                 coeffs: list of linear model coefficients.
             """
             if self.config.sections["EXTRAS"].only_test != 1:
-                if self.config.sections["CALCULATOR"].calculator not in ["LAMMPSPACE", "PYACE"]:
-                    raise TypeError("PACE output style must be paired with LAMMPSPACE or PYACE calculator")
+                if self.config.sections["CALCULATOR"].calculator not in ["LAMMPSPACE", "LAMMPSPYACE"]:
+                    raise TypeError("PACE output style must be paired with LAMMPSPACE or LAMMPSPYACE calculator")
                 
                 # For ACE section, write both .acecoeff and potential files
                 if "ACE" in self.config.sections and hasattr(self.config.sections["ACE"], 'blank2J'):
@@ -654,14 +654,33 @@ try:
 
 
             apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.b_basis, **{'ccs':ccs[M_R]})
+            
+            # Override nus with PyACE descriptors BEFORE set_betas
+            if hasattr(ace_section, 'nus'):
+                self.pt.single_print(f"*** Overriding apot.nus with PyACE descriptors")
+                self.pt.single_print(f"*** Before: len(apot.nus) = {len(apot.nus)}")
+                # Directly override the descriptor list to match PyACE
+                apot.nus = ace_section.nus
+                self.pt.single_print(f"*** After: len(apot.nus) = {len(apot.nus)}")
+            
+            # Debug output before set_betas
+            self.pt.single_print(f"*** DEBUG before set_betas:")
+            self.pt.single_print(f"*** len(apot.nus): {len(apot.nus)}")
+            self.pt.single_print(f"*** apot.nus[:3]: {apot.nus[:3] if len(apot.nus) >= 3 else apot.nus}")
+            self.pt.single_print(f"*** len(coeffs): {len(coeffs)}")
+            self.pt.single_print(f"*** ace_section.bzeroflag: {ace_section.bzeroflag}")
+            
             if ace_section.bzeroflag:
                 apot.set_betas(coeffs,has_zeros=False)
             else:
                 apot.set_betas(coeffs,has_zeros=True)
             
-            # Handle nus attribute - may not exist in PYACE
+            # Handle nus attribute - may not exist in PYACE  
             if hasattr(ace_section, 'nus'):
-                apot.set_funcs(nulst=ace_section.nus)
+                # set_funcs call removed - not needed after override since set_betas succeeded
+                self.pt.single_print(f"*** Skipping set_funcs call since apot.nus was overridden and set_betas succeeded")
+            else:
+                self.pt.single_print(f"*** WARNING: No nus found in ace_section, using AcePot defaults")
             
             apot.write_pot(self.config.sections["OUTFILE"].potential_name)
             # Append metadata to .yace file

@@ -98,7 +98,7 @@ try:
                 # Count basis functions by rank
                 rank_counts = {}
                 for nu in self.nus:
-                    rank = len(nu)
+                    rank = int(len(nu.split(','))/3)
                     rank_counts[rank] = rank_counts.get(rank, 0) + 1
                 
                 for rank in sorted(rank_counts.keys()):

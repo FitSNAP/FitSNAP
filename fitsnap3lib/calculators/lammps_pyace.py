@@ -1,6 +1,6 @@
 
 import numpy as np
-#from fitsnap3lib.calculators.calculator import Calculator
+from fitsnap3lib.calculators.lammps_base import LammpsBase, _extract_compute_np
 from fitsnap3lib.calculators.lammps_pace import LammpsPace
 import lammps
 
@@ -24,12 +24,15 @@ except ImportError as e:
     def create_multispecies_basis_config(*args, **kwargs): pass
     def aseatoms_to_atomicenvironment(*args, **kwargs): pass
 
+# ------------------------------------------------------------------------------------------------
 
 class LammpsPyace(LammpsPace):
     """
     Calculator using pyace basis in [PYACE] with LAMMPS compute pace
     """
     
+    # --------------------------------------------------------------------------------------------
+
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config, calculator_section="PYACE")
         
@@ -39,8 +42,9 @@ class LammpsPyace(LammpsPace):
         
         # Initialize pyace specific parameters
         self.ace_basis = None
-        
-        
+    
+    # --------------------------------------------------------------------------------------------
+
     def get_width(self):
         """Get width of descriptor vector for PYACE calculator"""
         
@@ -48,17 +52,10 @@ class LammpsPyace(LammpsPace):
             raise RuntimeError("pyace not available")
         
         # Get the configuration and ncoeff from PyAce section
-        pyace_config = self.config.sections["PYACE"]
-        
-        if (self.config.sections["CALCULATOR"].nonlinear):
-            a_width = pyace_config.ncoeff
-        else:
-            a_width = pyace_config.ncoeff * pyace_config.numtypes
-            if not pyace_config.bzeroflag:
-                a_width += pyace_config.numtypes
-        
-        return a_width
-        
+        return self.config.sections["PYACE"].ncoeff
+    
+    # --------------------------------------------------------------------------------------------
+
     def _set_computes(self):
         """Override parent method to create coupling coefficient file first"""
         
@@ -92,125 +89,100 @@ class LammpsPyace(LammpsPace):
         
         # self.pt.single_print(f"LAMMPS command: {base_pace}")
         self._lmp.command(base_pace)
-        
- 
     
-    def create_coupling_coefficient_yace(self, output_filename="coupling_coefficient.yace"):
-        """Create coupling_coefficient.yace file for LAMMPS compute pace
-        
-        This method uses the PyAce configuration to create a .yace file
-        that can be used with LAMMPS compute pace command.
-        
-        Args:
-            output_filename (str): Name of the output .yace file
+    # --------------------------------------------------------------------------------------------
+
+    def _collect_lammps(self):
+        num_atoms = self._data["NumAtoms"]
+        n_coeff = self._ncoeff
+        energy = self._data["Energy"]
+
+        lmp_atom_ids  = self._extract_atom_ids(num_atoms)
+        lmp_pos  = self._extract_atom_positions(num_atoms)
+        lmp_types  = self._extract_atom_types(num_atoms)
             
-        Returns:
-            str: Path to the created .yace file
-        """
-        if not PYACE_AVAILABLE:
-            raise RuntimeError("pyace not available")
-            
-        try:
-            # Get the PyAce configuration section
-            pyace_config = self.config.sections["PYACE"]
-            
-            # Use the PyAce section's method to create the coupling coefficient file
-            coupling_file = pyace_config.create_coupling_coefficient_yace(output_filename)
-            
-            self.pt.single_print(f"Created coupling coefficient file: {coupling_file}")
-            self.pt.single_print(f"This file can be used with LAMMPS compute pace")
-            
-            return coupling_file
-            
-        except Exception as e:
-            self.pt.single_print(f"Error creating coupling_coefficient.yace: {e}")
-            import traceback
-            self.pt.single_print(f"Traceback: {traceback.format_exc()}")
-            raise RuntimeError(f"Failed to create coupling_coefficient.yace: {e}")
+        assert np.all(lmp_atom_ids == 1 + np.arange(num_atoms)), "LAMMPS seems to have lost atoms \nGroup and configuration: {} {}".format(self._data["Group"],self._data["File"])
+
+        lmp_volume = self._lmp.get_thermo("vol")
+
+        # Extract pace data, including reference potential data
+
+        nrows_energy = 1
+        bik_rows = 1
+        ndim_force = 3
+        nrows_force = ndim_force * num_atoms
+        ndim_virial = 6
+        nrows_virial = ndim_virial
+        nrows_pace = nrows_energy + nrows_force + nrows_virial
+        ncols_descriptors = self.get_width()   # overriden by lammpspyace
+        ncols_reference = 1
+        ncols_pace = ncols_descriptors + ncols_reference
+        index = self.shared_index
+        dindex = self.distributed_index
+        lmp_pace = _extract_compute_np(self._lmp, "pace", 0, 2, (nrows_pace, ncols_pace))
+
+        if (np.isinf(lmp_pace)).any() or (np.isnan(lmp_pace)).any():
+            self.pt.single_print('! WARNING! applying np.nan_to_num()')
+            lmp_pace = np.nan_to_num(lmp_pace)
+        if (np.isinf(lmp_pace)).any() or (np.isnan(lmp_pace)).any():
+            raise ValueError('NaN in computed data of file {} in group {}'.format(self._data["File"], self._data["Group"]))
+
+        irow = 0
+        bik_rows = 1
+        if self._bikflag:
+            bik_rows = num_atoms
+        icolref = ncols_descriptors
+        if self.config.sections["CALCULATOR"].energy:
+            self.pt.shared_arrays['a'].array[index] = lmp_pace[irow, :ncols_descriptors] / num_atoms
+            ref_energy = lmp_pace[irow, icolref]
+            self.pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
+            self.pt.shared_arrays['w'].array[index] = self._data["eweight"]
+            self.pt.fitsnap_dict['Row_Type'][dindex:dindex + bik_rows] = ['Energy'] * nrows_energy
+            self.pt.fitsnap_dict['Atom_I'][dindex:dindex + bik_rows] = [int(i) for i in range(nrows_energy)]
+            index += nrows_energy
+            dindex += nrows_energy
+        irow += nrows_energy
+
+        if self.config.sections["CALCULATOR"].force:
+            s = slice(index, index + num_atoms*ndim_force)
+            self.pt.shared_arrays['a'].array[s] = lmp_pace[irow:irow + nrows_force, :ncols_descriptors]
+            ref_forces = lmp_pace[irow:irow + nrows_force, icolref]
+            self.pt.shared_arrays['b'].array[s] = self._data["Forces"].ravel() - ref_forces
+            self.pt.shared_arrays['w'].array[s] = self._data["fweight"]
+            self.pt.fitsnap_dict['Row_Type'][dindex:dindex + nrows_force] = ['Force'] * nrows_force
+            self.pt.fitsnap_dict['Atom_I'][dindex:dindex + nrows_force] = [int(np.floor(i/3)) for i in range(nrows_force)]
+            index += nrows_force
+            dindex += nrows_force
+        irow += nrows_force
+
+        if self.config.sections["CALCULATOR"].stress:
+            vb_sum_temp = 1.6021765e6*lmp_pace[irow:irow + nrows_virial, :ncols_descriptors] / lmp_volume
+            vb_sum_temp.shape = (ndim_virial, n_coeff * num_types)
+            if not self._bzeroflag:
+                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types, n_coeff)
+                onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0], num_types, 1))
+                vb_sum_temp = np.concatenate([onehot_atoms, vb_sum_temp], axis=2)
+                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types * n_coeff + num_types)
+            self.pt.shared_arrays['a'].array[index:index+ndim_virial] = \
+                np.matmul(vb_sum_temp, np.diag(self._blank2J))
+            ref_stress = lmp_pace[irow:irow + nrows_virial, icolref]
+            self.pt.shared_arrays['b'].array[index:index+ndim_virial] = \
+                self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
+            self.pt.shared_arrays['w'].array[index:index+ndim_virial] = \
+                self._data["vweight"]
+            self.pt.fitsnap_dict['Row_Type'][dindex:dindex + ndim_virial] = ['Stress'] * ndim_virial
+            self.pt.fitsnap_dict['Atom_I'][dindex:dindex + ndim_virial] = [int(0)] * ndim_virial
+            index += ndim_virial
+            dindex += ndim_virial
+
+        length = dindex - self.distributed_index
+
+        self.pt.fitsnap_dict['Groups'][self.distributed_index:dindex] = ['{}'.format(self._data['Group'])] * length
+        self.pt.fitsnap_dict['Configs'][self.distributed_index:dindex] = ['{}'.format(self._data['File'])] * length
+        self.pt.fitsnap_dict['Testing'][self.distributed_index:dindex] = [bool(self._data['test_bool'])] * length
+        self.shared_index = index
+        self.distributed_index = dindex
     
-    def get_lammps_usage_instructions(self, coupling_filename="coupling_coefficient.yace"):
-        """Get instructions for using the coupling coefficient file with LAMMPS
-        
-        Args:
-            coupling_filename (str): Name of the coupling coefficient file
-            
-        Returns:
-            str: Instructions for LAMMPS integration
-        """
-        # Get element information from PyAce config
-        pyace_config = self.config.sections["PYACE"]
-        elements = pyace_config.elements
-        
-        instructions = f"""
-LAMMPS Integration Instructions for PyACE:
-==========================================
+    # --------------------------------------------------------------------------------------------
 
-1. Use the coupling coefficient file: {coupling_filename}
 
-2. In your LAMMPS input script, add:
-
-   # Define atom types for elements: {' '.join(elements)}
-   mass 1 <mass_of_{elements[0]}>"""
-        
-        if len(elements) > 1:
-            for i, elem in enumerate(elements[1:], 2):
-                instructions += f"\n   mass {i} <mass_of_{elem}>"
-        
-        instructions += f"""
-
-   # Set up the ACE potential
-   pair_style pace
-   pair_coeff * * {coupling_filename} {' '.join(elements)}
-
-   # Compute ACE descriptors
-   compute pace_desc all pace {coupling_filename}
-   
-   # Output descriptors (optional)
-   dump 1 all custom 1000 descriptors.dump id type c_pace_desc[*]
-
-3. Element mapping:"""
-        
-        for i, elem in enumerate(elements, 1):
-            instructions += f"\n   Type {i} = {elem}"
-            
-        instructions += f"""
-
-Note: Make sure the atom types in your data file match this mapping.
-"""
-        
-        return instructions
-    
-    def print_lammps_usage_instructions(self, coupling_filename="coupling_coefficient.yace"):
-        """Print instructions for using the coupling coefficient file with LAMMPS"""
-        self.pt.single_print(self.get_lammps_usage_instructions(coupling_filename))
-    
-    def _create_basis_from_config(self, config_dict):
-        """Create pyace basis from configuration dictionary"""
-        try:
-            self.pt.single_print(f"Creating BBasisConfiguration using create_multispecies_basis_config")
-            self.pt.single_print(f"Config: elements={config_dict.get('elements')}, cutoff={config_dict.get('cutoff')}")
-            
-            # Use the proper PyACE function to create BBasisConfiguration
-            basis_config = create_multispecies_basis_config(config_dict)
-            
-            # Apply lmin trimming if constraints are specified
-            pyace_config = self.config.sections["PYACE"]
-            if hasattr(pyace_config, 'lmin_constraints'):
-                self.pt.single_print(f"Applying lmin constraints: {pyace_config.lmin_constraints}")
-                from fitsnap3lib.io.sections.calculator_sections.pyace import PyAce
-                basis_config = PyAce.trim_basis_configuration_for_lmin(basis_config, pyace_config.lmin_constraints)
-            
-            # Create ACEBBasisSet using the BBasisConfiguration
-            ace_basis = ACEBBasisSet(basis_config)
-            self.pt.single_print("Successfully created ACEBBasisSet using proper PyACE API")
-            
-            return ace_basis
-                    
-        except Exception as e:
-            self.pt.single_print(f"Error creating pyace basis from config: {e}")
-            self.pt.single_print(f"Invoked with: config_dict: {config_dict}")
-            import traceback
-            self.pt.single_print(f"Traceback: {traceback.format_exc()}")
-            return None
-    
- 

@@ -7,11 +7,24 @@ import pickle
 #config = Config()
 #pt = ParallelTools()
 
+# Import pyace components for PYACE sections
 try:
+    from pyace.basis import ACEBBasisSet, ACECTildeBasisSet, BBasisConfiguration
+    from pyace import create_multispecies_basis_config
+    PYACE_AVAILABLE = True
+except ImportError:
+    PYACE_AVAILABLE = False
 
+# Import sym_ACE components for ACE sections
+try:
     from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import AcePot
     from fitsnap3lib.lib.sym_ACE.wigner_couple import *
     from fitsnap3lib.lib.sym_ACE.clebsch_couple import *
+    SYMACE_AVAILABLE = True
+except ImportError:
+    SYMACE_AVAILABLE = False
+
+if PYACE_AVAILABLE or SYMACE_AVAILABLE:
 
     class Pace(Output):
 
@@ -41,19 +54,24 @@ try:
                 if self.config.sections["CALCULATOR"].calculator not in ["LAMMPSPACE", "LAMMPSPYACE"]:
                     raise TypeError("PACE output style must be paired with LAMMPSPACE or LAMMPSPYACE calculator")
                 
-                # For ACE section, write both .acecoeff and potential files
-                if "ACE" in self.config.sections and hasattr(self.config.sections["ACE"], 'blank2J'):
-                    with optional_open(self.config.sections["OUTFILE"].potential_name and
-                                      self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
-                        file.write(_to_coeff_string(coeffs, self.config))
+                # For ACE and PYACE sections, write both .acecoeff and potential files
+                
+                potential_name = self.config.sections["OUTFILE"].potential_name
+                
+                if("ACE" in self.config.sections and hasattr(self.config.sections["ACE"], 'blank2J')
+                    or "PYACE" in self.config.sections ):
+                    try:
+                        with optional_open(potential_name and potential_name + '.acecoeff', 'wt') as file:
+                            file.write(_to_coeff_string(coeffs, self.config))
+                        self.pt.single_print(f"Successfully wrote coefficient file: {potential_name}.acecoeff")
+                    except Exception as e:
+                        self.pt.single_print(f"Warning: Could not write .acecoeff file: {e}")
+                        # For PYACE, try alternative coefficient output
+                        if "PYACE" in self.config.sections:
+                            self.pt.single_print("Attempting PYACE-specific coefficient output...")
+                            self._write_pyace_coeffs(coeffs, potential_name)
                     self.write_potential(coeffs)
-                    with optional_open(self.config.sections["OUTFILE"].potential_name and self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
-                        file.write(_to_potential_file(self.config))
-                # For PYACE section, only write potential files (skip .acecoeff)
-                elif "PYACE" in self.config.sections:
-                    self.pt.single_print("PYACE detected: Skipping .acecoeff output, generating .yace potential file only")
-                    self.write_potential(coeffs)
-                    with optional_open(self.config.sections["OUTFILE"].potential_name and self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
+                    with optional_open(potential_name and potential_name + '.mod', 'wt') as file:
                         file.write(_to_potential_file(self.config))
                 else:
                     raise RuntimeError("No supported ACE or PYACE section found for output")
@@ -570,17 +588,225 @@ try:
             
             return "\n".join(lines)
 
-
         def write_potential(self, coeffs):
             
-            # Support both ACE and PYACE sections
-            if "ACE" in self.config.sections:
-                ace_section = self.config.sections["ACE"]
-            elif "PYACE" in self.config.sections:
+            # Use PYACE library ONLY for [PYACE] sections
+            if "PYACE" in self.config.sections:
+                if not PYACE_AVAILABLE:
+                    raise RuntimeError("pyace library not available but PYACE section found")
                 ace_section = self.config.sections["PYACE"]
+                self._write_potential_with_pyace(coeffs, ace_section)
+            elif "ACE" in self.config.sections:
+                if not SYMACE_AVAILABLE:
+                    raise RuntimeError("sym_ACE library not available but ACE section found")
+                ace_section = self.config.sections["ACE"]
+                self._write_potential_with_symace(coeffs, ace_section)
             else:
                 raise RuntimeError("No ACE or PYACE section found for PACE output")
 
+        def _write_potential_with_pyace(self, coeffs, pyace_section):
+            """Write potential using pyace library for [PYACE] sections only"""
+                        
+            try:
+                # Get the ACE basis that was already created during PyACE initialization
+                if hasattr(pyace_section, 'ace_basis') and pyace_section.ace_basis is not None:
+                    self.pt.single_print("Using existing ACE basis from PyACE section")
+                    ace_basis = pyace_section.ace_basis
+                else:
+                    # Fallback: Create basis from ace_config
+                    self.pt.single_print("Creating new ACE basis from ace_config")
+                    ace_config = pyace_section.get_ace_config()
+                    basis_config = create_multispecies_basis_config(ace_config)
+                    ace_basis = ACEBBasisSet(basis_config)
+                
+                # Set coefficients in the basis
+                self.pt.single_print(f"Setting {len(coeffs)} FitSNAP coefficients in pyace basis")
+                self.pt.single_print(f"PyACE basis has {len(ace_basis.basis_coeffs)} coefficient slots")
+                self.pt.single_print(f"System has {pyace_section.numtypes} atom types")
+                self.pt.single_print(f"bzeroflag = {getattr(pyace_section, 'bzeroflag', 'unknown')}")
+                
+                # Convert FitSNAP coefficients (LAMMPS PACE format) to PyACE format
+                coeffs_for_pyace = self._convert_fitsnap_to_pyace_coeffs(coeffs, pyace_section, ace_basis)
+                
+                # Final check
+                if len(coeffs_for_pyace) != len(ace_basis.basis_coeffs):
+                    raise ValueError(f"After conversion: {len(coeffs_for_pyace)} coeffs vs {len(ace_basis.basis_coeffs)} PyACE slots")
+                
+                # Set the coefficients
+                ace_basis.basis_coeffs = np.array(coeffs_for_pyace, dtype=np.float64)
+                self.pt.single_print(f"Successfully set {len(coeffs_for_pyace)} coefficients in PyACE basis")
+                
+                # Convert to C-tilde basis for saving
+                self.pt.single_print("Converting to C-tilde basis for .yace output")
+                ctilde_basis = ace_basis.to_ACECTildeBasisSet()
+                
+                # Save as .yace file
+                potential_name = self.config.sections["OUTFILE"].potential_name
+                yace_filename = f"{potential_name}.yace"
+                
+                self.pt.single_print(f"Saving potential to {yace_filename}")
+                ctilde_basis.save_yaml(yace_filename)
+                
+                # Append metadata to .yace file
+                unit = f"# units {self.config.sections['REFERENCE'].units}\n"
+                atom = f"# atom_style {self.config.sections['REFERENCE'].atom_style}\n"
+                pair = "\n".join(["# " + s for s in self.config.sections["REFERENCE"].lmp_pairdecl]) + "\n"
+                refsec = unit + atom + pair
+                
+                with open(yace_filename, "a") as fp:
+                    fp.write("# This file was generated by FitSNAP.\n")
+                    fp.write(f"# Hash: {self.config.hash}\n")
+                    fp.write(f"# FitSNAP REFERENCE section settings:\n")
+                    fp.write(f"{refsec}")
+                
+                self.pt.single_print(f"Successfully wrote potential using pyace: {yace_filename}")
+                
+            except Exception as e:
+                self.pt.single_print(f"Error writing potential with pyace: {e}")
+                import traceback
+                self.pt.single_print(f"Traceback: {traceback.format_exc()}")
+                raise RuntimeError(f"Failed to write potential with pyace: {e}")
+                
+        def _convert_fitsnap_to_pyace_coeffs(self, fitsnap_coeffs, pyace_section, ace_basis):
+            """Convert FitSNAP coefficients (LAMMPS PACE format) to PyACE format
+            
+            FitSNAP provides coefficients in LAMMPS PACE format which may have:
+            - Coefficients duplicated for each atom type  
+            - 0th order coefficients (if bzeroflag=False)
+            
+            PyACE expects:
+            - One set of coefficients (handles multi-type internally)
+            - No 0th order coefficients in basis_coeffs
+            """
+            
+            numtypes = pyace_section.numtypes
+            bzeroflag = getattr(pyace_section, 'bzeroflag', True)
+            expected_pyace_size = len(ace_basis.basis_coeffs)
+            
+            self.pt.single_print(f"Converting FitSNAP coeffs: {len(fitsnap_coeffs)} -> PyACE: {expected_pyace_size}")
+            
+            # Case 1: Single atom type - simple handling
+            if numtypes == 1:
+                if bzeroflag:
+                    # No 0th order coefficients to remove
+                    if len(fitsnap_coeffs) == expected_pyace_size:
+                        self.pt.single_print("Single-type, bzeroflag=True: direct copy")
+                        return fitsnap_coeffs
+                    else:
+                        raise ValueError(f"Single-type size mismatch: {len(fitsnap_coeffs)} vs {expected_pyace_size}")
+                else:
+                    # Remove 0th order coefficient (first coefficient)
+                    if len(fitsnap_coeffs) == expected_pyace_size + 1:
+                        self.pt.single_print("Single-type, bzeroflag=False: removing 0th order")
+                        return fitsnap_coeffs[1:]  # Skip first coefficient
+                    else:
+                        raise ValueError(f"Single-type (bzeroflag=False) size mismatch: {len(fitsnap_coeffs)} vs {expected_pyace_size + 1}")
+            
+            # Case 2: Multi-atom type - more complex handling
+            else:
+                if bzeroflag:
+                    # Check if coefficients are duplicated per type
+                    if len(fitsnap_coeffs) == expected_pyace_size * numtypes:
+                        self.pt.single_print(f"Multi-type, bzeroflag=True: extracting first type's coeffs")
+                        # Take coefficients for the first type only
+                        # PyACE handles multi-type internally, so we don't need duplication
+                        return fitsnap_coeffs[:expected_pyace_size]
+                    elif len(fitsnap_coeffs) == expected_pyace_size:
+                        self.pt.single_print(f"Multi-type, bzeroflag=True: coeffs already in PyACE format")
+                        return fitsnap_coeffs
+                    else:
+                        raise ValueError(f"Multi-type (bzeroflag=True) size mismatch: {len(fitsnap_coeffs)} vs {expected_pyace_size} or {expected_pyace_size * numtypes}")
+                else:
+                    # Remove 0th order coefficients and handle duplication
+                    expected_with_zeros = expected_pyace_size * numtypes + numtypes
+                    if len(fitsnap_coeffs) == expected_with_zeros:
+                        self.pt.single_print(f"Multi-type, bzeroflag=False: removing 0th order and extracting first type")
+                        # Skip first numtypes coefficients (0th order), then take first type's coeffs
+                        coeffs_without_zeros = fitsnap_coeffs[numtypes:]
+                        return coeffs_without_zeros[:expected_pyace_size]
+                    elif len(fitsnap_coeffs) == expected_pyace_size + numtypes:
+                        self.pt.single_print(f"Multi-type, bzeroflag=False: removing 0th order only")
+                        # Skip first numtypes coefficients (0th order)
+                        return fitsnap_coeffs[numtypes:]
+                    elif len(fitsnap_coeffs) == expected_pyace_size:
+                        self.pt.single_print(f"Multi-type, bzeroflag=False: coeffs already in PyACE format")
+                        return fitsnap_coeffs
+                    else:
+                        raise ValueError(f"Multi-type (bzeroflag=False) size mismatch: {len(fitsnap_coeffs)} vs expected {expected_with_zeros}, {expected_pyace_size + numtypes}, or {expected_pyace_size}")
+                
+        def _write_pyace_coeffs(self, coeffs, potential_name):
+            """Write coefficient file specifically for PYACE sections
+            
+            This method creates a .acecoeff file even when the standard method fails,
+            providing the fitted coefficients in a readable format.
+            """
+            try:
+                pyace_section = self.config.sections["PYACE"]
+                
+                # Convert FitSNAP coefficients to PyACE format if needed
+                if hasattr(pyace_section, 'ace_basis') and pyace_section.ace_basis is not None:
+                    ace_basis = pyace_section.ace_basis
+                    coeffs_for_output = self._convert_fitsnap_to_pyace_coeffs(coeffs, pyace_section, ace_basis)
+                else:
+                    coeffs_for_output = coeffs
+                
+                # Create coefficient output
+                with open(f"{potential_name}.acecoeff", 'w') as f:
+                    f.write(f"# FitSNAP PyACE coefficients generated on {datetime.now()}\n")
+                    f.write(f"# Hash: {self.config.hash}\n")
+                    f.write(f"# System: {' '.join(pyace_section.elements)}\n")
+                    f.write(f"# Number of types: {pyace_section.numtypes}\n")
+                    f.write(f"# Total coefficients: {len(coeffs_for_output)}\n")
+                    f.write(f"# bzeroflag: {getattr(pyace_section, 'bzeroflag', True)}\n")
+                    f.write("\n")
+                    
+                    # Write coefficient header
+                    f.write(f"{pyace_section.numtypes} {len(coeffs_for_output)}\n")
+                    
+                    # For single type systems or when we don't have detailed descriptor info
+                    if pyace_section.numtypes == 1 or not hasattr(pyace_section, 'nus'):
+                        f.write(f"{pyace_section.elements[0]}\n")
+                        for i, coeff in enumerate(coeffs_for_output):
+                            f.write(f" {coeff:<30.18} #  B{i+1}\n")
+                    else:
+                        # Multi-type system with descriptor information
+                        coeffs_per_type = len(coeffs_for_output) // pyace_section.numtypes if len(coeffs_for_output) % pyace_section.numtypes == 0 else len(coeffs_for_output)
+                        
+                        for type_idx, element in enumerate(pyace_section.elements):
+                            f.write(f"{element}\n")
+                            
+                            if len(coeffs_for_output) == coeffs_per_type:
+                                # Coefficients are in PyACE format (not duplicated)
+                                start_idx = 0
+                                end_idx = len(coeffs_for_output)
+                            else:
+                                # Coefficients might be duplicated per type
+                                start_idx = type_idx * coeffs_per_type
+                                end_idx = start_idx + coeffs_per_type
+                                
+                            for i in range(start_idx, min(end_idx, len(coeffs_for_output))):
+                                if hasattr(pyace_section, 'nus') and (i - start_idx) < len(pyace_section.nus):
+                                    descriptor_label = pyace_section.nus[i - start_idx]
+                                    f.write(f" {coeffs_for_output[i]:<30.18} #  B{descriptor_label}\n")
+                                else:
+                                    f.write(f" {coeffs_for_output[i]:<30.18} #  B{i+1}\n")
+                                    
+                            # If this is the first type and coefficients are not duplicated, break
+                            if len(coeffs_for_output) == coeffs_per_type:
+                                break
+                    
+                    f.write("\n# End of potential\n")
+                
+                self.pt.single_print(f"Successfully wrote PYACE coefficient file: {potential_name}.acecoeff")
+                
+            except Exception as e:
+                self.pt.single_print(f"Error writing PYACE coefficient file: {e}")
+                import traceback
+                self.pt.single_print(f"Traceback: {traceback.format_exc()}")
+                
+        def _write_potential_with_symace(self, coeffs, ace_section):
+            """Write potential using sym_ACE library for [ACE] sections only"""
+                        
             self.bzeroflag = ace_section.bzeroflag 
             self.numtypes = ace_section.numtypes
             self.ranks = ace_section.ranks
@@ -593,16 +819,15 @@ try:
             self.lmbda = ace_section.lmbda
             self.rcinner = ace_section.rcinner
             self.drcinner = ace_section.drcinner
-            self.types = getattr(ace_section, 'types', getattr(ace_section, 'elements', ['H']))  # ACE uses 'types', PYACE uses 'elements'
+            self.types = getattr(ace_section, 'types', ['H'])
             self.erefs = ace_section.erefs
             
-            # Handle attributes that may not exist in PYACE
+            # Handle ACE-specific attributes
             self.bikflag = getattr(ace_section, 'bikflag', False)
             self.b_basis = getattr(ace_section, 'b_basis', 'pa_tabulated')
             self.wigner_flag = getattr(ace_section, 'wigner_flag', True)
 
             if self.bzeroflag:
-                #assert len(self.types) ==  len(self.erefs), "must provide reference energy for each atom type"
                 if len(self.types) ==  len(self.erefs):
                     reference_ens = [float(e0) for e0 in self.erefs]
                 else:
@@ -625,7 +850,6 @@ try:
                 rcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.rcinner)}
                 drcinnervals = {bondstr:lmb for bondstr,lmb in zip(bondstrs,self.drcinner)}
 
-
             ldict = {int(rank):int(lmax) for rank,lmax in zip(self.ranks,self.lmax)}
             L_R = 0
             M_R = 0
@@ -639,8 +863,6 @@ try:
                         ccs = pickle.load(handle)
                 except FileNotFoundError:
                     ccs = get_cg_coupling(ldict,L_R=L_R)
-                    #print (ccs)
-                    #store them for later so they don't need to be recalculated
                     store_generalized(ccs, coupling_type='cg',L_R=L_R)
             else:
                 try:
@@ -648,41 +870,21 @@ try:
                         ccs = pickle.load(handle)
                 except FileNotFoundError:
                     ccs = get_wig_coupling(ldict,L_R)
-                    #print (ccs)
-                    #store them for later so they don't need to be recalculated
                     store_generalized(ccs, coupling_type='wig',L_R=L_R)
-
 
             apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.b_basis, **{'ccs':ccs[M_R]})
             
-            # Override nus with PyACE descriptors BEFORE set_betas
+            # Override nus with PyACE descriptors BEFORE set_betas - only for ACE sections that have nus
             if hasattr(ace_section, 'nus'):
-                self.pt.single_print(f"*** Overriding apot.nus with PyACE descriptors")
-                self.pt.single_print(f"*** Before: len(apot.nus) = {len(apot.nus)}")
-                # Directly override the descriptor list to match PyACE
                 apot.nus = ace_section.nus
-                self.pt.single_print(f"*** After: len(apot.nus) = {len(apot.nus)}")
-            
-            # Debug output before set_betas
-            self.pt.single_print(f"*** DEBUG before set_betas:")
-            self.pt.single_print(f"*** len(apot.nus): {len(apot.nus)}")
-            self.pt.single_print(f"*** apot.nus[:3]: {apot.nus[:3] if len(apot.nus) >= 3 else apot.nus}")
-            self.pt.single_print(f"*** len(coeffs): {len(coeffs)}")
-            self.pt.single_print(f"*** ace_section.bzeroflag: {ace_section.bzeroflag}")
             
             if ace_section.bzeroflag:
                 apot.set_betas(coeffs,has_zeros=False)
             else:
                 apot.set_betas(coeffs,has_zeros=True)
             
-            # Handle nus attribute - may not exist in PYACE  
-            if hasattr(ace_section, 'nus'):
-                # set_funcs call removed - not needed after override since set_betas succeeded
-                self.pt.single_print(f"*** Skipping set_funcs call since apot.nus was overridden and set_betas succeeded")
-            else:
-                self.pt.single_print(f"*** WARNING: No nus found in ace_section, using AcePot defaults")
-            
             apot.write_pot(self.config.sections["OUTFILE"].potential_name)
+            
             # Append metadata to .yace file
             unit = f"# units {self.config.sections['REFERENCE'].units}\n"
             atom = f"# atom_style {self.config.sections['REFERENCE'].atom_style}\n"
@@ -694,15 +896,18 @@ try:
                 fp.write(f"# FitSNAP REFERENCE section settings:\n")
                 fp.write(f"{refsec}")
 
-except ModuleNotFoundError:
-
+else:
     class Pace(Output):
         """
-        Dummy class for factory to read if torch is not available for import.
+        Dummy class for factory to read if required modules are not available.
         """
-        def __init__(self, name):
-            super().__init__(name)
-            raise ModuleNotFoundError("Missing sympy or pyyaml modules.")
+        def __init__(self, name, pt, config):
+            super().__init__(name, pt, config)
+            if "PYACE" in config.sections and not PYACE_AVAILABLE:
+                raise ModuleNotFoundError("pyace library not available for PYACE section")
+            if "ACE" in config.sections and not SYMACE_AVAILABLE:
+                raise ModuleNotFoundError("sym_ACE library not available for ACE section")
+            raise ModuleNotFoundError("Missing required modules for PACE output.")
 
 def _to_coeff_string(coeffs, config):
     """
@@ -786,4 +991,3 @@ def _to_potential_file(config):
         out += pc_ace
 
     return out
-

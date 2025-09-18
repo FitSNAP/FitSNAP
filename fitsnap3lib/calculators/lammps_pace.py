@@ -12,7 +12,7 @@ class LammpsPace(LammpsBase):
         self._row_index = 0
         self.pt.check_lammps()
         
-        calculator_config = self.config.sections[calculator_section]
+        calculator_config  = self.config.sections[calculator_section]
         self._ncoeff       = calculator_config.ncoeff
         self._numtypes     = calculator_config.numtypes
         self._type_mapping = calculator_config.type_mapping
@@ -20,7 +20,8 @@ class LammpsPace(LammpsBase):
         self._bzeroflag    = calculator_config.bzeroflag
         self._bikflag      = calculator_config.bikflag
         self._dgradflag    = calculator_config.dgradflag
-        self._blank2J      = calculator_config.blank2J        
+        
+        self._blank2J = calculator_config.blank2J if calculator_section=="ACE" else np.ones(self._ncoeff)
 
     def get_width(self):
         if (self.config.sections["CALCULATOR"].nonlinear):
@@ -392,7 +393,7 @@ class LammpsPace(LammpsBase):
         ndim_virial = 6
         nrows_virial = ndim_virial
         nrows_pace = nrows_energy + nrows_force + nrows_virial
-        ncols_bispectrum = n_coeff * num_types
+        ncols_bispectrum = self.get_width()   # overriden by lammpspyace
         ncols_reference = 1
         ncols_pace = ncols_bispectrum + ncols_reference
         index = self.shared_index

@@ -62,23 +62,6 @@ class LammpsPyace(LammpsPace):
         # Create the coupling coefficient file if it doesn't exist
         coupling_filename = "coupling_coefficient.yace"
         
-        try:
-            # Check if file exists
-            import os
-            if not os.path.exists(coupling_filename):
-                self.pt.single_print(f"Creating {coupling_filename} for LAMMPS compute pace...")
-                
-                # Get the PyAce configuration section
-                pyace_config = self.config.sections["PYACE"]
-                
-                # Create the coupling coefficient file
-                pyace_config.create_coupling_coefficient_yace(coupling_filename)
-                self.pt.single_print(f"Successfully created {coupling_filename}")
-        
-        except Exception as e:
-            self.pt.single_print(f"Error creating coupling coefficient file: {e}")
-            raise RuntimeError(f"Failed to create {coupling_filename}: {e}")
-        
         # Now call the parent method which uses the coupling file
         if not self._bikflag:
             base_pace = f"compute pace all pace {coupling_filename} 0 0"

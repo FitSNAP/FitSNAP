@@ -70,8 +70,8 @@ void slate_augmented_qr(double* local_a, double* local_b, int64_t m, int64_t n, 
     
     try {
         // -------- CREATE SLATE MATRICES --------
-        slate::Matrix<double> A(m, n, mb, nb, slate::GridOrder::Row, p, q, MPI_COMM_WORLD);
-        slate::Matrix<double> b(m, 1, mb, 1,  slate::GridOrder::Row, p, q, MPI_COMM_WORLD);
+        slate::Matrix<double> A(m, n, mb, nb, slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
+        slate::Matrix<double> b(m, 1, mb, 1,  slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
         
         // TODO: only cpu tiles pointing directly to fitsnap shared array for now
         // for gpu support use insertLocalTiles( slate::Target::Devices ) instead
@@ -81,9 +81,9 @@ void slate_augmented_qr(double* local_a, double* local_b, int64_t m, int64_t n, 
         for ( int64_t j = 0; j < A.nt (); ++j)
           for ( int64_t i = 0; i < A.mt (); ++i)
             if (A.tileIsLocal( i, j )) {
-                int64_t offset = i * mb + j * nb * lld;
+                const int64_t offset = i * mb + j * nb * lld;
               
-                //std::fprintf(stderr, "rank %d i %lld j %lld offset %lld\n", mpi_rank, i, j, offset);
+                // std::fprintf(stderr, "rank %d i %lld j %lld offset %lld\n", mpi_rank, i, j, offset);
               
                 A.tileInsert( i, j, local_a + offset, lld );
               
@@ -93,9 +93,9 @@ void slate_augmented_qr(double* local_a, double* local_b, int64_t m, int64_t n, 
         for ( int64_t i = 0; i < b.mt(); ++i)
           if (b.tileIsLocal( i, 0 )) {
           
-            const int offset = (i % mpi_sub_size)*mb;
+            const int64_t offset = i * mb;
 
-            //std::fprintf(stderr, "rank %d i %lld offset %lld\n", mpi_rank, i, offset);
+            // std::fprintf(stderr, "rank %d i %lld offset %lld\n", mpi_rank, i, offset);
 
             b.tileInsert( i, 0, local_b + offset, lld );
           

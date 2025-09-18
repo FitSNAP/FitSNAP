@@ -59,6 +59,8 @@ class PyAce(Section):
         
         # CREATE ACTUAL BASIS TO GET REAL NCOEFF - NO ESTIMATES!
         self._create_basis()
+        
+        self._create_coupling_coefficient_yace()
       
     # --------------------------------------------------------------------------------------------
 
@@ -128,7 +130,12 @@ class PyAce(Section):
             
             # Create BBasisConfiguration from ace_config
             basis_config = create_multispecies_basis_config(self.ace_config)
-                        
+            print(f"*** basis_config {basis_config}")
+            #print(f"*** BEFORE basis_config {basis_config.get_all_coeffs()}")
+            #basis_config.set_all_coeffs(np.ones(len(basis_config.get_all_coeffs())))
+            #print(f"*** AFTER basis_config {basis_config.get_all_coeffs()}")
+
+                      
             # Create ACEBBasisSet
             ace_basis = ACEBBasisSet(basis_config)
             self.ncoeff = len(ace_basis.basis_coeffs)
@@ -248,7 +255,7 @@ class PyAce(Section):
     
     # --------------------------------------------------------------------------------------------
     
-    def create_coupling_coefficient_yace(self, output_filename="coupling_coefficient.yace"):
+    def _create_coupling_coefficient_yace(self, output_filename="coupling_coefficient.yace"):
         """Create a coupling_coefficient.yace file using proper PyACE workflow
         
         This method follows the official PyACE pattern:
@@ -263,31 +270,37 @@ class PyAce(Section):
         Returns:
             str: Path to the created .yace file
         """
-        try:
-            import numpy as np
+ 
+        @self.pt.rank_zero
+        def _write_yace():
             
-            self.pt.single_print(f"Creating .yace file using proper PyACE workflow: {output_filename}")
+            try:
             
-            # Use the already-created ACE basis
-            if not hasattr(self, 'ace_basis') or self.ace_basis is None:
-                raise RuntimeError("ACE basis not created yet")
+                self.pt.single_print(f"Creating .yace file using proper PyACE workflow: {output_filename}")
             
-            # Convert B-basis to C-tilde basis
-            self.pt.single_print("Converting to Ctilde-basis")
-            cbasis = self.ace_basis.to_ACECTildeBasisSet()
+                # Use the already-created ACE basis
+                if not hasattr(self, 'ace_basis') or self.ace_basis is None:
+                    raise RuntimeError("ACE basis not created yet")
             
-            # Save as .yace file
-            self.pt.single_print(f"Saving Ctilde-basis to '{output_filename}'")
-            cbasis.save_yaml(output_filename)
-            self.pt.single_print(f"Successfully created {output_filename}")
+                # Convert B-basis to C-tilde basis
+                self.pt.single_print("Converting to Ctilde-basis")
+                cbasis = self.ace_basis.to_ACECTildeBasisSet()
             
-            return output_filename
+                # Save as .yace file
+                self.pt.single_print(f"Saving Ctilde-basis to '{output_filename}'")
+                cbasis.save_yaml(output_filename)
+                self.pt.single_print(f"Successfully created {output_filename}")
+          
             
-        except Exception as e:
-            self.pt.single_print(f"Error creating .yace file: {e}")
-            import traceback
-            self.pt.single_print(f"Traceback: {traceback.format_exc()}")
-            raise RuntimeError(f"Failed to create .yace file: {e}")
+            except Exception as e:
+                self.pt.single_print(f"Error creating .yace file: {e}")
+                import traceback
+                self.pt.single_print(f"Traceback: {traceback.format_exc()}")
+                raise RuntimeError(f"Failed to create .yace file: {e}")
+                  
+        _write_yace()
+        self.pt.all_barrier()
+
     
     # --------------------------------------------------------------------------------------------
 

@@ -106,10 +106,7 @@ class PyAce(Section):
         self.bikflag = self.get_value("PYACE", "bikflag", "0", "bool")
         self.bzeroflag = self.get_value("PYACE", "bzeroflag", "0", "bool")
         self.dgradflag = self.get_value("PYACE", "dgradflag", "0", "bool")
-        
-        # mumax: maximum number of chemical species (defaults to number of types)
-        # self.mumax = self.get_value("PYACE", "mumax", str(self.numtypes), "int")
-        
+                
         # Other ACE parameters for backwards compatibility
         self.erefs = self.get_value("PYACE", "erefs", "0.0").split() if self.get_value("PYACE", "erefs", "") else ["0.0"] * self.numtypes
         
@@ -123,28 +120,18 @@ class PyAce(Section):
         """
         try:
             # Import pyace components
-            from pyace.basis import ACEBBasisSet
+            from pyace.basis import ACEBBasisSet, ACECTildeBasisSet
             from pyace import create_multispecies_basis_config
-            
-            self.pt.single_print("Creating actual PyACE basis to determine ncoeff...")
             
             # Create BBasisConfiguration from ace_config
             basis_config = create_multispecies_basis_config(self.ace_config)
-            print(f"*** basis_config {basis_config}")
-            #print(f"*** BEFORE basis_config {basis_config.get_all_coeffs()}")
-            #basis_config.set_all_coeffs(np.ones(len(basis_config.get_all_coeffs())))
-            #print(f"*** AFTER basis_config {basis_config.get_all_coeffs()}")
 
-                      
             # Create ACEBBasisSet
-            ace_basis = ACEBBasisSet(basis_config)
-            self.ncoeff = len(ace_basis.basis_coeffs)
-            self.pt.single_print(f"Set ncoeff = {self.ncoeff} from actual PyACE basis")
-                        
-            # Store the basis for later use
-            self.ace_basis_config = basis_config
-            self.ace_basis = ace_basis
-            
+            self.b_basis = ACEBBasisSet(basis_config)
+            self.pt.single_print(f"Created ACEBBasisSet with {len(self.b_basis.basis)} basis functions")
+                              
+            self.ncoeff = len(self.b_basis.basis_coeffs)
+
             # Debug output for multi-type systems
             if self.numtypes > 1:
                 self.pt.single_print(f"Multi-type system: numtypes={self.numtypes}, ncoeff={self.ncoeff}")
@@ -276,21 +263,29 @@ class PyAce(Section):
             
             try:
             
-                self.pt.single_print(f"Creating .yace file using proper PyACE workflow: {output_filename}")
+                self.b_basis.basis_coeffs = np.ones(self.ncoeff)
             
-                # Use the already-created ACE basis
-                if not hasattr(self, 'ace_basis') or self.ace_basis is None:
-                    raise RuntimeError("ACE basis not created yet")
+                for element_basis_rank1_functions in self.b_basis.basis_rank1:
+                    for basis_rank1_function in element_basis_rank1_functions:
+                        basis_rank1_function.print()
             
+                for element_basis_functions in self.b_basis.basis:
+                    for basis_function in element_basis_functions:
+                        basis_function.print()
+                    
                 # Convert B-basis to C-tilde basis
-                self.pt.single_print("Converting to Ctilde-basis")
-                cbasis = self.ace_basis.to_ACECTildeBasisSet()
-            
+                ctilde_basis = self.b_basis.to_ACECTildeBasisSet()
+                
+                for element_basis_rank1_functions in ctilde_basis.basis_rank1:
+                    for basis_rank1_function in element_basis_rank1_functions:
+                        basis_rank1_function.print()
+
+                for element_basis_functions in ctilde_basis.basis:
+                    for basis_function in element_basis_functions:
+                        basis_function.print()
+
                 # Save as .yace file
-                self.pt.single_print(f"Saving Ctilde-basis to '{output_filename}'")
-                cbasis.save_yaml(output_filename)
-                self.pt.single_print(f"Successfully created {output_filename}")
-          
+                ctilde_basis.save_yaml(output_filename)
             
             except Exception as e:
                 self.pt.single_print(f"Error creating .yace file: {e}")
@@ -301,6 +296,5 @@ class PyAce(Section):
         _write_yace()
         self.pt.all_barrier()
 
-    
     # --------------------------------------------------------------------------------------------
 

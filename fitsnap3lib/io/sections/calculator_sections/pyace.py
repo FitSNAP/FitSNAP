@@ -57,9 +57,7 @@ class PyAce(Section):
             'functions': self.functions
         }
         
-        # CREATE ACTUAL BASIS TO GET REAL NCOEFF - NO ESTIMATES!
         self._create_basis()
-        
         self._create_coupling_coefficient_yace()
       
     # --------------------------------------------------------------------------------------------
@@ -113,30 +111,44 @@ class PyAce(Section):
     # --------------------------------------------------------------------------------------------
                         
     def _create_basis(self):
-        """Create the actual PyACE basis to get real ncoeff and blank2J values
+        """Create the actual PyACE basis to get real ncoeff value
         
         This method creates the BBasisConfiguration and ACEBBasisSet to determine
-        the exact number of coefficients and other parameters.
+        the exact number of coefficients.
         """
         try:
-            # Import pyace components
             from pyace.basis import ACEBBasisSet, ACECTildeBasisSet
             from pyace import create_multispecies_basis_config
             
-            # Create BBasisConfiguration from ace_config
             basis_config = create_multispecies_basis_config(self.ace_config)
+            b_basis = ACEBBasisSet(basis_config)
+            b_basis.basis_coeffs = np.ones(len(b_basis.basis_coeffs))
+            ctilde_basis = b_basis.to_ACECTildeBasisSet()
+            self.ctilde_basis = ctilde_basis
+                
+            # total number of functions for all elements and ranks
+            self.ncoeff = sum([len(f) for f in ctilde_basis.basis_rank1]) \
+                        + sum([len(f) for f in ctilde_basis.basis])
+                        
+            self.pt.single_print(f"PyACE basis: numtypes {self.numtypes} ncoeff {self.ncoeff}")
 
-            # Create ACEBBasisSet
-            self.b_basis = ACEBBasisSet(basis_config)
-            self.pt.single_print(f"Created ACEBBasisSet with {len(self.b_basis.basis)} basis functions")
-                              
-            self.ncoeff = len(self.b_basis.basis_coeffs)
-
-            # Debug output for multi-type systems
-            if self.numtypes > 1:
-                self.pt.single_print(f"Multi-type system: numtypes={self.numtypes}, ncoeff={self.ncoeff}")
+            if 'EXTRAS' in self.sections and self.sections['EXTRAS'].debug:
+                for element_basis_rank1_functions in b_basis.basis_rank1:
+                    for basis_rank1_function in element_basis_rank1_functions:
+                        basis_rank1_function.print()
             
-            self.pt.single_print(f"Successfully created PyACE basis with {self.ncoeff} coefficients")
+                for element_basis_functions in b_basis.basis:
+                    for basis_function in element_basis_functions:
+                        basis_function.print()
+                    
+                for element_basis_rank1_functions in ctilde_basis.basis_rank1:
+                    for basis_rank1_function in element_basis_rank1_functions:
+                        basis_rank1_function.print()
+
+                for element_basis_functions in ctilde_basis.basis:
+                    for basis_function in element_basis_functions:
+                        basis_function.print()
+
             
         except ImportError:
             raise RuntimeError("PyACE not available - cannot create basis")
@@ -193,18 +205,14 @@ class PyAce(Section):
                     raise RuntimeError(f"Error parsing bonds: {e}")
                     
         self.rcutfac = [b["rcut"] for b in self.bonds.values()]
-        
+        # print(f"*** self.nradmax {self.nradmax} self.lmax {self.lmax}")
+     
         for b in self.bonds.values():
           b.update({
               'nradmax': self.nradmax,
               'nradbasemax': self.nradmax,
               'lmax': self.lmax,
           })
-        
-        
-        # 'rcut_in':self.global_rcutinner,
-        # 'dcut_in':self.global_drcutinner,
-        # 'inner_cutoff_type':'distance'
      
     # --------------------------------------------------------------------------------------------
 
@@ -260,33 +268,9 @@ class PyAce(Section):
  
         @self.pt.rank_zero
         def _write_yace():
-            
             try:
-            
-                self.b_basis.basis_coeffs = np.ones(self.ncoeff)
-            
-                for element_basis_rank1_functions in self.b_basis.basis_rank1:
-                    for basis_rank1_function in element_basis_rank1_functions:
-                        basis_rank1_function.print()
-            
-                for element_basis_functions in self.b_basis.basis:
-                    for basis_function in element_basis_functions:
-                        basis_function.print()
-                    
-                # Convert B-basis to C-tilde basis
-                ctilde_basis = self.b_basis.to_ACECTildeBasisSet()
-                
-                for element_basis_rank1_functions in ctilde_basis.basis_rank1:
-                    for basis_rank1_function in element_basis_rank1_functions:
-                        basis_rank1_function.print()
-
-                for element_basis_functions in ctilde_basis.basis:
-                    for basis_function in element_basis_functions:
-                        basis_function.print()
-
                 # Save as .yace file
-                ctilde_basis.save_yaml(output_filename)
-            
+                self.ctilde_basis.save_yaml(output_filename)
             except Exception as e:
                 self.pt.single_print(f"Error creating .yace file: {e}")
                 import traceback

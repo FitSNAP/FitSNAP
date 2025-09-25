@@ -100,10 +100,10 @@ try:
                 raise ModuleNotFoundError("Missing pyace python package.")
 
             pyace_section = self.config.sections["PYACE"]
-            assert hasattr(pyace_section, 'b_basis') and pyace_section.b_basis is not None
-            b_basis = pyace_section.b_basis
-            b_basis.basis_coeffs = coeffs
-            ctilde_basis = b_basis.to_ACECTildeBasisSet()
+            assert hasattr(pyace_section, 'ctilde_basis') and pyace_section.ctilde_basis is not None
+            ctilde_basis = pyace_section.ctilde_basis
+            #print(f"*** ctilde_basis.basis_coeffs {ctilde_basis.basis_coeffs} coeffs {coeffs}")
+            ctilde_basis.basis_coeffs = coeffs
             potential_name = self.config.sections["OUTFILE"].potential_name
             yace_filename = f"{potential_name}.yace"
             self.pt.single_print(f"Saving potential to {yace_filename}")

@@ -39,9 +39,6 @@ class LammpsPyace(LammpsPace):
         self._data = {}
         self._i = 0
         self._row_index = 0
-        
-        # Initialize pyace specific parameters
-        self.ace_basis = None
     
     # --------------------------------------------------------------------------------------------
 
@@ -51,9 +48,11 @@ class LammpsPyace(LammpsPace):
         if not PYACE_AVAILABLE:
             raise RuntimeError("pyace not available")
         
-        # Get the configuration and ncoeff from PyAce section
-        return self.config.sections["PYACE"].ncoeff
-    
+        if self._bzeroflag:
+            return self._ncoeff
+        else:
+            return self._ncoeff + self._numtypes
+            
     # --------------------------------------------------------------------------------------------
 
     def _collect_lammps(self):
@@ -78,7 +77,7 @@ class LammpsPyace(LammpsPace):
         ndim_virial = 6
         nrows_virial = ndim_virial
         nrows_pace = nrows_energy + nrows_force + nrows_virial
-        ncols_descriptors = self.get_width()   # overriden by lammpspyace
+        ncols_descriptors = self._ncoeff
         ncols_reference = 1
         ncols_pace = ncols_descriptors + ncols_reference
         index = self.shared_index
@@ -97,7 +96,22 @@ class LammpsPyace(LammpsPace):
             bik_rows = num_atoms
         icolref = ncols_descriptors
         if self.config.sections["CALCULATOR"].energy:
-            self.pt.shared_arrays['a'].array[index] = lmp_pace[irow, :ncols_descriptors] / num_atoms
+        
+            b_sum_temp = lmp_pace[irow, :ncols_descriptors] / num_atoms
+        
+            if not self._bzeroflag:
+                if self._bikflag:
+                    raise NotImplementedError("Per atom energy is not implemented without bzeroflag")
+                b_sum_temp.shape = (self._numtypes, self._ncoeff)
+                onehot_atoms = np.zeros((self._numtypes, 1))
+                for atom in self._data["AtomTypes"]:
+                    onehot_atoms[self._type_mapping[atom]-1] += 1
+                onehot_atoms /= len(self._data["AtomTypes"])
+                b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
+                b_sum_temp.shape = (self._numtypes * (self._ncoeff+1))
+
+
+            self.pt.shared_arrays['a'].array[index] = b_sum_temp
             ref_energy = lmp_pace[irow, icolref]
             self.pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
             self.pt.shared_arrays['w'].array[index] = self._data["eweight"]
@@ -109,7 +123,16 @@ class LammpsPyace(LammpsPace):
 
         if self.config.sections["CALCULATOR"].force:
             s = slice(index, index + num_atoms*ndim_force)
-            self.pt.shared_arrays['a'].array[s] = lmp_pace[irow:irow + nrows_force, :ncols_descriptors]
+            db_atom_temp = lmp_pace[irow:irow + nrows_force, :ncols_descriptors]
+            db_atom_temp.shape = (num_atoms * ndim_force, self._ncoeff * self._numtypes)
+            
+            if not self._bzeroflag:
+                db_atom_temp.shape = (np.shape(db_atom_temp)[0], self._numtypes, self._ncoeff)
+                onehot_atoms = np.zeros((np.shape(db_atom_temp)[0], self._numtypes, 1))
+                db_atom_temp = np.concatenate([onehot_atoms, db_atom_temp], axis=2)
+                db_atom_temp.shape = (np.shape(db_atom_temp)[0], self._numtypes*(self._ncoeff+1))
+
+            self.pt.shared_arrays['a'].array[s] = db_atom_temp
             ref_forces = lmp_pace[irow:irow + nrows_force, icolref]
             self.pt.shared_arrays['b'].array[s] = self._data["Forces"].ravel() - ref_forces
             self.pt.shared_arrays['w'].array[s] = self._data["fweight"]
@@ -121,19 +144,17 @@ class LammpsPyace(LammpsPace):
 
         if self.config.sections["CALCULATOR"].stress:
             vb_sum_temp = 1.6021765e6*lmp_pace[irow:irow + nrows_virial, :ncols_descriptors] / lmp_volume
-            vb_sum_temp.shape = (ndim_virial, n_coeff * num_types)
+            vb_sum_temp.shape = (ndim_virial, self._ncoeff * self._numtypes)
             if not self._bzeroflag:
-                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types, n_coeff)
-                onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0], num_types, 1))
+                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], self._numtypes, self._ncoeff)
+                onehot_atoms = np.zeros((np.shape(vb_sum_temp)[0], self._numtypes, 1))
                 vb_sum_temp = np.concatenate([onehot_atoms, vb_sum_temp], axis=2)
-                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], num_types * n_coeff + num_types)
-            self.pt.shared_arrays['a'].array[index:index+ndim_virial] = \
-                np.matmul(vb_sum_temp, np.diag(self._blank2J))
+                vb_sum_temp.shape = (np.shape(vb_sum_temp)[0], self._numtypes*(self._ncoeff+1))
+            self.pt.shared_arrays['a'].array[index:index+ndim_virial] = vb_sum_temp
             ref_stress = lmp_pace[irow:irow + nrows_virial, icolref]
             self.pt.shared_arrays['b'].array[index:index+ndim_virial] = \
                 self._data["Stress"][[0, 1, 2, 1, 0, 0], [0, 1, 2, 2, 2, 1]].ravel() - ref_stress
-            self.pt.shared_arrays['w'].array[index:index+ndim_virial] = \
-                self._data["vweight"]
+            self.pt.shared_arrays['w'].array[index:index+ndim_virial] = self._data["vweight"]
             self.pt.fitsnap_dict['Row_Type'][dindex:dindex + ndim_virial] = ['Stress'] * ndim_virial
             self.pt.fitsnap_dict['Atom_I'][dindex:dindex + ndim_virial] = [int(0)] * ndim_virial
             index += ndim_virial

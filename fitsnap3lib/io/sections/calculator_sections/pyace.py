@@ -58,7 +58,7 @@ class PyAce(Section):
         }
         
         self._create_basis()
-        self._create_coupling_coefficient_yace()
+        self._create_coupling_coefficients_yace()
       
     # --------------------------------------------------------------------------------------------
 
@@ -250,8 +250,8 @@ class PyAce(Section):
     
     # --------------------------------------------------------------------------------------------
     
-    def _create_coupling_coefficient_yace(self, output_filename="coupling_coefficient.yace"):
-        """Create a coupling_coefficient.yace file using proper PyACE workflow
+    def _create_coupling_coefficients_yace(self, output_filename="coupling_coefficients.yace"):
+        """Create a coupling_coefficients.yace file using proper PyACE workflow
         
         This method follows the official PyACE pattern:
         1. Use existing ACEBBasisSet (already created)

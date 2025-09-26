@@ -52,11 +52,15 @@ class GlobalProgressTracker:
 
         self.pt = pt
         self._len_data = len_data
-        self._len_all_data = self.pt._comm.reduce(len_data)
         self._local_chunk = int(update_fraction*len_data)
         self._last_local_update = 0
-
-        if self.pt._rank == 0 and not self.pt.stubs:
+       
+        if self.pt.stubs:
+            self._len_all_data = len_data
+        else:
+            self._len_all_data = self.pt._comm.reduce(len_data)
+        
+        if self.pt._rank == 0:
             self._global_chunk = int(update_fraction*self._len_all_data)
             self._last_update = 0
             self._completed = 0
@@ -74,8 +78,12 @@ class GlobalProgressTracker:
         if i % self._local_chunk == 0:
             delta = i - self._last_local_update
             self._last_local_update = i
-            self.pt._comm.isend(delta, dest=0, tag=99)
-
+            if self.pt.stubs:
+                self._tqdm.update(delta)
+                self._last_update = i
+            else:
+                self.pt._comm.isend(delta, dest=0, tag=99)
+  
         if self.pt._rank == 0 and not self.pt.stubs:
         
             # check for progress updates from all ranks
@@ -93,11 +101,9 @@ class GlobalProgressTracker:
     def finalize(self):
         """Finalize progress tracking and ensure 100% completion."""
 
-        if self.pt._rank == 0 and not self.pt.stubs:
+        if self.pt._rank == 0:
             if self._len_all_data > self._last_update:
                 self._tqdm.update(self._len_all_data - self._last_update)
-                self._tqdm.refresh()
-                print("", flush=True)
             self._tqdm.close()
 
 

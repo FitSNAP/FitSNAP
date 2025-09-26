@@ -56,25 +56,6 @@ class LammpsPyace(LammpsPace):
     
     # --------------------------------------------------------------------------------------------
 
-    def _set_computes(self):
-        """Override parent method to create coupling coefficient file first"""
-        
-        # Create the coupling coefficient file if it doesn't exist
-        coupling_filename = "coupling_coefficient.yace"
-        
-        # Now call the parent method which uses the coupling file
-        if not self._bikflag:
-            base_pace = f"compute pace all pace {coupling_filename} 0 0"
-        elif (self._bikflag and not self._dgradflag):
-            base_pace = f"compute pace all pace {coupling_filename} 1 0"
-        elif (self._bikflag and self._dgradflag):
-            base_pace = f"compute pace all pace {coupling_filename} 1 1"
-        
-        # self.pt.single_print(f"LAMMPS command: {base_pace}")
-        self._lmp.command(base_pace)
-    
-    # --------------------------------------------------------------------------------------------
-
     def _collect_lammps(self):
         num_atoms = self._data["NumAtoms"]
         n_coeff = self._ncoeff

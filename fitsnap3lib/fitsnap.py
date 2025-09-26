@@ -37,8 +37,68 @@ from fitsnap3lib.calculators.calculator_factory import calculator
 from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
-import random
+import sys, random
 from tqdm import tqdm
+import numpy as np
+
+
+class GlobalProgressTracker:
+    """
+    Tracks progress across MPI ranks and updates a tqdm progress bar on rank 0
+    showing global progress from all ranks combined.
+    """
+    
+    def __init__(self, pt, len_data, update_fraction=0.05):
+
+        self.pt = pt
+        self._len_data = len_data
+        self._len_all_data = self.pt._comm.reduce(len_data)
+        self._local_chunk = int(update_fraction*len_data)
+        self._last_local_update = 0
+
+        if self.pt._rank == 0 and not self.pt.stubs:
+            self._global_chunk = int(update_fraction*self._len_all_data)
+            self._last_update = 0
+            self._completed = 0
+            self._tqdm = tqdm(
+                total=self._len_all_data,
+                desc="Processing configs",
+                unit=" configs",
+                bar_format="{l_bar}{bar}| Elapsed: {elapsed} Remaining: {remaining} | {n_fmt}/{total_fmt} [{rate_fmt}]",
+                dynamic_ncols=True
+            )
+
+    def update(self, i):
+        """Update local progress and send to rank 0 if enough progress made."""
+
+        if i % self._local_chunk == 0:
+            delta = i - self._last_local_update
+            self._last_local_update = i
+            self.pt._comm.isend(delta, dest=0, tag=99)
+
+        if self.pt._rank == 0 and not self.pt.stubs:
+        
+            # check for progress updates from all ranks
+            status = self.pt.MPI.Status()
+            while self.pt._comm.iprobe(source=self.pt.MPI.ANY_SOURCE, tag=99, status=status):
+                delta = self.pt._comm.recv(source=status.Get_source(), tag=99, status=status)
+                self._completed += delta
+        
+            if self._completed - self._last_update >= self._global_chunk:
+                self._tqdm.update(self._completed - self._last_update)
+                self._tqdm.refresh()
+                self._last_update = self._completed
+                print("", flush=True)
+
+    def finalize(self):
+        """Finalize progress tracking and ensure 100% completion."""
+
+        if self.pt._rank == 0 and not self.pt.stubs:
+            if self._len_all_data > self._last_update:
+                self._tqdm.update(self._len_all_data - self._last_update)
+                self._tqdm.refresh()
+                print("", flush=True)
+            self._tqdm.close()
 
 
 class FitSnap:
@@ -174,10 +234,12 @@ class FitSnap:
             self.calculator.create_a()
             # Calculate descriptors.
             if (self.solver.linear):
-                # Use tqdm for progress bar on single proc only
-                data_iter = tqdm(enumerate(data), total=len(data), desc="Processing configs") if self.pt._rank == 0 else enumerate(data)
-                for i, configuration in data_iter:
+                progress_tracker = GlobalProgressTracker(self.pt, len(data))
+                for i, configuration in enumerate(data):
                     self.calculator.process_configs(configuration, i)
+                    progress_tracker.update(i)
+                self.pt.all_barrier()
+                progress_tracker.finalize()
             else:
                 for i, configuration in enumerate(data):
                     self.calculator.process_configs_nonlinear(configuration, i)

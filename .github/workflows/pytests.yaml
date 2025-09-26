@@ -43,14 +43,9 @@ jobs:
         python --version
         which python
         python -m pip install --upgrade setuptools pip wheel
-        python -m pip install --upgrade numpy
-        python -m pip install --upgrade pandas
-        python -m pip install --upgrade tabulate
-        python -m pip install --upgrade scipy
-        python -m pip install --upgrade psutil
+        python -m pip install --upgrade numpy pandas tabulate scipy psutil tqdm
         python -m pip install --upgrade torch # for nonlinear
-        python -m pip install --upgrade sympy # for ACE
-        python -m pip install --upgrade pyyaml # for ACE
+        python -m pip install --upgrade sympy pyyaml # for ACE
         python -m pip install --upgrade h5py # for HDF5
     - name: Lint with flake8
       run: |

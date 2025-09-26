@@ -38,6 +38,7 @@ from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
 import random
+from tqdm import tqdm
 
 
 class FitSnap:
@@ -173,10 +174,9 @@ class FitSnap:
             self.calculator.create_a()
             # Calculate descriptors.
             if (self.solver.linear):
-                for i, configuration in enumerate(data):
-                    # TODO: Add option to print descriptor calculation progress on single proc.
-                    #if (i % 1 == 0):
-                    #   self.pt.single_print(i)
+                # Use tqdm for progress bar on single proc only
+                data_iter = tqdm(enumerate(data), total=len(data), desc="Processing configs") if self.pt._rank == 0 else enumerate(data)
+                for i, configuration in data_iter:
                     self.calculator.process_configs(configuration, i)
             else:
                 for i, configuration in enumerate(data):

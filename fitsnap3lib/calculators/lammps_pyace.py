@@ -98,19 +98,17 @@ class LammpsPyace(LammpsPace):
         if self.config.sections["CALCULATOR"].energy:
         
             b_sum_temp = lmp_pace[irow, :ncols_descriptors] / num_atoms
-        
+
             if not self._bzeroflag:
                 if self._bikflag:
                     raise NotImplementedError("Per atom energy is not implemented without bzeroflag")
-                b_sum_temp.shape = (self._numtypes, self._ncoeff)
-                onehot_atoms = np.zeros((self._numtypes, 1))
+
+                onehot_atoms = np.zeros(self._numtypes)
                 for atom in self._data["AtomTypes"]:
-                    onehot_atoms[self._type_mapping[atom]-1] += 1
+                    onehot_atoms[self._type_mapping[atom] - 1] += 1
                 onehot_atoms /= len(self._data["AtomTypes"])
-                b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=1)
-                b_sum_temp.shape = (self._numtypes * (self._ncoeff+1))
-
-
+                b_sum_temp = np.concatenate((onehot_atoms, b_sum_temp), axis=0)
+        
             self.pt.shared_arrays['a'].array[index] = b_sum_temp
             ref_energy = lmp_pace[irow, icolref]
             self.pt.shared_arrays['b'].array[index] = (energy - ref_energy) / num_atoms
@@ -123,14 +121,13 @@ class LammpsPyace(LammpsPace):
 
         if self.config.sections["CALCULATOR"].force:
             s = slice(index, index + num_atoms*ndim_force)
+                        
             db_atom_temp = lmp_pace[irow:irow + nrows_force, :ncols_descriptors]
-            db_atom_temp.shape = (num_atoms * ndim_force, self._ncoeff * self._numtypes)
-            
+            db_atom_temp.shape = (num_atoms * ndim_force, self._ncoeff)
+
             if not self._bzeroflag:
-                db_atom_temp.shape = (np.shape(db_atom_temp)[0], self._numtypes, self._ncoeff)
-                onehot_atoms = np.zeros((np.shape(db_atom_temp)[0], self._numtypes, 1))
-                db_atom_temp = np.concatenate([onehot_atoms, db_atom_temp], axis=2)
-                db_atom_temp.shape = (np.shape(db_atom_temp)[0], self._numtypes*(self._ncoeff+1))
+                onehot_atoms = np.zeros((db_atom_temp.shape[0], self._numtypes))
+                db_atom_temp = np.concatenate([onehot_atoms, db_atom_temp], axis=1)
 
             self.pt.shared_arrays['a'].array[s] = db_atom_temp
             ref_forces = lmp_pace[irow:irow + nrows_force, icolref]

@@ -591,7 +591,7 @@ class SLATE(Solver):
         # Convert to DataFrame with proper MultiIndex
         df = DataFrame(formatted_results)
         if not df.empty:
-            df = df.set_index(['Groups', 'Weighting', 'Testing', 'Row_Type'])
+            df = df.set_index(['Groups', 'Weighting', 'Testing', 'Row_Type']).sort_index()
             df.index.rename(["Group", "Weighting", "Testing", "Subsystem"], inplace=True)
         
         self.errors = df

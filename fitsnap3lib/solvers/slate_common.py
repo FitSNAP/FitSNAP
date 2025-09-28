@@ -2,6 +2,8 @@ from fitsnap3lib.solvers.solver import Solver
 from fitsnap3lib.parallel_tools import DistributedList
 import numpy as np
 
+# --------------------------------------------------------------------------------------------
+
 try:
     from mpi4py import MPI
 except ImportError:
@@ -30,8 +32,10 @@ except ImportError as e:
         print("To install: cd fitsnap3lib/lib/slate_solver && pip install -e .")
         ridge_solve_qr = None
         SLATE_AVAILABLE = False
+        
+# --------------------------------------------------------------------------------------------
 
-class SLATE(Solver):
+class SlateCommon(Solver):
     """
     Multi-node Ridge regression solver using SLATE (Software for Linear Algebra Targeting Exascale).
     
@@ -40,6 +44,8 @@ class SLATE(Solver):
     
     Solves: (A^T A + alpha * I) x = A^T b
     """
+    
+    # --------------------------------------------------------------------------------------------
 
     def __init__(self, name, pt, config):
         super().__init__(name, pt, config, linear=True)
@@ -55,105 +61,17 @@ class SLATE(Solver):
             self.alpha = self.config.sections['SLATE'].alpha
         else:
             self.alpha = 1e-6
+            
+    # --------------------------------------------------------------------------------------------
 
     def perform_fit(self):
-        """
-        Perform ridge regression fit on the linear system using SLATE for distributed computation.
-        The fit is stored as a member `self.fit`.
-        """
         
-        pt = self.pt
-        a = pt.shared_arrays['a'].array
-        b = pt.shared_arrays['b'].array
-        w = pt.shared_arrays['w'].array
+        # FIXME CALL perform_fit_ridge() or perform_fit_ard()
         
-        # Note: a, b, w remain unchanged - only aw, bw get modified by SLATE
-        aw = pt.shared_arrays['aw'].array
-        bw = pt.shared_arrays['bw'].array
+        pass
         
-        # Debug output - print all in one statement to avoid tangled output
-        # *** DO NOT REMOVE !!! ***
-        if self.config.debug:
-            np.set_printoptions(precision=4, suppress=True, floatmode='fixed', linewidth=np.inf)
-            np.set_printoptions(formatter={'float': '{:.4f}'.format})
-            pt.sub_print(f"*** ------------------------\n"
-                         f"pt.fitsnap_dict['Testing']\n{pt.fitsnap_dict['Testing']}\n"
-                         #f"a\n{a}\n"
-                         #f"b {b}\n"
-                         f"--------------------------------\n")
         
-        pt.sub_barrier()
-        
-        # -------- LOCAL SLICE OF SHARED ARRAY AND REGULARIZATION ROWS --------
-
-        a_start_idx, a_end_idx = pt.fitsnap_dict["sub_a_indices"]
-        aw_start_idx, aw_end_idx = pt.fitsnap_dict["sub_aw_indices"]
-        reg_row_idx = pt.fitsnap_dict["reg_row_idx"]
-        reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
-        reg_num_rows = pt.fitsnap_dict["reg_num_rows"]
-        #pt.all_print(f"pt.fitsnap_dict {pt.fitsnap_dict}")
-        if self.config.debug:
-            pt.all_print(f"*** aw_start_idx {aw_start_idx} aw_end_idx {aw_end_idx} reg_row_idx {reg_row_idx} reg_col_idx {reg_col_idx} reg_num_rows {reg_num_rows}")
-        
-        # -------- WEIGHTS --------
-  
-        # Apply weights to my local slice
-        local_slice = slice(a_start_idx, a_end_idx+1)
-        w_local_slice = slice(aw_start_idx, (aw_end_idx-reg_num_rows+1))
-        aw[w_local_slice] = w[local_slice, np.newaxis] * a[local_slice]
-        bw[w_local_slice] = w[local_slice] * b[local_slice]
-
-        # -------- TRAINING/TESTING SPLIT --------
-        
-        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
-            testing_mask = pt.fitsnap_dict['Testing'][local_slice]
-            for i in range(a_end_idx-a_start_idx+1):
-                if testing_mask[i]:
-                    if self.config.debug:
-                        pt.all_print(f"*** removing i {i} aw_start_idx+i {aw_start_idx+i}")
-                    aw[aw_start_idx+i,:] = 0.0
-                    bw[aw_start_idx+i] = 0.0
-
-        # -------- REGULARIZATION ROWS --------
-
-        sqrt_alpha = np.sqrt(self.alpha)
-        n = a.shape[1]
-    
-        for i in range(reg_num_rows):
-            if reg_col_idx+i < n: # avoid out of bounds padding from multiple nodes
-                aw[reg_row_idx+i, reg_col_idx+i] = sqrt_alpha
-            bw[reg_row_idx+i] = 0.0
-
-        # -------- SLATE AUGMENTED QR --------
-        pt.sub_barrier() # make sure all sub ranks done filling local tiles
-        m = aw.shape[0] * self.pt._number_of_nodes # global matrix total rows
-        lld = aw.shape[0]  # local leading dimension column-major shared array
-        
-        np.set_printoptions(precision=3, suppress=True, floatmode='fixed', linewidth=np.inf)
-        if self.config.debug:
-            pt.sub_print(f"*** SENDING TO SLATE ------------------------\n"
-                         f"aw\n{aw}\n"
-                         f"bw {bw}\n"
-                         f"--------------------------------\n")
-                     
-        # Determine debug flag from EXTRAS section
-        debug_flag = 0
-        if self.config.debug:
-            debug_flag = 1
-            
-        slate_augmented_qr_cython(aw, bw, m, lld, debug_flag)
-        
-        # Broadcast solution from Node 0 to all nodes via head ranks
-        if pt._sub_rank == 0:  # This rank is head of its node
-            pt._head_group_comm.Bcast(bw[:n], root=0)
-
-        self.fit = bw[:n]
-                
-        # *** DO NOT REMOVE !!! ***
-        if self.config.debug:
-            pt.all_print(f"*** self.fit ------------------------\n"
-                f"{self.fit}\n-------------------------------------------------\n")
-            
+    # --------------------------------------------------------------------------------------------
 
     def error_analysis(self):
         """
@@ -245,6 +163,8 @@ class SLATE(Solver):
                 )
                 self.errors = []
     
+    # --------------------------------------------------------------------------------------------
+
     def _compute_local_group_sums(self, groups, testing, row_types, truths, preds, weights):
         """Compute partial sums for each group on local data"""
         from collections import defaultdict
@@ -272,7 +192,9 @@ class SLATE(Solver):
             stats['sum_se'] += weight * (truth - pred)**2
         
         return dict(local_group_data)
-    
+
+    # --------------------------------------------------------------------------------------------
+
     def _compute_local_group_sums_from_df(self, df_local):
         """Compute partial sums for each group from DataFrame (like legacy solver)"""
         from collections import defaultdict
@@ -311,7 +233,9 @@ class SLATE(Solver):
             stats['sum_se_unweighted'] += (truth - pred)**2
         
         return dict(local_group_data)
-    
+
+    # --------------------------------------------------------------------------------------------
+
     def _hierarchical_group_reduce(self, local_group_data, comm):
         """Hierarchical reduction to avoid O(P²) memory growth"""
         rank = comm.Get_rank()
@@ -353,7 +277,9 @@ class SLATE(Solver):
         
         final_data = comm.bcast(final_data, root=0)
         return final_data
-    
+
+    # --------------------------------------------------------------------------------------------
+
     def _compute_final_metrics_twopass(self, global_group_data, local_groups, local_testing, local_row_types, local_truths, local_weights, comm):
         """Two-pass algorithm for exact R² with minimal communication"""
         rank = comm.Get_rank()
@@ -408,7 +334,9 @@ class SLATE(Solver):
             return final_results
         
         return None
-    
+
+    # --------------------------------------------------------------------------------------------
+
     def _compute_final_metrics_twopass_from_df(self, global_group_data, df_local, comm):
         """Two-pass algorithm for exact R² with DataFrame input"""
         rank = comm.Get_rank()
@@ -512,7 +440,9 @@ class SLATE(Solver):
             return final_results
         
         return None
-    
+
+    # --------------------------------------------------------------------------------------------
+
     def _hierarchical_reduce_dict(self, local_dict, comm):
         """Reduce dictionary values hierarchically"""
         rank = comm.Get_rank()
@@ -535,7 +465,9 @@ class SLATE(Solver):
             step *= 2
         
         return current_dict if rank == 0 else {}
-    
+ 
+    # --------------------------------------------------------------------------------------------
+
     def _format_results_as_dataframe(self, results):
         """Convert results to pandas DataFrame format matching solver.py"""
         from pandas import DataFrame, concat
@@ -595,11 +527,15 @@ class SLATE(Solver):
             df.index.rename(["Group", "Weighting", "Testing", "Subsystem"], inplace=True)
         
         self.errors = df
-    
+  
+    # --------------------------------------------------------------------------------------------
+
     def _add_all_groups(self, group_results):
         """Add '*ALL' groups - now just returns results since aggregation happens earlier"""
         return group_results
     
+    # --------------------------------------------------------------------------------------------
+
     def _add_all_groups_to_global_data(self, global_group_data):
         """Add '*ALL' groups by aggregating raw sums at the global_group_data level"""
         
@@ -637,3 +573,6 @@ class SLATE(Solver):
         result.update(aggregations)
         
         return result
+
+    # --------------------------------------------------------------------------------------------
+

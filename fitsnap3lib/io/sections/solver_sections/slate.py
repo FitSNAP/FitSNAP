@@ -5,15 +5,17 @@ class Slate(Section):
 
     def __init__(self, name, config, pt, infile, args):
         super().__init__(name, config, pt, infile, args)
-        self.allowedkeys = ['alpha', 'ard_enabled', 'directmethod', 'scap', 'scai', 'logcut', 'max_iterations', 'tolerance']
+        self.allowedkeys = ['alpha', 'method', 'directmethod', 'scap', 'scai', 'logcut', 'max_iterations', 'tolerance']
         self._check_section()
 
         self._check_if_used("SOLVER", "solver", "SLATE")
 
         self.alpha = self.get_value("SLATE", "alpha", "1.0E-8", "float")
         
-        # ARD parameters
-        self.ard_enabled = self.get_value("SLATE", "ard_enabled", "False", "bool")
+        # Method selection: RIDGE (default) or ARD
+        self.method = self.get_value("SLATE", "method", "RIDGE", "str")
+        
+        # ARD parameters (only used when method=ARD)
         self.directmethod = self.get_value("SLATE", "directmethod", "0", "int")
         self.scap = self.get_value("SLATE", "scap", "1.E-4", "float")
         self.scai = self.get_value("SLATE", "scai", "1.E-4", "float")

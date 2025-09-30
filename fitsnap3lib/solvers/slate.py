@@ -41,109 +41,168 @@ class SLATE(SlateCommon):
 
     def perform_fit_ard(self):
         """
-        ARD implementation using SLATE ridge solver at each iteration
-        Replicates the existing ARD options: directmethod, scap, scai, logcut
+        
+        
+        dtype = X.dtype
+
+        n_samples, n_features = X.shape
+        coef_ = np.zeros(n_features, dtype=dtype)
+
+        X, y, X_offset_, y_offset_, X_scale_ = _preprocess_data(
+            X, y, fit_intercept=self.fit_intercept, copy=self.copy_X
+        )
+
+        self.X_offset_ = X_offset_
+        self.X_scale_ = X_scale_
+
+ 
+
+        # Initialization of the values of the parameters
+        eps = np.finfo(np.float64).eps
+        # Add `eps` in the denominator to omit division by zero if `np.var(y)`
+        # is zero.
+        # Explicitly set dtype to avoid unintended type promotion with numpy 2.
+        alpha_ = np.asarray(1.0 / (np.var(y) + eps), dtype=dtype)
+        lambda_ = np.ones(n_features, dtype=dtype)
+
+        self.scores_ = list()
+        coef_old_ = None
+
+        def update_coeff(X, y, coef_, alpha_, keep_lambda, sigma_):
+            coef_[keep_lambda] = alpha_ * np.linalg.multi_dot(
+                [sigma_, X[:, keep_lambda].T, y]
+            )
+            return coef_
+
+        update_sigma = (
+            self._update_sigma
+            if n_samples >= n_features
+            else self._update_sigma_woodbury
+        )
+
+
+        if keep_lambda.any():
+            # update sigma and mu using updated params from the last iteration
+            sigma_ = update_sigma(X, alpha_, lambda_, keep_lambda)
+            coef_ = update_coeff(X, y, coef_, alpha_, keep_lambda, sigma_)
+        else:
+            sigma_ = np.array([]).reshape(0, 0)
+
+        self.coef_ = coef_
+        self.alpha_ = alpha_
+        self.sigma_ = sigma_
+        self.lambda_ = lambda_
+        self._set_intercept(X_offset_, y_offset_, X_scale_)
+        return self
+
         """
+        
         pt = self.pt
         a = pt.shared_arrays['a'].array
         b = pt.shared_arrays['b'].array
         w = pt.shared_arrays['w'].array
         
-        # Initialize ARD parameters
-        self.n_features = a.shape[1]
-        
-        if pt._rank == 0:
-            # Initialize alphas based on directmethod setting
-            if self.directmethod == 0:
-                # Use automatic scaling based on data variance (like existing ARD)
-                training = [not elem for elem in pt.fitsnap_dict['Testing']] if 'Testing' in pt.fitsnap_dict else [True] * len(b)
-                bw_training = w[training] * b[training]
-                ap = 1.0 / np.var(bw_training) if np.var(bw_training) > 0 else 1.0
-                
-                # Calculate automatic threshold like existing ARD
-                threshold_lambda = 10**(int(np.abs(np.log10(ap))) + self.logcut)
-                initial_alpha = self.scap * ap
-                
-                pt.single_print(f'ARD: inverse variance in training data: {ap:.2e}')
-                pt.single_print(f'ARD: automatic threshold_lambda: {threshold_lambda:.2e}') 
-                pt.single_print(f'ARD: using automatic alpha scaling: {initial_alpha:.2e}')
-                
-            else:
-                # Use direct method with fixed values
-                initial_alpha = self.alpha
-                threshold_lambda = 1e6  # Large threshold for pruning
-                pt.single_print(f'ARD: using direct method with alpha: {initial_alpha:.2e}')
-            
-            # Initialize all alphas to the same small value
-            self.alphas = np.full(self.n_features, initial_alpha)
-            
-        # Broadcast to all ranks
-        self.alphas = pt._comm.bcast(self.alphas, root=0)
-        
+        n = a.shape[1]
+        lambda_mask = np.ones(n, dtype=bool)
+
+
+        # Iterative procedure of ARDRegression
+        for iter_ in range(self.max_iter):
+            sigma_ = update_sigma(X, alpha_, lambda_, lambda_mask)
+            coef_ = update_coeff(X, y, coef_, alpha_, lambda_mask, sigma_)
+
+            # Update alpha and lambda
+            sse_ = np.sum((y - np.dot(X, coef_)) ** 2)
+            gamma_ = 1.0 - lambda_[lambda_mask] * np.diag(sigma_)
+            lambda_[lambda_mask] = (gamma_ + 2.0 * self.lambda_1) / (
+                (coef_[lambda_mask]) ** 2 + 2.0 * self.lambda_2
+            )
+            alpha_ = (n - gamma_.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
+
+            # Prune the weights with a precision over a threshold
+            lambda_mask = lambda_ < self.threshold_lambda
+            coef_[~lambda_mask] = 0
+
+
+            # Check for convergence
+            if iter_ > 0 and np.sum(np.abs(coef_old_ - coef_)) < self.tol:
+                if self.config.debug:
+                    pt.single_print(f"SLATE/ARD converged after {iter_} iterations")
+                break
+            coef_old_ = np.copy(coef_)
+
+            if not lambda_mask.any():
+                break
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         # ARD iteration loop
         converged = False
-        for iteration in range(self.max_iterations):
-            
-            # Perform SLATE ridge solve with current alphas
-            solution = self._ridge_solve_iteration(alpha_values=self.alphas)
-            
-            if pt._rank == 0:
-                # Update ARD parameters
-                old_alphas = self.alphas.copy()
-                
-                # Compute effective number of parameters (gamma)
-                # For now use simplified update without Hessian diagonal
-                # gamma_i ≈ 1 for active parameters, 0 for inactive
-                gamma = np.ones(self.n_features)
-                
-                # ARD update rule: alpha_i = gamma_i / w_i^2
-                epsilon = 1e-12  # Numerical stability
-                self.alphas = gamma / (solution**2 + epsilon)
-                
-                # Apply threshold for pruning (like existing ARD)
-                if self.directmethod == 0:
-                    self.alphas = np.minimum(self.alphas, threshold_lambda)
-                
-                # Check convergence
-                alpha_change = np.mean(np.abs(self.alphas - old_alphas) / (old_alphas + epsilon))
-                active_features = np.sum(self.alphas < 1e6)
-                max_alpha = np.max(self.alphas)
-                
-                # Convergence criteria
-                if alpha_change < self.tolerance:
-                    converged = True
-                    reason = "Alpha convergence"
-                elif active_features <= 1:
-                    converged = True
-                    reason = "Too few active features"
+        solution = None
+        
                 
                 # Print progress
-                if self.config.debug or iteration % 10 == 0:
+                if iteration == 0 or iteration % 10 == 0 or converged:
                     pt.single_print(f"ARD Iter {iteration}: "
-                                   f"α_change={alpha_change:.2e}, "
+                                   f"Δα={alpha_change:.2e}, "
                                    f"active={active_features}/{self.n_features}, "
-                                   f"max_α={max_alpha:.2e}")
+                                   f"α∈[{min_alpha:.2e}, {max_alpha:.2e}]")
                 
                 if converged:
-                    pt.single_print(f"ARD converged after {iteration} iterations: {reason}")
-                    break
+                    pt.single_print(f"ARD converged: {reason}")
             
-            # Broadcast convergence decision and updated alphas
-            self.alphas = pt._comm.bcast(self.alphas, root=0)
-            converged = pt._comm.bcast(converged if pt._rank == 0 else False, root=0)
+            # Broadcast convergence and alphas to all ranks
+            self.alphas = pt._comm.bcast(self.alphas if pt._rank == 0 else None, root=0)
+            converged = pt._comm.bcast(converged if pt._rank == 0 else None, root=0)
             
             if converged:
                 break
         
+        # Store final solution
         self.fit = solution
         
         if pt._rank == 0:
-            active_count = np.sum(self.alphas < 1e6)
-            pt.single_print(f"ARD completed: {active_count}/{self.n_features} features active")
+            active_count = np.sum(self.alphas < threshold_lambda)
+            pruned_count = self.n_features - active_count
+            pt.single_print(f"ARD completed: {active_count}/{self.n_features} features active, "
+                          f"{pruned_count} pruned")
             
             if self.config.debug:
-                pt.all_print(f"*** ARD self.fit ------------------------\n"
-                    f"{self.fit}\n-------------------------------------------------\n")
+                # Show distribution of alpha values
+                alpha_stats = f"Alpha statistics: min={np.min(self.alphas):.2e}, "
+                alpha_stats += f"median={np.median(self.alphas):.2e}, max={np.max(self.alphas):.2e}"
+                pt.single_print(alpha_stats)
+                
+                # Show which features are active
+                active_mask = self.alphas < threshold_lambda
+                active_indices = np.where(active_mask)[0]
+                pt.single_print(f"Active feature indices (first 20): {active_indices[:20]}")
+                
+                pt.all_print(f"*** ARD self.fit (first 20 coefficients) ------------------------\n"
+                    f"{self.fit[:20]}\n-------------------------------------------------\n")
 
 
     # --------------------------------------------------------------------------------------------

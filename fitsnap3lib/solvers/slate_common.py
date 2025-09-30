@@ -13,9 +13,12 @@ except ImportError:
 SLATE_AVAILABLE = False
 ridge_solve_qr = None
 
+slate_augmented_qr_cython = None
+slate_augmented_qr_with_diag_cython = None
+
 try:
     # Primary import method (after pip install -e .)
-    from slate_wrapper import ridge_solve_qr
+    from slate_wrapper import slate_augmented_qr_cython, slate_augmented_qr_with_diag_cython
     SLATE_AVAILABLE = True
 except ImportError as e:
     # Fallback: try direct path import for in-place builds
@@ -25,12 +28,13 @@ except ImportError as e:
         slate_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lib', 'slate_solver')
         if slate_path not in sys.path:
             sys.path.insert(0, slate_path)
-        from slate_wrapper import slate_augmented_qr_cython
+        from slate_wrapper import slate_augmented_qr_cython, slate_augmented_qr_with_diag_cython
         SLATE_AVAILABLE = True
     except ImportError:
         print(f"Warning: SLATE module import failed: {e}")
         print("To install: cd fitsnap3lib/lib/slate_solver && pip install -e .")
-        ridge_solve_qr = None
+        slate_augmented_qr_cython = None
+        slate_augmented_qr_with_diag_cython = None
         SLATE_AVAILABLE = False
         
 # --------------------------------------------------------------------------------------------
@@ -56,31 +60,107 @@ class SlateCommon(Solver):
         
         # Get parameters from SLATE section
         if 'SLATE' in self.config.sections:
-            self.alpha = self.config.sections['SLATE'].alpha
-            # Method selection: RIDGE or ARD
-            self.method = self.config.sections['SLATE'].method.upper()
-            # ARD parameters
-            self.directmethod = self.config.sections['SLATE'].directmethod
-            self.scap = self.config.sections['SLATE'].scap
-            self.scai = self.config.sections['SLATE'].scai
-            self.logcut = self.config.sections['SLATE'].logcut
-            self.max_iterations = self.config.sections['SLATE'].max_iterations
-            self.tolerance = self.config.sections['SLATE'].tolerance
-        else:
-            self.alpha = 1e-6
-            self.method = "RIDGE"
-            self.directmethod = 0
-            self.scap = 1e-4
-            self.scai = 1e-4
-            self.logcut = 0.3
-            self.max_iterations = 100
-            self.tolerance = 1e-3
+        
+            slate_config = self.config.sections['SLATE']
             
-        # ARD state variables
-        self.alphas = None  # Individual precision parameters
-        self.n_features = None
-        self.active_features = None  # Boolean mask for active features
+            # Method selection: RIDGE or ARD
+            self.method = slate_config.method.upper()
+        
+            if self.method == 'RIDGE':
+                self.alpha = slate_config.alpha
+            elif self.method == 'ARD':
+                self.max_iter = slate_config.max_iter
+                self.tol = slate_config.tol
+                self.alpha_1 = slate_config.alpha_1
+                self.alpha_2 = slate_config.alpha_2
+                self.lambda_1 = slate_config.lambda_1
+                self.lambda_2 = slate_config.lambda_2
+                self.threshold_lambda = slate_config.threshold_lambda
+
+
+    # --------------------------------------------------------------------------------------------
+
+    def _ridge_solve_iteration_with_diag(self, alpha_values=None):
+        """
+        Ridge solve that also returns the diagonal of the posterior covariance.
+        This is needed for proper ARD updates.
+        Returns: (solution, covariance_diagonal)
+        """
+        pt = self.pt
+        a = pt.shared_arrays['a'].array
+        b = pt.shared_arrays['b'].array
+        w = pt.shared_arrays['w'].array
+        
+        # Note: a, b, w remain unchanged - only aw, bw get modified by SLATE
+        aw = pt.shared_arrays['aw'].array
+        bw = pt.shared_arrays['bw'].array
+        
+        # Reset arrays
+        aw.fill(0.0)
+        bw.fill(0.0)
+        
+        # -------- LOCAL SLICE OF SHARED ARRAY AND REGULARIZATION ROWS --------
+
+        a_start_idx, a_end_idx = pt.fitsnap_dict["sub_a_indices"]
+        aw_start_idx, aw_end_idx = pt.fitsnap_dict["sub_aw_indices"]
+        reg_row_idx = pt.fitsnap_dict["reg_row_idx"]
+        reg_col_idx = pt.fitsnap_dict["reg_col_idx"]
+        reg_num_rows = pt.fitsnap_dict["reg_num_rows"]
+        
+        # -------- WEIGHTS --------
+  
+        # Apply weights to my local slice
+        local_slice = slice(a_start_idx, a_end_idx+1)
+        w_local_slice = slice(aw_start_idx, (aw_end_idx-reg_num_rows+1))
+        aw[w_local_slice] = w[local_slice, np.newaxis] * a[local_slice]
+        bw[w_local_slice] = w[local_slice] * b[local_slice]
+
+        # -------- TRAINING/TESTING SPLIT --------
+        
+        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
+            testing_mask = pt.fitsnap_dict['Testing'][local_slice]
+            for i in range(a_end_idx-a_start_idx+1):
+                if testing_mask[i]:
+                    aw[aw_start_idx+i,:] = 0.0
+                    bw[aw_start_idx+i] = 0.0
+
+        # -------- REGULARIZATION ROWS --------
+
+        n = a.shape[1]
     
+        for i in range(reg_num_rows):
+            if reg_col_idx+i < n: # avoid out of bounds padding from multiple nodes
+                if alpha_values is not None:
+                    # Use individual alpha for this feature
+                    sqrt_alpha = np.sqrt(alpha_values[reg_col_idx+i])
+                else:
+                    # Use common alpha for all features
+                    sqrt_alpha = np.sqrt(self.alpha)
+                aw[reg_row_idx+i, reg_col_idx+i] = sqrt_alpha
+            bw[reg_row_idx+i] = 0.0
+
+        # -------- SLATE AUGMENTED QR WITH DIAGONAL --------
+        pt.sub_barrier() # make sure all sub ranks done filling local tiles
+        m = aw.shape[0] * self.pt._number_of_nodes # global matrix total rows
+        lld = aw.shape[0]  # local leading dimension column-major shared array
+        
+        # Allocate array for covariance diagonal
+        cov_diag = np.zeros(n, dtype=np.float64)
+                     
+        # Determine debug flag from EXTRAS section
+        debug_flag = 0
+        if self.config.debug:
+            debug_flag = 1
+            
+        slate_augmented_qr_with_diag_cython(aw, bw, cov_diag, m, lld, debug_flag)
+        
+        # Broadcast solution from Node 0 to all nodes via head ranks
+        if pt._sub_rank == 0:  # This rank is head of its node
+            pt._head_group_comm.Bcast(bw[:n], root=0)
+            pt._head_group_comm.Bcast(cov_diag, root=0)
+
+        return bw[:n], cov_diag
+
     # --------------------------------------------------------------------------------------------
 
     def _ridge_solve_iteration(self, alpha_values=None):

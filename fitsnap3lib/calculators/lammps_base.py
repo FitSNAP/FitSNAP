@@ -184,15 +184,35 @@ class LammpsBase(Calculator):
         number_of_atoms = len(self._data["AtomTypes"])
         positions = self._data["Positions"].flatten()
         elem_all = [type_mapping[a_t] for a_t in self._data["AtomTypes"]]
-        self._lmp.create_atoms(
-            n=number_of_atoms,
-            id=None,
-            type=(len(elem_all) * ctypes.c_int)(*elem_all),
-            x=(len(positions) * ctypes.c_double)(*positions),
-            v=None,
-            image=None,
-            shrinkexceed=False
-        )
+
+        # temporary solution until some kind of LAMMPS versioning implemented
+        # from stable_22Jul2025, create_atoms args have changed from
+        #   id -> atomid
+        #   type -> atype
+        # see commit in lammps/python/core.py: https://github.com/lammps/lammps/commit/3f6dfa27bdd954b053ff1786e99895cbebc215b7#diff-734e8a48cae92acdb95bcc52cf39f6ff76d171e6ba579c733376c456feebdc1e
+        # lammps versions are in integer form yyyymmdd and can be compared directly
+        changed_version = 20250722
+        current_version = self._lmp.version()
+        if current_version >= changed_version:
+            self._lmp.create_atoms(
+                n=number_of_atoms,
+                atomid=None,
+                atype=(len(elem_all) * ctypes.c_int)(*elem_all),
+                x=(len(positions) * ctypes.c_double)(*positions),
+                v=None,
+                image=None,
+                shrinkexceed=False
+            )
+        else:
+            self._lmp.create_atoms(
+                n=number_of_atoms,
+                id=None,
+                type=(len(elem_all) * ctypes.c_int)(*elem_all),
+                x=(len(positions) * ctypes.c_double)(*positions),
+                v=None,
+                image=None,
+                shrinkexceed=False
+            )
         n_atoms = int(self._lmp.get_natoms())
         assert number_of_atoms == n_atoms, "Atom counts don't match when creating atoms: {}, {}\nGroup and configuration: {} {}".format(number_of_atoms, n_atoms, self._data["Group"], self._data["File"])
 

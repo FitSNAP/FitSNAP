@@ -30,7 +30,7 @@ class LammpsPace(LammpsBase):
         self._lmp.command(f"variable rcutfac equal {max(self.config.sections['ACE'].rcutfac)}")
 
         for line in self.config.sections["REFERENCE"].lmp_pairdecl:
-            self._lmp.command(line.lower())
+            self._lmp.command(line)
 
         self._set_computes()
 

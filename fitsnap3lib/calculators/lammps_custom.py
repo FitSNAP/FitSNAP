@@ -35,7 +35,7 @@ class LammpsCustom(LammpsBase):
     def _prepare_lammps(self):
         self._set_structure()
         for line in self.config.sections["REFERENCE"].lmp_pairdecl:
-            self._lmp.command(line.lower())
+            self._lmp.command(line)
         
 
         self._set_computes()

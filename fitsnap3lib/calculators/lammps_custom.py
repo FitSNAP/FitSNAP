@@ -35,7 +35,12 @@ class LammpsCustom(LammpsBase):
     def _prepare_lammps(self):
         self._set_structure()
         for line in self.config.sections["REFERENCE"].lmp_pairdecl:
-            self._lmp.command(line)
+            if "pair_coeff" in line:
+                lower = " ".join([word.lower() for word in line.split()[:4]]) 
+                leave_alone = " ".join([word for word in line.split()[4:]])
+                self._lmp.command(f"{lower} {leave_alone}")
+            else:
+                self._lmp.command(line.lower())
         
 
         self._set_computes()

@@ -40,7 +40,12 @@ class LammpsSnap(LammpsBase):
             self._lmp.command(f"variable radelem{i + 1} equal {j}")
 
         for line in self.config.sections["REFERENCE"].lmp_pairdecl:
-            self._lmp.command(line)
+            if "pair_coeff" in line:
+                lower = " ".join([word.lower() for word in line.split()[:4]]) 
+                leave_alone = " ".join([word for word in line.split()[4:]])
+                self._lmp.command(f"{lower} {leave_alone}")
+            else:
+                self._lmp.command(line.lower())
 
         self._set_computes()
         self._set_neighbor_list()

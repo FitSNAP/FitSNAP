@@ -16,7 +16,7 @@ extern "C" {
 
 constexpr int64_t ceil_div64(int64_t a, int64_t b) { return (a + b - 1) / b; }
 
-void slate_ard_update_sigma(double* local_a, double* local_sigma, int64_t m, int64_t n, int64_t lld, 
+void slate_ard_update_sigma(double* local_aw, double* local_sigma, int64_t m, int64_t n, int64_t lld,
                            double alpha, double* lambda, unsigned char* keep_lambda, int64_t n_active, int debug) {
     // Compute sigma = inv(alpha * X.T @ X + diag(lambda)) for active features
     // Uses SLATE distributed operations: herk for X.T @ X, potrf/potri for inversion
@@ -81,7 +81,7 @@ void slate_ard_update_sigma(double* local_a, double* local_sigma, int64_t m, int
                     int64_t first_col = (tile_col < n_active) ? active_indices[tile_col] : 0;
                     int64_t offset = tile_row + first_col * lld;
                     
-                    X_active.tileInsert(i, j, local_a + offset, lld);
+                    X_active.tileInsert(i, j, local_aw + offset, lld);
                 }
             }
         }
@@ -184,7 +184,7 @@ void slate_ard_update_sigma(double* local_a, double* local_sigma, int64_t m, int
     }
 }
 
-void slate_ard_update_coeff(double* local_a, double* local_b, double* local_coef, 
+void slate_ard_update_coeff(double* local_aw, double* local_bw, double* local_coef,
                            int64_t m, int64_t n, int64_t lld,
                            double alpha, unsigned char* keep_lambda, int64_t n_active, 
                            double* sigma, int debug) {
@@ -248,7 +248,7 @@ void slate_ard_update_coeff(double* local_a, double* local_b, double* local_coef
                     int64_t tile_col = j * nb;
                     int64_t first_col = (tile_col < n_active) ? active_indices[tile_col] : 0;
                     int64_t offset = tile_row + first_col * lld;
-                    X_active.tileInsert(i, j, local_a + offset, lld);
+                    X_active.tileInsert(i, j, local_aw + offset, lld);
                 }
             }
         }
@@ -259,7 +259,7 @@ void slate_ard_update_coeff(double* local_a, double* local_b, double* local_coef
         for (int64_t i = 0; i < y.mt(); ++i) {
             if (y.tileIsLocal(i, 0)) {
                 int64_t offset = i * mb;
-                y.tileInsert(i, 0, local_b + offset, lld);
+                y.tileInsert(i, 0, local_bw + offset, lld);
             }
         }
         
@@ -337,7 +337,7 @@ void slate_ard_update_coeff(double* local_a, double* local_b, double* local_coef
 
 
 
-void slate_ridge_augmented_qr(double* local_a, double* local_b, int64_t m, int64_t n, int64_t lld, int debug) {
+void slate_ridge_augmented_qr(double* local_aw, double* local_bw, int64_t m, int64_t n, int64_t lld, int debug) {
     
     // -------- MPI --------
 
@@ -407,7 +407,7 @@ void slate_ridge_augmented_qr(double* local_a, double* local_b, int64_t m, int64
               
                 // std::fprintf(stderr, "rank %d i %lld j %lld offset %lld\n", mpi_rank, i, j, offset);
               
-                A.tileInsert( i, j, local_a + offset, lld );
+                A.tileInsert( i, j, local_aw + offset, lld );
               
             }
             
@@ -419,7 +419,7 @@ void slate_ridge_augmented_qr(double* local_a, double* local_b, int64_t m, int64
 
             // std::fprintf(stderr, "rank %d i %lld offset %lld\n", mpi_rank, i, offset);
 
-            b.tileInsert( i, 0, local_b + offset, lld );
+            b.tileInsert( i, 0, local_bw + offset, lld );
           
           }
             

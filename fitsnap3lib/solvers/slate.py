@@ -79,6 +79,10 @@ class SLATE(SlateCommon):
         b = pt.shared_arrays['b'].array  # y: target vector (local portion)
         w = pt.shared_arrays['w'].array  # weights
         
+        # Note: a, b, w remain unchanged - only aw, bw get modified by SLATE
+        aw = pt.shared_arrays['a'].array
+        bw = pt.shared_arrays['b'].array
+
         # Get dimensions
         a_start_idx, a_end_idx = pt.fitsnap_dict["sub_a_indices"]
         local_slice = slice(a_start_idx, a_end_idx+1)
@@ -86,26 +90,52 @@ class SLATE(SlateCommon):
         n = a.shape[1]  # number of features
         lld = a.shape[0]  # local leading dimension
         
+        # Filter to training data only (matching reference implementation)
+        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
+            testing_mask = pt.fitsnap_dict['Testing'][local_slice]
+            training_mask = ~np.array(testing_mask, dtype=bool)
+        else:
+            training_mask = np.ones(len(local_b_slice), dtype=bool)
+        
+        # -------- WEIGHTS --------
+  
+        # Apply weights to my local slice
+        local_slice = slice(a_start_idx, a_end_idx+1)
+        aw[local_slice] = w[local_slice, np.newaxis] * a[local_slice]
+        bw[local_slice] = w[local_slice] * b[local_slice]
+
+        # -------- TRAINING/TESTING SPLIT --------
+        
+        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
+            testing_mask = pt.fitsnap_dict['Testing'][local_slice]
+            for i in range(a_end_idx-a_start_idx+1):
+                if testing_mask[i]:
+                    aw[aw_start_idx+i,:] = 0.0
+                    bw[aw_start_idx+i] = 0.0
+
         # Initialize ARD parameters
         eps = np.finfo(np.float64).eps
         
         # Compute initial alpha from variance of y (requires MPI reduction)
-        local_b_slice = b[local_slice]
-        local_w_slice = w[local_slice]
+        # IMPORTANT: sklearn ARDRegression in reference code receives weighted y (bw = w * y)
+        # and computes variance on that weighted data, training samples only
+       
+        # Variance of weighted y (bw) across all ranks, training samples only
+        local_sum_bw = np.sum(bw[local_slice])
+        local_sum_bw2 = np.sum(bw[local_slice]**2)
+        local_n_training = a_end_idx - a_end_idx
         
-        # Weighted variance of y across all ranks
-        local_sum_wy = np.sum(local_w_slice * local_b_slice)
-        local_sum_wy2 = np.sum(local_w_slice * local_b_slice**2)
-        local_sum_w = np.sum(local_w_slice)
+        global_sum_bw = pt._comm.allreduce(local_sum_bw, op=MPI.SUM)
+        global_sum_bw2 = pt._comm.allreduce(local_sum_bw2, op=MPI.SUM)
+        global_n_training = pt._comm.allreduce(local_n_training, op=MPI.SUM)
         
-        global_sum_wy = pt._comm.allreduce(local_sum_wy, op=MPI.SUM)
-        global_sum_wy2 = pt._comm.allreduce(local_sum_wy2, op=MPI.SUM)
-        global_sum_w = pt._comm.allreduce(local_sum_w, op=MPI.SUM)
+        mean_bw = global_sum_bw / global_n_training
+        var_bw = (global_sum_bw2 / global_n_training) - mean_bw**2
         
-        weighted_mean_y = global_sum_wy / global_sum_w if global_sum_w > 0 else 0.0
-        weighted_var_y = (global_sum_wy2 / global_sum_w - weighted_mean_y**2) if global_sum_w > 0 else 1.0
+        if self.config.debug and pt._rank == 0:
+            pt.single_print(f"DEBUG: global_n_training={global_n_training} global_mean(bw)={mean_bw:.6f} global_var(bw)={var_bw:.9f}")
         
-        alpha_ = 1.0 / (weighted_var_y + eps)
+        alpha_ = 1.0 / (var_bw + eps)
         lambda_ = np.ones(n, dtype=np.float64)
         coef_ = np.zeros(n, dtype=np.float64)
         keep_lambda = np.ones(n, dtype=bool)
@@ -113,7 +143,7 @@ class SLATE(SlateCommon):
         coef_old_ = None
         
         if self.config.debug and pt._rank == 0:
-            pt.single_print(f"ARD starting: m={m}, n={n}, alpha={alpha_:.2e}")
+            pt.single_print(f"ARD: m {m} n {n} var(bw)={var_bw:.9f} alpha={alpha_:.2f}")
         
         # Iterative procedure of ARDRegression
         for iter_ in range(self.max_iter):
@@ -123,13 +153,13 @@ class SLATE(SlateCommon):
             #   coef = alpha * sigma @ X.T @ y
             # in a distributed manner
             sigma_, coef_ = slate_ard_update_cython(
-                a, b, w, coef_, alpha_, lambda_, keep_lambda, m, self.config.debug
+                aw, bw, coef_, alpha_, lambda_, keep_lambda, m, self.config.debug
             )
             
             # Compute SSE (sum of squared errors) across all ranks
             local_pred = a[local_slice] @ coef_
-            local_residual = local_b_slice - local_pred
-            local_sse = np.sum(local_w_slice * local_residual**2)
+            local_residual = bw[local_slice] - local_pred
+            local_sse = np.sum(w[local_slice] * local_residual**2)
             sse_ = pt._comm.allreduce(local_sse, op=MPI.SUM)
             
             # Update alpha and lambda (on all ranks to stay synchronized)

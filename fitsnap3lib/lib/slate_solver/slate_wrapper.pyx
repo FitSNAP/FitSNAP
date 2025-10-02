@@ -12,37 +12,37 @@ cdef extern from *:
     #include <cstdint>
     
     extern "C" {
-        void slate_ridge_augmented_qr(double* local_a, double* local_b, 
+        void slate_ridge_augmented_qr(double* local_aw, double* local_bw,
                                       int64_t m, int64_t n, int64_t lld, int debug);
         
-        void slate_ard_update_sigma(double* local_a, double* local_sigma, 
+        void slate_ard_update_sigma(double* local_aw, double* local_sigma,
                                     int64_t m, int64_t n, int64_t lld,
                                     double alpha, double* lambda_arr, unsigned char* keep_lambda, 
                                     int64_t n_active, int debug);
         
-        void slate_ard_update_coeff(double* local_a, double* local_b, double* local_coef,
+        void slate_ard_update_coeff(double* local_aw, double* local_bw, double* local_coef,
                                     int64_t m, int64_t n, int64_t lld, double alpha,
                                     unsigned char* keep_lambda, int64_t n_active, 
                                     double* sigma, int debug);
     }
     """
 
-    void slate_ridge_augmented_qr(double* local_a, double* local_b, int64_t m, int64_t n, int64_t lld, int debug) except +
+    void slate_ridge_augmented_qr(double* local_aw, double* local_bw, int64_t m, int64_t n, int64_t lld, int debug) except +
     
-    void slate_ard_update_sigma(double* local_a, double* local_sigma, int64_t m, int64_t n, int64_t lld,
-                                double alpha, double* lambda_arr, np.npy_bool* keep_lambda, 
+    void slate_ard_update_sigma(double* local_aw, double* local_sigma, int64_t m, int64_t n, int64_t lld,
+                                double alpha, double* lambda_arr, np.npy_bool* keep_lambda,
                                 int64_t n_active, int debug) except +
     
-    void slate_ard_update_coeff(double* local_a, double* local_b, double* local_coef,
+    void slate_ard_update_coeff(double* local_aw, double* local_bw, double* local_coef,
                                 int64_t m, int64_t n, int64_t lld, double alpha,
                                 np.npy_bool* keep_lambda, int64_t n_active, 
                                 double* sigma, int debug) except +
 
-def slate_ridge_augmented_qr_cython(double[:, ::1] local_a, double[::1] local_b, int m, int lld, int debug=0):
-    cdef int n = <int>local_a.shape[1]
-    slate_ridge_augmented_qr(&local_a[0, 0], &local_b[0], m, n, lld, debug)
+def slate_ridge_augmented_qr_cython(double[:, ::1] local_aw, double[::1] local_bw, int m, int lld, int debug=0):
+    cdef int n = <int>local_aw.shape[1]
+    slate_ridge_augmented_qr(&local_aw[0, 0], &local_bw[0], m, n, lld, debug)
 
-def slate_ard_update_cython(double[:, ::1] local_a, double[::1] local_b, double[::1] local_w,
+def slate_ard_update_cython(double[:, ::1] local_aw, double[::1] local_bw,
                            double[::1] coef, double alpha, double[::1] lambda_arr,
                            np.ndarray[np.npy_bool, ndim=1, cast=True] keep_lambda,
                            int m, int debug=0):
@@ -66,8 +66,8 @@ def slate_ard_update_cython(double[:, ::1] local_a, double[::1] local_b, double[
     sigma : (n_active, n_active) posterior covariance matrix
     coef_new : (n,) updated coefficients
     """
-    cdef int n = <int>local_a.shape[1]
-    cdef int lld = <int>local_a.shape[0]
+    cdef int n = <int>local_aw.shape[1]
+    cdef int lld = <int>local_aw.shape[0]
     cdef int64_t n_active = np.sum(keep_lambda)
     
     # Allocate output arrays - use simple np.ndarray without typed memoryview
@@ -84,12 +84,12 @@ def slate_ard_update_cython(double[:, ::1] local_a, double[::1] local_b, double[
     coef_new_ptr = <double*>np.PyArray_DATA(coef_new)
     
     # Update sigma: inv(alpha * X.T @ X + diag(lambda))
-    slate_ard_update_sigma(&local_a[0, 0], sigma_ptr, m, n, lld, alpha,
+    slate_ard_update_sigma(&local_aw[0, 0], sigma_ptr, m, n, lld, alpha,
                           &lambda_arr[0], <np.npy_bool*>&keep_lambda[0], n_active, debug)
     
     # Update coefficients: alpha * sigma @ X.T @ y
-    slate_ard_update_coeff(&local_a[0, 0], &local_b[0], coef_new_ptr,
-                          m, n, lld, alpha, <np.npy_bool*>&keep_lambda[0], 
+    slate_ard_update_coeff(&local_aw[0, 0], &local_bw[0], coef_new_ptr,
+                          m, n, lld, alpha, <np.npy_bool*>&keep_lambda[0],
                           n_active, sigma_ptr, debug)
     
     return sigma, coef_new

@@ -11,14 +11,12 @@ except ImportError:
 
 # Import the SLATE module
 SLATE_AVAILABLE = False
-ridge_solve_qr = None
-
-slate_augmented_qr_cython = None
-slate_augmented_qr_with_diag_cython = None
+slate_ridge_augmented_qr_cython = None
+slate_ard_update_cython = None
 
 try:
     # Primary import method (after pip install -e .)
-    from slate_wrapper import slate_augmented_qr_cython, slate_augmented_qr_with_diag_cython
+    from slate_wrapper import slate_ridge_augmented_qr_cython, slate_ard_update_cython
     SLATE_AVAILABLE = True
 except ImportError as e:
     # Fallback: try direct path import for in-place builds
@@ -28,13 +26,13 @@ except ImportError as e:
         slate_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lib', 'slate_solver')
         if slate_path not in sys.path:
             sys.path.insert(0, slate_path)
-        from slate_wrapper import slate_augmented_qr_cython, slate_augmented_qr_with_diag_cython
+        from slate_wrapper import slate_ridge_augmented_qr_cython, slate_ard_update_cython
         SLATE_AVAILABLE = True
     except ImportError:
         print(f"Warning: SLATE module import failed: {e}")
         print("To install: cd fitsnap3lib/lib/slate_solver && pip install -e .")
-        slate_augmented_qr_cython = None
-        slate_augmented_qr_with_diag_cython = None
+        slate_ridge_augmented_qr_cython = None
+        slate_ard_update_cython = None
         SLATE_AVAILABLE = False
         
 # --------------------------------------------------------------------------------------------

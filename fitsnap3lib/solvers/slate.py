@@ -1,6 +1,24 @@
-
 from fitsnap3lib.solvers.slate_common import SlateCommon
 import numpy as np
+
+try:
+    from slate_wrapper import slate_ridge_augmented_qr_cython, slate_ard_update_cython
+except ImportError:
+    try:
+        import sys
+        import os
+        slate_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lib', 'slate_solver')
+        if slate_path not in sys.path:
+            sys.path.insert(0, slate_path)
+        from slate_wrapper import slate_ridge_augmented_qr_cython, slate_ard_update_cython
+    except ImportError as e:
+        print(f"Warning: Could not import SLATE ARD functions: {e}")
+        slate_ard_update_cython = None
+
+try:
+    from mpi4py import MPI
+except ImportError:
+    MPI = None
 
 class SLATE(SlateCommon):
 
@@ -41,230 +59,115 @@ class SLATE(SlateCommon):
 
     def perform_fit_ard(self):
         """
+        Perform ARD (Automatic Relevance Determination) regression using SLATE.
         
-        dtype = X.dtype
-
-        n_samples, n_features = X.shape
-        coef_ = np.zeros(n_features, dtype=dtype)
-
-        X, y, X_offset_, y_offset_, X_scale_ = _preprocess_data(
-            X, y, fit_intercept=self.fit_intercept, copy=self.copy_X
-        )
-
-        self.X_offset_ = X_offset_
-        self.X_scale_ = X_scale_
-
-        # Launch the convergence loop
-        keep_lambda = np.ones(n_features, dtype=bool)
-
-        lambda_1 = self.lambda_1
-        lambda_2 = self.lambda_2
-        alpha_1 = self.alpha_1
-        alpha_2 = self.alpha_2
-        verbose = self.verbose
-
-        # Initialization of the values of the parameters
-        eps = np.finfo(np.float64).eps
-        # Add `eps` in the denominator to omit division by zero if `np.var(y)`
-        # is zero.
-        # Explicitly set dtype to avoid unintended type promotion with numpy 2.
-        alpha_ = np.asarray(1.0 / (np.var(y) + eps), dtype=dtype)
-        lambda_ = np.ones(n_features, dtype=dtype)
-
-        self.scores_ = list()
-        coef_old_ = None
-
-        def update_coeff(X, y, coef_, alpha_, keep_lambda, sigma_):
-            coef_[keep_lambda] = alpha_ * np.linalg.multi_dot(
-                [sigma_, X[:, keep_lambda].T, y]
-            )
-            return coef_
-
-        update_sigma = (
-            self._update_sigma
-            if n_samples >= n_features
-            else self._update_sigma_woodbury
-        )
-        # Iterative procedure of ARDRegression
-        for iter_ in range(self.max_iter):
-            sigma_ = update_sigma(X, alpha_, lambda_, keep_lambda)
-            coef_ = update_coeff(X, y, coef_, alpha_, keep_lambda, sigma_)
-
-            # Update alpha and lambda
-            sse_ = np.sum((y - np.dot(X, coef_)) ** 2)
-            gamma_ = 1.0 - lambda_[keep_lambda] * np.diag(sigma_)
-            lambda_[keep_lambda] = (gamma_ + 2.0 * lambda_1) / (
-                (coef_[keep_lambda]) ** 2 + 2.0 * lambda_2
-            )
-            alpha_ = (n_samples - gamma_.sum() + 2.0 * alpha_1) / (sse_ + 2.0 * alpha_2)
-
-            # Prune the weights with a precision over a threshold
-            keep_lambda = lambda_ < self.threshold_lambda
-            coef_[~keep_lambda] = 0
-
-            # Compute the objective function
-            if self.compute_score:
-                s = (lambda_1 * np.log(lambda_) - lambda_2 * lambda_).sum()
-                s += alpha_1 * log(alpha_) - alpha_2 * alpha_
-                s += 0.5 * (
-                    fast_logdet(sigma_)
-                    + n_samples * log(alpha_)
-                    + np.sum(np.log(lambda_))
-                )
-                s -= 0.5 * (alpha_ * sse_ + (lambda_ * coef_**2).sum())
-                self.scores_.append(s)
-
-            # Check for convergence
-            if iter_ > 0 and np.sum(np.abs(coef_old_ - coef_)) < self.tol:
-                if verbose:
-                    print("Converged after %s iterations" % iter_)
-                break
-            coef_old_ = np.copy(coef_)
-
-            if not keep_lambda.any():
-                break
-
-        self.n_iter_ = iter_ + 1
-
-        if keep_lambda.any():
-            # update sigma and mu using updated params from the last iteration
-            sigma_ = update_sigma(X, alpha_, lambda_, keep_lambda)
-            coef_ = update_coeff(X, y, coef_, alpha_, keep_lambda, sigma_)
-        else:
-            sigma_ = np.array([]).reshape(0, 0)
-
-        self.coef_ = coef_
-        self.alpha_ = alpha_
-        self.sigma_ = sigma_
-        self.lambda_ = lambda_
-        self._set_intercept(X_offset_, y_offset_, X_scale_)
-        return self
-
+        Implements the sklearn ARDRegression algorithm for distributed matrices:
+        
+        Iteratively updates:
+        - sigma = inv(alpha * X.T @ X + diag(lambda))  [covariance of coefficients]
+        - coef = alpha * sigma @ X.T @ y                [coefficient estimates]
+        - lambda = (gamma + 2*lambda_1) / (coef^2 + 2*lambda_2)  [feature precisions]
+        - alpha = (m - gamma.sum() + 2*alpha_1) / (SSE + 2*alpha_2)  [noise precision]
+        
+        where gamma = 1 - lambda * diag(sigma)
+        
+        Assumes m >> n (many samples, fewer features) so no Woodbury formula needed.
         """
         
         pt = self.pt
-        a = pt.shared_arrays['a'].array
-        b = pt.shared_arrays['b'].array
-        w = pt.shared_arrays['w'].array
+        a = pt.shared_arrays['a'].array  # X: design matrix (local portion)
+        b = pt.shared_arrays['b'].array  # y: target vector (local portion)
+        w = pt.shared_arrays['w'].array  # weights
         
-        n = a.shape[1]
-        lambda_mask = np.ones(n, dtype=bool)
-
-
+        # Get dimensions
+        a_start_idx, a_end_idx = pt.fitsnap_dict["sub_a_indices"]
+        local_slice = slice(a_start_idx, a_end_idx+1)
+        m = a.shape[0] * pt._number_of_nodes  # global number of samples
+        n = a.shape[1]  # number of features
+        lld = a.shape[0]  # local leading dimension
+        
+        # Initialize ARD parameters
+        eps = np.finfo(np.float64).eps
+        
+        # Compute initial alpha from variance of y (requires MPI reduction)
+        local_b_slice = b[local_slice]
+        local_w_slice = w[local_slice]
+        
+        # Weighted variance of y across all ranks
+        local_sum_wy = np.sum(local_w_slice * local_b_slice)
+        local_sum_wy2 = np.sum(local_w_slice * local_b_slice**2)
+        local_sum_w = np.sum(local_w_slice)
+        
+        global_sum_wy = pt._comm.allreduce(local_sum_wy, op=MPI.SUM)
+        global_sum_wy2 = pt._comm.allreduce(local_sum_wy2, op=MPI.SUM)
+        global_sum_w = pt._comm.allreduce(local_sum_w, op=MPI.SUM)
+        
+        weighted_mean_y = global_sum_wy / global_sum_w if global_sum_w > 0 else 0.0
+        weighted_var_y = (global_sum_wy2 / global_sum_w - weighted_mean_y**2) if global_sum_w > 0 else 1.0
+        
+        alpha_ = 1.0 / (weighted_var_y + eps)
+        lambda_ = np.ones(n, dtype=np.float64)
+        coef_ = np.zeros(n, dtype=np.float64)
+        keep_lambda = np.ones(n, dtype=bool)
+        
+        coef_old_ = None
+        
+        if self.config.debug and pt._rank == 0:
+            pt.single_print(f"ARD starting: m={m}, n={n}, alpha={alpha_:.2e}")
+        
         # Iterative procedure of ARDRegression
         for iter_ in range(self.max_iter):
-            sigma_ = slate_ard_update_sigma_cython(X, alpha_, lambda_, lambda_mask)
-            coef_ = slate_ard_update_coeff_cython(X, y, coef_, alpha_, lambda_mask, sigma_)
-
-            # Update alpha and lambda
-            sse_ = np.sum((y - np.dot(X, coef_)) ** 2)
-            gamma_ = 1.0 - lambda_[lambda_mask] * np.diag(sigma_)
-            lambda_[lambda_mask] = (gamma_ + 2.0 * self.lambda_1) / (
-                (coef_[lambda_mask]) ** 2 + 2.0 * self.lambda_2
+            # Update sigma and coef using SLATE C++ functions
+            # These compute:
+            #   sigma = inv(alpha * X.T @ X + diag(lambda))
+            #   coef = alpha * sigma @ X.T @ y
+            # in a distributed manner
+            sigma_, coef_ = slate_ard_update_cython(
+                a, b, w, coef_, alpha_, lambda_, keep_lambda, m, self.config.debug
             )
-            alpha_ = (n - gamma_.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
-
-            # Prune the weights with a precision over a threshold
-            lambda_mask = lambda_ < self.threshold_lambda
-            coef_[~lambda_mask] = 0
-
-
+            
+            # Compute SSE (sum of squared errors) across all ranks
+            local_pred = a[local_slice] @ coef_
+            local_residual = local_b_slice - local_pred
+            local_sse = np.sum(local_w_slice * local_residual**2)
+            sse_ = pt._comm.allreduce(local_sse, op=MPI.SUM)
+            
+            # Update alpha and lambda (on all ranks to stay synchronized)
+            gamma_ = 1.0 - lambda_[keep_lambda] * np.diag(sigma_)
+            
+            lambda_[keep_lambda] = (gamma_ + 2.0 * self.lambda_1) / (
+                coef_[keep_lambda]**2 + 2.0 * self.lambda_2
+            )
+            
+            alpha_ = (m - gamma_.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
+            
+            # Prune features with high lambda (low relevance)
+            keep_lambda = lambda_ < self.threshold_lambda
+            coef_[~keep_lambda] = 0
+            
             # Check for convergence
-            if iter_ > 0 and np.sum(np.abs(coef_old_ - coef_)) < self.tol:
-                if self.config.debug:
-                    pt.single_print(f"SLATE/ARD converged after {iter_} iterations")
-                break
+            if coef_old_ is not None:
+                coef_change = np.sum(np.abs(coef_old_ - coef_))
+                if coef_change < self.tol:
+                    if self.config.debug and pt._rank == 0:
+                        active_features = np.sum(keep_lambda)
+                        pt.single_print(f"ARD converged after {iter_} iterations, "
+                                      f"{active_features}/{n} features active")
+                    break
+            
             coef_old_ = np.copy(coef_)
-
-            if not lambda_mask.any():
-                break
-
-
-        
-
-
-
-    # --------------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        """
-                
-                # Print progress
-                if iteration == 0 or iteration % 10 == 0 or converged:
-                    pt.single_print(f"ARD Iter {iteration}: "
-                                   f"Δα={alpha_change:.2e}, "
-                                   f"active={active_features}/{self.n_features}, "
-                                   f"α∈[{min_alpha:.2e}, {max_alpha:.2e}]")
-                
-                if converged:
-                    pt.single_print(f"ARD converged: {reason}")
             
-            # Broadcast convergence and alphas to all ranks
-            self.alphas = pt._comm.bcast(self.alphas if pt._rank == 0 else None, root=0)
-            converged = pt._comm.bcast(converged if pt._rank == 0 else None, root=0)
-            
-            if converged:
+            if not keep_lambda.any():
+                if self.config.debug and pt._rank == 0:
+                    pt.single_print(f"ARD: all features pruned at iteration {iter_}")
                 break
         
         # Store final solution
-        self.fit = solution
+        self.fit = coef_
         
-        if pt._rank == 0:
-            active_count = np.sum(self.alphas < threshold_lambda)
-            pruned_count = self.n_features - active_count
-            pt.single_print(f"ARD completed: {active_count}/{self.n_features} features active, "
-                          f"{pruned_count} pruned")
-            
-            if self.config.debug:
-                # Show distribution of alpha values
-                alpha_stats = f"Alpha statistics: min={np.min(self.alphas):.2e}, "
-                alpha_stats += f"median={np.median(self.alphas):.2e}, max={np.max(self.alphas):.2e}"
-                pt.single_print(alpha_stats)
-                
-                # Show which features are active
-                active_mask = self.alphas < threshold_lambda
-                active_indices = np.where(active_mask)[0]
-                pt.single_print(f"Active feature indices (first 20): {active_indices[:20]}")
-                
-                pt.all_print(f"*** ARD self.fit (first 20 coefficients) ------------------------\n"
-                    f"{self.fit[:20]}\n-------------------------------------------------\n")
-
-        """
-
+        if self.config.debug and pt._rank == 0:
+            active_features = np.sum(keep_lambda)
+            pt.single_print(f"ARD final: {active_features}/{n} features active, "
+                          f"alpha={alpha_:.2e}, lambda range=[{np.min(lambda_):.2e}, {np.max(lambda_):.2e}]")
 
     # --------------------------------------------------------------------------------------------

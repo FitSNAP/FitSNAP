@@ -137,11 +137,21 @@ class FitSnap:
         self.pt = ParallelTools(comm=comm)
         self.pt.all_barrier()
         self.config = Config(self.pt, input, arguments_lst=arglist)
+
+        # Update ParallelTools with config for debug support and multinode_testing
         
-        # Update ParallelTools with config for debug support
         self.pt.debug = getattr(self.config, 'debug', False) or (
             hasattr(self.config, 'sections') and 'EXTRAS' in self.config.sections and 
             getattr(self.config.sections['EXTRAS'], 'debug', False))
+
+        self.pt.multinode_testing = (hasattr(self.config, 'sections') and
+                            'EXTRAS' in self.config.sections and
+                            getattr(self.config.sections['EXTRAS'], 'multinode_testing', False))
+                            
+        # need to read config first before splitting comms
+        if self.pt.stubs == 0:
+            self.pt._comm_split()
+        
         if self.config.args.verbose:
             self.pt.single_print(f"FitSNAP instance hash: {self.config.hash}")
         # Instantiate other backbone attributes.

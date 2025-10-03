@@ -155,7 +155,7 @@ class ParallelTools():
         debug (bool): Debug flag for conditional debug printing.
     """
 
-    def __init__(self, comm=None, config=None):
+    def __init__(self, comm=None):
         self.check_fitsnap_exist = True # set to False if want to allow re-creating dictionary
         if comm is None:
             self.stubs = 1
@@ -191,9 +191,6 @@ class ParallelTools():
 
         self.killer = GracefulKiller(self._comm)
 
-        if self.stubs == 0:
-            self._comm_split()
-
         self._lmp = None
         self._seed = 0.0
         self._set_seed()
@@ -202,13 +199,9 @@ class ParallelTools():
         self.logger = None
         self.pytest = False
         self._fp = None
-        
-        # Set debug flag from config if available
         self.debug = False
-        if config is not None:
-            self.debug = getattr(config, 'debug', False) or (hasattr(config, 'sections') and 
-                            'EXTRAS' in config.sections and 
-                            getattr(config.sections['EXTRAS'], 'debug', False))
+        self.multinode_testing = False
+
 
     """
     def __del__(self):
@@ -227,10 +220,20 @@ class ParallelTools():
         else:
             super().__setattr__(name, value)
     """
-
+        
     #@stub_check
     def _comm_split(self):
-        self._sub_comm = self._comm.Split_type(self.MPI.COMM_TYPE_SHARED)
+        if self.multinode_testing:
+            # Force exactly 2 fake nodes, must divide evenly
+            assert self._size % 2 == 0, (
+                f"multinode_testing requires even number of ranks, got {self._size}"
+            )
+            fake_node_id = 0 if self._rank < self._size // 2 else 1
+            self._sub_comm = self._comm.Split(fake_node_id, self._rank)
+        else:
+            # Real multinode split
+            self._sub_comm = self._comm.Split_type(self.MPI.COMM_TYPE_SHARED)
+
         self._sub_rank = self._sub_comm.Get_rank()
         self._sub_size = self._sub_comm.Get_size()
         self._sub_head_proc = 0
@@ -243,6 +246,12 @@ class ParallelTools():
         self._node_index = self._sub_head_procs.index(self._sub_head_proc)
         self._number_of_nodes = len(self._sub_head_procs)
         self._micro_comm = self._comm.Split(self._rank)
+        
+        is_multinode_testing = " [multinode_testing]" if self.multinode_testing else ""
+        self.single_print(f"ParallelTools{is_multinode_testing}: {self._size} ranks, "
+                          f"{self._number_of_nodes} node(s), {self._sub_size} ranks/node")
+
+    
 
     def _set_seed(self):
         if self._rank == 0.0:
@@ -632,6 +641,7 @@ class ParallelTools():
         """
         
         is_slate_ridge = self.fitsnap_dict.get("is_slate_ridge", False)
+        is_slate_ard = self.fitsnap_dict.get("is_slate_ard", False)
 
         nof = len(self.shared_arrays["number_of_atoms"].array)
         if self._sub_rank != 0:

@@ -80,8 +80,8 @@ class SLATE(SlateCommon):
         w = pt.shared_arrays['w'].array  # weights
         
         # Note: a, b, w remain unchanged - only aw, bw get modified by SLATE
-        aw = pt.shared_arrays['a'].array
-        bw = pt.shared_arrays['b'].array
+        aw = pt.shared_arrays['aw'].array
+        bw = pt.shared_arrays['bw'].array
 
         # Get dimensions
         a_start_idx, a_end_idx = pt.fitsnap_dict["sub_a_indices"]
@@ -90,12 +90,7 @@ class SLATE(SlateCommon):
         n = a.shape[1]  # number of features
         lld = a.shape[0]  # local leading dimension
         
-        # Filter to training data only (matching reference implementation)
-        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
-            testing_mask = pt.fitsnap_dict['Testing'][local_slice]
-            training_mask = ~np.array(testing_mask, dtype=bool)
-        else:
-            training_mask = np.ones(len(local_b_slice), dtype=bool)
+        # We'll handle training/testing split by zeroing out test samples below
         
         # -------- WEIGHTS --------
   
@@ -105,13 +100,13 @@ class SLATE(SlateCommon):
         bw[local_slice] = w[local_slice] * b[local_slice]
 
         # -------- TRAINING/TESTING SPLIT --------
-        
+        # Zero out test samples (they won't contribute to the fit)
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
             testing_mask = pt.fitsnap_dict['Testing'][local_slice]
             for i in range(a_end_idx-a_start_idx+1):
                 if testing_mask[i]:
-                    aw[aw_start_idx+i,:] = 0.0
-                    bw[aw_start_idx+i] = 0.0
+                    aw[a_start_idx+i,:] = 0.0
+                    bw[a_start_idx+i] = 0.0
 
         # Initialize ARD parameters
         eps = np.finfo(np.float64).eps
@@ -121,9 +116,17 @@ class SLATE(SlateCommon):
         # and computes variance on that weighted data, training samples only
        
         # Variance of weighted y (bw) across all ranks, training samples only
-        local_sum_bw = np.sum(bw[local_slice])
-        local_sum_bw2 = np.sum(bw[local_slice]**2)
-        local_n_training = a_end_idx - a_end_idx
+        # Count training samples (after zeroing out test samples above)
+        if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
+            testing_mask = pt.fitsnap_dict['Testing'][local_slice]
+            local_n_training = np.sum(~np.array(testing_mask, dtype=bool))
+        else:
+            local_n_training = a_end_idx - a_start_idx + 1
+        
+        # Compute variance (test samples are already zero'd in bw, so they won't affect mean/variance)
+        local_bw = bw[local_slice]
+        local_sum_bw = np.sum(local_bw)
+        local_sum_bw2 = np.sum(local_bw**2)
         
         global_sum_bw = pt._comm.allreduce(local_sum_bw, op=MPI.SUM)
         global_sum_bw2 = pt._comm.allreduce(local_sum_bw2, op=MPI.SUM)
@@ -143,6 +146,9 @@ class SLATE(SlateCommon):
         coef_old_ = None
         
         if self.config.debug and pt._rank == 0:
+            pt.single_print(f"DEBUG: Before iteration - aw[0:5, 0:3]:\n{aw[local_slice][0:5, 0:3]}")
+            pt.single_print(f"DEBUG: Before iteration - bw[0:10]: {bw[local_slice][0:10]}")
+            pt.single_print(f"DEBUG: Before iteration - w[0:10]: {w[local_slice][0:10]}")
             pt.single_print(f"ARD: m {m} n {n} var(bw)={var_bw:.9f} alpha={alpha_:.2f}")
         
         # Iterative procedure of ARDRegression
@@ -157,9 +163,10 @@ class SLATE(SlateCommon):
             )
             
             # Compute SSE (sum of squared errors) across all ranks
-            local_pred = a[local_slice] @ coef_
+            # Use weighted data consistently: residual = bw - aw @ coef
+            local_pred = aw[local_slice] @ coef_
             local_residual = bw[local_slice] - local_pred
-            local_sse = np.sum(w[local_slice] * local_residual**2)
+            local_sse = np.sum(local_residual**2)  # Already weighted, don't apply weights again
             sse_ = pt._comm.allreduce(local_sse, op=MPI.SUM)
             
             # Update alpha and lambda (on all ranks to stay synchronized)
@@ -170,6 +177,9 @@ class SLATE(SlateCommon):
             )
             
             alpha_ = (m - gamma_.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
+            
+            if self.config.debug and pt._rank == 0:
+                pt.single_print(f"Iteration {iter_}: alpha={alpha_:.6e}, sse={sse_:.6e}, gamma_sum={gamma_.sum():.6f}, n_active={np.sum(keep_lambda)}")
             
             # Prune features with high lambda (low relevance)
             keep_lambda = lambda_ < self.threshold_lambda

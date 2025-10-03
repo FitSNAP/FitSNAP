@@ -105,7 +105,20 @@ void slate_ard_update_sigma(double* local_aw, double* local_sigma, int64_t m, in
                 tile.at(local_i, local_i) = lambda[active_indices[idx]];
             }
         }
+
+        // -------- DEBUG --------
+
+        if (debug) {
+            slate::Options opts = {
+              { slate::Option::PrintVerbose, 4 },
+              { slate::Option::PrintPrecision, 3 },
+              { slate::Option::PrintWidth, 7 }
+            };
         
+            slate::print("X_active", X_active, opts);
+            slate::print("C", C, opts);
+        }
+
         // Compute C = alpha * X.T @ X + 1.0 * C using SLATE's herk
         // herk computes C = alpha * A * A^H + beta * C
         // We want C = alpha * X^T * X, so pass transpose(X_active) which is n_active x m

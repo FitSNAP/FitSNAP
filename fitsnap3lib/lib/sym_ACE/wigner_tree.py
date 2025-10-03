@@ -1,16 +1,12 @@
 from fitsnap3lib.lib.sym_ACE.gen_labels import *
 from fitsnap3lib.lib.sym_ACE.coupling_coeffs import *
-from mpi4py import MPI
 
-comm = MPI.COMM_WORLD
-
-from fitsnap3lib.parallel_tools import ParallelTools
-pt = ParallelTools(comm = comm)
+from . import is_rank_zero, rank_zero
 
 #library to generate generalized Wigner symbols using sigma_c symmetric (full ordered) 
 #  binary trees.
 
-@pt.rank_zero
+@rank_zero
 def get_ms(l,M_R=0):
 
     # retrieves the set of m_i combinations obeying sum_i m_i = M_R for an arbitrary l vector
@@ -24,7 +20,7 @@ def get_ms(l,M_R=0):
     return m_strs
 
 #alternative to manually coded couplings
-@pt.rank_zero
+@rank_zero
 def rank_1_tree(l,L_R=0,M_R=0):
     #no nodes for rank 1
 
@@ -49,7 +45,7 @@ def rank_1_tree(l,L_R=0,M_R=0):
     return decomposed
 
 
-@pt.rank_zero
+@rank_zero
 def rank_2_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -75,7 +71,7 @@ def rank_2_tree(l,L_R=0,M_R=0):
                 decomposed[inter][mstr] = (w)
     return decomposed
 
-@pt.rank_zero
+@rank_zero
 def rank_3_tree(l,L_R=0,M_R=0):
 
     full_inter_tuples = tree_l_inters(l,L_R=L_R,M_R=M_R)
@@ -101,7 +97,7 @@ def rank_3_tree(l,L_R=0,M_R=0):
     return decomposed
     
 
-@pt.rank_zero
+@rank_zero
 def rank_4_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -132,7 +128,7 @@ def rank_4_tree(l,L_R=0,M_R=0):
                         decomposed[inter][mstr] = w
     return decomposed
 
-@pt.rank_zero
+@rank_zero
 def rank_4_recur_tree(l,L_R=0,M_R=0):
 
     inters = []
@@ -190,7 +186,7 @@ def rank_4_recur_tree(l,L_R=0,M_R=0):
     return decomposed
 
 
-@pt.rank_zero
+@rank_zero
 def rank_5_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -224,7 +220,7 @@ def rank_5_tree(l,L_R=0,M_R=0):
                             decomposed[inter][mstr] = (w)
     return decomposed
 
-@pt.rank_zero
+@rank_zero
 def rank_6_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -263,7 +259,7 @@ def rank_6_tree(l,L_R=0,M_R=0):
                                 decomposed[inter][mstr] = (w)
     return decomposed
 
-@pt.rank_zero
+@rank_zero
 def rank_7_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -306,7 +302,7 @@ def rank_7_tree(l,L_R=0,M_R=0):
                                     decomposed[inter][mstr] = (w)
     return decomposed
 
-@pt.rank_zero
+@rank_zero
 def rank_8_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -350,5 +346,3 @@ def rank_8_tree(l,L_R=0,M_R=0):
 
                                         decomposed[inter][mstr] = float(w)
     return decomposed
-
-del pt

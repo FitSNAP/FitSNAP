@@ -38,11 +38,11 @@ cdef extern from *:
                                 np.npy_bool* keep_lambda, int64_t n_active, 
                                 double* sigma, int debug) except +
 
-def slate_ridge_augmented_qr_cython(double[:, ::1] local_aw, double[::1] local_bw, int m, int lld, int debug=0):
+def slate_ridge_augmented_qr_cython(double[::1, :] local_aw, double[::1] local_bw, int m, int lld, int debug=0):
     cdef int n = <int>local_aw.shape[1]
     slate_ridge_augmented_qr(&local_aw[0, 0], &local_bw[0], m, n, lld, debug)
 
-def slate_ard_update_cython(double[:, ::1] local_aw, double[::1] local_bw,
+def slate_ard_update_cython(double[::1, :] local_aw, double[::1] local_bw,
                            double[::1] coef, double alpha, double[::1] lambda_arr,
                            np.ndarray[np.npy_bool, ndim=1, cast=True] keep_lambda,
                            int m, int debug=0):

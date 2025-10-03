@@ -271,7 +271,7 @@ class Calculator:
             a_width = self.get_width()
             assert isinstance(a_width, int)
             
-            if self.config.sections["SOLVER"].solver.upper() == "SLATE" and self.config.sections["SLATE"].method.upper() == "RIDGE":
+            if self.config.sections["SOLVER"].solver.upper() == "SLATE":
             
                 # TODO: dont bother checking memory on multinode for now
                 # if it blows up just get more nodes
@@ -286,12 +286,19 @@ class Calculator:
                 # optimal is same amount of configs per node
                     
                 max_a_len = pt._comm.allreduce(a_len, op=pt.MPI.MAX)
-                aw_len = int(np.ceil((max_a_len*pt._number_of_nodes + a_width)/pt._number_of_nodes))
-                # Store info about SLATE augmentation
-                pt.add_2_fitsnap("is_slate_ridge", True)
+                method = self.config.sections["SLATE"].method.upper()
+                
+                if method == "RIDGE":
+                    pt.add_2_fitsnap("is_slate_ridge", True)
+                    extra_rows = a_width
+                elif method == "ARD":
+                    extra_rows = 0
+                else:
+                    raise RuntimeError(f"SLATE method {method} not implemented.")
+
+                aw_len = int(np.ceil((max_a_len*pt._number_of_nodes + extra_rows)/pt._number_of_nodes))
                 pt.create_shared_array('aw', aw_len, a_width, order='F')
-                pt.create_shared_array('bw', aw_len, order='F')
-               
+                pt.create_shared_array('bw', aw_len, order='F')               
               
             else:
 

@@ -46,6 +46,9 @@ void slate_ard_update_sigma(double* local_aw, double* local_sigma, int64_t m, in
     int mpi_number_of_nodes = m / lld;
     int mpi_sub_size = mpi_size / mpi_number_of_nodes;
     
+    // Which node am I on?
+    int my_node = mpi_rank / mpi_sub_size;
+    
     // Process grid setup (following ridge solver pattern)
     int64_t mb, nb, p, q = 1;
     int64_t nt_start = 1;
@@ -70,18 +73,28 @@ void slate_ard_update_sigma(double* local_aw, double* local_sigma, int64_t m, in
         // Create X_active matrix (m x n_active) with only active columns
         slate::Matrix<double> X_active(m, n_active, mb, nb, slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
         
-        // Insert tiles for X_active - extract only active columns from local_a
+        // Insert tiles for X_active - extract only active columns from local_aw
         for (int64_t j = 0; j < X_active.nt(); ++j) {
             for (int64_t i = 0; i < X_active.mt(); ++i) {
                 if (X_active.tileIsLocal(i, j)) {
-                    int64_t tile_row = i * mb;
-                    int64_t tile_col = j * nb;
+                    // Calculate global row range for this tile
+                    int64_t tile_global_row_start = i * mb;
                     
-                    // Map tile column index to original active column
-                    int64_t first_col = (tile_col < n_active) ? active_indices[tile_col] : 0;
-                    int64_t offset = tile_row + first_col * lld;
+                    // Determine which node owns this tile's data
+                    int tile_node = tile_global_row_start / lld;
                     
-                    X_active.tileInsert(i, j, local_aw + offset, lld);
+                    // Only insert if this tile's data is on my node
+                    if (tile_node == my_node) {
+                        // Map to local row index within this node's buffer
+                        int64_t local_row = tile_global_row_start % lld;
+                        int64_t tile_col = j * nb;
+                        
+                        // Map tile column index to original active column
+                        int64_t first_col = (tile_col < n_active) ? active_indices[tile_col] : 0;
+                        int64_t offset = local_row + first_col * lld;
+                        
+                        X_active.tileInsert(i, j, local_aw + offset, lld);
+                    }
                 }
             }
         }
@@ -233,6 +246,9 @@ void slate_ard_update_coeff(double* local_aw, double* local_bw, double* local_co
     int mpi_number_of_nodes = m / lld;
     int mpi_sub_size = mpi_size / mpi_number_of_nodes;
     
+    // Which node am I on?
+    int my_node = mpi_rank / mpi_sub_size;
+    
     // Process grid setup
     int64_t mb, nb, p, q = 1;
     int64_t nt_start = 1;
@@ -257,11 +273,21 @@ void slate_ard_update_coeff(double* local_aw, double* local_bw, double* local_co
         for (int64_t j = 0; j < X_active.nt(); ++j) {
             for (int64_t i = 0; i < X_active.mt(); ++i) {
                 if (X_active.tileIsLocal(i, j)) {
-                    int64_t tile_row = i * mb;
-                    int64_t tile_col = j * nb;
-                    int64_t first_col = (tile_col < n_active) ? active_indices[tile_col] : 0;
-                    int64_t offset = tile_row + first_col * lld;
-                    X_active.tileInsert(i, j, local_aw + offset, lld);
+                    // Calculate global row range for this tile
+                    int64_t tile_global_row_start = i * mb;
+                    
+                    // Determine which node owns this tile's data
+                    int tile_node = tile_global_row_start / lld;
+                    
+                    // Only insert if this tile's data is on my node
+                    if (tile_node == my_node) {
+                        // Map to local row index within this node's buffer
+                        int64_t local_row = tile_global_row_start % lld;
+                        int64_t tile_col = j * nb;
+                        int64_t first_col = (tile_col < n_active) ? active_indices[tile_col] : 0;
+                        int64_t offset = local_row + first_col * lld;
+                        X_active.tileInsert(i, j, local_aw + offset, lld);
+                    }
                 }
             }
         }
@@ -271,8 +297,19 @@ void slate_ard_update_coeff(double* local_aw, double* local_bw, double* local_co
         
         for (int64_t i = 0; i < y.mt(); ++i) {
             if (y.tileIsLocal(i, 0)) {
-                int64_t offset = i * mb;
-                y.tileInsert(i, 0, local_bw + offset, lld);
+                // Calculate global row range for this tile
+                int64_t tile_global_row_start = i * mb;
+                
+                // Determine which node owns this tile's data
+                int tile_node = tile_global_row_start / lld;
+                
+                // Only insert if this tile's data is on my node
+                if (tile_node == my_node) {
+                    // Map to local row index within this node's buffer
+                    int64_t local_row = tile_global_row_start % lld;
+                    int64_t offset = local_row;
+                    y.tileInsert(i, 0, local_bw + offset, lld);
+                }
             }
         }
         
@@ -359,6 +396,8 @@ void slate_ridge_augmented_qr(double* local_aw, double* local_bw, int64_t m, int
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     int mpi_number_of_nodes = m / lld;  // m always integer multiple of lld
     int mpi_sub_size = mpi_size / mpi_number_of_nodes;
+    int mpi_sub_rank = mpi_rank % mpi_sub_size;
+    int mpi_node_index = mpi_rank / mpi_sub_size;
     
     // -------- PROCESS GRID AND TILE SIZE --------
 
@@ -368,73 +407,98 @@ void slate_ridge_augmented_qr(double* local_aw, double* local_bw, int64_t m, int
     // 2.	or only one tile column (nt <= 1),
     // 3.	or square tiles (mb == nb).
     
-    int64_t mb, nb, p, q = 1;
+    int64_t mb, nb, nt;
     
     // Find the largest nt such that nt*nt <= mpi_sub_size
     int64_t nt_start = 1;
     while ((nt_start + 1) * (nt_start + 1) <= mpi_sub_size) ++nt_start;
 
-    for (int64_t nt = nt_start; nt >= 1; --nt) {
+    for (nt = nt_start; nt >= 1; --nt) {
         if (mpi_sub_size % nt) continue;
         int64_t size = ceil_div64(n, nt);
         mb = nb = size;
-        q = nt;
-        p = mpi_size / q;
-
+        
         if (mpi_rank == 0)
-            std::fprintf(stderr, "*** nt %lld p %lld q %lld tile %lld x %lld (%lld bytes)\n", nt, p, q, nb, nb, nb*nb*8);
+            std::fprintf(stderr, "*** nt %lld tile %lld x %lld (%lld bytes)\n", nt, nb, nb, nb*nb*8);
 
-        if( p*size > m ) break; // make sure to cover matrix at least once
+        //break;
+        
         if( size*size*sizeof(double) > 16*1024*1024 ) break; // pick biggest tile <= 16MB
 
     }
     
-    // Enforce QR constraint mt >= nt  <=>  nb >= ceil(n/mt)
-    //nb = std::max(nb, int(std::max<int64_t>(1, ceil_div(n, mt))));
+    if( nt==0 ) nt = 1;
+    int64_t mt = ceil_div64(m, mb);
+    int64_t mt_node = mt / mpi_number_of_nodes;
+
 
     if (mpi_rank == 0) {
         std::cerr << "\n---------------- SLATE Ridge Solver ----------------" << std::endl;
         std::cerr << "MPI: " << mpi_size << " ranks, ";
         std::cerr            << mpi_number_of_nodes << " node(s), ";
         std::cerr            << mpi_sub_size << " ranks/node" << std::endl;
-        std::cerr << "Process grid: " << p << " x " << q << std::endl;
         std::cerr << "Matrix size: " << m << " x " << n << std::endl;
         std::cerr << "Tile size: " << mb << " x " << nb << std::endl;
+        std::cerr << "Grid: " << mt << " x " << nt << std::endl;
         std::cerr << "----------------------------------------------------" << std::endl;
     }
     
     try {
         // -------- CREATE SLATE MATRICES --------
-        slate::Matrix<double> A(m, n, mb, nb, slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
-        slate::Matrix<double> b(m, 1, mb, 1,  slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
         
+        
+        std::function<int64_t (int64_t)> inTileNb = [nb](int64_t) { return nb; };
+        std::function<int64_t (int64_t)> inTile1  = [](int64_t) { return 1; };
+        
+        std::function<int64_t (int64_t)> inTileMb = [lld, mt_node, mb](int64_t i) {
+          if( i % mt_node == mt_node - 1  )
+              return lld - (mt_node-1)*mb; // remainder tile
+          else
+              return mb;
+        };
+
+
         // TODO: only cpu tiles pointing directly to fitsnap shared array for now
         // for gpu support use insertLocalTiles( slate::Target::Devices ) instead
         // and sync fitsnap shared array to slate gpu tile memory
+        std::function<int (slate::func::ij_tuple)> inTileDevice = [](slate::func::ij_tuple) { return 0; };
+
+        //return int((i%p) + (j%q)*p);
+        
+        std::function<int (slate::func::ij_tuple)> inTileRank
+          = [mt_node, nt, mpi_sub_size](slate::func::ij_tuple ij) {
+            int64_t i = std::get<0>( ij );
+            int64_t j = std::get<1>( ij );
+            return i / mt_node * mpi_sub_size + int((i % mt_node)*nt + (j%nt)) % mpi_sub_size;
+        };
+
+        //slate::Matrix<double> A(m, n, mb, nb, slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
+        //slate::Matrix<double> b(m, 1, mb, 1,  slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
+        slate::Matrix<double> A(m, n, inTileMb, inTileNb, inTileRank, inTileDevice, MPI_COMM_WORLD);
+        slate::Matrix<double> b(m, 1, inTileMb, inTile1,  inTileRank, inTileDevice, MPI_COMM_WORLD);
         
         // -------- INSERT A MATRIX TILES --------
-        for ( int64_t j = 0; j < A.nt (); ++j)
-          for ( int64_t i = 0; i < A.mt (); ++i)
+        for ( int64_t i = 0; i < mt; ++i) {
+          for ( int64_t j = 0; j < nt; ++j) {
             if (A.tileIsLocal( i, j )) {
-                const int64_t offset = i * mb + j * nb * lld;
-              
-                // std::fprintf(stderr, "rank %d i %lld j %lld offset %lld\n", mpi_rank, i, j, offset);
-              
+                const int64_t offset = (i % mt_node) * mb + j * nb * lld;
                 A.tileInsert( i, j, local_aw + offset, lld );
-              
             }
             
-        // -------- INSERT B VECTOR TILES --------
-        for ( int64_t i = 0; i < b.mt(); ++i)
-          if (b.tileIsLocal( i, 0 )) {
+            //if (mpi_rank == 0)
+            //    std::fprintf(stderr, "*** T(%lld, %lld) %d ", i, j, inTileRank(std::make_tuple(i,j)));
           
-            const int64_t offset = i * mb;
-
-            // std::fprintf(stderr, "rank %d i %lld offset %lld\n", mpi_rank, i, offset);
-
-            b.tileInsert( i, 0, local_bw + offset, lld );
           
           }
+        }
+            
+        // -------- INSERT B VECTOR TILES --------
+        for ( int64_t i = 0; i < mt; ++i) {
+          if (b.tileIsLocal( i, 0 )) {
+            const int64_t offset = (i % mt_node) * mb;
+            b.tileInsert( i, 0, local_bw + offset, lld );
+          }
+        }
             
         // Make sure every node/rank done building global matrix
         // Doesnt seem to be needed only the barrier after the QR is needed
@@ -457,7 +521,17 @@ void slate_ridge_augmented_qr(double* local_aw, double* local_bw, int64_t m, int
         // -------- LEAST SQUARES AUGMENTED QR --------
         slate::least_squares_solve(A, b);
         MPI_Barrier(MPI_COMM_WORLD);
+
+        if (debug) {
+            slate::Options opts = {
+              { slate::Option::PrintVerbose, 4 },
+              { slate::Option::PrintPrecision, 3 },
+              { slate::Option::PrintWidth, 7 }
+            };
         
+            slate::print("b (solution)", b, opts);
+        }
+
     } catch (const std::exception& e) {
         std::cerr << "[Rank " << mpi_rank << "] SLATE error: " << e.what() << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);

@@ -52,7 +52,7 @@ class GlobalProgressTracker:
 
         self.pt = pt
         self._len_data = len_data
-        self._local_chunk = int(update_fraction*len_data)
+        self._local_chunk = max(int(update_fraction*len_data),1)
         self._last_local_update = 0
        
         if self.pt.stubs:
@@ -61,7 +61,7 @@ class GlobalProgressTracker:
             self._len_all_data = self.pt._comm.reduce(len_data)
         
         if self.pt._rank == 0:
-            self._global_chunk = int(update_fraction*self._len_all_data)
+            self._global_chunk = max(int(update_fraction*self._len_all_data),1)
             self._last_update = 0
             self._completed = 0
             self._tqdm = tqdm(

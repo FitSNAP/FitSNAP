@@ -102,10 +102,13 @@ class SLATE(SlateCommon):
         m = aw.shape[0] * self.pt._number_of_nodes # global matrix total rows
         lld = aw.shape[0]  # local leading dimension column-major shared array
         
-        for i in range(lld):
-            for j in range(n):
-                aw[i,j] = (pt._node_index*lld + i)*10 + j
-                
+        if False:
+            for i in range(lld):
+                for j in range(n):
+                    aw[i,j] = (pt._node_index*lld + i)*10 + j
+                    if pt._node_index>0:
+                        aw[i,j] = -aw[i,j]
+                    
         np.set_printoptions(precision=3, suppress=True, floatmode='fixed', linewidth=np.inf)
         if False and self.config.debug:
             pt.sub_print(f"*** SENDING TO SLATE ------------------------\n"

@@ -16,400 +16,459 @@ extern "C" {
 
 constexpr int64_t ceil_div64(int64_t a, int64_t b) { return (a + b - 1) / b; }
 
-void slate_ard_update_sigma(double* local_aw, double* local_sigma, int64_t m, int64_t n, int64_t lld,
-                           double alpha, double* lambda, unsigned char* keep_lambda, int64_t n_active, int debug) {
-    // Compute sigma = inv(alpha * X.T @ X + diag(lambda)) for active features
-    // Uses SLATE distributed operations: herk for X.T @ X, potrf/potri for inversion
+// Combined ARD update function - computes both sigma and coefficients
+// Expects pre-filtered matrices with only active features
+void slate_ard_update(double* local_aw_active, double* local_bw, double* local_sigma, double* local_coef_active,
+                     int64_t m, int64_t n_active, int64_t lld,
+                     double alpha, double* lambda_active, int debug) {
     
     int mpi_rank, mpi_size;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     
     if (mpi_rank == 0 && debug) {
-        std::fprintf(stderr, "\n=== slate_ard_update_sigma ===\n");
-        std::fprintf(stderr, "  m=%lld, n=%lld, n_active=%lld, alpha=%.6e\n", m, n, n_active, alpha);
+        std::fprintf(stderr, "\n=== slate_ard_update ===\n");
+        std::fprintf(stderr, "  m=%lld, n_active=%lld, alpha=%.6e\n", m, n_active, alpha);
     }
     
     if (n_active == 0) {
-        return;  // No active features
-    }
-    
-    // Build index map for active features
-    std::vector<int64_t> active_indices;
-    active_indices.reserve(n_active);
-    for (int64_t i = 0; i < n; ++i) {
-        if (keep_lambda[i]) {
-            active_indices.push_back(i);
-        }
+        return;
     }
     
     int mpi_number_of_nodes = m / lld;
     int mpi_sub_size = mpi_size / mpi_number_of_nodes;
     
-    // Which node am I on?
-    int my_node = mpi_rank / mpi_sub_size;
-    
-    // Process grid setup (following ridge solver pattern)
-    int64_t mb, nb, p, q = 1;
+    // Find optimal tile size
+    int64_t mb, nb, nt;
     int64_t nt_start = 1;
     while ((nt_start + 1) * (nt_start + 1) <= mpi_sub_size) ++nt_start;
 
-    for (int64_t nt = nt_start; nt >= 1; --nt) {
+    for (nt = nt_start; nt >= 1; --nt) {
         if (mpi_sub_size % nt) continue;
         int64_t size = ceil_div64(n_active, nt);
         mb = nb = size;
-        q = nt;
-        p = mpi_size / q;
         
-        if (p * size > m) break;
-        if (size * size * sizeof(double) > 16 * 1024 * 1024) break;
+        if (mpi_rank == 0 && debug)
+            std::fprintf(stderr, "*** nt %lld tile %lld x %lld (%lld bytes)\n", 
+                        nt, nb, nb, nb*nb*8);
+        
+        if (size*size*sizeof(double) > 16*1024*1024) break; // pick biggest tile <= 16MB
     }
     
+    if (nt == 0) nt = 1;
+    int64_t mt = ceil_div64(m, mb);
+    int64_t mt_node = mt / mpi_number_of_nodes;
+    
+    // Define tile lambdas
+    std::function<int64_t (int64_t)> inTileNb = [nb](int64_t) { return nb; };
+    std::function<int64_t (int64_t)> inTile1 = [](int64_t) { return 1; };
+    
+    std::function<int64_t (int64_t)> inTileMb = [lld, mt_node, mb](int64_t i) {
+        if (i % mt_node == mt_node - 1)
+            return lld - (mt_node-1)*mb; // remainder tile
+        else
+            return mb;
+    };
+    
+    std::function<int (slate::func::ij_tuple)> inTileDevice = [](slate::func::ij_tuple) { return 0; };
+    
+    std::function<int (slate::func::ij_tuple)> inTileRank = [mt_node, nt, mpi_sub_size](slate::func::ij_tuple ij) {
+        int64_t i = std::get<0>(ij);
+        int64_t j = std::get<1>(ij);
+        return i / mt_node * mpi_sub_size + int((i % mt_node)*nt + (j%nt)) % mpi_sub_size;
+    };
+    
     if (mpi_rank == 0 && debug) {
-        std::fprintf(stderr, "  Process grid: %lld x %lld, tile size: %lld x %lld\n", p, q, mb, nb);
+        std::fprintf(stderr, "  MPI: %d ranks, %d nodes, %d ranks/node\n", 
+                    mpi_size, mpi_number_of_nodes, mpi_sub_size);
+        std::fprintf(stderr, "  Tile size: %lld x %lld, Grid: %lld x %lld\n", 
+                    mb, nb, mt, nt);
+        std::fflush(stderr);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    if (debug) {
+        std::fprintf(stderr, "  [Rank %d] Entering try block\n", mpi_rank);
+        std::fflush(stderr);
     }
     
     try {
-        // Create X_active matrix (m x n_active) with only active columns
-        slate::Matrix<double> X_active(m, n_active, mb, nb, slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
+        // Create matrices - now working with pre-filtered active features only
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Creating X_active matrix\n", mpi_rank);
+            std::fflush(stderr);
+        }
         
-        // Insert tiles for X_active - extract only active columns from local_aw
-        for (int64_t j = 0; j < X_active.nt(); ++j) {
-            for (int64_t i = 0; i < X_active.mt(); ++i) {
+        slate::Matrix<double> X_active(m, n_active, 
+                                       inTileMb, inTileNb, 
+                                       inTileRank, inTileDevice, 
+                                       MPI_COMM_WORLD);
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Creating y vector\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
+        slate::Matrix<double> y(m, 1, 
+                                inTileMb, inTile1, 
+                                inTileRank, inTileDevice, 
+                                MPI_COMM_WORLD);
+        
+        // Insert X_active tiles - data already filtered to active columns
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Inserting X_active tiles\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
+        for (int64_t i = 0; i < mt; ++i) {
+            for (int64_t j = 0; j < nt; ++j) {
                 if (X_active.tileIsLocal(i, j)) {
-                    // Calculate global row range for this tile
-                    int64_t tile_global_row_start = i * mb;
-                    
-                    // Determine which node owns this tile's data
-                    int tile_node = tile_global_row_start / lld;
-                    
-                    // Only insert if this tile's data is on my node
-                    if (tile_node == my_node) {
-                        // Map to local row index within this node's buffer
-                        int64_t local_row = tile_global_row_start % lld;
-                        int64_t tile_col = j * nb;
-                        
-                        // Map tile column index to original active column
-                        int64_t first_col = (tile_col < n_active) ? active_indices[tile_col] : 0;
-                        int64_t offset = local_row + first_col * lld;
-                        
-                        X_active.tileInsert(i, j, local_aw + offset, lld);
-                    }
+                    const int64_t offset = (i % mt_node) * mb + j * nb * lld;
+                    X_active.tileInsert(i, j, local_aw_active + offset, lld);
                 }
             }
         }
         
-        // Create Hermitian matrix for result: C = alpha * X.T @ X + diag(lambda)
-        slate::HermitianMatrix<double> C(slate::Uplo::Lower, n_active, nb, slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Inserting y tiles\n", mpi_rank);
+            std::fflush(stderr);
+        }
         
-        // Insert local tiles (SLATE allocates memory for them)
+        // Insert y vector tiles
+        for (int64_t i = 0; i < mt; ++i) {
+            if (y.tileIsLocal(i, 0)) {
+                const int64_t offset = (i % mt_node) * mb;
+                y.tileInsert(i, 0, local_bw + offset, lld);
+            }
+        }
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Finished tile insertion\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        
+        // Create C = alpha * X.T @ X + diag(lambda)
+        // CRITICAL: Must use same distribution scheme as X_active to avoid herk deadlock
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Creating HermitianMatrix C\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
+        // Use same inTileRank function as X_active for consistent distribution
+        std::function<int (slate::func::ij_tuple)> inTileRankC = [mt_node, nt, mpi_sub_size](slate::func::ij_tuple ij) {
+            int64_t i = std::get<0>(ij);
+            int64_t j = std::get<1>(ij);
+            return i / mt_node * mpi_sub_size + int((i % mt_node)*nt + (j%nt)) % mpi_sub_size;
+        };
+        
+        slate::HermitianMatrix<double> C(slate::Uplo::Lower, n_active, 
+                                         inTileNb, inTileRankC, inTileDevice,
+                                         MPI_COMM_WORLD);
         C.insertLocalTiles();
         
-        // Initialize C to zero, then set diagonal to lambda values
-        slate::set(0.0, C);
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Initializing C with zeros\n", mpi_rank);
+            std::fflush(stderr);
+        }
         
-        // Set diagonal to lambda[active_indices]
+        // Initialize C with diagonal lambda values
+        slate::set(0.0, C);
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Setting diagonal lambda values\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
         for (int64_t idx = 0; idx < n_active; ++idx) {
             int64_t tile_i = idx / nb;
             int64_t local_i = idx % nb;
             
             if (C.tileIsLocal(tile_i, tile_i)) {
                 auto tile = C(tile_i, tile_i);
-                tile.at(local_i, local_i) = lambda[active_indices[idx]];
+                tile.at(local_i, local_i) = lambda_active[idx];
             }
         }
-
-        // -------- DEBUG --------
-
-        if (debug) {
-            slate::Options opts = {
-              { slate::Option::PrintVerbose, 4 },
-              { slate::Option::PrintPrecision, 3 },
-              { slate::Option::PrintWidth, 7 }
-            };
         
-            slate::print("X_active", X_active, opts);
-            slate::print("C", C, opts);
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [PRE-HERK] About to compute C = alpha * X.T @ X + diag(lambda)\n");
+            std::fflush(stderr);
         }
-
-        // Compute C = alpha * X.T @ X + 1.0 * C using SLATE's herk
-        // herk computes C = alpha * A * A^H + beta * C
-        // We want C = alpha * X^T * X, so pass transpose(X_active) which is n_active x m
-        // Then herk gives C = alpha * X^T * (X^T)^H = alpha * X^T * X
+        
+        // C = alpha * X.T @ X + C
         auto X_active_T = transpose(X_active);
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Calling slate::herk\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
         slate::herk(alpha, X_active_T, 1.0, C);
         
         MPI_Barrier(MPI_COMM_WORLD);
-        
         if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  After herk + diagonal, before inversion\n");
+            std::fprintf(stderr, "  [POST-HERK] Completed HERK\n");
+            std::fflush(stderr);
         }
         
-        // Compute Cholesky factorization: C = L * L^T
+        // Compute Cholesky factorization and inverse
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [PRE-POTRF] About to compute Cholesky factorization\n");
+            std::fflush(stderr);
+        }
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Calling slate::potrf\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
         slate::potrf(C);
         
+        MPI_Barrier(MPI_COMM_WORLD);
         if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  After potrf (Cholesky factorization)\n");
+            std::fprintf(stderr, "  [POST-POTRF] Completed POTRF\n");
+            std::fflush(stderr);
         }
         
-        // Compute inverse using Cholesky factorization: C = inv(C)
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [PRE-POTRI] About to compute Cholesky inverse\n");
+            std::fflush(stderr);
+        }
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Calling slate::potri\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
         slate::potri(C);
         
         MPI_Barrier(MPI_COMM_WORLD);
-        
         if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  After potri (inversion)\n");
+            std::fprintf(stderr, "  [POST-POTRI] Completed POTRI\n");
+            std::fflush(stderr);
         }
         
-        // Gather sigma from distributed tiles to local_sigma on rank 0
-        if (mpi_rank == 0) {
-            // Initialize to zero
-            for (int64_t i = 0; i < n_active * n_active; ++i) {
-                local_sigma[i] = 0.0;
-            }
-            
-            // Extract from tiles
-            for (int64_t j = 0; j < n_active; ++j) {
-                for (int64_t i = j; i < n_active; ++i) {  // Lower triangular
-                    int64_t tile_i = i / nb;
-                    int64_t tile_j = j / nb;
-                    int64_t local_i = i % nb;
-                    int64_t local_j = j % nb;
-                    
-                    if (C.tileIsLocal(tile_i, tile_j)) {
-                        auto tile = C(tile_i, tile_j);
-                        double val = tile.at(local_i, local_j);
-                        // Column-major storage
-                        local_sigma[i + j * n_active] = val;
-                        // Symmetric: also set upper triangle
-                        if (i != j) {
-                            local_sigma[j + i * n_active] = val;
-                        }
-                    }
-                }
-            }
-            
-            if (debug) {
-                std::fprintf(stderr, "  Sigma extracted (first 5x5):\n");
-                for (int64_t i = 0; i < std::min(n_active, int64_t(5)); ++i) {
-                    std::fprintf(stderr, "    ");
-                    for (int64_t j = 0; j < std::min(n_active, int64_t(5)); ++j) {
-                        std::fprintf(stderr, "%.4e ", local_sigma[i + j * n_active]);
-                    }
-                    std::fprintf(stderr, "\n");
-                }
-            }
+        // Compute X.T @ y
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [PRE-GEMM] About to compute X.T @ y\n");
+            std::fflush(stderr);
         }
         
-        // Broadcast sigma to all ranks
-        MPI_Bcast(local_sigma, n_active * n_active, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        
-    } catch (const std::exception& e) {
-        std::cerr << "[Rank " << mpi_rank << "] SLATE ARD sigma error: " << e.what() << std::endl;
-        MPI_Abort(MPI_COMM_WORLD, 1);
-    }
-}
-
-void slate_ard_update_coeff(double* local_aw, double* local_bw, double* local_coef,
-                           int64_t m, int64_t n, int64_t lld,
-                           double alpha, unsigned char* keep_lambda, int64_t n_active, 
-                           double* sigma, int debug) {
-    // Compute coef[keep_lambda] = alpha * sigma @ X[:, keep_lambda].T @ y
-    // Uses SLATE gemm for X.T @ y, then local matrix-vector multiply with sigma
-    
-    int mpi_rank, mpi_size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    
-    if (mpi_rank == 0 && debug) {
-        std::fprintf(stderr, "\n=== slate_ard_update_coeff ===\n");
-        std::fprintf(stderr, "  m=%lld, n=%lld, n_active=%lld, alpha=%.6e\n", m, n, n_active, alpha);
-    }
-    
-    if (n_active == 0) {
-        // Zero out all coefficients
-        for (int64_t i = 0; i < n; ++i) {
-            local_coef[i] = 0.0;
-        }
-        return;
-    }
-    
-    // Build index map for active features
-    std::vector<int64_t> active_indices;
-    active_indices.reserve(n_active);
-    for (int64_t i = 0; i < n; ++i) {
-        if (keep_lambda[i]) {
-            active_indices.push_back(i);
-        }
-    }
-    
-    int mpi_number_of_nodes = m / lld;
-    int mpi_sub_size = mpi_size / mpi_number_of_nodes;
-    
-    // Which node am I on?
-    int my_node = mpi_rank / mpi_sub_size;
-    
-    // Process grid setup
-    int64_t mb, nb, p, q = 1;
-    int64_t nt_start = 1;
-    while ((nt_start + 1) * (nt_start + 1) <= mpi_sub_size) ++nt_start;
-
-    for (int64_t nt = nt_start; nt >= 1; --nt) {
-        if (mpi_sub_size % nt) continue;
-        int64_t size = ceil_div64(n_active, nt);
-        mb = nb = size;
-        q = nt;
-        p = mpi_size / q;
-        
-        if (p * size > m) break;
-        if (size * size * sizeof(double) > 16 * 1024 * 1024) break;
-    }
-    
-    try {
-        // Create X_active matrix (m x n_active)
-        slate::Matrix<double> X_active(m, n_active, mb, nb, slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
-        
-        // Insert tiles for X_active
-        for (int64_t j = 0; j < X_active.nt(); ++j) {
-            for (int64_t i = 0; i < X_active.mt(); ++i) {
-                if (X_active.tileIsLocal(i, j)) {
-                    // Calculate global row range for this tile
-                    int64_t tile_global_row_start = i * mb;
-                    
-                    // Determine which node owns this tile's data
-                    int tile_node = tile_global_row_start / lld;
-                    
-                    // Only insert if this tile's data is on my node
-                    if (tile_node == my_node) {
-                        // Map to local row index within this node's buffer
-                        int64_t local_row = tile_global_row_start % lld;
-                        int64_t tile_col = j * nb;
-                        int64_t first_col = (tile_col < n_active) ? active_indices[tile_col] : 0;
-                        int64_t offset = local_row + first_col * lld;
-                        X_active.tileInsert(i, j, local_aw + offset, lld);
-                    }
-                }
-            }
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Creating XTy matrix\n", mpi_rank);
+            std::fflush(stderr);
         }
         
-        // Create y vector (m x 1)
-        slate::Matrix<double> y(m, 1, mb, 1, slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
-        
-        for (int64_t i = 0; i < y.mt(); ++i) {
-            if (y.tileIsLocal(i, 0)) {
-                // Calculate global row range for this tile
-                int64_t tile_global_row_start = i * mb;
-                
-                // Determine which node owns this tile's data
-                int tile_node = tile_global_row_start / lld;
-                
-                // Only insert if this tile's data is on my node
-                if (tile_node == my_node) {
-                    // Map to local row index within this node's buffer
-                    int64_t local_row = tile_global_row_start % lld;
-                    int64_t offset = local_row;
-                    y.tileInsert(i, 0, local_bw + offset, lld);
-                }
-            }
-        }
-        
-        // Create result vector X.T @ y (n_active x 1)
-        slate::Matrix<double> XTy(n_active, 1, nb, 1, slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
+        // Use consistent distribution scheme
+        slate::Matrix<double> XTy(n_active, 1, 
+                                  inTileNb, inTile1,
+                                  inTileRankC, inTileDevice,
+                                  MPI_COMM_WORLD);
         XTy.insertLocalTiles();
         slate::set(0.0, XTy);
         
-        // Compute XTy = X.T @ y using SLATE gemm
-        // gemm: C = alpha * op(A) * op(B) + beta * C
-        // We want: XTy = 1.0 * X_active^T * y + 0.0 * XTy
-        auto X_active_T = transpose(X_active);
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Calling slate::gemm\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
         slate::gemm(1.0, X_active_T, y, 0.0, XTy);
         
         MPI_Barrier(MPI_COMM_WORLD);
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [POST-GEMM] Completed GEMM\n");
+            std::fflush(stderr);
+        }
         
-        // Gather XTy to rank 0
-        std::vector<double> xty_vec(n_active, 0.0);
-        if (mpi_rank == 0) {
-            for (int64_t i = 0; i < n_active; ++i) {
+        // Compute coef = alpha * C @ XTy
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [PRE-HEMM] About to compute coef = alpha * C @ XTy\n");
+            std::fflush(stderr);
+        }
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Creating coef_active matrix\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
+        // Use consistent distribution scheme
+        slate::Matrix<double> coef_active(n_active, 1,
+                                          inTileNb, inTile1,
+                                          inTileRankC, inTileDevice,
+                                          MPI_COMM_WORLD);
+        coef_active.insertLocalTiles();
+        slate::set(0.0, coef_active);
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Calling slate::hemm\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
+        slate::hemm(slate::Side::Left, alpha, C, XTy, 0.0, coef_active);
+        
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [POST-HEMM] Completed HEMM\n");
+            std::fflush(stderr);
+        }
+        
+        // Gather sigma to rank 0 and broadcast
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [PRE-GATHER-SIGMA] About to gather sigma matrix\n");
+            std::fflush(stderr);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Zeroing sigma buffer\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
+        for (int64_t i = 0; i < n_active * n_active; ++i) {
+            local_sigma[i] = 0.0;
+        }
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Starting tile loop for sigma (n_active=%lld, nt=%lld)\n", mpi_rank, n_active, nt);
+            std::fflush(stderr);
+        }
+        
+        int64_t local_tile_count = 0;
+        for (int64_t j = 0; j < n_active; ++j) {
+            for (int64_t i = j; i < n_active; ++i) {
                 int64_t tile_i = i / nb;
+                int64_t tile_j = j / nb;
                 int64_t local_i = i % nb;
+                int64_t local_j = j % nb;
                 
-                if (XTy.tileIsLocal(tile_i, 0)) {
-                    auto tile = XTy(tile_i, 0);
-                    xty_vec[i] = tile.at(local_i, 0);
+                if (C.tileIsLocal(tile_i, tile_j)) {
+                    auto tile = C(tile_i, tile_j);
+                    double val = tile.at(local_i, local_j);
+                    local_sigma[i + j * n_active] = val;
+                    if (i != j) {
+                        local_sigma[j + i * n_active] = val;
+                    }
+                    local_tile_count++;
                 }
             }
-            
-            if (debug) {
-                std::fprintf(stderr, "  X.T @ y (first 10): ");
-                for (int64_t i = 0; i < std::min(n_active, int64_t(10)); ++i) {
-                    std::fprintf(stderr, "%.4e ", xty_vec[i]);
-                }
-                std::fprintf(stderr, "\n");
-            }
         }
         
-        // Broadcast xty_vec to all ranks for local computation
-        MPI_Bcast(xty_vec.data(), n_active, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Finished tile loop (%lld local tiles), entering MPI_Reduce\n", mpi_rank, local_tile_count);
+            std::fflush(stderr);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
         
-        // Compute sigma @ (X.T @ y) locally on all ranks
-        // sigma is n_active x n_active (column-major), xty is n_active x 1
-        std::vector<double> result(n_active, 0.0);
-        
-        for (int64_t i = 0; i < n_active; ++i) {
-            for (int64_t j = 0; j < n_active; ++j) {
-                result[i] += sigma[i + j * n_active] * xty_vec[j];
-            }
+        // Reduce sigma to rank 0
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [PRE-REDUCE-SIGMA] About to reduce sigma to rank 0\n");
+            std::fflush(stderr);
         }
         
-        // Scale by alpha and assign to full coefficient vector
-        for (int64_t i = 0; i < n; ++i) {
-            local_coef[i] = 0.0;
-        }
-        
-        for (int64_t i = 0; i < n_active; ++i) {
-            int64_t idx = active_indices[i];
-            local_coef[idx] = alpha * result[i];
+        if (mpi_rank == 0) {
+            MPI_Reduce(MPI_IN_PLACE, local_sigma, n_active * n_active, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        } else {
+            MPI_Reduce(local_sigma, nullptr, n_active * n_active, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
         }
         
         if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  Updated coef (first 10): ");
-            for (int64_t i = 0; i < std::min(n, int64_t(10)); ++i) {
-                std::fprintf(stderr, "%.4e ", local_coef[i]);
+            std::fprintf(stderr, "  [POST-REDUCE-SIGMA] Completed reduction, about to broadcast\n");
+            std::fflush(stderr);
+        }
+        
+        MPI_Bcast(local_sigma, n_active * n_active, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [POST-BCAST-SIGMA] Completed sigma broadcast\n");
+            std::fflush(stderr);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        
+        // Gather coefficients
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [PRE-GATHER-COEF] About to gather coefficients\n");
+            std::fflush(stderr);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Zeroing coef buffer\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
+        for (int64_t i = 0; i < n_active; ++i) {
+            local_coef_active[i] = 0.0;
+        }
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Starting tile loop for coef\n", mpi_rank);
+            std::fflush(stderr);
+        }
+        
+        int64_t local_coef_count = 0;
+        for (int64_t i = 0; i < n_active; ++i) {
+            int64_t tile_i = i / nb;
+            int64_t local_i = i % nb;
+            
+            if (coef_active.tileIsLocal(tile_i, 0)) {
+                auto tile = coef_active(tile_i, 0);
+                local_coef_active[i] = tile.at(local_i, 0);
+                local_coef_count++;
+            }
+        }
+        
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Finished tile loop (%lld local values), entering MPI_Allreduce\n", mpi_rank, local_coef_count);
+            std::fflush(stderr);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        
+        // Reduce coefficients to all ranks
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [PRE-ALLREDUCE-COEF] About to allreduce coefficients\n");
+            std::fflush(stderr);
+        }
+        
+        MPI_Allreduce(MPI_IN_PLACE, local_coef_active, n_active, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [POST-ALLREDUCE-COEF] Completed allreduce\n");
+            std::fflush(stderr);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        
+        if (mpi_rank == 0 && debug) {
+            std::fprintf(stderr, "  [FINAL] Updated coef_active (first 10): ");
+            for (int64_t i = 0; i < std::min(n_active, int64_t(10)); ++i) {
+                std::fprintf(stderr, "%.4e ", local_coef_active[i]);
             }
             std::fprintf(stderr, "\n");
+            std::fprintf(stderr, "=== slate_ard_update COMPLETE ===\n\n");
+            std::fflush(stderr);
+        }
+        
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (debug) {
+            std::fprintf(stderr, "  [Rank %d] Exiting slate_ard_update normally\n", mpi_rank);
+            std::fflush(stderr);
         }
         
     } catch (const std::exception& e) {
-        std::cerr << "[Rank " << mpi_rank << "] SLATE ARD coeff error: " << e.what() << std::endl;
+        std::cerr << "[Rank " << mpi_rank << "] SLATE ARD error: " << e.what() << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 }
 
-
-
 void slate_ridge_augmented_qr(double* local_aw, double* local_bw, int64_t m, int64_t n, int64_t lld, int debug) {
     
-    // -------- MPI --------
-
     int mpi_rank, mpi_size;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-    int mpi_number_of_nodes = m / lld;  // m always integer multiple of lld
+    int mpi_number_of_nodes = m / lld;
     int mpi_sub_size = mpi_size / mpi_number_of_nodes;
-    int mpi_sub_rank = mpi_rank % mpi_sub_size;
-    int mpi_node_index = mpi_rank / mpi_sub_size;
     
-    // -------- PROCESS GRID AND TILE SIZE --------
-
-    // orig.mt() <= 1 || orig.nt() <= 1 || orig.tileMb(0) == orig.tileNb(0)
-    // one of three must hold:
-    // 1.	only one tile row (mt <= 1),
-    // 2.	or only one tile column (nt <= 1),
-    // 3.	or square tiles (mb == nb).
-    
+    // Find optimal tile size
     int64_t mb, nb, nt;
-    
-    // Find the largest nt such that nt*nt <= mpi_sub_size
     int64_t nt_start = 1;
     while ((nt_start + 1) * (nt_start + 1) <= mpi_sub_size) ++nt_start;
 
@@ -418,20 +477,16 @@ void slate_ridge_augmented_qr(double* local_aw, double* local_bw, int64_t m, int
         int64_t size = ceil_div64(n, nt);
         mb = nb = size;
         
-        if (mpi_rank == 0)
+        if (mpi_rank == 0 && debug)
             std::fprintf(stderr, "*** nt %lld tile %lld x %lld (%lld bytes)\n", nt, nb, nb, nb*nb*8);
-
-        //break;
         
-        if( size*size*sizeof(double) > 16*1024*1024 ) break; // pick biggest tile <= 16MB
-
+        if (size*size*sizeof(double) > 16*1024*1024) break; // pick biggest tile <= 16MB
     }
     
-    if( nt==0 ) nt = 1;
+    if (nt == 0) nt = 1;
     int64_t mt = ceil_div64(m, mb);
     int64_t mt_node = mt / mpi_number_of_nodes;
-
-
+    
     if (mpi_rank == 0) {
         std::cerr << "\n---------------- SLATE Ridge Solver ----------------" << std::endl;
         std::cerr << "MPI: " << mpi_size << " ranks, ";
@@ -444,89 +499,70 @@ void slate_ridge_augmented_qr(double* local_aw, double* local_bw, int64_t m, int
     }
     
     try {
-        // -------- CREATE SLATE MATRICES --------
-        
-        
+        // Define tile lambdas inline (same as before)
         std::function<int64_t (int64_t)> inTileNb = [nb](int64_t) { return nb; };
-        std::function<int64_t (int64_t)> inTile1  = [](int64_t) { return 1; };
+        std::function<int64_t (int64_t)> inTile1 = [](int64_t) { return 1; };
         
         std::function<int64_t (int64_t)> inTileMb = [lld, mt_node, mb](int64_t i) {
-          if( i % mt_node == mt_node - 1  )
-              return lld - (mt_node-1)*mb; // remainder tile
-          else
-              return mb;
+            if (i % mt_node == mt_node - 1)
+                return lld - (mt_node-1)*mb; // remainder tile
+            else
+                return mb;
         };
-
-
-        // TODO: only cpu tiles pointing directly to fitsnap shared array for now
-        // for gpu support use insertLocalTiles( slate::Target::Devices ) instead
-        // and sync fitsnap shared array to slate gpu tile memory
-        std::function<int (slate::func::ij_tuple)> inTileDevice = [](slate::func::ij_tuple) { return 0; };
-
-        //return int((i%p) + (j%q)*p);
         
-        std::function<int (slate::func::ij_tuple)> inTileRank
-          = [mt_node, nt, mpi_sub_size](slate::func::ij_tuple ij) {
-            int64_t i = std::get<0>( ij );
-            int64_t j = std::get<1>( ij );
+        std::function<int (slate::func::ij_tuple)> inTileDevice = [](slate::func::ij_tuple) { return 0; };
+        
+        std::function<int (slate::func::ij_tuple)> inTileRank = [mt_node, nt, mpi_sub_size](slate::func::ij_tuple ij) {
+            int64_t i = std::get<0>(ij);
+            int64_t j = std::get<1>(ij);
             return i / mt_node * mpi_sub_size + int((i % mt_node)*nt + (j%nt)) % mpi_sub_size;
         };
-
-        //slate::Matrix<double> A(m, n, mb, nb, slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
-        //slate::Matrix<double> b(m, 1, mb, 1,  slate::GridOrder::Col, p, q, MPI_COMM_WORLD);
-        slate::Matrix<double> A(m, n, inTileMb, inTileNb, inTileRank, inTileDevice, MPI_COMM_WORLD);
-        slate::Matrix<double> b(m, 1, inTileMb, inTile1,  inTileRank, inTileDevice, MPI_COMM_WORLD);
         
-        // -------- INSERT A MATRIX TILES --------
-        for ( int64_t i = 0; i < mt; ++i) {
-          for ( int64_t j = 0; j < nt; ++j) {
-            if (A.tileIsLocal( i, j )) {
-                const int64_t offset = (i % mt_node) * mb + j * nb * lld;
-                A.tileInsert( i, j, local_aw + offset, lld );
+        // Create SLATE matrices with tile lambdas
+        slate::Matrix<double> A(m, n, inTileMb, inTileNb, 
+                                inTileRank, inTileDevice, MPI_COMM_WORLD);
+        slate::Matrix<double> b(m, 1, inTileMb, inTile1,  
+                                inTileRank, inTileDevice, MPI_COMM_WORLD);
+        
+        // Insert A matrix tiles
+        for (int64_t i = 0; i < mt; ++i) {
+            for (int64_t j = 0; j < nt; ++j) {
+                if (A.tileIsLocal(i, j)) {
+                    const int64_t offset = (i % mt_node) * mb + j * nb * lld;
+                    A.tileInsert(i, j, local_aw + offset, lld);
+                }
             }
-            
-            //if (mpi_rank == 0)
-            //    std::fprintf(stderr, "*** T(%lld, %lld) %d ", i, j, inTileRank(std::make_tuple(i,j)));
-          
-          
-          }
         }
             
-        // -------- INSERT B VECTOR TILES --------
-        for ( int64_t i = 0; i < mt; ++i) {
-          if (b.tileIsLocal( i, 0 )) {
-            const int64_t offset = (i % mt_node) * mb;
-            b.tileInsert( i, 0, local_bw + offset, lld );
-          }
+        // Insert b vector tiles
+        for (int64_t i = 0; i < mt; ++i) {
+            if (b.tileIsLocal(i, 0)) {
+                const int64_t offset = (i % mt_node) * mb;
+                b.tileInsert(i, 0, local_bw + offset, lld);
+            }
         }
-            
-        // Make sure every node/rank done building global matrix
-        // Doesnt seem to be needed only the barrier after the QR is needed
-        // 	slate::least_squares_solve(A, b) is collective and internally synchronized. SLATE's QR path triggers plenty of MPI collectives (broadcasts, reductions, etc.). Even if one rank reaches the call earlier, it will block at the first collective until everyone is in. That implicitly synchronizes construction + entry to the solve. Hence a barrier before the call is unnecessary for correctness. [chatgpt 5]
-        // MPI_Barrier(MPI_COMM_WORLD);
         
-        // -------- DEBUG --------
-
+        // Debug output
         if (debug) {
             slate::Options opts = {
-              { slate::Option::PrintVerbose, 4 },
-              { slate::Option::PrintPrecision, 3 },
-              { slate::Option::PrintWidth, 7 }
+              {slate::Option::PrintVerbose, 4},
+              {slate::Option::PrintPrecision, 3},
+              {slate::Option::PrintWidth, 7}
             };
         
             slate::print("A", A, opts);
             slate::print("b", b, opts);
         }
         
-        // -------- LEAST SQUARES AUGMENTED QR --------
+        // Least squares solve
         slate::least_squares_solve(A, b);
         MPI_Barrier(MPI_COMM_WORLD);
 
         if (debug) {
             slate::Options opts = {
-              { slate::Option::PrintVerbose, 4 },
-              { slate::Option::PrintPrecision, 3 },
-              { slate::Option::PrintWidth, 7 }
+              {slate::Option::PrintVerbose, 4},
+              {slate::Option::PrintPrecision, 3},
+              {slate::Option::PrintWidth, 7}
             };
         
             slate::print("b (solution)", b, opts);

@@ -160,7 +160,7 @@ class SLATE(SlateCommon):
         b = pt.shared_arrays['b'].array  # y: target vector (local portion)
         w = pt.shared_arrays['w'].array  # weights
         
-        # Note: a, b, w remain unchanged - only aw, bw get modified by SLATE
+        # Note: a, b, w remain unchanged - only aw, bw get modified
         aw = pt.shared_arrays['aw'].array
         bw = pt.shared_arrays['bw'].array
 
@@ -171,12 +171,7 @@ class SLATE(SlateCommon):
         n = a.shape[1]  # number of features
         lld = a.shape[0]  # local leading dimension
         
-        # We'll handle training/testing split by zeroing out test samples below
-        
-        # -------- WEIGHTS --------
-  
         # Apply weights to my local slice
-        local_slice = slice(a_start_idx, a_end_idx+1)
         aw[local_slice] = w[local_slice, np.newaxis] * a[local_slice]
         bw[local_slice] = w[local_slice] * b[local_slice]
 
@@ -193,10 +188,6 @@ class SLATE(SlateCommon):
         eps = np.finfo(np.float64).eps
         
         # Compute initial alpha from variance of y (requires MPI reduction)
-        # IMPORTANT: sklearn ARDRegression in reference code receives weighted y (bw = w * y)
-        # and computes variance on that weighted data, training samples only
-       
-        # Variance of weighted y (bw) across all ranks, training samples only
         # Count training samples (after zeroing out test samples above)
         if 'Testing' in pt.fitsnap_dict and pt.fitsnap_dict['Testing'] is not None:
             testing_mask = pt.fitsnap_dict['Testing'][local_slice]
@@ -216,8 +207,7 @@ class SLATE(SlateCommon):
         mean_bw = global_sum_bw / global_n_training
         var_bw = (global_sum_bw2 / global_n_training) - mean_bw**2
         
-        if self.config.debug and pt._rank == 0:
-            pt.single_print(f"DEBUG: global_n_training={global_n_training} global_mean(bw)={mean_bw:.6f} global_var(bw)={var_bw:.9f}")
+        pt.single_print(f"DEBUG: global_n_training={global_n_training} global_mean(bw)={mean_bw:.6f} global_var(bw)={var_bw:.9f}")
         
         alpha_ = 1.0 / (var_bw + eps)
         lambda_ = np.ones(n, dtype=np.float64)
@@ -226,22 +216,34 @@ class SLATE(SlateCommon):
         
         coef_old_ = None
         
-        if self.config.debug and pt._rank == 0:
-            pt.single_print(f"DEBUG: Before iteration - aw[0:5, 0:3]:\n{aw[local_slice][0:5, 0:3]}")
-            pt.single_print(f"DEBUG: Before iteration - bw[0:10]: {bw[local_slice][0:10]}")
-            pt.single_print(f"DEBUG: Before iteration - w[0:10]: {w[local_slice][0:10]}")
-            pt.single_print(f"ARD: m {m} n {n} var(bw)={var_bw:.9f} alpha={alpha_:.2f}")
+        pt.single_print(f"DEBUG: Before iteration - aw[0:5, 0:3]:\n{aw[local_slice][0:5, 0:3]}")
+        pt.single_print(f"DEBUG: Before iteration - bw[0:10]: {bw[local_slice][0:10]}")
+        pt.single_print(f"DEBUG: Before iteration - w[0:10]: {w[local_slice][0:10]}")
+        pt.single_print(f"ARD: m {m} n {n} var(bw)={var_bw:.9f} alpha={alpha_:.2f}")
         
         # Iterative procedure of ARDRegression
         for iter_ in range(self.max_iter):
+            # Get active indices
+            active_indices = np.where(keep_lambda)[0]
+            n_active = len(active_indices)
+            
+            if n_active == 0:
+                if self.config.debug and pt._rank == 0:
+                    pt.single_print(f"ARD: all features pruned at iteration {iter_}")
+                break
+            
+            # Extract active columns from aw and active lambda values
+            aw_active = np.asfortranarray(aw[:, active_indices])  # column-major for SLATE
+            lambda_active = lambda_[active_indices]
+            
             # Update sigma and coef using SLATE C++ functions
-            # These compute:
-            #   sigma = inv(alpha * X.T @ X + diag(lambda))
-            #   coef = alpha * sigma @ X.T @ y
-            # in a distributed manner
-            sigma_, coef_ = slate_ard_update_cython(
-                aw, bw, coef_, alpha_, lambda_, keep_lambda, m, self.config.debug
+            sigma_, coef_active_ = slate_ard_update_cython(
+                aw_active, bw, lambda_active, alpha_, m, n_active, lld, self.config.debug
             )
+            
+            # Map active coefficients back to full coefficient vector
+            coef_ = np.zeros(n, dtype=np.float64)
+            coef_[active_indices] = coef_active_
             
             # Compute SSE (sum of squared errors) across all ranks
             # Use weighted data consistently: residual = bw - aw @ coef
@@ -251,16 +253,15 @@ class SLATE(SlateCommon):
             sse_ = pt._comm.allreduce(local_sse, op=MPI.SUM)
             
             # Update alpha and lambda (on all ranks to stay synchronized)
-            gamma_ = 1.0 - lambda_[keep_lambda] * np.diag(sigma_)
+            gamma_ = 1.0 - lambda_active * np.diag(sigma_)
             
-            lambda_[keep_lambda] = (gamma_ + 2.0 * self.lambda_1) / (
-                coef_[keep_lambda]**2 + 2.0 * self.lambda_2
+            lambda_[active_indices] = (gamma_ + 2.0 * self.lambda_1) / (
+                coef_active_**2 + 2.0 * self.lambda_2
             )
             
             alpha_ = (m - gamma_.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
             
-            if self.config.debug and pt._rank == 0:
-                pt.single_print(f"Iteration {iter_}: alpha={alpha_:.6e}, sse={sse_:.6e}, gamma_sum={gamma_.sum():.6f}, n_active={np.sum(keep_lambda)}")
+            pt.single_print(f"Iteration {iter_}: alpha={alpha_:.6e}, sse={sse_:.6e}, gamma_sum={gamma_.sum():.6f}, n_active={n_active}")
             
             # Prune features with high lambda (low relevance)
             keep_lambda = lambda_ < self.threshold_lambda
@@ -277,11 +278,6 @@ class SLATE(SlateCommon):
                     break
             
             coef_old_ = np.copy(coef_)
-            
-            if not keep_lambda.any():
-                if self.config.debug and pt._rank == 0:
-                    pt.single_print(f"ARD: all features pruned at iteration {iter_}")
-                break
         
         # Store final solution
         self.fit = coef_

@@ -167,9 +167,9 @@ class SLATE(SlateCommon):
         # Get dimensions
         a_start_idx, a_end_idx = pt.fitsnap_dict["sub_a_indices"]
         local_slice = slice(a_start_idx, a_end_idx+1)
-        m = a.shape[0] * pt._number_of_nodes  # global number of samples
-        n = a.shape[1]  # number of features
-        lld = a.shape[0]  # local leading dimension
+        m = aw.shape[0] * pt._number_of_nodes  # global number of samples
+        n = aw.shape[1]  # number of features
+        lld = aw.shape[0]  # local leading dimension
         
         # Apply weights to my local slice
         aw[local_slice] = w[local_slice, np.newaxis] * a[local_slice]
@@ -259,10 +259,12 @@ class SLATE(SlateCommon):
                 coef_active_**2 + 2.0 * self.lambda_2
             )
             
-            alpha_ = (m - gamma_.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
+            alpha_ = (global_n_training - gamma_.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
             
-            pt.single_print(f"Iteration {iter_}: alpha={alpha_:.6e}, sse={sse_:.6e}, gamma_sum={gamma_.sum():.6f}, n_active={n_active}")
-            
+            pt.single_print(f"*** Iteration {iter_}: alpha={alpha_:.6f}, sse={sse_:.6f}, gamma_sum={gamma_.sum():.6f}, n_active={n_active}")
+ 
+            pt.single_print(f"*** lambda_ {lambda_} self.threshold_lambda {self.threshold_lambda}")
+
             # Prune features with high lambda (low relevance)
             keep_lambda = lambda_ < self.threshold_lambda
             coef_[~keep_lambda] = 0

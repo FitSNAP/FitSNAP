@@ -50,7 +50,10 @@ try:
                         file.write(_to_potential_file(self.config))
                         
                 elif "PYACE" in self.config.sections:
-                    # only write .yace, not .mod and .acecoeff 
+                    # only write .yace and .acecoeff, not .mod 
+                    potential_name = self.config.sections["OUTFILE"].potential_name
+                    with optional_open( potential_name and potential_name + '.acecoeff', 'wt') as file:
+                        file.write(_to_coeff_string(coeffs, self.config))
                     self.write_pyace_potential(coeffs)
 
         #@pt.rank_zero
@@ -215,14 +218,18 @@ def _to_coeff_string(coeffs, config):
     Convert a set of coefficients along with descriptor options to a coeffs file.
     """
 
-    desc_str = "ACE"
+    if "ACE" in config.sections:
+        desc_str = "ACE"
+        blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
+        coeffs = np.multiply(coeffs, blank2Js)
+    else:
+        desc_str = "PYACE"
+
     coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))
-    blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
     if config.sections[desc_str].bzeroflag:
         coeff_names = config.sections[desc_str].blist
     else:
         coeff_names = [[0]]+config.sections[desc_str].blist
-    coeffs = np.multiply(coeffs, blank2Js)
     type_names = config.sections[desc_str].types
     out = f"# FitSNAP generated on {datetime.now()} with Hash: {config.hash}\n\n"
     out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/config.sections[desc_str].numtypes)))

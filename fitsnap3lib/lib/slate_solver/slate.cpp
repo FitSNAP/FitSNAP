@@ -87,10 +87,6 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
                     m, n_active, mb, nb, mt, nt);
         std::fflush(stderr);
     }
-    
-    std::fprintf(stderr, "*** [Rank %d] Matrix %lld x %lld Tile %lld x %lld Grid %lld x %lld\n",
-                    mpi_rank, m, n_active, mb, nb, mt, nt);
-        std::fflush(stderr);
         
     MPI_Barrier(MPI_COMM_WORLD);
     
@@ -144,118 +140,52 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
         }
         
         MPI_Barrier(MPI_COMM_WORLD);
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [PRE-HERK] About to compute C = alpha * X.T @ X + diag(lambda)\n");
-            std::fflush(stderr);
-        }
+        
+        slate::Options opts = {
+            {slate::Option::PrintVerbose, 4},
+            {slate::Option::PrintPrecision, 8},
+            {slate::Option::PrintWidth, 10}
+        };
+
+        slate::print("X_active", X_active, opts);
+        std::fflush(stdout);
+
         
         // C = alpha * X.T @ X + C
         auto X_active_T = transpose(X_active);
-        
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Calling slate::herk\n", mpi_rank);
-            std::fflush(stderr);
-        }
-        
         slate::herk(alpha, X_active_T, 1.0, C);
-        
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Completed HERK\n", mpi_rank);
-            std::fflush(stderr);
-        }
-
         MPI_Barrier(MPI_COMM_WORLD);
+        
+        
+        slate::print("C", C, opts);
+        std::fflush(stdout);
+
 
         // Compute Cholesky factorization and inverse
-
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Calling slate::potrf\n", mpi_rank);
-            std::fflush(stderr);
-        }
-        
         slate::potrf(C);
-        
         MPI_Barrier(MPI_COMM_WORLD);
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [POST-POTRF] Completed POTRF\n");
-            std::fflush(stderr);
-        }
-        
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [PRE-POTRI] About to compute Cholesky inverse\n");
-            std::fflush(stderr);
-        }
-        
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Calling slate::potri\n", mpi_rank);
-            std::fflush(stderr);
-        }
-        
         slate::potri(C);
-        
         MPI_Barrier(MPI_COMM_WORLD);
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [POST-POTRI] Completed POTRI\n");
-            std::fflush(stderr);
-        }
         
         // Compute X.T @ y
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [PRE-GEMM] About to compute X.T @ y\n");
-            std::fflush(stderr);
-        }
-        
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Creating XTy matrix\n", mpi_rank);
-            std::fflush(stderr);
-        }
-        
-        // Use consistent distribution scheme
         slate::Matrix<double> XTy(n_active, 1, tileNb, tile1, tileRankC, tileDevice, MPI_COMM_WORLD);
         XTy.insertLocalTiles();
         slate::set(0.0, XTy);
-        
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Calling slate::gemm\n", mpi_rank);
-            std::fflush(stderr);
-        }
-        
         slate::gemm(1.0, X_active_T, y, 0.0, XTy);
-        
         MPI_Barrier(MPI_COMM_WORLD);
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [POST-GEMM] Completed GEMM\n");
-            std::fflush(stderr);
-        }
+
+        slate::print("XTy", XTy, opts);
+        std::fflush(stdout);
+
         
         // Compute coef = alpha * C @ XTy
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [PRE-HEMM] About to compute coef = alpha * C @ XTy\n");
-            std::fflush(stderr);
-        }
-        
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Creating coef_active matrix\n", mpi_rank);
-            std::fflush(stderr);
-        }
-        
-        // Use consistent distribution scheme
         slate::Matrix<double> coef_active(n_active, 1, tileNb, tile1, tileRankC, tileDevice, MPI_COMM_WORLD);
         coef_active.insertLocalTiles();
         slate::set(0.0, coef_active);
         
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Calling slate::hemm\n", mpi_rank);
-            std::fflush(stderr);
-        }
-        
         slate::hemm(slate::Side::Left, alpha, C, XTy, 0.0, coef_active);
-        
         MPI_Barrier(MPI_COMM_WORLD);
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [POST-HEMM] Completed HEMM\n");
-            std::fflush(stderr);
-        }
+
         
         // Gather sigma to rank 0 and broadcast
         if (mpi_rank == 0 && debug) {
@@ -263,20 +193,9 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
             std::fflush(stderr);
         }
         MPI_Barrier(MPI_COMM_WORLD);
+
         
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Zeroing sigma buffer\n", mpi_rank);
-            std::fflush(stderr);
-        }
-        
-        for (int64_t i = 0; i < n_active * n_active; ++i) {
-            local_sigma[i] = 0.0;
-        }
-        
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Starting tile loop for sigma (n_active=%lld, nt=%lld)\n", mpi_rank, n_active, nt);
-            std::fflush(stderr);
-        }
+        for (int64_t i = 0; i < n_active * n_active; ++i) local_sigma[i] = 0.0;
         
         int64_t local_tile_count = 0;
         for (int64_t j = 0; j < n_active; ++j) {
@@ -290,65 +209,26 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
                     auto tile = C(tile_i, tile_j);
                     double val = tile.at(local_i, local_j);
                     local_sigma[i + j * n_active] = val;
-                    if (i != j) {
-                        local_sigma[j + i * n_active] = val;
-                    }
+                    if (i != j) local_sigma[j + i * n_active] = val;
                     local_tile_count++;
                 }
             }
         }
         
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Finished tile loop (%lld local tiles), entering MPI_Reduce\n", mpi_rank, local_tile_count);
-            std::fflush(stderr);
-        }
         MPI_Barrier(MPI_COMM_WORLD);
         
         // Reduce sigma to rank 0
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [PRE-REDUCE-SIGMA] About to reduce sigma to rank 0\n");
-            std::fflush(stderr);
-        }
         
-        if (mpi_rank == 0) {
+        if (mpi_rank == 0)
             MPI_Reduce(MPI_IN_PLACE, local_sigma, n_active * n_active, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        } else {
+        else
             MPI_Reduce(local_sigma, nullptr, n_active * n_active, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        }
         
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [POST-REDUCE-SIGMA] Completed reduction, about to broadcast\n");
-            std::fflush(stderr);
-        }
         
         MPI_Bcast(local_sigma, n_active * n_active, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [POST-BCAST-SIGMA] Completed sigma broadcast\n");
-            std::fflush(stderr);
-        }
         MPI_Barrier(MPI_COMM_WORLD);
         
-        // Gather coefficients
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [PRE-GATHER-COEF] About to gather coefficients\n");
-            std::fflush(stderr);
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-        
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Zeroing coef buffer\n", mpi_rank);
-            std::fflush(stderr);
-        }
-        
-        for (int64_t i = 0; i < n_active; ++i) {
-            local_coef_active[i] = 0.0;
-        }
-        
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Starting tile loop for coef\n", mpi_rank);
-            std::fflush(stderr);
-        }
+        for (int64_t i = 0; i < n_active; ++i) local_coef_active[i] = 0.0;
         
         int64_t local_coef_count = 0;
         for (int64_t i = 0; i < n_active; ++i) {
@@ -362,24 +242,13 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
             }
         }
         
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Finished tile loop (%lld local values), entering MPI_Allreduce\n", mpi_rank, local_coef_count);
-            std::fflush(stderr);
-        }
+
         MPI_Barrier(MPI_COMM_WORLD);
         
         // Reduce coefficients to all ranks
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [PRE-ALLREDUCE-COEF] About to allreduce coefficients\n");
-            std::fflush(stderr);
-        }
         
         MPI_Allreduce(MPI_IN_PLACE, local_coef_active, n_active, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [POST-ALLREDUCE-COEF] Completed allreduce\n");
-            std::fflush(stderr);
-        }
         MPI_Barrier(MPI_COMM_WORLD);
         
         if (mpi_rank == 0 && debug) {
@@ -393,11 +262,7 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
         }
         
         MPI_Barrier(MPI_COMM_WORLD);
-        if (debug) {
-            std::fprintf(stderr, "  [Rank %d] Exiting slate_ard_update normally\n", mpi_rank);
-            std::fflush(stderr);
-        }
-        
+
     } catch (const std::exception& e) {
         std::cerr << "[Rank " << mpi_rank << "] SLATE ARD error: " << e.what() << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);

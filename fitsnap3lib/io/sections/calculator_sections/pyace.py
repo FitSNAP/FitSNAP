@@ -83,6 +83,7 @@ class PyAce(Section):
                 self.elements.append(elem)
         
         self.numtypes = len(self.elements)
+        self.types = self.elements
         
         # Global cutoff - use rcutfac if cutoff not specified
         cutoff_str = self.get_value("PYACE", "cutoff", "")
@@ -131,6 +132,8 @@ class PyAce(Section):
                         + sum([len(f) for f in ctilde_basis.basis])
                         
             self.pt.single_print(f"PyACE basis: numtypes {self.numtypes} ncoeff {self.ncoeff}")
+            
+            self.blist = [str(i) for i in range(self.ncoeff)]
 
             if 'EXTRAS' in self.sections and self.sections['EXTRAS'].debug:
                 for element_basis_rank1_functions in b_basis.basis_rank1:

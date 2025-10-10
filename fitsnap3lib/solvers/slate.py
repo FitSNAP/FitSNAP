@@ -199,28 +199,58 @@ class SLATE(SlateCommon):
         local_bw = bw[local_slice]
         local_sum_bw = np.sum(local_bw)
         local_sum_bw2 = np.sum(local_bw**2)
-        
         global_sum_bw = pt._comm.allreduce(local_sum_bw, op=MPI.SUM)
         global_sum_bw2 = pt._comm.allreduce(local_sum_bw2, op=MPI.SUM)
         global_n_training = pt._comm.allreduce(local_n_training, op=MPI.SUM)
-        
         mean_bw = global_sum_bw / global_n_training
         var_bw = (global_sum_bw2 / global_n_training) - mean_bw**2
         
-        pt.single_print(f"DEBUG: global_n_training={global_n_training} global_mean(bw)={mean_bw:.6f} global_var(bw)={var_bw:.9f}")
+        # Compute adaptive hyperparameters (matching legacy ARD)
+        ap = 1.0 / (var_bw + eps)  # inverse variance ("alpha prior")
+        
+        pt.single_print(f"inverse variance in training data: {ap:.6f}, logscale for threshold_lambda: {np.log10(ap):.6f}")
+        
+        if self.directmethod:
+            # Direct method: use specified hyperparameters
+            self.alpha_1 = self.alphabig
+            self.alpha_2 = self.alphabig
+            self.lambda_1 = self.lambdasmall
+            self.lambda_2 = self.lambdasmall
+            if self.threshold_lambda_config > 0:
+                self.threshold_lambda = self.threshold_lambda_config
+            else:
+                # Auto-compute threshold if not specified
+                self.threshold_lambda = 10**(int(np.abs(np.log10(ap))) + self.logcut)
+            pt.single_print(f"ARD directmethod: alpha_1={self.alpha_1:.2e}, lambda_1={self.lambda_1:.2e}, threshold_lambda={self.threshold_lambda:.2e}")
+        else:
+            # Adaptive method: scale by inverse variance
+            self.alpha_1 = self.scap * ap
+            self.alpha_2 = self.scap * ap
+            self.lambda_1 = self.scai * ap
+            self.lambda_2 = self.scai * ap
+            if self.threshold_lambda_config > 0:
+                self.threshold_lambda = self.threshold_lambda_config
+            else:
+                # Auto-compute threshold: 10^(int(abs(log10(ap))) + logcut)
+                self.threshold_lambda = 10**(int(np.abs(np.log10(ap))) + self.logcut)
+            pt.single_print(f"automated threshold_lambda will be 10**({self.logcut:.6f} + {np.abs(np.log10(ap)):.3f})")
+            pt.single_print(f"ARD adaptive: scap={self.scap:.2e}, scai={self.scai:.2e}, alpha_1={self.alpha_1:.6e}, lambda_1={self.lambda_1:.6e}, threshold_lambda={self.threshold_lambda:.2e}")
         
         alpha_ = 1.0 / (var_bw + eps)
         lambda_ = np.ones(n, dtype=np.float64)
         coef_ = np.zeros(n, dtype=np.float64)
         keep_lambda = np.ones(n, dtype=bool)
-        
         coef_old_ = None
         
-        pt.single_print(f"DEBUG: Before iteration - aw[0:5, 0:3]:\n{aw[local_slice][0:5, 0:3]}")
-        pt.single_print(f"DEBUG: Before iteration - bw[0:10]: {bw[local_slice][0:10]}")
-        pt.single_print(f"DEBUG: Before iteration - w[0:10]: {w[local_slice][0:10]}")
         pt.single_print(f"ARD: m {m} n {n} var(bw)={var_bw:.9f} alpha={alpha_:.2f}")
         
+        np.set_printoptions(
+            precision=4, suppress=False, floatmode='fixed', linewidth=800,
+            formatter={'float': '{:.4f}'.format}, threshold = 800, edgeitems=5
+        )
+        
+        pt.debug_sub_print(f"aw\n{aw}\nbw {bw}\n\n")
+
         # Iterative procedure of ARDRegression
         for iter_ in range(self.max_iter):
             # Get active indices
@@ -259,11 +289,25 @@ class SLATE(SlateCommon):
                 coef_active_**2 + 2.0 * self.lambda_2
             )
             
+            # DEBUG: Print alpha calculation components
+            if pt._rank == 0:
+                pt.single_print(f"\n[ALPHA DEBUG] Iteration {iter_}:")
+                pt.single_print(f"  global_n_training = {global_n_training}")
+                pt.single_print(f"  gamma_.sum() = {gamma_.sum():.12f}")
+                pt.single_print(f"  self.alpha_1 = {self.alpha_1}")
+                pt.single_print(f"  self.alpha_2 = {self.alpha_2}")
+                pt.single_print(f"  sse_ = {sse_:.12f}")
+                pt.single_print(f"  numerator = {global_n_training - gamma_.sum() + 2.0 * self.alpha_1:.12f}")
+                pt.single_print(f"  denominator = {sse_ + 2.0 * self.alpha_2:.12f}")
+            
             alpha_ = (global_n_training - gamma_.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
             
-            pt.single_print(f"*** Iteration {iter_}: alpha={alpha_:.6f}, sse={sse_:.6f}, gamma_sum={gamma_.sum():.6f}, n_active={n_active}")
+            if pt._rank == 0:
+                pt.single_print(f"  alpha_ = {alpha_:.12f}\n")
+            
+            pt.single_print(f"*** Iteration {iter_}: alpha={alpha_:.6f}, sse={sse_:.6f}, gamma_sum={gamma_.sum():.6f}, n_active={n_active} sigma_\n{sigma_}")
  
-            pt.single_print(f"*** lambda_ {lambda_} self.threshold_lambda {self.threshold_lambda}")
+            #pt.single_print(f"*** lambda_ {lambda_} self.threshold_lambda {self.threshold_lambda}")
 
             # Prune features with high lambda (low relevance)
             keep_lambda = lambda_ < self.threshold_lambda

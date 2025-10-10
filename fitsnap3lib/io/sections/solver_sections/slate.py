@@ -32,7 +32,7 @@ class Slate(Section):
         self.lambda_2 = self.get_value("SLATE", "lambda_2", "1e-6", "float")
 
         # Threshold for removing (pruning) weights with high precision from the computation.
-        self.threshold_lambda = self.get_value("SLATE", "threshold_lambda", "10000", "float")
+        self.threshold_lambda = self.get_value("SLATE", "threshold_lambda", "100", "float")
 
         # Whether to calculate the intercept for this model. If set to false,
         # no intercept will be used in calculations (ie. data is expected to be centered)

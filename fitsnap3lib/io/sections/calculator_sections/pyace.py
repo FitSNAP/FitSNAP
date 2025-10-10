@@ -133,7 +133,24 @@ class PyAce(Section):
                         
             self.pt.single_print(f"PyACE basis: numtypes {self.numtypes} ncoeff {self.ncoeff}")
             
-            self.blist = [str(i) for i in range(self.ncoeff)]
+            self.blist = []
+            
+            for element_basis_rank1_functions in ctilde_basis.basis_rank1:
+                for basis_rank1_function in element_basis_rank1_functions:
+                    element = self.elements[basis_rank1_function.mu0]
+                    elements = " ". join([self.elements[mu] for mu in basis_rank1_function.mus])
+                    ns = basis_rank1_function.ns
+                    ls = basis_rank1_function.ls
+                    self.blist.append(f"{element} {elements} {ns} {ls}")
+
+            for element_basis_functions in ctilde_basis.basis:
+                for basis_function in element_basis_functions:
+                    element = self.elements[basis_rank1_function.mu0]
+                    elements = " ". join([self.elements[mu] for mu in basis_rank1_function.mus])
+                    ns = basis_function.ns
+                    ls = basis_function.ls
+                    self.blist.append(f"{element} {elements} {ns} {ls}")
+
 
             if 'EXTRAS' in self.sections and self.sections['EXTRAS'].debug:
                 for element_basis_rank1_functions in b_basis.basis_rank1:
@@ -144,14 +161,6 @@ class PyAce(Section):
                     for basis_function in element_basis_functions:
                         basis_function.print()
                     
-                for element_basis_rank1_functions in ctilde_basis.basis_rank1:
-                    for basis_rank1_function in element_basis_rank1_functions:
-                        basis_rank1_function.print()
-
-                for element_basis_functions in ctilde_basis.basis:
-                    for basis_function in element_basis_functions:
-                        basis_function.print()
-
             
         except ImportError:
             raise RuntimeError("PyACE not available - cannot create basis")

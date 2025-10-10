@@ -53,7 +53,7 @@ try:
                     # only write .yace and .acecoeff, not .mod 
                     potential_name = self.config.sections["OUTFILE"].potential_name
                     with optional_open( potential_name and potential_name + '.acecoeff', 'wt') as file:
-                        file.write(_to_coeff_string(coeffs, self.config))
+                        file.write(_to_pyace_coeff_string(coeffs, self.config))
                     self.write_pyace_potential(coeffs)
 
         #@pt.rank_zero
@@ -213,35 +213,70 @@ except ModuleNotFoundError:
             super().__init__(name)
             raise ModuleNotFoundError("Missing sympy or pyyaml modules.")
 
+
 def _to_coeff_string(coeffs, config):
     """
     Convert a set of coefficients along with descriptor options to a coeffs file.
     """
 
-    if "ACE" in config.sections:
-        desc_str = "ACE"
-        prefix = "B"
-        blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
-        coeffs = np.multiply(coeffs, blank2Js)
-    else:
-        desc_str = "PYACE"
-        prefix = ""
-
+    desc_str = "ACE"
     coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))
+    blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
     if config.sections[desc_str].bzeroflag:
         coeff_names = config.sections[desc_str].blist
     else:
         coeff_names = [[0]]+config.sections[desc_str].blist
+    coeffs = np.multiply(coeffs, blank2Js)
     type_names = config.sections[desc_str].types
     out = f"# FitSNAP generated on {datetime.now()} with Hash: {config.hash}\n\n"
     out += "{} {}\n".format(len(type_names), int(np.ceil(len(coeff_names)/config.sections[desc_str].numtypes)))
     for elname, column in zip(type_names,
                         coeffs):
         out += "{}\n".format(elname)
-        out += "\n".join(f" {bval:<30.18} #  {prefix}{bname} " for bval, bname in zip(column, coeff_names))
+        out += "\n".join(f" {bval:<30.18} #  B{bname} " for bval, bname in zip(column, coeff_names))
         out += "\n"
     out += "\n# End of potential"
     return out
+
+
+def _to_pyace_coeff_string(coeffs, config):
+    """
+    Convert a set of coefficients along with descriptor options to a coeffs file.
+    """
+
+    if config.sections["PYACE"].bzeroflag:
+        coeff_names = config.sections["PYACE"].blist
+    else:
+        coeff_names = [[0]]+config.sections["PYACE"].blist
+    type_names = config.sections["PYACE"].types
+    out = f"# FitSNAP generated on {datetime.now()} with Hash: {config.hash}\n\n"
+    
+    from collections import Counter
+    counts = Counter(s.split()[0] for s in config.sections["PYACE"].blist)
+    out += " ".join(f"{k} {v}" for k, v in counts.items())
+    out += "\n"
+    
+    for bval, bname in zip(coeffs, coeff_names):
+        out += f" {bval:<30.18} # {bname}\n"
+    out += "\n# End of potential"
+    return out
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def _to_potential_file(config):
     """

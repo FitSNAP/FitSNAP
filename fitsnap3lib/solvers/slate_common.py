@@ -69,11 +69,24 @@ class SlateCommon(Solver):
             elif self.method == 'ARD':
                 self.max_iter = slate_config.max_iter
                 self.tol = slate_config.tol
-                self.alpha_1 = slate_config.alpha_1
-                self.alpha_2 = slate_config.alpha_2
-                self.lambda_1 = slate_config.lambda_1
-                self.lambda_2 = slate_config.lambda_2
-                self.threshold_lambda = slate_config.threshold_lambda
+                
+                # Store config parameters for adaptive hyperparameter computation
+                self.directmethod = slate_config.directmethod
+                self.scap = slate_config.scap
+                self.scai = slate_config.scai
+                self.logcut = slate_config.logcut
+                self.alphabig = slate_config.alphabig
+                self.alphasmall = slate_config.alphasmall
+                self.lambdabig = slate_config.lambdabig
+                self.lambdasmall = slate_config.lambdasmall
+                self.threshold_lambda_config = slate_config.threshold_lambda
+                
+                # These will be set in perform_fit_ard based on data variance
+                self.alpha_1 = None
+                self.alpha_2 = None
+                self.lambda_1 = None
+                self.lambda_2 = None
+                self.threshold_lambda = None
         
         
     # --------------------------------------------------------------------------------------------

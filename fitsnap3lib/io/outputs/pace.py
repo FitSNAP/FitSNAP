@@ -220,10 +220,12 @@ def _to_coeff_string(coeffs, config):
 
     if "ACE" in config.sections:
         desc_str = "ACE"
+        prefix = "B"
         blank2Js = config.sections[desc_str].blank2J.reshape((config.sections[desc_str].numtypes, -1))
         coeffs = np.multiply(coeffs, blank2Js)
     else:
         desc_str = "PYACE"
+        prefix = ""
 
     coeffs = coeffs.reshape((config.sections[desc_str].numtypes, -1))
     if config.sections[desc_str].bzeroflag:
@@ -236,7 +238,7 @@ def _to_coeff_string(coeffs, config):
     for elname, column in zip(type_names,
                         coeffs):
         out += "{}\n".format(elname)
-        out += "\n".join(f" {bval:<30.18} #  B{bname} " for bval, bname in zip(column, coeff_names))
+        out += "\n".join(f" {bval:<30.18} #  {prefix}{bname} " for bval, bname in zip(column, coeff_names))
         out += "\n"
     out += "\n# End of potential"
     return out

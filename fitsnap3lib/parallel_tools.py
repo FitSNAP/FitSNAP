@@ -368,14 +368,14 @@ class ParallelTools():
             return check_if_rank_zero
         else:
             return dummy_function
-
+            
     def sub_rank_zero(self, method):
-        if self._sub_rank == 0:
-            def check_if_rank_zero(*args, **kw):
+        def wrapper(*args, **kw):
+            if self._sub_rank == 0:
                 return method(*args, **kw)
-            return check_if_rank_zero
-        else:
-            return dummy_function
+            else:
+                return None
+        return wrapper
         
     def free(self):
         """ Free memory associated with all shared arrays. """

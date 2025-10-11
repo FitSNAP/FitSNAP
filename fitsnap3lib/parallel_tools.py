@@ -298,9 +298,9 @@ class ParallelTools():
     # Debug print methods - only print if debug flag is enabled
     
     @_rank_zero
-    def debug_print(self, *args, **kw):
+    def debug_single_print(self, *args, **kw):
         """Debug print that only prints on rank 0 when debug flag is enabled."""
-        if self.debug:
+        if self.debug and self._rank == 0:
             printf("[DEBUG]", *args, file=self._fp)
     
     @_sub_rank_zero  

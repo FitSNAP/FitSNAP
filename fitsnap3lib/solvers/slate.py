@@ -208,7 +208,7 @@ class SLATE(SlateCommon):
         # Compute adaptive hyperparameters (matching legacy ARD)
         ap = 1.0 / (var_bw + eps)  # inverse variance ("alpha prior")
         
-        pt.single_print(f"inverse variance in training data: {ap:.6f}, logscale for threshold_lambda: {np.log10(ap):.6f}")
+        pt.debug_single_print(f"inverse variance in training data: {ap:.6f}, logscale for threshold_lambda: {np.log10(ap):.6f}")
         
         if self.directmethod:
             # Direct method: use specified hyperparameters
@@ -233,8 +233,8 @@ class SLATE(SlateCommon):
             else:
                 # Auto-compute threshold: 10^(int(abs(log10(ap))) + logcut)
                 self.threshold_lambda = 10**(int(np.abs(np.log10(ap))) + self.logcut)
-            pt.single_print(f"automated threshold_lambda will be 10**({self.logcut:.6f} + {np.abs(np.log10(ap)):.3f})")
-            pt.single_print(f"ARD adaptive: scap={self.scap:.2e}, scai={self.scai:.2e}, alpha_1={self.alpha_1:.6e}, lambda_1={self.lambda_1:.6e}, threshold_lambda={self.threshold_lambda:.2e}")
+            pt.debug_single_print(f"automated threshold_lambda will be 10**({self.logcut:.6f} + {np.abs(np.log10(ap)):.3f})")
+            pt.debug_single_print(f"ARD adaptive: scap={self.scap:.2e}, scai={self.scai:.2e}, alpha_1={self.alpha_1:.6e}, lambda_1={self.lambda_1:.6e}, threshold_lambda={self.threshold_lambda:.2e}")
         
         alpha_ = 1.0 / (var_bw + eps)
         lambda_ = np.ones(n, dtype=np.float64)
@@ -242,15 +242,13 @@ class SLATE(SlateCommon):
         keep_lambda = np.ones(n, dtype=bool)
         coef_old_ = None
         
-        pt.single_print(f"ARD: m {m} n {n} var(bw)={var_bw:.9f} alpha={alpha_:.2f}")
+        pt.debug_single_print(f"ARD: m {m} n {n} var(bw)={var_bw:.9f} alpha={alpha_:.2f}")
         
         np.set_printoptions(
             precision=4, suppress=False, floatmode='fixed', linewidth=800,
             formatter={'float': '{:.4f}'.format}, threshold = 800, edgeitems=5
         )
-        
-        pt.debug_sub_print(f"aw\n{aw}\nbw {bw}\n\n")
-
+      
         # Iterative procedure of ARDRegression
         for iter_ in range(self.max_iter):
             # Get active indices
@@ -288,24 +286,11 @@ class SLATE(SlateCommon):
             lambda_[active_indices] = (gamma_ + 2.0 * self.lambda_1) / (
                 coef_active_**2 + 2.0 * self.lambda_2
             )
-            
-            # DEBUG: Print alpha calculation components
-            if pt._rank == 0:
-                pt.single_print(f"\n[ALPHA DEBUG] Iteration {iter_}:")
-                pt.single_print(f"  global_n_training = {global_n_training}")
-                pt.single_print(f"  gamma_.sum() = {gamma_.sum():.12f}")
-                pt.single_print(f"  self.alpha_1 = {self.alpha_1}")
-                pt.single_print(f"  self.alpha_2 = {self.alpha_2}")
-                pt.single_print(f"  sse_ = {sse_:.12f}")
-                pt.single_print(f"  numerator = {global_n_training - gamma_.sum() + 2.0 * self.alpha_1:.12f}")
-                pt.single_print(f"  denominator = {sse_ + 2.0 * self.alpha_2:.12f}")
-            
+                        
             alpha_ = (global_n_training - gamma_.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
             
-            if pt._rank == 0:
-                pt.single_print(f"  alpha_ = {alpha_:.12f}\n")
-            
-            pt.single_print(f"*** Iteration {iter_}: alpha={alpha_:.6f}, sse={sse_:.6f}, gamma_sum={gamma_.sum():.6f}, n_active={n_active} sigma_\n{sigma_}")
+            if self.config.debug:
+                pt.single_print(f"*** Iteration {iter_}: alpha={alpha_:.6f}, sse={sse_:.6f}, gamma_sum={gamma_.sum():.6f}, n_active={n_active}")
  
             #pt.single_print(f"*** lambda_ {lambda_} self.threshold_lambda {self.threshold_lambda}")
 

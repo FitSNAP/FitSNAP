@@ -114,9 +114,6 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
         MPI_Barrier(MPI_COMM_WORLD);
         
         // Create C = alpha * X.T @ X + diag(lambda)
-        // CRITICAL: Must use same distribution scheme as X_active to avoid herk deadlock
-        
-        // Use same tileRank function as X_active for consistent distribution
         std::function<int (ij_tuple)> tileRankC = [mt_node, nt, mpi_sub_size](ij_tuple ij) {
             int64_t i = std::get<0>(ij);
             int64_t j = std::get<1>(ij);
@@ -140,26 +137,11 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
         }
         
         MPI_Barrier(MPI_COMM_WORLD);
-        
-        slate::Options opts = {
-            {slate::Option::PrintVerbose, 4},
-            {slate::Option::PrintPrecision, 8},
-            {slate::Option::PrintWidth, 10}
-        };
 
-        slate::print("X_active", X_active, opts);
-        std::fflush(stdout);
-
-        
         // C = alpha * X.T @ X + C
         auto X_active_T = transpose(X_active);
         slate::herk(alpha, X_active_T, 1.0, C);
         MPI_Barrier(MPI_COMM_WORLD);
-        
-        
-        slate::print("C", C, opts);
-        std::fflush(stdout);
-
 
         // Compute Cholesky factorization and inverse
         slate::potrf(C);
@@ -173,27 +155,13 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
         slate::set(0.0, XTy);
         slate::gemm(1.0, X_active_T, y, 0.0, XTy);
         MPI_Barrier(MPI_COMM_WORLD);
-
-        slate::print("XTy", XTy, opts);
-        std::fflush(stdout);
-
         
         // Compute coef = alpha * C @ XTy
         slate::Matrix<double> coef_active(n_active, 1, tileNb, tile1, tileRankC, tileDevice, MPI_COMM_WORLD);
         coef_active.insertLocalTiles();
         slate::set(0.0, coef_active);
-        
         slate::hemm(slate::Side::Left, alpha, C, XTy, 0.0, coef_active);
         MPI_Barrier(MPI_COMM_WORLD);
-
-        
-        // Gather sigma to rank 0 and broadcast
-        if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [PRE-GATHER-SIGMA] About to gather sigma matrix\n");
-            std::fflush(stderr);
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-
         
         for (int64_t i = 0; i < n_active * n_active; ++i) local_sigma[i] = 0.0;
         
@@ -248,15 +216,9 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
         // Reduce coefficients to all ranks
         
         MPI_Allreduce(MPI_IN_PLACE, local_coef_active, n_active, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        
         MPI_Barrier(MPI_COMM_WORLD);
         
         if (mpi_rank == 0 && debug) {
-            std::fprintf(stderr, "  [FINAL] Updated coef_active (first 10): ");
-            for (int64_t i = 0; i < std::min(n_active, int64_t(10)); ++i) {
-                std::fprintf(stderr, "%.4e ", local_coef_active[i]);
-            }
-            std::fprintf(stderr, "\n");
             std::fprintf(stderr, "=== slate_ard_update COMPLETE ===\n\n");
             std::fflush(stderr);
         }

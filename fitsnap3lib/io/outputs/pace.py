@@ -109,7 +109,7 @@ try:
             ctilde_basis.basis_coeffs = coeffs
             potential_name = self.config.sections["OUTFILE"].potential_name
             yace_filename = f"{potential_name}.yace"
-            self.pt.single_print(f"Saving potential to {yace_filename}")
+            self.pt.debug_single_print(f"Saving potential to {yace_filename}")
             ctilde_basis.save_yaml(yace_filename)
 
 

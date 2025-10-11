@@ -239,7 +239,7 @@ class SLATE(SlateCommon):
         alpha_ = 1.0 / (var_bw + eps)
         lambda_ = np.ones(n, dtype=np.float64)
         coef_ = np.zeros(n, dtype=np.float64)
-        keep_lambda = np.ones(n, dtype=bool)
+        lambda_mask = np.ones(n, dtype=bool)
         coef_old_ = None
         
         pt.debug_single_print(f"ARD: m {m} n {n} var(bw)={var_bw:.9f} alpha={alpha_:.2f}")
@@ -252,7 +252,7 @@ class SLATE(SlateCommon):
         # Iterative procedure of ARDRegression
         for iter_ in range(self.max_iter):
             # Get active indices
-            active_indices = np.where(keep_lambda)[0]
+            active_indices = np.where(lambda_mask)[0]
             n_active = len(active_indices)
             
             if n_active == 0:
@@ -295,15 +295,15 @@ class SLATE(SlateCommon):
             #pt.single_print(f"*** lambda_ {lambda_} self.threshold_lambda {self.threshold_lambda}")
 
             # Prune features with high lambda (low relevance)
-            keep_lambda = lambda_ < self.threshold_lambda
-            coef_[~keep_lambda] = 0
+            lambda_mask = lambda_ < self.threshold_lambda
+            coef_[~lambda_mask] = 0
             
             # Check for convergence
             if coef_old_ is not None:
                 coef_change = np.sum(np.abs(coef_old_ - coef_))
                 if coef_change < self.tol:
                     if self.config.debug and pt._rank == 0:
-                        active_features = np.sum(keep_lambda)
+                        active_features = np.sum(lambda_mask)
                         pt.single_print(f"ARD converged after {iter_} iterations, "
                                       f"{active_features}/{n} features active")
                     break
@@ -311,10 +311,17 @@ class SLATE(SlateCommon):
             coef_old_ = np.copy(coef_)
         
         # Store final solution
+        if "PYACE" in self.config.sections:
+            pyace_section = self.config.sections["PYACE"]
+            if pyace_section.bzeroflag:
+                pyace_section.lambda_mask = lambda_mask
+            else:
+                pyace_section.lambda_mask = lambda_mask[pyace_section.numtypes:]
+
         self.fit = coef_
         
         if self.config.debug and pt._rank == 0:
-            active_features = np.sum(keep_lambda)
+            active_features = np.sum(lambda_mask)
             pt.single_print(f"ARD final: {active_features}/{n} features active, "
                           f"alpha={alpha_:.2e}, lambda range=[{np.min(lambda_):.2e}, {np.max(lambda_):.2e}]")
 

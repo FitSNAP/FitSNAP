@@ -105,7 +105,16 @@ try:
             pyace_section = self.config.sections["PYACE"]
             assert hasattr(pyace_section, 'ctilde_basis') and pyace_section.ctilde_basis is not None
             ctilde_basis = pyace_section.ctilde_basis
-            #print(f"*** ctilde_basis.basis_coeffs {ctilde_basis.basis_coeffs} coeffs {coeffs}")
+            
+            if not pyace_section.bzeroflag:
+                ctilde_basis.E0vals = coeffs[0:pyace_section.numtypes]
+                coeffs = coeffs[pyace_section.numtypes:]
+
+            if hasattr(pyace_section, 'lambda_mask'):
+                lambda_mask = pyace_section.lambda_mask
+                ctilde_basis.trim_basis_by_mask(lambda_mask.tolist())
+                coeffs = coeffs[lambda_mask]
+                
             ctilde_basis.basis_coeffs = coeffs
             potential_name = self.config.sections["OUTFILE"].potential_name
             yace_filename = f"{potential_name}.yace"

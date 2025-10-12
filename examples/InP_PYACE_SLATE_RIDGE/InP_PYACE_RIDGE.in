@@ -1,0 +1,103 @@
+[PYACE]
+elements = In P
+
+embeddings = {
+    "In": {"npot": "FinnisSinclair", "fs_parameters": [1, 1], "ndensity": 1},
+    "P": {"npot": "FinnisSinclair", "fs_parameters": [1, 1], "ndensity": 1}
+  }
+
+# rcutfac = 5.790  5.007  5.007  4.224
+# lambda = 1.737  1.502  1.502  1.267
+# rcinner = 1.705  1.403  1.403  1.100
+# drcinner = 0.01 0.01 0.01 0.01
+
+bonds = {
+    "InIn": {"radbase": "ChebExpCos", "radparameters": [1.737],
+             "rcut": 5.790, "dcut": 0.01, "core-repulsion": [0,1.737], "r_in": 1.705, "delta_in": 0.01},
+    "InP":  {"radbase": "ChebExpCos", "radparameters": [1.502],
+             "rcut": 5.007, "dcut": 0.01, "core-repulsion": [0,1.502], "r_in": 1.403, "delta_in": 0.01},
+    "PP":   {"radbase": "ChebExpCos", "radparameters": [1.267],
+             "rcut": 4.224, "dcut": 0.01, "core-repulsion": [0,1.267], "r_in": 1.100, "delta_in": 0.01}
+  }
+
+# ranks = 1 2 3 4
+# lmin = 0 0 1 1
+# lmax =  1 2 2 1
+# nmax =  22 3 2 1
+
+functions = {
+    "ALL": {"lmin_by_orders": [0,0,1,1], "lmax_by_orders": [1,2,2,1], "nradmax_by_orders": [22,3,2,1]}
+  }
+
+erefs = 0 0
+bzeroflag = 1
+
+[CALCULATOR]
+calculator = LAMMPSPYACE
+energy = 1
+force = 0
+stress = 0
+
+[ESHIFT]
+In = -1.65967588701534
+P = 4.38159549501534
+
+[SOLVER]
+solver = SLATE
+compute_testerrs = 1
+detailed_errors = 1
+
+[SLATE]
+alpha=1.E-5
+
+[SCRAPER]
+scraper = JSON
+
+[PATH]
+dataPath = ../InP_JPCA2020/JSON
+
+[OUTFILE]
+output_style = PACE
+metrics = InP_PYACE_RIDGE.md
+potential = InP_PYACE_RIDGE
+
+[REFERENCE]
+units = metal
+atom_style = atomic
+pair_style = hybrid/overlay zero 5.8 
+pair_coeff1 = * * zero
+
+[GROUPS]
+group_sections = name training_size testing_size eweight fweight vweight
+group_types = str float float float float float
+smartweights = 1
+random_sampling = 0
+aa       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+aIn       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+aP       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+Bulk       =     0.95      0.05      1.00000000      0.00100000      1.E-12
+EOS       =     0.95      0.05      40.00000000      100.00000000      1.E-12
+iIn       =     0.95      0.05      2.00000000      100.00000000      1.E-12
+iP       =     0.95      0.05      2.00000000      100.00000000      1.E-12
+s_aa       =     0.95      0.05      10.00000000      100.00000000      1.E-12
+s_aIn       =     0.95      0.05      10.00000000      100.00000000      1.E-12
+s_aP       =     0.95      0.05      10.00000000      200.00000000      1.E-12
+Shear       =     0.95      0.05      22.00000000      100.00000000      1.E-12
+s_iIn       =     0.95      0.05      10.00000000      300.00000000      1.E-12
+s_iP       =     0.95      0.05      10.00000000      300.00000000      1.E-12
+Strain       =     0.95      0.05      13.00000000      0.00100000      1.E-12
+s_vIn       =     0.95      0.05      10.00000000      100.00000000      1.E-12
+s_vP       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+s_vv       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+vP       =     0.95      0.05      1.00000000      100.00000000      1.E-12
+
+
+[EXTRAS]
+dump_descriptors = 0
+dump_truth = 0
+dump_weights = 0
+dump_dataframe = 0
+multinode_testing = 1
+
+[MEMORY]
+override = 0

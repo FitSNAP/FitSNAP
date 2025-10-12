@@ -1,6 +1,14 @@
 # ignoring run example files
-examples/*
+# examples/*
 examples/library/genetic_algorithm/__pycache__
+coupling_coefficients.yace
+wig_LR*
+*.acecoeff
+*.mod
+*.md
+*.yace
+
+
 
 # ignoring built test docs
 docs/build/

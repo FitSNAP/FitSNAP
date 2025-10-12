@@ -10,11 +10,16 @@
 #include <iostream>
 #include <cstdio>
 
-
+#include <chrono>
 
 extern "C" {
 
+using timer = std::chrono::high_resolution_clock;
+using ms = std::chrono::duration<double, std::milli>;
+
 using slate::func::ij_tuple;
+
+
 
 constexpr int64_t ceil_div64(int64_t a, int64_t b) { return (a + b - 1) / b; }
 
@@ -137,24 +142,39 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
         }
         
         MPI_Barrier(MPI_COMM_WORLD);
+        
+
+        auto t0 = timer::now();
+
+    // ===== Section 1 =====
+    // Your code here
+
+
 
         // C = alpha * X.T @ X + C
         auto X_active_T = transpose(X_active);
         slate::herk(alpha, X_active_T, 1.0, C);
         MPI_Barrier(MPI_COMM_WORLD);
+        auto t1 = timer::now();
+        std::cout << "herk: " << ms(t1 - t0).count() << " ms\n";
 
         // Compute Cholesky factorization and inverse
         slate::potrf(C);
         MPI_Barrier(MPI_COMM_WORLD);
         slate::potri(C);
         MPI_Barrier(MPI_COMM_WORLD);
-        
+
+        //auto t2 = timer::now();
+        //std::cout << "potrf/potri: " << ms(t2 - t1).count() << " ms\n";
+
         // Compute X.T @ y
         slate::Matrix<double> XTy(n_active, 1, tileNb, tile1, tileRankC, tileDevice, MPI_COMM_WORLD);
         XTy.insertLocalTiles();
         slate::set(0.0, XTy);
         slate::gemm(1.0, X_active_T, y, 0.0, XTy);
         MPI_Barrier(MPI_COMM_WORLD);
+        //auto t3 = timer::now();
+        //std::cout << "gemm: " << ms(t3 - t2).count() << " ms\n";
         
         // Compute coef = alpha * C @ XTy
         slate::Matrix<double> coef_active(n_active, 1, tileNb, tile1, tileRankC, tileDevice, MPI_COMM_WORLD);
@@ -162,6 +182,8 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
         slate::set(0.0, coef_active);
         slate::hemm(slate::Side::Left, alpha, C, XTy, 0.0, coef_active);
         MPI_Barrier(MPI_COMM_WORLD);
+        //auto t4 = timer::now();
+        //std::cout << "hemm: " << ms(t4 - t3).count() << " ms\n";
         
         for (int64_t i = 0; i < n_active * n_active; ++i) local_sigma[i] = 0.0;
         
@@ -224,6 +246,8 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
         }
         
         MPI_Barrier(MPI_COMM_WORLD);
+        //auto t5 = timer::now();
+        //std::cout << "reduce: " << ms(t5 - t4).count() << " ms\n";
 
     } catch (const std::exception& e) {
         std::cerr << "[Rank " << mpi_rank << "] SLATE ARD error: " << e.what() << std::endl;

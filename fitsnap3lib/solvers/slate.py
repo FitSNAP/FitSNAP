@@ -245,8 +245,8 @@ class SLATE(SlateCommon):
         pt.debug_single_print(f"ARD: m {m} n {n} var(bw)={var_bw:.9f} alpha={alpha_:.2f}")
         
         np.set_printoptions(
-            precision=4, suppress=False, floatmode='fixed', linewidth=800,
-            formatter={'float': '{:.4f}'.format}, threshold = 800, edgeitems=5
+            precision=4, suppress=False, floatmode='fixed', linewidth=np.inf,
+            formatter={'float': '{:.3f}'.format}, threshold = 800, edgeitems=5
         )
       
         # Iterative procedure of ARDRegression
@@ -281,21 +281,42 @@ class SLATE(SlateCommon):
             sse_ = pt._comm.allreduce(local_sse, op=MPI.SUM)
             
             # Update alpha and lambda (on all ranks to stay synchronized)
-            gamma_ = 1.0 - lambda_active * np.diag(sigma_)
+            gamma_active = 1.0 - lambda_active * np.diag(sigma_)
             
-            lambda_[active_indices] = (gamma_ + 2.0 * self.lambda_1) / (
+            # Map gamma back to full feature set
+            gamma_ = np.zeros(n, dtype=np.float64)
+            gamma_[active_indices] = gamma_active
+            
+            lambda_[active_indices] = (gamma_active + 2.0 * self.lambda_1) / (
                 coef_active_**2 + 2.0 * self.lambda_2
             )
                         
-            alpha_ = (global_n_training - gamma_.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
+            alpha_ = (global_n_training - gamma_active.sum() + 2.0 * self.alpha_1) / (sse_ + 2.0 * self.alpha_2)
             
-            if self.config.debug:
-                pt.single_print(f"*** Iteration {iter_}: alpha={alpha_:.6f}, sse={sse_:.6f}, gamma_sum={gamma_.sum():.6f}, n_active={n_active}")
- 
-            #pt.single_print(f"*** lambda_ {lambda_} self.threshold_lambda {self.threshold_lambda}")
-
-            # Prune features with high lambda (low relevance)
-            lambda_mask = lambda_ < self.threshold_lambda
+            # Prune features based on selected method
+            if self.pruning_method.lower() == 'gamma':
+                # Gamma-based pruning: keep features with gamma > threshold
+                lambda_mask = gamma_ > self.threshold_gamma
+                n_pruned = np.sum(~lambda_mask)
+                
+                pt.single_print(f"SLATE ARD: iteration {iter_} alpha {alpha_:.6f} sse {sse_:.6f} gamma_sum {gamma_active.sum():.6f} n_active {n_active}")
+                pt.single_print(f"  Gamma pruning: keeping {np.sum(lambda_mask)}/{n} features with gamma > {self.threshold_gamma:.3f}")
+                pt.single_print(f"  Gamma range: [{gamma_[gamma_ > 0].min():.4f}, {gamma_.max():.4f}]")
+                
+                if self.config.debug:
+                    # Show gamma distribution
+                    gamma_nonzero = gamma_[gamma_ > 0]
+                    pt.single_print(f"  Gamma stats: mean={gamma_nonzero.mean():.3f}, median={np.median(gamma_nonzero):.3f}")
+                    pt.single_print(f"  Gamma > 0.5: {np.sum(gamma_ > 0.5)}, > 0.3: {np.sum(gamma_ > 0.3)}, > 0.1: {np.sum(gamma_ > 0.1)}")
+            else:
+                # Lambda-based pruning: keep features with lambda < threshold (original method)
+                lambda_mask = lambda_ < self.threshold_lambda
+                n_pruned = np.sum(~lambda_mask)
+                
+                pt.single_print(f"SLATE ARD: iteration {iter_} alpha {alpha_:.6f} sse {sse_:.6f} gamma_sum {gamma_active.sum():.6f} n_active {n_active}")
+                pt.single_print(f"  Lambda pruning: keeping {np.sum(lambda_mask)}/{n} features with lambda < {self.threshold_lambda:.1f}")
+                pt.single_print(f"  Lambda range: [{lambda_[lambda_ > 0].min():.4e}, {lambda_.max():.4e}]")
+            
             coef_[~lambda_mask] = 0
             
             # Check for convergence
@@ -320,9 +341,42 @@ class SLATE(SlateCommon):
 
         self.fit = coef_
         
+        # Save feature relevance statistics for visualization
+        if pt._rank == 0:
+            output_prefix = self.config.sections['OUTFILE'].metrics.replace('.md', '')
+            
+            # Save gamma (most useful for heatmaps)
+            np.save(f"{output_prefix}_gamma.npy", gamma_)
+            
+            # Save lambda for comparison
+            np.save(f"{output_prefix}_lambda.npy", lambda_)
+            
+            # Save comprehensive feature info
+            feature_info = {
+                'gamma': gamma_,
+                'lambda': lambda_,
+                'coef': coef_,
+                'active_mask': lambda_mask,
+                'n_active': np.sum(lambda_mask),
+                'final_alpha': alpha_,
+                'pruning_method': self.pruning_method,
+                'threshold_gamma': self.threshold_gamma if self.pruning_method.lower() == 'gamma' else None,
+                'threshold_lambda': self.threshold_lambda if self.pruning_method.lower() != 'gamma' else None
+            }
+            np.savez(f"{output_prefix}_features.npz", **feature_info)
+            
+            pt.single_print(f"\nSaved ARD feature relevance:")
+            pt.single_print(f"  Gamma: {output_prefix}_gamma.npy")
+            pt.single_print(f"  Lambda: {output_prefix}_lambda.npy")
+            pt.single_print(f"  All stats: {output_prefix}_features.npz")
+        
         if self.config.debug and pt._rank == 0:
             active_features = np.sum(lambda_mask)
-            pt.single_print(f"ARD final: {active_features}/{n} features active, "
+            pt.single_print(f"\nARD final: {active_features}/{n} features active, "
                           f"alpha={alpha_:.2e}, lambda range=[{np.min(lambda_):.2e}, {np.max(lambda_):.2e}]")
+            if self.pruning_method.lower() == 'gamma':
+                gamma_active_final = gamma_[gamma_ > 0]
+                pt.single_print(f"Gamma range: [{gamma_active_final.min():.4f}, {gamma_active_final.max():.4f}], "
+                              f"mean={gamma_active_final.mean():.4f}")
 
     # --------------------------------------------------------------------------------------------

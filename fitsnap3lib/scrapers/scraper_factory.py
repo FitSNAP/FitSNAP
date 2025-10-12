@@ -5,21 +5,13 @@ from fitsnap3lib.scrapers.xyz_scraper import XYZ
 from fitsnap3lib.scrapers.vasp_scraper import Vasp
 from fitsnap3lib.scrapers.pacemaker_scraper import Pacemaker
 
-# only import HDF5 scraper if python module h5py is available
-import importlib.util
-if importlib.util.find_spec("h5py") is not None:
-    from fitsnap3lib.scrapers.hdf5_scraper import HDF5
-else:
-    HDF5 = None
-
 # only import LMDB scraper if required modules are available
+import importlib.util
 if (importlib.util.find_spec("lmdb") is not None and 
     importlib.util.find_spec("ase") is not None):
     from fitsnap3lib.scrapers.fairchem_scraper import FAIRChem
 else:
     FAIRChem = None
-
-#pt = ParallelTools()
 
 
 def scraper(scraper_name, pt, config):

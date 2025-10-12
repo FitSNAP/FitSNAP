@@ -22,7 +22,7 @@ class Slate(Section):
 
         # ARD parameters - matching legacy ARD section
         # Maximum number of iterations
-        self.max_iter = self.get_value("SLATE", "max_iter", "300", "int")
+        self.max_iter = self.get_value("SLATE", "max_iter", "100", "int")
         
         # Stop the algorithm if w has converged
         self.tol = self.get_value("SLATE", "tol", "1e-3", "float")
@@ -33,8 +33,8 @@ class Slate(Section):
         self.lambdabig = self.get_value("SLATE", "lambdabig", "1.0E-6", "float")
         self.lambdasmall = self.get_value("SLATE", "lambdasmall", "1.0E-6", "float")
         
-        # Pruning method: 'lambda' (default) or 'gamma'
-        self.pruning_method = self.get_value("SLATE", "pruning_method", "lambda", "str")
+        # Pruning method: 'gamma' (default) or  'lambda'
+        self.pruning_method = self.get_value("SLATE", "pruning_method", "gamma", "str")
         
         # Lambda threshold for removing (pruning) weights with high precision from the computation.
         # If not specified, will be auto-computed as 10^(int(abs(log10(ap))) + logcut)

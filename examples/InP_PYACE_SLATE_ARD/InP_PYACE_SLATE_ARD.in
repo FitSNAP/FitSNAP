@@ -48,7 +48,7 @@ detailed_errors = 0
 
 [SLATE]
 method = ARD
-max_iter = 5
+max_iter = 10
 # scap = 1e-3
 # scai = 1e-3
 threshold_gamma = 0.1
@@ -102,7 +102,7 @@ dump_truth = 0
 dump_weights = 0
 dump_dataframe = 0
 debug = 1
-multinode_testing = 0
+multinode_testing = 1
 
 [MEMORY]
 override = 0

@@ -55,7 +55,6 @@ class GlobalProgressTracker:
 
         # dont capture pt to be extra safe
         self._comm = pt._comm
-        self.MPI = pt.MPI
         self.stubs = pt.stubs
         self._rank = pt._rank
         
@@ -66,6 +65,7 @@ class GlobalProgressTracker:
         if self.stubs:
             self._len_all_data = len_data
         else:
+            self.MPI = pt.MPI
             self._len_all_data = self._comm.reduce(len_data)
             self._Isend_buffer = array.array('i', [0])  # persistent buffer for Isends
 
@@ -92,7 +92,7 @@ class GlobalProgressTracker:
                 self._tqdm.update(delta)
                 self._last_update = i
             else:
-                # 99 in honor of Gretzky (@alphataubio, 2025/10)
+                # 99 in honor of Gretzky [@alphataubio, 2025/10]
                 self._Isend_buffer[0] = delta
                 self._comm.Isend([self._Isend_buffer, self.MPI.INT], dest=0, tag=99)
   

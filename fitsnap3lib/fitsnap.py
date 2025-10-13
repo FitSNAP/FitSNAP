@@ -87,16 +87,15 @@ class GlobalProgressTracker:
                 self._tqdm.update(delta)
                 self._last_update = i
             else:
-                # 99 in honor of Gretzky [@alphataubio, 2025/10]
                 self._Isend_buffer[0] = delta
-                self._comm.Isend([self._Isend_buffer, self.MPI.INT], dest=0, tag=99)
+                self._comm.Isend([self._Isend_buffer, self.MPI.INT], dest=0, tag=self._rank)
   
         if self._rank == 0 and not self.stubs:
             """ Check for progress updates from all ranks """
             status = self.MPI.Status()
-            while self._comm.iprobe(source=self.MPI.ANY_SOURCE, tag=99, status=status):
+            while self._comm.iprobe(source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG, status=status):
                 recv_buf = array.array('i', [0]) # delta
-                self._comm.Recv(recv_buf, source=status.Get_source(), tag=99)
+                self._comm.Recv(recv_buf, source=status.Get_source(), tag=self.MPI.ANY_TAG)
                 self._completed += recv_buf[0]
             if self._completed - self._last_update >= self._global_chunk:
                 self._tqdm.update(self._completed - self._last_update)

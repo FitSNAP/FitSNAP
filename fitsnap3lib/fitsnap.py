@@ -48,9 +48,6 @@ class GlobalProgressTracker:
     showing global progress from all ranks combined.
     """
 
-    
-
-    
     def __init__(self, pt, len_data, update_fraction=0.05):
 
         # dont capture pt to be extra safe
@@ -68,7 +65,6 @@ class GlobalProgressTracker:
             self.MPI = pt.MPI
             self._len_all_data = self._comm.reduce(len_data)
             self._Isend_buffer = array.array('i', [0])  # persistent buffer for Isends
-
         
         if self._rank == 0:
             self._global_chunk = max(int(update_fraction*self._len_all_data),1)
@@ -83,8 +79,7 @@ class GlobalProgressTracker:
             )
 
     def update(self, i):
-        """Update local progress and send to rank 0 if enough progress made."""
-
+        """ Update local progress and send to rank 0 if enough progress made """
         if i % self._local_chunk == 0:
             delta = i - self._last_local_update
             self._last_local_update = i
@@ -97,15 +92,12 @@ class GlobalProgressTracker:
                 self._comm.Isend([self._Isend_buffer, self.MPI.INT], dest=0, tag=99)
   
         if self._rank == 0 and not self.stubs:
-        
-            # check for progress updates from all ranks
+            """ Check for progress updates from all ranks """
             status = self.MPI.Status()
             while self._comm.iprobe(source=self.MPI.ANY_SOURCE, tag=99, status=status):
-
                 recv_buf = array.array('i', [0]) # delta
                 self._comm.Recv(recv_buf, source=status.Get_source(), tag=99)
                 self._completed += recv_buf[0]
-        
             if self._completed - self._last_update >= self._global_chunk:
                 self._tqdm.update(self._completed - self._last_update)
                 self._tqdm.refresh()
@@ -114,7 +106,6 @@ class GlobalProgressTracker:
 
     def finalize(self):
         """Finalize progress tracking and ensure 100% completion."""
-
         if self._rank == 0:
             if self._len_all_data > self._last_update:
                 self._tqdm.update(self._len_all_data - self._last_update)

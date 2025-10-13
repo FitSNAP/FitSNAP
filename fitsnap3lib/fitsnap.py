@@ -37,30 +37,38 @@ from fitsnap3lib.calculators.calculator_factory import calculator
 from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
-import sys, random
-from tqdm import tqdm
-import numpy as np
 
+import sys, random, array
+import numpy as np
+from tqdm import tqdm
 
 class GlobalProgressTracker:
     """
     Tracks progress across MPI ranks and updates a tqdm progress bar on rank 0
     showing global progress from all ranks combined.
     """
+
+    
+
     
     def __init__(self, pt, len_data, update_fraction=0.05):
 
-        self.pt = pt
+        # dont capture pt to be extra safe
+        self._comm = pt._comm
+        self.MPI = pt.MPI
+        self.stubs = pt.stubs
+        self._rank = pt._rank
+        
         self._len_data = len_data
         self._local_chunk = max(int(update_fraction*len_data),1)
         self._last_local_update = 0
        
-        if self.pt.stubs:
+        if self.stubs:
             self._len_all_data = len_data
         else:
-            self._len_all_data = self.pt._comm.reduce(len_data)
+            self._len_all_data = self._comm.reduce(len_data)
         
-        if self.pt._rank == 0:
+        if self._rank == 0:
             self._global_chunk = max(int(update_fraction*self._len_all_data),1)
             self._last_update = 0
             self._completed = 0
@@ -78,19 +86,22 @@ class GlobalProgressTracker:
         if i % self._local_chunk == 0:
             delta = i - self._last_local_update
             self._last_local_update = i
-            if self.pt.stubs:
+            if self.stubs:
                 self._tqdm.update(delta)
                 self._last_update = i
             else:
-                self.pt._comm.isend(delta, dest=0, tag=99)
+                # 99 in honor of Gretzky (@alphataubio, 2025/10)
+                self._comm.Isend([array.array('i', [delta]), self.MPI.INT], dest=0, tag=99)
   
-        if self.pt._rank == 0 and not self.pt.stubs:
+        if self._rank == 0 and not self.stubs:
         
             # check for progress updates from all ranks
-            status = self.pt.MPI.Status()
-            while self.pt._comm.iprobe(source=self.pt.MPI.ANY_SOURCE, tag=99, status=status):
-                delta = self.pt._comm.recv(source=status.Get_source(), tag=99, status=status)
-                self._completed += delta
+            status = self.MPI.Status()
+            while self._comm.iprobe(source=self.MPI.ANY_SOURCE, tag=99, status=status):
+
+                buf = array.array('i', [0]) # delta
+                self._comm.Recv(buf, source=status.Get_source(), tag=99)
+                self._completed += buf[0]
         
             if self._completed - self._last_update >= self._global_chunk:
                 self._tqdm.update(self._completed - self._last_update)
@@ -101,7 +112,7 @@ class GlobalProgressTracker:
     def finalize(self):
         """Finalize progress tracking and ensure 100% completion."""
 
-        if self.pt._rank == 0:
+        if self._rank == 0:
             if self._len_all_data > self._last_update:
                 self._tqdm.update(self._len_all_data - self._last_update)
             self._tqdm.close()

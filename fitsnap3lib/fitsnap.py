@@ -92,10 +92,9 @@ class GlobalProgressTracker:
   
         if self._rank == 0 and not self.stubs:
             """ Check for progress updates from all ranks """
-            status = self.MPI.Status()
-            while self._comm.iprobe(source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG, status=status):
+            while self._comm.iprobe(source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG):
                 recv_buf = array.array('i', [0]) # delta
-                self._comm.Recv(recv_buf, source=status.Get_source(), tag=self.MPI.ANY_TAG)
+                self._comm.Recv(recv_buf, source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG)
                 self._completed += recv_buf[0]
             if self._completed - self._last_update >= self._global_chunk:
                 self._tqdm.update(self._completed - self._last_update)
@@ -106,6 +105,10 @@ class GlobalProgressTracker:
     def finalize(self):
         """Finalize progress tracking and ensure 100% completion."""
         if self._rank == 0:
+            # drain all pending messages
+            while self._comm.Iprobe(source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG):
+                recv_buf = array.array('i', [0]) # ignore remaining
+                self._comm.Recv(recv_buf, source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG)
             if self._len_all_data > self._last_update:
                 self._tqdm.update(self._len_all_data - self._last_update)
             self._tqdm.close()
@@ -255,8 +258,8 @@ class FitSnap:
                 for i, configuration in enumerate(data):
                     self.calculator.process_configs(configuration, i)
                     progress_tracker.update(i)
-                self.pt.all_barrier()
                 progress_tracker.finalize()
+                self.pt.all_barrier()
             else:
                 for i, configuration in enumerate(data):
                     self.calculator.process_configs_nonlinear(configuration, i)

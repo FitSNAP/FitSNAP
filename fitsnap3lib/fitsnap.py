@@ -105,10 +105,11 @@ class GlobalProgressTracker:
     def finalize(self):
         """Finalize progress tracking and ensure 100% completion."""
         if self._rank == 0:
-            # drain all pending messages
-            while self._comm.Iprobe(source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG):
-                recv_buf = array.array('i', [0]) # ignore remaining
-                self._comm.Recv(recv_buf, source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG)
+            if not self.stubs:
+                # drain all pending messages
+                while self._comm.Iprobe(source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG):
+                    recv_buf = array.array('i', [0]) # ignore remaining
+                    self._comm.Recv(recv_buf, source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG)
             if self._len_all_data > self._last_update:
                 self._tqdm.update(self._len_all_data - self._last_update)
             self._tqdm.close()

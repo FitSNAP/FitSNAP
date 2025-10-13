@@ -67,6 +67,8 @@ class GlobalProgressTracker:
             self._len_all_data = len_data
         else:
             self._len_all_data = self._comm.reduce(len_data)
+            self._Isend_buffer = array.array('i', [0])  # persistent buffer for Isends
+
         
         if self._rank == 0:
             self._global_chunk = max(int(update_fraction*self._len_all_data),1)
@@ -91,7 +93,8 @@ class GlobalProgressTracker:
                 self._last_update = i
             else:
                 # 99 in honor of Gretzky (@alphataubio, 2025/10)
-                self._comm.Isend([array.array('i', [delta]), self.MPI.INT], dest=0, tag=99)
+                self._Isend_buffer[0] = delta
+                self._comm.Isend([self._Isend_buffer, self.MPI.INT], dest=0, tag=99)
   
         if self._rank == 0 and not self.stubs:
         
@@ -99,9 +102,9 @@ class GlobalProgressTracker:
             status = self.MPI.Status()
             while self._comm.iprobe(source=self.MPI.ANY_SOURCE, tag=99, status=status):
 
-                buf = array.array('i', [0]) # delta
-                self._comm.Recv(buf, source=status.Get_source(), tag=99)
-                self._completed += buf[0]
+                recv_buf = array.array('i', [0]) # delta
+                self._comm.Recv(recv_buf, source=status.Get_source(), tag=99)
+                self._completed += recv_buf[0]
         
             if self._completed - self._last_update >= self._global_chunk:
                 self._tqdm.update(self._completed - self._last_update)

@@ -505,3 +505,7 @@ class Solver:
             pf_stdev = np.zeros(a.shape[0])
 
         return pf_stdev
+
+    def validation(self):
+        # only implemented in SLATE solver
+        pass

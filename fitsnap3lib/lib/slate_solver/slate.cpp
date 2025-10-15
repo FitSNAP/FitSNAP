@@ -155,8 +155,8 @@ void slate_ard_update(double* local_aw_active, double* local_bw, double* local_s
         auto X_active_T = transpose(X_active);
         slate::herk(alpha, X_active_T, 1.0, C);
         MPI_Barrier(MPI_COMM_WORLD);
-        auto t1 = timer::now();
-        std::cout << "herk: " << ms(t1 - t0).count() << " ms\n";
+        //auto t1 = timer::now();
+        //std::cout << "herk: " << ms(t1 - t0).count() << " ms\n";
 
         // Compute Cholesky factorization and inverse
         slate::potrf(C);

@@ -129,6 +129,10 @@ class SLATE(SlateCommon):
         lambda_mask = np.ones(n, dtype=bool)
         coef_old_ = None
         
+        # Initialize gamma history tracking if validation is enabled
+        if self.config.sections["OUTFILE"].validation:
+            self.gamma_history = []
+        
         pt.debug_single_print(f"ARD: m {m} n {n} var(bw)={var_bw:.9f} alpha={alpha_:.2f}")
         
         np.set_printoptions(
@@ -173,6 +177,10 @@ class SLATE(SlateCommon):
             # Map gamma back to full feature set
             gamma_ = np.zeros(n, dtype=np.float64)
             gamma_[active_indices] = gamma_active
+            
+            # Store gamma history if validation enabled
+            if self.config.sections["OUTFILE"].validation:
+                self.gamma_history.append(gamma_.copy())
             
             lambda_[active_indices] = (gamma_active + 2.0 * self.lambda_1) / (
                 coef_active_**2 + 2.0 * self.lambda_2
@@ -228,6 +236,37 @@ class SLATE(SlateCommon):
 
         self.fit = coef_
         
+        # Save gamma history to pickle if validation enabled
+        if self.config.sections["OUTFILE"].validation and pt._rank == 0:
+            import pickle
+            output_prefix = self.config.sections['OUTFILE'].metrics.replace('.md', '')
+            gamma_history_file = f"{output_prefix}_gamma_history.pkl"
+            
+            # Get rank information from PYACE basis if available
+            feature_ranks = None
+            if "PYACE" in self.config.sections:
+                pyace_section = self.config.sections["PYACE"]
+                if hasattr(pyace_section, 'ctilde_basis'):
+                    feature_ranks = []
+                    # Rank 1 functions
+                    for element_basis_rank1_functions in pyace_section.ctilde_basis.basis_rank1:
+                        for basis_rank1_function in element_basis_rank1_functions:
+                            feature_ranks.append(int(basis_rank1_function.rank))
+                    # Higher rank functions
+                    for element_basis_functions in pyace_section.ctilde_basis.basis:
+                        for basis_function in element_basis_functions:
+                            feature_ranks.append(int(basis_function.rank))
+            
+            # Save both gamma history and feature ranks
+            save_data = {
+                'gamma_history': self.gamma_history,
+                'feature_ranks': feature_ranks
+            }
+            
+            with open(gamma_history_file, 'wb') as f:
+                pickle.dump(save_data, f)
+            pt.single_print(f"Saved gamma history and feature ranks to {gamma_history_file}")
+        
         if self.config.debug and pt._rank == 0:
             active_features = np.sum(lambda_mask)
             pt.single_print(f"\nARD final: {active_features}/{n} features active, "
@@ -244,22 +283,518 @@ class SLATE(SlateCommon):
         if self.pt._rank != 0 or not self.config.sections["OUTFILE"].validation:
             return
     
+        import pandas as pd
+        
         output_prefix = self.config.sections['OUTFILE'].metrics.replace('.md', '')
+        notebook_file = f"{output_prefix}_validation.ipynb"
+        gamma_history_file = f"{output_prefix}_gamma_history.pkl"
+        
+        # Create Jupyter notebook structure
+        notebook = {
+            "cells": [],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "Python 3",
+                    "language": "python",
+                    "name": "python3"
+                },
+                "language_info": {
+                    "name": "python",
+                    "version": "3.9.0"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 4
+        }
+        
+        # Cell 1: Title
+        notebook["cells"].append({
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [f"# ARD Validation Report: {output_prefix}\n", "\n", "This notebook contains validation analysis from the FitSNAP ARD run."]
+        })
+        
+        # Cell 2: Config dictionary (collapsed by default)
+        notebook["cells"].append({
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": ["## Configuration"]
+        })
+        
+        # Extract relevant config info
+        config_dict = {}
+        for section_name, section in self.config.sections.items():
+            if hasattr(section, '__dict__'):
+                config_dict[section_name] = {k: v for k, v in section.__dict__.items() if not k.startswith('_')}
+        
+        import json
+        config_json = json.dumps(config_dict, indent=2, default=str)
+        
+        notebook["cells"].append({
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {"collapsed": True, "jupyter": {"source_hidden": True}},
+            "outputs": [],
+            "source": [
+                "import json\n",
+                "\n",
+                "# Configuration from FitSNAP run\n",
+                f"config = {config_json}\n",
+                "\n",
+                "# Display key settings\n",
+                "print('ARD Settings:')\n",
+                "for key in ['max_iter', 'tol', 'threshold_lambda', 'pruning_method']:\n",
+                "    if key in config.get('SLATE', {}): print(f'  {key}: {config[\"SLATE\"][key]}')"
+            ]
+        })
+        
+        # Cell 3: Error analysis tables as markdown
+        notebook["cells"].append({
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": ["## Error Analysis"]
+        })
+        
+        # Generate HTML tables from error_analysis DataFrame
+        if hasattr(self, 'errors') and self.errors is not None and not self.errors.empty:
+            # Determine which row types exist
+            row_types = self.errors.index.get_level_values('Subsystem').unique()
             
-        # FIXME Save gamma history to pickle file for heatmaps
+            for row_type in row_types:
+                if row_type in ['Energy', 'Force', 'Stress']:
+                    # Create a markdown cell for this subsystem
+                    subsystem_lines = [f"### {row_type}\n\n"]
+                    
+                    # Get data for this row type
+                    try:
+                        df_subset = self.errors.xs(row_type, level='Subsystem')
+                        
+                        # Process weighted and unweighted separately
+                        for weighting in ['Unweighted', 'weighted']:
+                            try:
+                                df_weight = df_subset.xs(weighting, level='Weighting')
+                                
+                                # Pivot to get training and testing side by side
+                                df_pivot = df_weight.reset_index()
+                                
+                                # Create separate dataframes for training and testing
+                                df_train = df_pivot[df_pivot['Testing'] == 'Training'].set_index('Group')
+                                df_test = df_pivot[df_pivot['Testing'] == 'Testing'].set_index('Group')
+                                
+                                # Merge them
+                                df_combined = df_train[['ncount', 'mae', 'rmse', 'rsq']].join(
+                                    df_test[['mae', 'rmse', 'rsq']],
+                                    how='outer',
+                                    rsuffix='_test'
+                                )
+                                
+                                # Sort by Test RMSE descending, but keep *ALL at top
+                                all_key = '*ALL'
+                                if all_key in df_combined.index:
+                                    df_all = df_combined.loc[[all_key]]
+                                    df_rest = df_combined.drop(all_key)
+                                else:
+                                    df_all = pd.DataFrame()
+                                    df_rest = df_combined
+                                
+                                df_rest = df_rest.sort_values('rmse_test', ascending=False)
+                                df_combined = pd.concat([df_all, df_rest])
+                                
+                                # Build HTML table in booktabs style
+                                subsystem_lines.append(f"**{weighting.capitalize()} Metrics**\n\n")
+                                
+                                html = '<table style="border-collapse: collapse; table-layout: fixed; width: 100%; font-size: 14px;">\n'
+                                
+                                # Header row with toprule
+                                html += '  <thead>\n'
+                                html += '    <tr style="border-top: 2px solid black; border-bottom: 2px solid black;">\n'
+                                html += '      <th style="text-align: left; padding: 8px 12px; width: 20%;">Group</th>\n'
+                                html += '      <th style="text-align: center; padding: 8px 12px; width: 5%;">N</th>\n'
+                                html += '      <th style="text-align: right; padding: 8px 12px; width: 11%;">MAE</th>\n'
+                                html += '      <th style="text-align: right; padding: 8px 12px; width: 11%;">RMSE</th>\n'
+                                html += '      <th style="text-align: right; padding: 8px 12px; width: 11%;">R²</th>\n'
+                                html += '      <th style="text-align: right; padding: 8px 12px; width: 11%;">MAE</th>\n'
+                                html += '      <th style="text-align: right; padding: 8px 12px; width: 11%;">RMSE</th>\n'
+                                html += '      <th style="text-align: right; padding: 8px 12px; width: 11%;">R²</th>\n'
+                                html += '    </tr>\n'
+                                html += '  </thead>\n'
+                                
+                                # Body with Training/Testing labels and cmidrules
+                                html += '  <tbody>\n'
+                                html += '    <tr>\n'
+                                html += '      <td style="padding: 4px 12px;"></td>\n'
+                                html += '      <td style="padding: 4px 12px;"></td>\n'
+                                html += '      <td colspan="3" style="text-align: center; padding: 4px 12px; font-style: italic; border-bottom: 1px solid #999;">Training</td>\n'
+                                html += '      <td colspan="3" style="text-align: center; padding: 4px 12px; font-style: italic; border-bottom: 1px solid #999;">Testing</td>\n'
+                                html += '    </tr>\n'
+                                
+                                # Helper function to format numbers
+                                def format_value(val):
+                                    # Handle NaN values
+                                    if pd.isna(val) or (isinstance(val, float) and np.isnan(val)):
+                                        return "-"
+                                    if abs(val) < 1e-6 and val != 0:
+                                        # Use exponential notation: 1.23e-07 (8 chars like 0.123456)
+                                        return f"{val:.2e}"
+                                    else:
+                                        return f"{val:.6f}"
+                                
+                                # Data rows
+                                for idx, row in df_combined.iterrows():
+                                    # Check if this is the ALL row
+                                    is_all = (idx == '*ALL')
+                                    
+                                    # Clean group name and format
+                                    group_name = idx.replace('*', '')
+                                    if is_all:
+                                        group_display = f'<strong>{group_name}</strong>'
+                                        row_style = 'font-weight: bold;'
+                                    else:
+                                        group_display = f'&nbsp;&nbsp;{group_name}'
+                                        row_style = ''
+                                    
+                                    html += f'    <tr style="{row_style}">\n'
+                                    html += f'      <td style="text-align: left; padding: 4px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{group_display}</td>\n'
+                                    html += f'      <td style="text-align: center; padding: 4px 12px; border-left: 5px solid white;">{int(row["ncount"])}</td>\n'
+                                    html += f'      <td style="text-align: right; padding: 4px 12px; font-family: monospace; border-left: 5px solid white;">{format_value(row["mae"])}</td>\n'
+                                    html += f'      <td style="text-align: right; padding: 4px 12px; font-family: monospace;">{format_value(row["rmse"])}</td>\n'
+                                    html += f'      <td style="text-align: right; padding: 4px 12px 4px 16px; font-family: monospace;">{format_value(row["rsq"])}</td>\n'
+                                    html += f'      <td style="text-align: right; padding: 4px 12px; font-family: monospace; border-left: 5px solid white;">{format_value(row["mae_test"])}</td>\n'
+                                    html += f'      <td style="text-align: right; padding: 4px 12px; font-family: monospace;">{format_value(row["rmse_test"])}</td>\n'
+                                    html += f'      <td style="text-align: right; padding: 4px 12px 4px 16px; font-family: monospace;">{format_value(row["rsq_test"])}</td>\n'
+                                    html += '    </tr>\n'
+                                
+                                # Bottomrule
+                                html += '    <tr style="border-bottom: 2px solid black;">\n'
+                                html += '      <td colspan="8"></td>\n'
+                                html += '    </tr>\n'
+                                
+                                html += '  </tbody>\n'
+                                html += '</table>\n\n'
+                                
+                                subsystem_lines.append(html)
+                                subsystem_lines.append("\n")
+                                
+                            except KeyError:
+                                # This weighting type doesn't exist
+                                pass
+                                
+                    except KeyError:
+                        # This row type doesn't exist
+                        pass
+                    
+                    # Add this subsystem's markdown cell
+                    notebook["cells"].append({
+                        "cell_type": "markdown",
+                        "metadata": {},
+                        "source": subsystem_lines
+                    })
         
+        # Cell 4: Load gamma history
+        notebook["cells"].append({
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": ["## Gamma Evolution Heatmaps"]
+        })
         
+        notebook["cells"].append({
+            "cell_type": "code",
+            "execution_count": None,
+            "metadata": {},
+            "outputs": [],
+            "source": [
+                "import pickle\n",
+                "import numpy as np\n",
+                "\n",
+                f"# Load gamma history and feature ranks\n",
+                f"with open('{gamma_history_file}', 'rb') as f:\n",
+                "    data = pickle.load(f)\n",
+                "\n",
+                "# Handle both old and new pickle formats\n",
+                "if isinstance(data, dict):\n",
+                "    gamma_history = data['gamma_history']\n",
+                "    feature_ranks = data.get('feature_ranks', None)\n",
+                "else:\n",
+                "    # Old format: just gamma_history\n",
+                "    gamma_history = data\n",
+                "    feature_ranks = None\n",
+                "\n",
+                "gamma_array = np.array(gamma_history)\n",
+                "n_iterations, n_features = gamma_array.shape\n",
+                "print(f'Loaded gamma history: {n_iterations} iterations, {n_features} features')\n",
+                "\n",
+                "if feature_ranks is not None:\n",
+                "    print(f'Feature ranks available: {len(feature_ranks)} features')\n",
+                "    unique_ranks = sorted(set(feature_ranks))\n",
+                "    print(f'PACE ranks present: {unique_ranks}')\n",
+                "    for rank in unique_ranks:\n",
+                "        count = sum(1 for r in feature_ranks if r == rank)\n",
+                "        print(f'  Rank {rank}: {count} functions')\n",
+                "else:\n",
+                "    print('Warning: Feature ranks not available, will use approximate division')"
+            ]
+        })
         
-        # FIXME create jupyter notebook
-        # include config dict from fitsnap run in a cell
-        # include error_analysis table in a cell
+        # Cell 5: No longer needed - ranks come from pickle
+        # Skip this cell since we load feature_ranks directly
         
+        # Cell 6: Create and display heatmaps
+        # We need to execute this cell and capture the output
+        import matplotlib
+        matplotlib.use('Agg')  # Non-interactive backend
+        import matplotlib.pyplot as plt
+        import io
+        import base64
         
+        # Load gamma history to create plots - use actual feature ranks
+        import pickle
+        with open(gamma_history_file, 'rb') as f:
+            data = pickle.load(f)
         
+        if isinstance(data, dict):
+            gamma_history = data['gamma_history']
+            feature_ranks = data.get('feature_ranks', None)
+        else:
+            gamma_history = data
+            feature_ranks = None
         
-        # FIXME create heatmap of gamma history
-        # iteration as rows, functions as columns
-        # one heatmap per rank (1,2,3,4)
-        # use matplotlib turbo colormap
+        gamma_array = np.array(gamma_history)
+        n_iterations, n_features = gamma_array.shape
+        
+        # Determine which ranks to plot
+        if feature_ranks is not None:
+            unique_ranks = sorted(set(feature_ranks))
+            feature_ranks_array = np.array(feature_ranks)
+        else:
+            # Fallback: assume 4 ranks with equal division
+            unique_ranks = [1, 2, 3, 4]
+            features_per_rank = n_features // 4
+            feature_ranks_array = np.repeat(unique_ranks, features_per_rank)
+            if len(feature_ranks_array) < n_features:
+                feature_ranks_array = np.concatenate([feature_ranks_array, 
+                    np.full(n_features - len(feature_ranks_array), unique_ranks[-1])])
+        
+        # Create the heatmap plot - 4x1 layout with custom colormap
+        from matplotlib.colors import LinearSegmentedColormap
+        
+        # Create custom colormap: white for 0, turbo for >0
+        turbo = plt.cm.turbo
+        colors = [(1, 1, 1, 1)] + [turbo(i) for i in range(1, turbo.N)]
+        custom_cmap = LinearSegmentedColormap.from_list('custom_turbo', colors, N=256)
+        
+        fig, axes = plt.subplots(4, 1, figsize=(16, 16))
+        
+        # Create heatmaps for each rank
+        for i, rank in enumerate(unique_ranks[:4]):
+            ax = axes[i]
+            # Filter features by rank
+            rank_mask = feature_ranks_array == rank
+            rank_gamma = gamma_array[:, rank_mask]
+            
+            im = ax.imshow(rank_gamma, aspect='auto', cmap=custom_cmap, interpolation='nearest', vmin=0, vmax=1)
+            ax.set_title(f'PACE Rank {rank} Gamma Evolution', fontsize=14, fontweight='bold')
+            ax.set_xlabel('Feature Index', fontsize=12)
+            ax.set_ylabel('Iteration', fontsize=12)
+            
+            # Add statistics
+            final_gamma = rank_gamma[-1, :]
+            n_active_final = np.sum(final_gamma > 0.01)
+            ax.text(0.02, 0.98, f'Active: {n_active_final}/{rank_gamma.shape[1]}',
+                    transform=ax.transAxes, fontsize=10, verticalalignment='top',
+                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # Add single colorbar at bottom
+        fig.subplots_adjust(bottom=0.08)
+        cbar_ax = fig.add_axes([0.15, 0.02, 0.7, 0.015])
+        cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal')
+        cbar.set_label('Gamma Value (white=0, removed features)', fontsize=12)
+        
+        plt.tight_layout(rect=[0, 0.04, 1, 1])
+        
+        # Save to buffer and encode as base64
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        plt.close()
+        
+        notebook["cells"].append({
+            "cell_type": "code",
+            "execution_count": 1,
+            "metadata": {},
+            "outputs": [
+                {
+                    "data": {
+                        "image/png": img_base64
+                    },
+                    "metadata": {},
+                    "output_type": "display_data"
+                }
+            ],
+            "source": [
+                "import matplotlib.pyplot as plt\n",
+                "import numpy as np\n",
+                "from matplotlib.colors import LinearSegmentedColormap\n",
+                "\n",
+                "# Create custom colormap: white for 0 (removed features), turbo for >0\n",
+                "turbo = plt.cm.turbo\n",
+                "colors = [(1, 1, 1, 1)] + [turbo(i) for i in range(1, turbo.N)]\n",
+                "custom_cmap = LinearSegmentedColormap.from_list('custom_turbo', colors, N=256)\n",
+                "\n",
+                "# Determine which ranks to plot\n",
+                "if feature_ranks is not None:\n",
+                "    unique_ranks = sorted(set(feature_ranks))\n",
+                "    feature_ranks_array = np.array(feature_ranks)\n",
+                "else:\n",
+                "    # Fallback: assume 4 ranks with equal division\n",
+                "    unique_ranks = [1, 2, 3, 4]\n",
+                "    features_per_rank = n_features // 4\n",
+                "    feature_ranks_array = np.repeat(unique_ranks, features_per_rank)\n",
+                "    if len(feature_ranks_array) < n_features:\n",
+                "        feature_ranks_array = np.concatenate([feature_ranks_array,\n",
+                "            np.full(n_features - len(feature_ranks_array), unique_ranks[-1])])\n",
+                "\n",
+                "# Create 4x1 layout for PACE ranks\n",
+                "fig, axes = plt.subplots(4, 1, figsize=(16, 16))\n",
+                "\n",
+                "# Create heatmaps for each rank\n",
+                "for i, rank in enumerate(unique_ranks[:4]):\n",
+                "    ax = axes[i]\n",
+                "    # Filter features by rank\n",
+                "    rank_mask = feature_ranks_array == rank\n",
+                "    rank_gamma = gamma_array[:, rank_mask]\n",
+                "    \n",
+                "    # Create heatmap\n",
+                "    im = ax.imshow(rank_gamma, aspect='auto', cmap=custom_cmap, interpolation='nearest', vmin=0, vmax=1)\n",
+                "    ax.set_title(f'PACE Rank {rank} Gamma Evolution', fontsize=14, fontweight='bold')\n",
+                "    ax.set_xlabel('Feature Index', fontsize=12)\n",
+                "    ax.set_ylabel('Iteration', fontsize=12)\n",
+                "    \n",
+                "    # Add statistics\n",
+                "    final_gamma = rank_gamma[-1, :]\n",
+                "    n_active_final = np.sum(final_gamma > 0.01)\n",
+                "    ax.text(0.02, 0.98, f'Active: {n_active_final}/{rank_gamma.shape[1]}',\n",
+                "            transform=ax.transAxes, fontsize=10, verticalalignment='top',\n",
+                "            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))\n",
+                "\n",
+                "# Add single horizontal colorbar at bottom\n",
+                "fig.subplots_adjust(bottom=0.08)\n",
+                "cbar_ax = fig.add_axes([0.15, 0.02, 0.7, 0.015])\n",
+                "cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal')\n",
+                "cbar.set_label('Gamma Value (white=0, removed features)', fontsize=12)\n",
+                "\n",
+                "plt.tight_layout(rect=[0, 0.04, 1, 1])\n",
+                "plt.show()"
+            ]
+        })
+        
+        # Cell 7: Summary statistics with plots
+        notebook["cells"].append({
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": ["## Summary Statistics"]
+        })
+        
+        # Create summary plots
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+        
+        # Active features over iterations
+        active_counts = [np.sum(gamma_array[i, :] > 0.01) for i in range(n_iterations)]
+        ax1.plot(active_counts, linewidth=2)
+        ax1.set_xlabel('Iteration', fontsize=12)
+        ax1.set_ylabel('Number of Active Features', fontsize=12)
+        ax1.set_title('Feature Pruning Progress', fontsize=14, fontweight='bold')
+        ax1.grid(True, alpha=0.3)
+        
+        # Gamma distribution at final iteration
+        final_gamma = gamma_array[-1, :]
+        ax2.hist(final_gamma[final_gamma > 0], bins=50, edgecolor='black', alpha=0.7)
+        ax2.set_xlabel('Gamma Value', fontsize=12)
+        ax2.set_ylabel('Number of Features', fontsize=12)
+        ax2.set_title('Final Gamma Distribution', fontsize=14, fontweight='bold')
+        ax2.grid(True, alpha=0.3, axis='y')
+        
+        plt.tight_layout()
+        
+        # Save to buffer and encode as base64
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+        buf.seek(0)
+        img_base64_summary = base64.b64encode(buf.read()).decode('utf-8')
+        plt.close()
+        
+        # Create text output for statistics
+        stats_text = f"Feature Selection Summary:\nTotal features: {n_features}\n"
+        for iteration in [0, n_iterations//2, n_iterations-1]:
+            gamma_at_iter = gamma_array[iteration, :]
+            n_active = np.sum(gamma_at_iter > 0.01)
+            stats_text += f"\nIteration {iteration}:\n"
+            stats_text += f"  Active features: {n_active}/{n_features} ({100*n_active/n_features:.1f}%)\n"
+            stats_text += f"  Gamma range: [{gamma_at_iter.min():.4f}, {gamma_at_iter.max():.4f}]\n"
+            stats_text += f"  Gamma mean: {gamma_at_iter.mean():.4f}\n"
+        
+        notebook["cells"].append({
+            "cell_type": "code",
+            "execution_count": 2,
+            "metadata": {},
+            "outputs": [
+                {
+                    "name": "stdout",
+                    "output_type": "stream",
+                    "text": [stats_text]
+                },
+                {
+                    "data": {
+                        "image/png": img_base64_summary
+                    },
+                    "metadata": {},
+                    "output_type": "display_data"
+                }
+            ],
+            "source": [
+                "import matplotlib.pyplot as plt\n",
+                "import numpy as np\n",
+                "\n",
+                "# Compute summary statistics across all ranks\n",
+                "print('Feature Selection Summary:')\n",
+                "print(f'Total features: {n_features}')\n",
+                "\n",
+                "for iteration in [0, n_iterations//2, n_iterations-1]:\n",
+                "    gamma_at_iter = gamma_array[iteration, :]\n",
+                "    n_active = np.sum(gamma_at_iter > 0.01)\n",
+                "    print(f'\\nIteration {iteration}:')\n",
+                "    print(f'  Active features: {n_active}/{n_features} ({100*n_active/n_features:.1f}%)') \n",
+                "    print(f'  Gamma range: [{gamma_at_iter.min():.4f}, {gamma_at_iter.max():.4f}]')\n",
+                "    print(f'  Gamma mean: {gamma_at_iter.mean():.4f}')\n",
+                "\n",
+                "# Plot feature selection trajectory\n",
+                "fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))\n",
+                "\n",
+                "# Active features over iterations\n",
+                "active_counts = [np.sum(gamma_array[i, :] > 0.01) for i in range(n_iterations)]\n",
+                "ax1.plot(active_counts, linewidth=2)\n",
+                "ax1.set_xlabel('Iteration', fontsize=12)\n",
+                "ax1.set_ylabel('Number of Active Features', fontsize=12)\n",
+                "ax1.set_title('Feature Pruning Progress', fontsize=14, fontweight='bold')\n",
+                "ax1.grid(True, alpha=0.3)\n",
+                "\n",
+                "# Gamma distribution at final iteration\n",
+                "final_gamma = gamma_array[-1, :]\n",
+                "ax2.hist(final_gamma[final_gamma > 0], bins=50, edgecolor='black', alpha=0.7)\n",
+                "ax2.set_xlabel('Gamma Value', fontsize=12)\n",
+                "ax2.set_ylabel('Number of Features', fontsize=12)\n",
+                "ax2.set_title('Final Gamma Distribution', fontsize=14, fontweight='bold')\n",
+                "ax2.grid(True, alpha=0.3, axis='y')\n",
+                "\n",
+                "plt.tight_layout()\n",
+                "plt.show()"
+            ]
+        })
+        
+        # Write notebook to file
+        with open(notebook_file, 'w') as f:
+            json.dump(notebook, f, indent=2)
+        
+        self.pt.single_print(f"Created validation notebook: {notebook_file}")
             
             

@@ -4,12 +4,22 @@ import numpy as np
 
 class LammpsPace(LammpsBase):
 
-    def __init__(self, name, pt, config):
+    def __init__(self, name, pt, config, calculator_section="ACE"):
         super().__init__(name, pt, config)
         self._data = {}
         self._i = 0
         self._lmp = None
         self._row_index = 0
+        
+        calculator_config  = self.config.sections[calculator_section]
+        self._ncoeff       = calculator_config.ncoeff
+        self._numtypes     = calculator_config.numtypes
+        self._type_mapping = calculator_config.type_mapping
+        self._rcutfac      = calculator_config.rcutfac
+        self._bzeroflag    = calculator_config.bzeroflag
+        self._bikflag      = calculator_config.bikflag
+        self._dgradflag    = calculator_config.dgradflag
+        
         self.pt.check_lammps()
 
     def get_width(self):
@@ -27,7 +37,7 @@ class LammpsPace(LammpsBase):
         # this is super clean when there is only one value per key, needs reworking
         # self._set_variables(**_lammps_variables(config.sections["ACE"].__dict__))
 
-        self._lmp.command(f"variable rcutfac equal {max(self.config.sections['ACE'].rcutfac)}")
+        self._lmp.command(f"variable rcutfac equal {max(self._rcutfac)}")
 
         for line in self.config.sections["REFERENCE"].lmp_pairdecl:
             self._lmp.command(line.lower())
@@ -37,11 +47,11 @@ class LammpsPace(LammpsBase):
         self._set_neighbor_list()
 
     def _set_box(self):
-        self._set_box_helper(numtypes=self.config.sections['ACE'].numtypes)
+        self._set_box_helper(numtypes=self._numtypes)
 
     def _create_atoms(self):
         for i, (a_t, (a_x, a_y, a_z)) in enumerate(zip(self._data["AtomTypes"], self._data["Positions"])):
-            a_t = self.config.sections["ACE"].type_mapping[a_t]
+            a_t = self._type_mapping[a_t]
             self._lmp.command(f"create_atoms {a_t} single {a_x:20.20g} {a_y:20.20g} {a_z:20.20g} remap yes")
         n_atoms = int(self._lmp.get_natoms())
         assert i + 1 == n_atoms, "Atom counts don't match when creating atoms: {}, {}\nGroup and configuration: {} {}".format(i + 1, n_atoms, self._data["Group"],self._data["File"])
@@ -63,16 +73,15 @@ class LammpsPace(LammpsBase):
             self._lmp.command(f"variable {k} equal {v}")
 
     def _set_computes(self):
-        numtypes = self.config.sections['ACE'].numtypes
 
         # everything is handled by LAMMPS compute pace (similar format as compute snap)
 
-        if not self.config.sections['ACE'].bikflag:
-            base_pace = "compute pace all pace coupling_coefficients.yace 0 0"
-        elif (self.config.sections['ACE'].bikflag and not self.config.sections['ACE'].dgradflag):
-            base_pace = "compute pace all pace coupling_coefficients.yace 1 0"
-        elif (self.config.sections['ACE'].bikflag and self.config.sections['ACE'].dgradflag):
+        if (self._bikflag and self._dgradflag):
             base_pace = "compute pace all pace coupling_coefficients.yace 1 1"
+        elif (self._bikflag and not self._dgradflag):
+            base_pace = "compute pace all pace coupling_coefficients.yace 1 0"
+        else:
+            base_pace = "compute pace all pace coupling_coefficients.yace 0 0"
         self._lmp.command(base_pace)
 
     def _collect_lammps_nonlinear(self):

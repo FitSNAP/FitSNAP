@@ -1,6 +1,14 @@
 # ignoring run example files
 examples/*
 examples/library/genetic_algorithm/__pycache__
+coupling_coefficients.yace
+wig_LR*
+*.acecoeff
+*.mod
+*.md
+*.yace
+
+
 
 # ignoring built test docs
 docs/build/
@@ -27,3 +35,10 @@ docs/build/
 
 # ignore PACE library files
 fitsnap3lib/lib/sym_ACE/lib/*.pickle
+/fitsnap3lib/lib/slate_solver/slate_solver.egg-info
+fitsnap3lib/lib/slate_solver/slate_wrapper.cpp
+*.so
+
+.ipynb_checkpoints
+.jupyter
+~*

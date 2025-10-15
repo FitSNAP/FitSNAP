@@ -73,14 +73,18 @@ class Calculator:
         Allocate shared arrays for calculator.
         """
 
+        pt = self.pt
+
         # TODO : Any extra config pulls should be done before this
 
-        self.pt.sub_barrier()
+        pt.sub_barrier()
         # total number of atoms in all configs, summed
-        self.number_of_atoms = self.pt.shared_arrays["number_of_atoms"].array.sum()
+        self.number_of_atoms = pt.shared_arrays["number_of_atoms"].array.sum()
         # total number of configs on all procs in a node
-        self.number_of_files_per_node = len(self.pt.shared_arrays["number_of_atoms"].array)
+        self.number_of_files_per_node = len(pt.shared_arrays["number_of_atoms"].array)
         # self.nconfigs is the number of configs on this proc, assigned in lammps_base
+        
+        
 
         # create data matrices for nonlinear pytorch solver
 
@@ -98,7 +102,7 @@ class Calculator:
 
             if self.config.sections["CALCULATOR"].force:
                 c_len += 3*self.number_of_atoms
-                dgrad_len += self.pt.shared_arrays["number_of_dgrad_rows"].array.sum()
+                dgrad_len += pt.shared_arrays["number_of_dgrad_rows"].array.sum()
 
             if self.config.sections["CALCULATOR"].per_atom_scalar:
 
@@ -117,56 +121,53 @@ class Calculator:
 
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
 
-            a_size = ( (a_len * a_width) + (dgrad_len * a_width) ) * self.pt.double_size
+            a_size = ( (a_len * a_width) + (dgrad_len * a_width) ) * pt.double_size
             if self.config.args.verbose:
-                self.pt.single_print(">>> Matrix of descriptors and descriptor derivatives takes up ", 
+                pt.single_print(">>> Matrix of descriptors and descriptor derivatives takes up ", 
                               "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
                               "% of the total memory:", 
                               "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
-            if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
+            if a_size / pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
                 raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
-            elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
-                self.pt.single_print("Warning: > 50% RAM. I hope you know what you are doing!")
+            elif a_size / pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
+                pt.single_print("Warning: > 50% RAM. I hope you know what you are doing!")
 
-            self.pt.create_shared_array('a', a_len, a_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
+            pt.create_shared_array('a', a_len, a_width)
+            pt.create_shared_array('b', b_len)
+            pt.create_shared_array('c', c_len)
+            pt.create_shared_array('w', b_len, 2)
+            pt.create_shared_array('t', a_len, 1)
             if self.config.sections["CALCULATOR"].per_atom_scalar:
                 # create per-atom scalar arrays
-                self.pt.create_shared_array('pas', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
+                pt.create_shared_array('pas', a_len, 1)
 
             #if self.config.sections["CALCULATOR"].force:
-            self.pt.create_shared_array('dgrad', dgrad_len, a_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('dbdrindx', dgrad_len, 3, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
+            pt.create_shared_array('dgrad', dgrad_len, a_width)
+            pt.create_shared_array('dbdrindx', dgrad_len, 3)
 
             # make an index for which the 'a' array starts on a particular proc
-            self.pt.new_slice_a()
-            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0] 
+            pt.new_slice_a()
+            self.shared_index = pt.fitsnap_dict["sub_a_indices"][0] 
             # make an index for which the 'b' array starts on a particular proc
-            self.pt.new_slice_b()
-            self.shared_index_b = self.pt.fitsnap_dict["sub_b_indices"][0] 
+            pt.new_slice_b()
+            self.shared_index_b = pt.fitsnap_dict["sub_b_indices"][0] 
             # make an index for which the 'c' array starts on a particular proc
-            self.pt.new_slice_c()
-            self.shared_index_c = self.pt.fitsnap_dict["sub_c_indices"][0] 
-            #self.pt.new_slice_t() # atom types
+            pt.new_slice_c()
+            self.shared_index_c = pt.fitsnap_dict["sub_c_indices"][0] 
+            #pt.new_slice_t() # atom types
 
             # make an index for which the 'dgrad' array starts on a particular proc
-            self.pt.new_slice_dgrad()
-            self.shared_index_dgrad = self.pt.fitsnap_dict["sub_dgrad_indices"][0]
+            pt.new_slice_dgrad()
+            self.shared_index_dgrad = pt.fitsnap_dict["sub_dgrad_indices"][0]
 
             # create fitsnap dicts - distributed lists of size nconfig per proc
             # these later get gathered on the root proc in calculator.gather_distributed_lists
 
-            self.pt.add_2_fitsnap("Groups", DistributedList(self.nconfigs))
-            self.pt.add_2_fitsnap("Configs", DistributedList(self.nconfigs))
-            self.pt.add_2_fitsnap("NumAtoms", DistributedList(self.nconfigs))
-            self.pt.add_2_fitsnap("NumDgradRows", DistributedList(self.nconfigs))
-            self.pt.add_2_fitsnap("Testing", DistributedList(self.nconfigs))
+            pt.add_2_fitsnap("Groups", DistributedList(self.nconfigs))
+            pt.add_2_fitsnap("Configs", DistributedList(self.nconfigs))
+            pt.add_2_fitsnap("NumAtoms", DistributedList(self.nconfigs))
+            pt.add_2_fitsnap("NumDgradRows", DistributedList(self.nconfigs))
+            pt.add_2_fitsnap("Testing", DistributedList(self.nconfigs))
 
         # get data arrays for network solvers
 
@@ -179,7 +180,7 @@ class Calculator:
             neighlist_len = 0 # number of neighbors for all configs
 
             a_len += self.number_of_atoms # total number of atoms in all configs
-            neighlist_len += self.pt.shared_arrays["number_of_neighs_scrape"].array.sum()
+            neighlist_len += pt.shared_arrays["number_of_neighs_scrape"].array.sum()
 
             if self.config.sections["CALCULATOR"].energy:
                 b_len += self.number_of_files_per_node # total number of configs
@@ -197,64 +198,60 @@ class Calculator:
             assert isinstance(neighlist_width, int)
 
             # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
-            a_size = (neighlist_len * neighlist_width + 2 * c_len * c_width) * self.pt.double_size
+            a_size = (neighlist_len * neighlist_width + 2 * c_len * c_width) * pt.double_size
             if self.config.args.verbose:
-                self.pt.single_print(">>> Matrix of data takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+                pt.single_print(">>> Matrix of data takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
                               "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB")
-            if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
+            if a_size / pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
                 raise MemoryError("The data memory larger than 50% of your RAM. \n Aborting...!")
-            elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
-                self.pt.single_print("Warning: > 50 % RAM. I hope you know what you are doing!")
+            elif a_size / pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
+                pt.single_print("Warning: > 50 % RAM. I hope you know what you are doing!")
 
             # create shared arrays
             a_width = 5
             neighlist_width = 2 # i j 
             xneigh_width = 3 # xj yj zj, with PBC corrections
-            self.pt.create_shared_array('a', a_len, a_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('neighlist', neighlist_len, neighlist_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('xneigh', neighlist_len, xneigh_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('transform_x', neighlist_len, xneigh_width, 
-                                        tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('b', b_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('x', c_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('w', b_len, 2, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('t', a_len, 1, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('positions', a_len, 3, tm=self.config.sections["SOLVER"].true_multinode)
+            pt.create_shared_array('a', a_len, a_width)
+            pt.create_shared_array('neighlist', neighlist_len, neighlist_width)
+            pt.create_shared_array('xneigh', neighlist_len, xneigh_width)
+            pt.create_shared_array('transform_x', neighlist_len, xneigh_width)
+            pt.create_shared_array('b', b_len)
+            pt.create_shared_array('x', c_len)
+            pt.create_shared_array('w', b_len, 2)
+            pt.create_shared_array('t', a_len, 1)
+            pt.create_shared_array('positions', a_len, 3)
             
             # also need descriptors for network standardization
             # for pairwise networks, there are num_neigh*num_descriptors total descriptors to store
             # TODO: if statement here to catch possibilities for custom networks, e.g. nonpairwise descriptors, etc.
 
-            self.pt.create_shared_array('descriptors', neighlist_len, self.config.sections['CUSTOM'].num_descriptors)
+            pt.create_shared_array('descriptors', neighlist_len, self.config.sections['CUSTOM'].num_descriptors)
 
             if self.config.sections["CALCULATOR"].force:
-                self.pt.create_shared_array('c', c_len, tm=self.config.sections["SOLVER"].true_multinode)
+                pt.create_shared_array('c', c_len)
 
             # make an index for which the 'a' array starts on a particular proc
-            self.pt.new_slice_a()
-            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0] 
+            pt.new_slice_a()
+            self.shared_index = pt.fitsnap_dict["sub_a_indices"][0] 
             # make an index for which the 'b' array starts on a particular proc
-            self.pt.new_slice_b()
-            self.shared_index_b = self.pt.fitsnap_dict["sub_b_indices"][0] 
+            pt.new_slice_b()
+            self.shared_index_b = pt.fitsnap_dict["sub_b_indices"][0] 
             # make an index for which the 'c' array starts on a particular proc
-            self.pt.new_slice_c()
-            self.shared_index_c = self.pt.fitsnap_dict["sub_c_indices"][0] 
-            #self.pt.new_slice_t() # atom types
+            pt.new_slice_c()
+            self.shared_index_c = pt.fitsnap_dict["sub_c_indices"][0] 
+            #pt.new_slice_t() # atom types
             # make an index for which the 'neighlist' array starts on a particular proc
-            self.pt.new_slice_neighlist()
-            self.shared_index_neighlist = self.pt.fitsnap_dict["sub_neighlist_indices"][0] 
+            pt.new_slice_neighlist()
+            self.shared_index_neighlist = pt.fitsnap_dict["sub_neighlist_indices"][0] 
 
             # create fitsnap dicts - distributed lists of size nconfig per proc
             # these later get gathered on the root proc in calculator.gather_distributed_lists
 
-            self.pt.add_2_fitsnap("Groups", DistributedList(self.nconfigs))
-            self.pt.add_2_fitsnap("Configs", DistributedList(self.nconfigs))
-            self.pt.add_2_fitsnap("NumAtoms", DistributedList(self.nconfigs))
-            self.pt.add_2_fitsnap("NumNeighs", DistributedList(self.nconfigs))
-            self.pt.add_2_fitsnap("Testing", DistributedList(self.nconfigs))
+            pt.add_2_fitsnap("Groups", DistributedList(self.nconfigs))
+            pt.add_2_fitsnap("Configs", DistributedList(self.nconfigs))
+            pt.add_2_fitsnap("NumAtoms", DistributedList(self.nconfigs))
+            pt.add_2_fitsnap("NumNeighs", DistributedList(self.nconfigs))
+            pt.add_2_fitsnap("Testing", DistributedList(self.nconfigs))
 
         # get data arrays for linear solvers
 
@@ -273,30 +270,61 @@ class Calculator:
 
             a_width = self.get_width()
             assert isinstance(a_width, int)
+            
+            if self.config.sections["SOLVER"].solver.upper() == "SLATE":
+            
+                # TODO: dont bother checking memory on multinode for now
+                # if it blows up just get more nodes
+                            
+                # preallocate more rows for augmented QR
+                # do hard work upfront to avoid pain later
+                    
+                # spread regularization rows across nodes/ranks instead of all
+                # at bottom of global matrix to balance tiles for SLATE
+                    
+                # waste a little memory to be more robust
+                # optimal is same amount of configs per node
+                    
+                max_a_len = pt._comm.allreduce(a_len, op=pt.MPI.MAX)
+                method = self.config.sections["SLATE"].method.upper()
+                
+                if method == "RIDGE":
+                    pt.add_2_fitsnap("is_slate_ridge", True)
+                    extra_rows = a_width
+                elif method == "ARD":
+                    extra_rows = 0
+                else:
+                    raise RuntimeError(f"SLATE method {method} not implemented.")
 
-            # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
-            a_size = a_len * a_width * self.pt.double_size
-            if self.config.args.verbose:
-                self.pt.single_print(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
-                              "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB") #, "on rank", "{:d}".format(self.pt._rank))
-            if a_size / self.pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
-                raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
-            elif a_size / self.pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
-                self.pt.single_print("Warning: > 50 % RAM. I hope you know what you are doing!")
+                aw_len = int(np.ceil((max_a_len*pt._number_of_nodes + extra_rows)/pt._number_of_nodes))
+                pt.create_shared_array('aw', aw_len, a_width, order='F')
+                pt.create_shared_array('bw', aw_len, order='F')               
+              
+            else:
 
-            self.pt.create_shared_array('a', a_len, a_width, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('b', a_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.create_shared_array('w', a_len, tm=self.config.sections["SOLVER"].true_multinode)
-            self.pt.new_slice_a()
-            self.shared_index = self.pt.fitsnap_dict["sub_a_indices"][0]
+              # TODO: Pick a method to get RAM accurately (pt.get_ram() seems to get RAM wrong on Blake)
+              a_size = a_len * a_width * pt.double_size
+              if self.config.args.verbose:
+                  pt.single_print(">>> Matrix of descriptors takes up ", "{:.4f}".format(100 * a_size / self.config.sections["MEMORY"].memory),
+                              "% of the total memory:", "{:.4f}".format(self.config.sections["MEMORY"].memory*1e-9), "GB") #, "on rank", "{:d}".format(pt._rank))
+              if a_size / pt.get_ram() > 0.5 and not self.config.sections["MEMORY"].override:
+                  raise MemoryError("The descriptor matrix is larger than 50% of your RAM. \n Aborting...!")
+              elif a_size / pt.get_ram() > 0.5 and self.config.sections["MEMORY"].override:
+                  pt.single_print("Warning: > 50 % RAM. I hope you know what you are doing!")
+            
+            pt.create_shared_array('a', a_len, a_width)
+            pt.create_shared_array('b', a_len)
+            pt.create_shared_array('w', a_len)
+            pt.new_slice_a()
+            self.shared_index = pt.fitsnap_dict["sub_a_indices"][0]
             # pt.slice_array('a')
 
-            self.pt.add_2_fitsnap("Groups", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Configs", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Row_Type", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Atom_I", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Testing", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
-            self.pt.add_2_fitsnap("Atom_Type", DistributedList(self.pt.fitsnap_dict["sub_a_size"]))
+            pt.add_2_fitsnap("Groups", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+            pt.add_2_fitsnap("Configs", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+            pt.add_2_fitsnap("Row_Type", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+            pt.add_2_fitsnap("Atom_I", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+            pt.add_2_fitsnap("Testing", DistributedList(pt.fitsnap_dict["sub_a_size"]))
+            pt.add_2_fitsnap("Atom_Type", DistributedList(pt.fitsnap_dict["sub_a_size"]))
 
     def process_configs(self, data, i):
         pass

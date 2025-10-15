@@ -36,6 +36,8 @@ Indices and tables
    Run/index.rst
    Linear
    Pytorch
+   fairchem
+   pacemaker
 
 .. _programmer_documentation:
 .. toctree::

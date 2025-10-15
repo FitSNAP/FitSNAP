@@ -4,6 +4,7 @@ from fitsnap3lib.io.error import ExitFunc
 from fitsnap3lib.io.sections.calculator_sections.bispectrum import Bispectrum
 from fitsnap3lib.io.sections.calculator_sections.calculator import Calculator
 from fitsnap3lib.io.sections.calculator_sections.ace import Ace
+from fitsnap3lib.io.sections.calculator_sections.pyace import PyAce
 from fitsnap3lib.io.sections.calculator_sections.basic_calculator import Basic
 from fitsnap3lib.io.sections.calculator_sections.custom import Custom
 from fitsnap3lib.io.sections.eshift import Eshift
@@ -19,6 +20,7 @@ from fitsnap3lib.io.sections.solver_sections.solver import Solver
 from fitsnap3lib.io.sections.solver_sections.ard import Ard
 from fitsnap3lib.io.sections.solver_sections.lasso import Lasso
 from fitsnap3lib.io.sections.solver_sections.ridge import Ridge
+from fitsnap3lib.io.sections.solver_sections.slate import Slate
 from fitsnap3lib.io.sections.solver_sections.jax import JAX
 from fitsnap3lib.io.sections.solver_sections.pytorch import PYTORCH
 from fitsnap3lib.io.sections.solver_sections.network import NETWORK

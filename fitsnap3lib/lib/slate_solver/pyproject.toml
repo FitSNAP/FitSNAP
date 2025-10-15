@@ -1,0 +1,12 @@
+[project]
+name = "slate_solver"
+version = "0.1.0"
+description = "Cython wrapper for SLATE solver in FitSNAP"
+readme = "README.md"
+requires-python = ">=3.9"
+
+[build-system]
+requires = ["setuptools", "wheel", "Cython>=0.29", "numpy"]
+build-backend = "setuptools.build_meta"
+
+# Note: mpi4py must be loaded as a module on HPC systems

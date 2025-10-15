@@ -233,6 +233,16 @@ class Config():
         else:
             config_dict = {s:vars(self.sections[s]) for s in self.sections}
         return config_dict
+    
+    @property
+    def debug(self):
+        """
+        Convenience property to access debug setting from EXTRAS section.
+        
+        Returns:
+            bool: True if debug is enabled, False otherwise.
+        """
+        return 'EXTRAS' in self.sections and self.sections['EXTRAS'].debug
 
 
 

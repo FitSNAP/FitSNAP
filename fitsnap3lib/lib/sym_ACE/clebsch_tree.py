@@ -1,14 +1,8 @@
 from fitsnap3lib.lib.sym_ACE.gen_labels import *
 from fitsnap3lib.lib.sym_ACE.coupling_coeffs import *
-from mpi4py import MPI
+from . import rank_zero
 
-comm = MPI.COMM_WORLD
-
-from fitsnap3lib.parallel_tools import ParallelTools
-pt = ParallelTools(comm = comm)
-
-
-@pt.rank_zero
+@rank_zero
 def get_ms(l,M_R=0):
 
     # retrieves the set of m_i combinations obeying sum_i m_i = M_R for an arbitrary l vector
@@ -22,7 +16,7 @@ def get_ms(l,M_R=0):
     return m_strs
 
 #manually coded reductions of spherical harmonics 
-@pt.rank_zero
+@rank_zero
 def rank_1_cg_tree(l,L_R=0,M_R=0):
 
     mstrs = get_ms(l,M_R)
@@ -45,7 +39,7 @@ def rank_1_cg_tree(l,L_R=0,M_R=0):
     return decomposed
 
 
-@pt.rank_zero
+@rank_zero
 def rank_2_cg_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -70,7 +64,7 @@ def rank_2_cg_tree(l,L_R=0,M_R=0):
                 decomposed[inter][mstr] = (w)
     return decomposed
 
-@pt.rank_zero
+@rank_zero
 def rank_3_cg_tree(l,L_R=0,M_R=0):
 
     full_inter_tuples = tree_l_inters(l,L_R=L_R,M_R=M_R)
@@ -95,7 +89,7 @@ def rank_3_cg_tree(l,L_R=0,M_R=0):
     return decomposed
 
 
-@pt.rank_zero
+@rank_zero
 def generalized_rank_4_inters(grouped_l,L_R):
     l = flatten(grouped_l)
     l1,l2,l3,l4 = tuple(l)
@@ -178,7 +172,7 @@ these_cgs = generalized_rank_4_cg_tree(l=ltst,sigma_c=sigmactst,L_R=0,M_R=0)
 
 print (these_cgs)
 """
-@pt.rank_zero
+@rank_zero
 def rank_4_cg_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -212,7 +206,7 @@ def rank_4_cg_tree(l,L_R=0,M_R=0):
 
 
 
-@pt.rank_zero
+@rank_zero
 def rank_5_cg_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -245,7 +239,7 @@ def rank_5_cg_tree(l,L_R=0,M_R=0):
                             decomposed[inter][mstr] = (w)
     return decomposed
 
-@pt.rank_zero
+@rank_zero
 def rank_6_cg_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -283,7 +277,7 @@ def rank_6_cg_tree(l,L_R=0,M_R=0):
                                 decomposed[inter][mstr] = (w)
     return decomposed
 
-@pt.rank_zero
+@rank_zero
 def rank_7_cg_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -325,7 +319,7 @@ def rank_7_cg_tree(l,L_R=0,M_R=0):
                                     decomposed[inter][mstr] = (w)
     return decomposed
 
-@pt.rank_zero
+@rank_zero
 def rank_8_cg_tree(l,L_R=0,M_R=0):
 
     nodes,remainder = tree(l)
@@ -368,5 +362,3 @@ def rank_8_cg_tree(l,L_R=0,M_R=0):
 
                                         decomposed[inter][mstr] = w
     return decomposed
-
-del pt

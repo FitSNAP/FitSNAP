@@ -59,6 +59,9 @@ class Solver:
 
         Returns:
             aw, bw (np.array): design matrix and truth array multiplied by weights.
+            
+        *** FIXME: ORPHANED CODE prepare_data() NEVER CALLED FROM ANYWHERE ELSE ***    
+            
         """
 
         if fs_dict is not None:
@@ -116,21 +119,44 @@ class Solver:
         Returns:
             A Pandas series of floats, although some quantities like nconfig are cast to int later.
         """
+        # Unweighted metrics
         res = g['truths'] - g['preds']
         mae = np.mean(abs(res))
         ssr = np.square(res).sum()
         nconfig = len(g['truths'])
         mse = ssr / nconfig
         rmse = np.sqrt(mse)
-        rsq = 1 - ssr / np.sum(np.square(g['truths'] - (g['truths'] / nconfig).sum()))
-        w_res = g['weights'] * (g['truths'] - g['preds'])
-        w_mae = np.mean(abs(w_res))
-        w_ssr = np.square(w_res).sum()
-        w_nconfig = np.count_nonzero(g['weights'])
-        w_mse = w_ssr / w_nconfig
-        w_rmse = np.sqrt(w_mse)
-        w_rsq = 1 - w_ssr / np.sum(np.square((g['weights'] * g['truths']) - (g['weights'] * g['truths'] / w_nconfig).sum()))
-        return Series({'ncount':nconfig, 'mae':mae, 'rmse':rmse, 'rsq':rsq, 'w_ncount':w_nconfig, 'w_mae':w_mae, 'w_rmse':w_rmse, 'w_rsq':w_rsq})
+        rsq = 1 - ssr / np.sum(np.square(g['truths'] - g['truths'].mean()))
+        
+        # Weighted metrics (using proper statistical methodology)
+        sum_weights = np.sum(g['weights'])
+        if sum_weights > 0:
+            # Weighted absolute error
+            w_ae = g['weights'] * abs(g['truths'] - g['preds'])
+            w_mae = np.sum(w_ae) / sum_weights
+            
+            # Weighted squared error
+            w_se = g['weights'] * np.square(g['truths'] - g['preds'])
+            w_ssr = np.sum(w_se)
+            w_mse = w_ssr / sum_weights
+            w_rmse = np.sqrt(w_mse)
+            
+            # Weighted R² (using weighted mean)
+            weighted_mean = np.sum(g['weights'] * g['truths']) / sum_weights
+            weighted_ss_tot = np.sum(g['weights'] * np.square(g['truths'] - weighted_mean))
+            w_rsq = 1 - (w_ssr / weighted_ss_tot) if weighted_ss_tot != 0 else 0
+            
+            # Count non-zero weights for compatibility
+            w_nconfig = np.count_nonzero(g['weights'])
+        else:
+            # If all weights are zero, return unweighted metrics
+            w_mae = mae
+            w_rmse = rmse
+            w_rsq = rsq
+            w_nconfig = nconfig
+        
+        return Series({'ncount':nconfig, 'mae':mae, 'rmse':rmse, 'rsq':rsq, 
+                      'w_ncount':w_nconfig, 'w_mae':w_mae, 'w_rmse':w_rmse, 'w_rsq':w_rsq})
 
     
     #@pt.rank_zero
@@ -384,13 +410,17 @@ class Solver:
                 self.df.to_pickle(self.config.sections['EXTRAS'].dataframe_file)
 
             # Proceed with error analysis if doing a fit.
-            if self.fit is not None and not self.config.sections["SOLVER"].true_multinode:
+            if self.fit is not None and not self.config.sections["SOLVER"].multinode:
 
                 # Return data for each group.
+                
+                # resolve pandas FutureWarning by explicitly excluding the grouping columns
+                # from the operation, which will be the default behavior in future versions
 
-                grouped = self.df.groupby(['Groups', \
-                    'Testing', \
-                    'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
+                grouped = self.df.groupby(['Groups', 'Testing', 'Row_Type']).apply(
+                  self._ncount_mae_rmse_rsq_unweighted_and_weighted,
+                  include_groups=False
+                )
 
                 # reformat the weighted and unweighted data into separate rows
 
@@ -401,8 +431,13 @@ class Solver:
 
                 # return data for dataset as a whole
 
-                all = self.df.groupby(['Testing', 'Row_Type']).\
-                    apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
+                # resolve pandas FutureWarning by explicitly excluding the grouping columns
+                # from the operation, which will be the default behavior in future versions
+
+                all = self.df.groupby(['Testing', 'Row_Type']).apply(
+                    self._ncount_mae_rmse_rsq_unweighted_and_weighted,
+                    include_groups=False
+                )
 
                 # reformat the weighted and unweighted data into separate rows
 
@@ -470,3 +505,7 @@ class Solver:
             pf_stdev = np.zeros(a.shape[0])
 
         return pf_stdev
+
+    def validation(self):
+        # only implemented in SLATE solver
+        pass

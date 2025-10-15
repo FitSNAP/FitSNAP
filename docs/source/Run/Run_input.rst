@@ -220,6 +220,174 @@ This section contains settings for the Atomic Cluster Expansion (ACE) descriptor
 
 .. WARNING:: Only change ACE basis flags if you know what you are doing!
 
+[PYACE]
+^^^^^^^
+
+This section allows detailed control over ACE descriptors using the `pyace` Python package, providing compatibility with `pacemaker <https://pacemaker.readthedocs.io/>`_ input formats. This is an alternative to the [ACE] section that provides more flexibility and direct access to pyace functionality.
+
+.. warning::
+
+    [PYACE] is currently EXPERIMENTAL and in development. For production runs, [ACE] is recommended.
+
+The PYACE section supports two input formats:
+
+1. **JSON format** (recommended for complex configurations)
+2. **Simple key-value format** (for basic configurations)
+
+.. note::
+
+    Simple format only works for uniform settings across all bonds.
+
+**Basic Settings:**
+
+- :code:`elements` list of element symbols, e.g. :code:`Al Ni` for a binary system
+
+- :code:`cutoff` global cutoff radius for neighbor list construction (Angstroms)
+
+- :code:`delta_spline_bins` spacing for spline interpolation, default 0.001
+
+**JSON Format (Advanced):**
+
+For complex multi-element systems, use JSON strings to specify detailed configurations:
+
+- :code:`embeddings` JSON string specifying embedding functions for each element::
+
+    embeddings = {
+      "Al": {
+        "npot": "FinnisSinclairShiftedScaled",
+        "fs_parameters": [1, 1, 1, 0.5],
+        "ndensity": 2,
+        "rho_core_cut": 200000,
+        "drho_core_cut": 250
+      },
+      "Ni": {
+        "npot": "FinnisSinclairShiftedScaled", 
+        "fs_parameters": [1, 1],
+        "ndensity": 1,
+        "rho_core_cut": 3000,
+        "drho_core_cut": 150
+      }
+    }
+
+- :code:`bonds` JSON string specifying bond parameters for element pairs::
+
+    bonds = {
+      "ALL": {
+        "radbase": "ChebExpCos",
+        "radparameters": [5.25],
+        "rcut": 5.0,
+        "dcut": 0.01,
+        "r_in": 1.0,
+        "delta_in": 0.5,
+        "core-repulsion": [100.0, 5.0]
+      },
+      "BINARY": {
+        "radbase": "ChebPow",
+        "radparameters": [6.25],
+        "rcut": 5.5
+      }
+    }
+
+- :code:`functions` JSON string specifying basis functions::
+
+    functions = {
+      "UNARY": {
+        "nradmax_by_orders": [15, 3, 2, 2, 1],
+        "lmax_by_orders": [0, 2, 2, 1, 1],
+        "coefs_init": "zero"
+      },
+      "BINARY": {
+        "nradmax_by_orders": [15, 2, 2, 2],
+        "lmax_by_orders": [0, 2, 2, 1]
+      }
+    }
+
+**Simple Format (Basic):**
+
+For uniform settings across all elements/bonds, use simple key-value pairs:
+
+*Embedding parameters:*
+
+- :code:`embedding_npot` embedding function type, default "FinnisSinclairShiftedScaled"
+- :code:`embedding_fs_parameters` JSON list of Finnis-Sinclair parameters, e.g. [1, 1]
+- :code:`embedding_ndensity` number of density components, default 1
+- :code:`embedding_rho_core_cut` core repulsion density cutoff, default 200000
+- :code:`embedding_drho_core_cut` core repulsion density transition width, default 250
+
+*Bond parameters:*
+
+- :code:`bond_radbase` radial basis function type, default "ChebExpCos"
+- :code:`bond_radparameters` JSON list of radial parameters, e.g. [5.25]
+- :code:`bond_rcut` outer cutoff radius (Angstroms), default 5.0
+- :code:`bond_dcut` outer cutoff transition width, default 0.01
+- :code:`bond_r_in` inner cutoff radius, default 1.0
+- :code:`bond_delta_in` inner cutoff transition width, default 0.5
+- :code:`bond_core_repulsion` JSON list [prefactor, lambda] for core repulsion, default [100.0, 5.0]
+
+*Function parameters:*
+
+- :code:`function_nradmax_by_orders` JSON list of max radial basis functions per body order, e.g. [15, 3, 2, 2, 1]
+- :code:`function_lmax_by_orders` JSON list of max angular momentum per body order, e.g. [0, 2, 2, 1, 1]
+- :code:`function_coefs_init` coefficient initialization: "zero" (default) or "random"
+
+**Legacy Compatibility:**
+
+- :code:`type` alternative to :code:`elements` for backwards compatibility
+- :code:`bzeroflag` subtract isolated atom contributions (0 or 1)
+
+**Keywords in JSON configurations:**
+
+In the JSON configurations, you can use keywords to apply settings to groups of elements/bonds:
+
+- :code:`ALL` applies to all element combinations
+- :code:`UNARY` applies to single-element (self-interaction) terms
+- :code:`BINARY` applies to two-element interaction terms
+- :code:`TERNARY` applies to three-element interaction terms
+- Element-specific keys like :code:`Al`, :code:`Ni` for individual elements
+- Bond-specific keys like :code:`AlAl`, :code:`AlNi` for specific element pairs
+
+More specific keywords override less specific ones (e.g., :code:`AlNi` overrides :code:`BINARY` which overrides :code:`ALL`).
+
+**Example simple configuration:**
+
+.. code-block:: ini
+
+    [PYACE]
+    elements = Al Ni
+    cutoff = 6.0
+    delta_spline_bins = 0.001
+    
+    # Simple uniform settings
+    embedding_npot = FinnisSinclairShiftedScaled
+    embedding_fs_parameters = [1, 1]
+    embedding_ndensity = 1
+    
+    bond_radbase = ChebExpCos
+    bond_radparameters = [5.25]
+    bond_rcut = 5.0
+    bond_dcut = 0.01
+    
+    function_nradmax_by_orders = [15, 3, 2, 2, 1]
+    function_lmax_by_orders = [0, 2, 2, 1, 1]
+
+**Example advanced configuration with JSON:**
+
+.. code-block:: ini
+
+    [PYACE]
+    elements = Al Ni
+    cutoff = 6.0
+    delta_spline_bins = 0.001
+    
+    # Detailed per-element embeddings
+    embeddings = {"Al": {"npot": "FinnisSinclairShiftedScaled", "fs_parameters": [1, 1, 1, 0.5], "ndensity": 2}, "Ni": {"npot": "FinnisSinclairShiftedScaled", "fs_parameters": [1, 1], "ndensity": 1}}
+    
+    # Different bond settings for different pair types  
+    bonds = {"ALL": {"radbase": "ChebExpCos", "radparameters": [5.25], "rcut": 5.0}, "BINARY": {"radbase": "ChebPow", "radparameters": [6.25], "rcut": 5.5}}
+    
+    # Body-order specific function settings
+    functions = {"UNARY": {"nradmax_by_orders": [15, 3, 2, 2, 1], "lmax_by_orders": [0, 2, 2, 1, 1]}, "BINARY": {"nradmax_by_orders": [15, 2, 2, 2], "lmax_by_orders": [0, 2, 2, 1]}}
+
 [CALCULATOR]
 ^^^^^^^^^^^^
 

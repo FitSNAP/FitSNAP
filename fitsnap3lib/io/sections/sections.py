@@ -67,9 +67,15 @@ class Section:
             raise ValueError("{} is not an implemented interpreter.")
 
         if section not in self._config:
-            value = convert(fallback)
+            raw_value = fallback
         else:
-            value = convert(self._config.get(section, key, fallback=fallback))
+            raw_value = self._config.get(section, key, fallback=fallback)
+        
+        # Handle None values - return None directly instead of trying to convert
+        if raw_value is None:
+            value = None
+        else:
+            value = convert(raw_value)
 
         return value
 
@@ -79,7 +85,7 @@ class Section:
         return self._config.items(section)
 
     def check_path(self, name):
-        if name == 'None':
+        if name is None or name == 'None':
             return None
         name = path.join(Section.get_outfile_directory(self), name)
         if self._args.overwrite is None:

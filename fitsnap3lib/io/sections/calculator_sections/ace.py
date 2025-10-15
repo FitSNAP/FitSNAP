@@ -1,5 +1,7 @@
 import numpy as np
 import itertools
+import pickle
+import json
 #from fitsnap3lib.lib.sym_ACE.rpi_lib import *
 #from fitsnap3lib.lib.sym_ACE.yamlpace_tools.potential import  *
 from fitsnap3lib.io.sections.sections import Section
@@ -55,9 +57,60 @@ try:
             if self.b_basis != 'pa_tabulated':
                 self.pt.single_print('WARNING: Only change ACE basis flags if you know what you are doing!')
             self._generate_b_list()
+
+            # Print detailed statistics about ACE basis and design matrix
+            self._print_ace_statistics()
+
             self._write_couple()
             Section.num_desc = len(self.blist)
+                        
             self.delete()
+        
+        def _print_ace_statistics(self):
+            """Print detailed statistics about the ACE basis."""
+            @self.pt.rank_zero
+            def print_stats():
+                print("\n" + "="*80, flush=True)
+                print("ACE STATISTICS", flush=True)
+                print("="*80, flush=True)
+                
+                # Basic configuration
+                print("\n[ACE Configuration]", flush=True)
+                print(f"  Atom types: {' '.join(self.types)} ({self.numtypes})", flush=True)
+                print(f"  Ranks: {' '.join(self.ranks)} "
+                      f"lmin {' '.join(str(l) for l in self.lmin)} "
+                      f"lmax {' '.join(str(l) for l in self.lmax)} "
+                      f"nmax {' '.join(str(n) for n in self.nmax)} "
+                      f"nmaxbase {self.nmaxbase}", flush=True
+                )
+                print(f"  Basis type: {self.b_basis} bzeroflag {self.bzeroflag}", flush=True)
+                
+                # Radial parameters
+                print("\n[Radial Parameters]", flush=True)
+                print(f"  rcutfac: {' '.join(str(r) for r in self.rcutfac)}", flush=True)
+                print(f"  lambda: {' '.join(str(l) for l in self.lmbda)}", flush=True)
+                print(f"  rcinner: {' '.join(str(r) for r in self.rcinner)}", flush=True)
+                print(f"  drcinner: {' '.join(str(d) for d in self.drcinner)}", flush=True)
+                
+                # Basis statistics
+                print("\n[Basis Functions]", flush=True)
+                
+                # Count basis functions by rank
+                rank_counts = {}
+                for nu in self.nus:
+                    rank = int(len(nu.split(','))/3)
+                    rank_counts[rank] = rank_counts.get(rank, 0) + 1
+                
+                for rank in sorted(rank_counts.keys()):
+                    count = rank_counts[rank]
+                    print(f"  Rank {rank}: {count} functions ({count/len(self.nus)*100:.1f}%)", flush=True)
+                
+                print(f"  Total: {len(self.blist)} functions ({self.ncoeff} functions per atom)", flush=True)
+                                
+                print("\n" + "="*80, flush=True)
+                print(flush=True)
+            
+            print_stats()
 
         def _generate_b_list(self):
             self.blist = []
@@ -134,7 +187,8 @@ try:
                 self.blank2J = np.reshape(self.blank2J, len(self.blist))
         
         def _write_couple(self):
-            @self.pt.sub_rank_zero
+            # Only global rank 0 handles all file I/O since nodes share scratch directory
+            @self.pt.rank_zero
             def decorated_write_couple():
                 if self.bzeroflag:
                     assert len(self.types) ==  len(self.erefs), "must provide reference energy for each atom type"
@@ -144,7 +198,8 @@ try:
                 bondinds=range(len(self.types))
                 bonds = [b for b in itertools.product(bondinds,bondinds)]
                 bondstrs = ['[%d, %d]' % b for b in bonds]
-                assert len(self.rcutfac) == len(bondstrs), "must provide rc (radial cutoff) for each BOND type" 
+                #print(f"*** len(self.rcutfac) {len(self.rcutfac)} len(bondstrs) {len(bondstrs)} bondstrs {bondstrs}\n", flush=True);
+                assert len(self.rcutfac) == len(bondstrs), "must provide rc (radial cutoff) for each BOND type"
                 assert len(self.lmbda) == len(bondstrs), "must provide lambda (radial decay parameter) for each BOND type" 
                 assert len(self.rcinner) == len(bondstrs), "must provide rcinner for each BOND type" 
                 assert len(self.drcinner) == len(bondstrs), "must provide drcinner for each BOND type" 
@@ -166,29 +221,34 @@ try:
                 rankstr = ''.join(rankstrlst) % tuple(self.ranks)
                 lstrlst = ['%s']*len(self.ranks)
                 lstr = ''.join(lstrlst) % tuple(self.lmax)
+                
+                # Load or create pickle files
                 if not self.wigner_flag:
                     try:
                         with open('cg_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
                             ccs = pickle.load(handle)
+                            #self.pt.single_print(f"Loaded existing CG coupling coefficients from pickle")
                     except FileNotFoundError:
+                        #self.pt.single_print(f"Creating CG coupling coefficients...")
                         ccs = get_cg_coupling(ldict,L_R=L_R)
-                        #print (ccs)
-                        #store them for later so they don't need to be recalculated
                         store_generalized(ccs, coupling_type='cg',L_R=L_R)
                 else:
                     try:
                         with open('wig_LR_%d_r%s_lmax%s.pickle' %(L_R,rankstr,lstr),'rb') as handle:
                             ccs = pickle.load(handle)
+                            #self.pt.single_print(f"Loaded existing Wigner coupling coefficients from pickle")
                     except FileNotFoundError:
+                        #self.pt.single_print(f"Creating Wigner coupling coefficients...")
                         ccs = get_wig_coupling(ldict,L_R)
-                        #print (ccs)
-                        #store them for later so they don't need to be recalculated
                         store_generalized(ccs, coupling_type='wig',L_R=L_R)
-
+                
+                # Create AcePot and write the potential file
                 apot = AcePot(self.types, reference_ens, [int(k) for k in self.ranks], [int(k) for k in self.nmax],  [int(k) for k in self.lmax], self.nmaxbase, rcvals, lmbdavals, rcinnervals, drcinnervals, [int(k) for k in self.lmin], self.b_basis, **{'ccs':ccs[M_R]})
                 apot.write_pot('coupling_coefficients')
-
+            
             decorated_write_couple()
+            # Wait for global rank 0 to finish all file I/O
+            self.pt.all_barrier()
 
 except ModuleNotFoundError:
 

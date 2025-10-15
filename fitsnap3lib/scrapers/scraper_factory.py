@@ -3,9 +3,15 @@ from fitsnap3lib.scrapers.scrape import Scraper
 from fitsnap3lib.scrapers.json_scraper import Json
 from fitsnap3lib.scrapers.xyz_scraper import XYZ
 from fitsnap3lib.scrapers.vasp_scraper import Vasp
+from fitsnap3lib.scrapers.pacemaker_scraper import Pacemaker
 
-
-#pt = ParallelTools()
+# only import LMDB scraper if required modules are available
+import importlib.util
+if (importlib.util.find_spec("lmdb") is not None and 
+    importlib.util.find_spec("ase") is not None):
+    from fitsnap3lib.scrapers.fairchem_scraper import FAIRChem
+else:
+    FAIRChem = None
 
 
 def scraper(scraper_name, pt, config):

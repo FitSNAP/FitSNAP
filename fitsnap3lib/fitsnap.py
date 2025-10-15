@@ -37,7 +37,82 @@ from fitsnap3lib.calculators.calculator_factory import calculator
 from fitsnap3lib.solvers.solver_factory import solver
 from fitsnap3lib.io.outputs.output_factory import output
 from fitsnap3lib.io.input import Config
-import random
+
+import sys, random, array
+import numpy as np
+from tqdm import tqdm
+
+class GlobalProgressTracker:
+    """
+    Tracks progress across MPI ranks and updates a tqdm progress bar on rank 0
+    showing global progress from all ranks combined.
+    """
+
+    def __init__(self, pt, len_data, update_fraction=0.05):
+
+        # dont capture pt to be extra safe
+        self._comm = pt._comm
+        self.stubs = pt.stubs
+        self._rank = pt._rank
+        
+        self._len_data = len_data
+        self._local_chunk = max(int(update_fraction*len_data),1)
+        self._last_local_update = 0
+       
+        if self.stubs:
+            self._len_all_data = len_data
+        else:
+            self.MPI = pt.MPI
+            self._len_all_data = self._comm.reduce(len_data)
+            self._Isend_buffer = array.array('i', [0])  # persistent buffer for Isends
+        
+        if self._rank == 0:
+            self._global_chunk = max(int(update_fraction*self._len_all_data),1)
+            self._last_update = 0
+            self._completed = 0
+            self._tqdm = tqdm(
+                total=self._len_all_data,
+                desc="Processing configs",
+                unit=" configs",
+                bar_format="{l_bar}{bar}| Elapsed: {elapsed} Remaining: {remaining} | {n_fmt}/{total_fmt} [{rate_fmt}]",
+                dynamic_ncols=True
+            )
+
+    def update(self, i):
+        """ Update local progress and send to rank 0 if enough progress made """
+        if i % self._local_chunk == 0:
+            delta = i - self._last_local_update
+            self._last_local_update = i
+            if self.stubs:
+                self._tqdm.update(delta)
+                self._last_update = i
+            else:
+                self._Isend_buffer[0] = delta
+                self._comm.Isend([self._Isend_buffer, self.MPI.INT], dest=0, tag=self._rank)
+  
+        if self._rank == 0 and not self.stubs:
+            """ Check for progress updates from all ranks """
+            while self._comm.iprobe(source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG):
+                recv_buf = array.array('i', [0]) # delta
+                self._comm.Recv(recv_buf, source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG)
+                self._completed += recv_buf[0]
+            if self._completed - self._last_update >= self._global_chunk:
+                self._tqdm.update(self._completed - self._last_update)
+                self._tqdm.refresh()
+                self._last_update = self._completed
+                print("", flush=True)
+
+    def finalize(self):
+        """Finalize progress tracking and ensure 100% completion."""
+        if self._rank == 0:
+            if not self.stubs:
+                # drain all pending messages
+                while self._comm.Iprobe(source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG):
+                    recv_buf = array.array('i', [0]) # ignore remaining
+                    self._comm.Recv(recv_buf, source=self.MPI.ANY_SOURCE, tag=self.MPI.ANY_TAG)
+            if self._len_all_data > self._last_update:
+                self._tqdm.update(self._len_all_data - self._last_update)
+            self._tqdm.close()
 
 
 class FitSnap:
@@ -70,6 +145,21 @@ class FitSnap:
         self.pt = ParallelTools(comm=comm)
         self.pt.all_barrier()
         self.config = Config(self.pt, input, arguments_lst=arglist)
+
+        # Update ParallelTools with config for debug support and multinode_testing
+        
+        self.pt.debug = getattr(self.config, 'debug', False) or (
+            hasattr(self.config, 'sections') and 'EXTRAS' in self.config.sections and 
+            getattr(self.config.sections['EXTRAS'], 'debug', False))
+
+        self.pt.multinode_testing = (hasattr(self.config, 'sections') and
+                            'EXTRAS' in self.config.sections and
+                            getattr(self.config.sections['EXTRAS'], 'multinode_testing', False))
+                            
+        # need to read config first before splitting comms
+        if self.pt.stubs == 0:
+            self.pt._comm_split()
+        
         if self.config.args.verbose:
             self.pt.single_print(f"FitSNAP instance hash: {self.config.hash}")
         # Instantiate other backbone attributes.
@@ -83,7 +173,7 @@ class FitSnap:
             if "OUTFILE" in self.config.sections else None
 
         self.fit = None
-        self.multinode = 0
+        self.multinode = False
 
         # Optionally read a fit.
         if "EXTRAS" in self.config.sections and self.config.sections["EXTRAS"].only_test:
@@ -93,11 +183,8 @@ class FitSnap:
             if (self.config.sections['CALCULATOR'].nonlinear and (self.pt.lammps_version < 20220915) ):
                 raise Exception(f"Please upgrade LAMMPS to 2022-09-15 or later to use nonlinear solvers.")
         
-        if (self.pt._number_of_nodes > 1 and self.config.sections["EXTRAS"].multinode_testing):
-            self.pt.single_print(f"WARNING: multinode testing toggled on!\nWARNING: this feature is currently only useful for the 'transpose_trick' example.\nWARNING: Otherwise, must use ScaLAPACK solver when using > 1 node or you'll fit to 1/nodes of data.\nWARNING: use 'multinode_testing' at your own risk.\n")
-
-        if (self.pt._number_of_nodes > 1 and not self.config.sections["SOLVER"].true_multinode) and not self.config.sections["EXTRAS"].multinode_testing:
-            raise Exception(f"Must use ScaLAPACK solver when using > 1 node or you'll fit to 1/nodes of data.")
+        if (self.pt._number_of_nodes > 1 and not self.config.sections["SOLVER"].multinode) and not self.config.sections["EXTRAS"].multinode_testing:
+            raise Exception(f"Must use SLATE solver when using > 1 node or you'll fit to 1/nodes of data.")
     
     def __del__(self):
         """Override deletion statement to free shared arrays owned by this instance."""
@@ -168,11 +255,13 @@ class FitSnap:
             self.calculator.create_a()
             # Calculate descriptors.
             if (self.solver.linear):
+                progress_tracker = GlobalProgressTracker(self.pt, len(data))
                 for i, configuration in enumerate(data):
-                    # TODO: Add option to print descriptor calculation progress on single proc.
-                    #if (i % 1 == 0):
-                    #   self.pt.single_print(i)
                     self.calculator.process_configs(configuration, i)
+                    progress_tracker.update(i)
+                self.pt.all_barrier()
+                progress_tracker.finalize()
+
             else:
                 for i, configuration in enumerate(data):
                     self.calculator.process_configs_nonlinear(configuration, i)
@@ -215,9 +304,14 @@ class FitSnap:
         def error_analysis():
             self.solver.error_analysis()
 
+        @self.pt.single_timeit
+        def validation():
+            self.solver.validation()
+
         fit()
         fit_gather()
         error_analysis()
+        validation()
 
     def write_output(self):
         @self.pt.single_timeit

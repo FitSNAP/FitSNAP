@@ -15,7 +15,8 @@ class Outfile(Section):
                             'metrics',
                             'metrics_style',
                             'potential',
-                            'detailed_errors']
+                            'detailed_errors',
+                            'validation']
         self._check_section()
 
         self._outfile()
@@ -26,6 +27,7 @@ class Outfile(Section):
     def _outfile(self):
         self.metric_file = self.check_path(self.get_value("OUTFILE", "metrics", "fitsnap_metrics"))
         self.potential_name = self.check_path(self.get_value("OUTFILE", "potential", "fitsnap_potential"))
+        self.validation = self.get_value("OUTFILE", "validation", None)
 
         # Copy values back to input file variable names for library mode scripts
         self.metrics = self.metric_file

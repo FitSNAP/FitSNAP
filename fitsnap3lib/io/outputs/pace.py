@@ -37,14 +37,24 @@ try:
                 coeffs: list of linear model coefficients.
             """
             if self.config.sections["EXTRAS"].only_test != 1:
-                if self.config.sections["CALCULATOR"].calculator != "LAMMPSPACE":
-                    raise TypeError("PACE output style must be paired with LAMMPSPACE calculator")
-                with optional_open(self.config.sections["OUTFILE"].potential_name and
-                                  self.config.sections["OUTFILE"].potential_name + '.acecoeff', 'wt') as file:
-                    file.write(_to_coeff_string(coeffs, self.config))
-                self.write_potential(coeffs)
-                with optional_open(self.config.sections["OUTFILE"].potential_name and self.config.sections["OUTFILE"].potential_name + '.mod', 'wt') as file:
-                    file.write(_to_potential_file(self.config))
+            
+                if self.config.sections["CALCULATOR"].calculator not in ["LAMMPSPACE", "LAMMPSPYACE"]:
+                    raise TypeError("PACE output style must be paired with LAMMPSPACE or LAMMPSPYACE calculator")
+                    
+                if "ACE" in self.config.sections:
+                    potential_name = self.config.sections["OUTFILE"].potential_name
+                    with optional_open( potential_name and potential_name + '.acecoeff', 'wt') as file:
+                        file.write(_to_coeff_string(coeffs, self.config))
+                    self.write_potential(coeffs)
+                    with optional_open(potential_name and potential_name + '.mod', 'wt') as file:
+                        file.write(_to_potential_file(self.config))
+                        
+                elif "PYACE" in self.config.sections:
+                    # only write .yace and .acecoeff, not .mod 
+                    potential_name = self.config.sections["OUTFILE"].potential_name
+                    with optional_open( potential_name and potential_name + '.acecoeff', 'wt') as file:
+                        file.write(_to_pyace_coeff_string(coeffs, self.config))
+                    self.write_pyace_potential(coeffs)
 
         #@pt.rank_zero
         def write(self, coeffs, errors):
@@ -82,6 +92,34 @@ try:
             def decorated_read_fit():
                 assert NotImplementedError("read fit for pace potentials not implemented")
             decorated_read_fit()
+
+        def write_pyace_potential(self, coeffs):
+            """Write potential using pyace library for [PYACE] sections only"""
+
+            # Import pyace components for PYACE sections
+            try:
+                from pyace.basis import ACEBBasisSet, ACECTildeBasisSet
+            except ImportError:
+                raise ModuleNotFoundError("Missing pyace python package.")
+
+            pyace_section = self.config.sections["PYACE"]
+            assert hasattr(pyace_section, 'ctilde_basis') and pyace_section.ctilde_basis is not None
+            ctilde_basis = pyace_section.ctilde_basis
+            
+            if not pyace_section.bzeroflag:
+                ctilde_basis.E0vals = coeffs[0:pyace_section.numtypes]
+                coeffs = coeffs[pyace_section.numtypes:]
+
+            if hasattr(pyace_section, 'lambda_mask'):
+                lambda_mask = pyace_section.lambda_mask
+                ctilde_basis.trim_basis_by_mask(lambda_mask.tolist())
+                coeffs = coeffs[lambda_mask]
+                
+            ctilde_basis.basis_coeffs = coeffs
+            potential_name = self.config.sections["OUTFILE"].potential_name
+            yace_filename = f"{potential_name}.yace"
+            self.pt.debug_single_print(f"Saving potential to {yace_filename}")
+            ctilde_basis.save_yaml(yace_filename)
 
 
         def write_potential(self, coeffs):
@@ -184,6 +222,7 @@ except ModuleNotFoundError:
             super().__init__(name)
             raise ModuleNotFoundError("Missing sympy or pyyaml modules.")
 
+
 def _to_coeff_string(coeffs, config):
     """
     Convert a set of coefficients along with descriptor options to a coeffs file.
@@ -207,6 +246,46 @@ def _to_coeff_string(coeffs, config):
         out += "\n"
     out += "\n# End of potential"
     return out
+
+
+def _to_pyace_coeff_string(coeffs, config):
+    """
+    Convert a set of coefficients along with descriptor options to a coeffs file.
+    """
+
+    if config.sections["PYACE"].bzeroflag:
+        coeff_names = config.sections["PYACE"].blist
+    else:
+        coeff_names = [[0]]+config.sections["PYACE"].blist
+    type_names = config.sections["PYACE"].types
+    out = f"# FitSNAP generated on {datetime.now()} with Hash: {config.hash}\n\n"
+    
+    from collections import Counter
+    counts = Counter(s.split()[0] for s in config.sections["PYACE"].blist)
+    out += " ".join(f"{k} {v}" for k, v in counts.items())
+    out += "\n"
+    
+    for bval, bname in zip(coeffs, coeff_names):
+        out += f" {bval:<30.18} # {bname}\n"
+    out += "\n# End of potential"
+    return out
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def _to_potential_file(config):
     """

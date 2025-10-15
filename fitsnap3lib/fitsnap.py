@@ -259,8 +259,9 @@ class FitSnap:
                 for i, configuration in enumerate(data):
                     self.calculator.process_configs(configuration, i)
                     progress_tracker.update(i)
-                progress_tracker.finalize()
                 self.pt.all_barrier()
+                progress_tracker.finalize()
+
             else:
                 for i, configuration in enumerate(data):
                     self.calculator.process_configs_nonlinear(configuration, i)
@@ -303,9 +304,14 @@ class FitSnap:
         def error_analysis():
             self.solver.error_analysis()
 
+        @self.pt.single_timeit
+        def validation():
+            self.solver.validation()
+
         fit()
         fit_gather()
         error_analysis()
+        validation()
 
     def write_output(self):
         @self.pt.single_timeit

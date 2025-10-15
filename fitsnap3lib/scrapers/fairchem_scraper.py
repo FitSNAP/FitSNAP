@@ -5,7 +5,7 @@ import random
 from os import path
 from copy import copy
 
-# Suppress logging warnings from PyTorch distributed
+# Suppress logging warnings from PyTorch distributed on macos
 logging.getLogger("torch.distributed.elastic.multiprocessing.redirects").setLevel(logging.ERROR)
 
 try:
@@ -39,7 +39,7 @@ class FAIRChem(Scraper):
             allowed_elements = self.config.sections["BISPECTRUM"].types
         else:
             # Default to common elements if not specified
-            allowed_elements = ["H", "C", "N", "O", "F", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "K", "Ca"]
+            allowed_elements = ["H", "C", "N", "O"]
         
         self.allowed_elements = set(allowed_elements)
         

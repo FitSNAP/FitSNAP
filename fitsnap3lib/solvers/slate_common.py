@@ -548,6 +548,8 @@ class SlateCommon(Solver):
                     
                     ss_tot_weighted = global_ss_tot_weighted.get(group_key, 0.0)
                     weighted_rsq = 1 - (stats['sum_se'] / ss_tot_weighted) if ss_tot_weighted != 0 else 0
+                    # Clip negative R² to 0
+                    weighted_rsq = max(0.0, weighted_rsq)
                     
                     # Unweighted metrics (standard calculation)
                     unweighted_mae = stats['sum_ae_unweighted'] / stats['n']
@@ -555,6 +557,8 @@ class SlateCommon(Solver):
                     
                     ss_tot_unweighted = global_ss_tot_unweighted.get(group_key, 0.0)
                     unweighted_rsq = 1 - (stats['sum_se_unweighted'] / ss_tot_unweighted) if ss_tot_unweighted != 0 else 0
+                    # Clip negative R² to 0
+                    unweighted_rsq = max(0.0, unweighted_rsq)
                     
                     final_results.append({
                         'group': group_key,

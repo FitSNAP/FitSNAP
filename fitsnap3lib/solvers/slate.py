@@ -187,12 +187,12 @@ class SLATE(SlateCommon):
                 n_pruned = np.sum(~lambda_mask)
                 
                 pt.single_print(f"SLATE ARD: iteration {iter_} alpha {alpha_:.6f} sse {sse_:.6f} gamma_sum {gamma_active.sum():.6f} n_active {n_active}")
-                pt.single_print(f"  Gamma pruning: keeping {np.sum(lambda_mask)}/{n} features with gamma > {self.threshold_gamma:.3f}")
-                pt.single_print(f"  Gamma range: [{gamma_[gamma_ > 0].min():.4f}, {gamma_.max():.4f}]")
                 
                 if self.config.debug:
                     # Show gamma distribution
                     gamma_nonzero = gamma_[gamma_ > 0]
+                    pt.single_print(f"  Gamma pruning: keeping {np.sum(lambda_mask)}/{n} features with gamma > {self.threshold_gamma:.3f}")
+                    pt.single_print(f"  Gamma range: [{gamma_[gamma_ > 0].min():.4f}, {gamma_.max():.4f}]")
                     pt.single_print(f"  Gamma stats: mean={gamma_nonzero.mean():.3f}, median={np.median(gamma_nonzero):.3f}")
                     pt.single_print(f"  Gamma > 0.5: {np.sum(gamma_ > 0.5)}, > 0.3: {np.sum(gamma_ > 0.3)}, > 0.1: {np.sum(gamma_ > 0.1)}")
             else:
@@ -228,35 +228,6 @@ class SLATE(SlateCommon):
 
         self.fit = coef_
         
-        # Save feature relevance statistics for visualization
-        if pt._rank == 0:
-            output_prefix = self.config.sections['OUTFILE'].metrics.replace('.md', '')
-            
-            # Save gamma (most useful for heatmaps)
-            np.save(f"{output_prefix}_gamma.npy", gamma_)
-            
-            # Save lambda for comparison
-            np.save(f"{output_prefix}_lambda.npy", lambda_)
-            
-            # Save comprehensive feature info
-            feature_info = {
-                'gamma': gamma_,
-                'lambda': lambda_,
-                'coef': coef_,
-                'active_mask': lambda_mask,
-                'n_active': np.sum(lambda_mask),
-                'final_alpha': alpha_,
-                'pruning_method': self.pruning_method,
-                'threshold_gamma': self.threshold_gamma if self.pruning_method.lower() == 'gamma' else None,
-                'threshold_lambda': self.threshold_lambda if self.pruning_method.lower() != 'gamma' else None
-            }
-            np.savez(f"{output_prefix}_features.npz", **feature_info)
-            
-            pt.single_print(f"\nSaved ARD feature relevance:")
-            pt.single_print(f"  Gamma: {output_prefix}_gamma.npy")
-            pt.single_print(f"  Lambda: {output_prefix}_lambda.npy")
-            pt.single_print(f"  All stats: {output_prefix}_features.npz")
-        
         if self.config.debug and pt._rank == 0:
             active_features = np.sum(lambda_mask)
             pt.single_print(f"\nARD final: {active_features}/{n} features active, "
@@ -267,3 +238,28 @@ class SLATE(SlateCommon):
                               f"mean={gamma_active_final.mean():.4f}")
 
     # --------------------------------------------------------------------------------------------
+
+    def validation(self):
+    
+        if self.pt._rank != 0 or not self.config.sections["OUTFILE"].validation:
+            return
+    
+        output_prefix = self.config.sections['OUTFILE'].metrics.replace('.md', '')
+            
+        # FIXME Save gamma history to pickle file for heatmaps
+        
+        
+        
+        # FIXME create jupyter notebook
+        # include config dict from fitsnap run in a cell
+        # include error_analysis table in a cell
+        
+        
+        
+        
+        # FIXME create heatmap of gamma history
+        # iteration as rows, functions as columns
+        # one heatmap per rank (1,2,3,4)
+        # use matplotlib turbo colormap
+            
+            

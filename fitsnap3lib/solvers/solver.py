@@ -387,10 +387,10 @@ class Solver:
             if self.fit is not None and not self.config.sections["SOLVER"].true_multinode:
 
                 # Return data for each group.
-
+                
                 grouped = self.df.groupby(['Groups', \
                     'Testing', \
-                    'Row_Type']).apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
+                    'Row_Type'])[['truths','preds','weights']].apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
 
                 # reformat the weighted and unweighted data into separate rows
 
@@ -401,7 +401,7 @@ class Solver:
 
                 # return data for dataset as a whole
 
-                all = self.df.groupby(['Testing', 'Row_Type']).\
+                all = self.df.groupby(['Testing', 'Row_Type'])[['truths','preds','weights']].\
                     apply(self._ncount_mae_rmse_rsq_unweighted_and_weighted)
 
                 # reformat the weighted and unweighted data into separate rows

@@ -1,0 +1,71 @@
+{
+  "Dataset": {
+    "AtomTypeStyle": "chemicalsymbol",
+    "Data": [
+      {
+        "AtomTypes": [
+          "W"
+        ],
+        "Charges": [
+          1.4697944530014617e-17
+        ],
+        "Energy": -8.77547,
+        "Forces": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "Lattice": [
+          [
+            3.122750351270939,
+            0.0,
+            0.0
+          ],
+          [
+            0.0157973212205377,
+            3.084918388347953,
+            0.0
+          ],
+          [
+            1.726070953360247,
+            1.4623712929862,
+            1.630296285960474
+          ]
+        ],
+        "NumAtoms": 1,
+        "Positions": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "Stress": [
+          [
+            114050,
+            -27580.1,
+            -163381
+          ],
+          [
+            -27580.1,
+            174815,
+            87236.8
+          ],
+          [
+            -163381,
+            87236.8,
+            21378.2
+          ]
+        ]
+      }
+    ],
+    "EnergyStyle": "electronvolt",
+    "ForcesStyle": "electronvoltperangstrom",
+    "Label": "Cysani W 1862 slice_sample 1",
+    "LatticeStyle": "angstrom",
+    "PositionsStyle": "angstrom",
+    "StressStyle": "bar"
+  }
+}

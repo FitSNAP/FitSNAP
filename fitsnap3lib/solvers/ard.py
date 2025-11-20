@@ -11,10 +11,9 @@ try:
         def __init__(self, name, pt, config):
             super().__init__(name, pt, config)
 
-        #@pt.sub_rank_zero
-        def perform_fit(self):
-            @self.pt.sub_rank_zero
-            def decorated_perform_fit():
+        def perform_fit(self, a=None, b=None, w=None, fs_dict=None, trainall=False):
+            pt = self.pt
+            if pt._rank == 0:
                 training = [not elem for elem in self.pt.fitsnap_dict['Testing']]
                 w = self.pt.shared_arrays['w'].array[training]
                 aw, bw = w[:, np.newaxis] * self.pt.shared_arrays['a'].array[training], w * self.pt.shared_arrays['b'].array[training]
@@ -35,18 +34,18 @@ try:
                 scap = self.config.sections['ARD'].scap
                 scai = self.config.sections['ARD'].scai
                 logcut = self.config.sections['ARD'].logcut
+                max_iter = self.config.sections['ARD'].max_iter
                 self.pt.single_print('automated threshold_lambda will be 10**(%f + %1.3f)' % (logcut , np.abs(np.log10(ap)) ) )
                 if directmethod:
-                    reg = ARDRegression(n_iter=1000, threshold_lambda=thresh, alpha_1=alval_big, alpha_2=alval_big,
+                    reg = ARDRegression(max_iter=max_iter, threshold_lambda=thresh, alpha_1=alval_big, alpha_2=alval_big,
                                         lambda_1=lmbval_small, lambda_2=lmbval_small, fit_intercept=False)
                 elif not directmethod:
-                    reg = ARDRegression(n_iter=1000,alpha_1=scap*ap, alpha_2=scap*ap, lambda_1=ap*scai,lambda_2=ap*scai,fit_intercept=False,threshold_lambda= 10**(int(np.abs(np.log10(ap)))+logcut) )
+                    reg = ARDRegression(max_iter=max_iter,alpha_1=scap*ap, alpha_2=scap*ap, lambda_1=ap*scai,lambda_2=ap*scai,fit_intercept=False,threshold_lambda= 10**(int(np.abs(np.log10(ap)))+logcut) )
                 else:
-                    reg = ARDRegression(n_iter=1000,alpha_1=scap*ap, alpha_2=scap*ap, lambda_1=ap*scai,lambda_2=ap*scai,fit_intercept=False,threshold_lambda= 10**(int(np.abs(np.log10(ap)))+logcut) )
+                    reg = ARDRegression(max_iter=max_iter,alpha_1=scap*ap, alpha_2=scap*ap, lambda_1=ap*scai,lambda_2=ap*scai,fit_intercept=False,threshold_lambda= 10**(int(np.abs(np.log10(ap)))+logcut) )
 
                 reg.fit(aw, bw)
                 self.fit = reg.coef_
-            decorated_perform_fit()
 
     def _dump_a(self):
         np.savez_compressed('a.npz', a=self.pt.shared_arrays['a'].array)

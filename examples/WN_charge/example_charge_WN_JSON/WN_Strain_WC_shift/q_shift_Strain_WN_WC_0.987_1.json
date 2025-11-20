@@ -1,0 +1,83 @@
+{
+  "Dataset": {
+    "AtomTypeStyle": "chemicalsymbol",
+    "Data": [
+      {
+        "AtomTypes": [
+          "N",
+          "W"
+        ],
+        "Charges": [
+          -0.13999563263229853,
+          0.13999563263229853
+        ],
+        "Energy": -13.99523745,
+        "Forces": [
+          [
+            -0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "Lattice": [
+          [
+            2.445659551,
+            -1.4120022,
+            0.0
+          ],
+          [
+            0.0,
+            2.8240044,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            2.8665441
+          ]
+        ],
+        "NumAtoms": 2,
+        "Positions": [
+          [
+            0.81522,
+            1.412,
+            1.43327
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "Stress": [
+          [
+            163093.98,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            163093.98,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            179998.2
+          ]
+        ]
+      }
+    ],
+    "EnergyStyle": "electronvolt",
+    "ForcesStyle": "electronvoltperangstrom",
+    "Label": null,
+    "LatticeStyle": "angstrom",
+    "PositionsStyle": "angstrom",
+    "StressStyle": "bar"
+  }
+}

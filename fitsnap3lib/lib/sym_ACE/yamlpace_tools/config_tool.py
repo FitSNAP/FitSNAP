@@ -10,9 +10,9 @@ class fsnap_atoms():
         return None
 
     def read_json(self,jfile):
-        import json5
+        import json
         with open(jfile,'r') as readin:
-            d = json5.load(readin)
+            d = json.load(readin)
             dsetkeys = d['Dataset'].keys()
             for key in dsetkeys:
                 if key != 'Data':
@@ -74,13 +74,15 @@ class fsnap_atoms():
         self.data['AtomTypes'] = new_symbols
         self.dataset['Data'] = [self.data]
 
-    def write_JSON(self,name):
+    def write_JSON(self,name,write_header=False):
         import json
         with open('%s.json'%name,'w') as writeout:
-            writeout.write('# file %s\n' % name)
+            if write_header:
+                writeout.write('# file %s\n' % name)
+            print (self.dataset)
             json.dump({'Dataset': self.dataset}, writeout,sort_keys=True,indent=2)
 
-
+"""
 fsats = fsnap_atoms()
 fsats.read_json("FitSnap_struct.json")
 aseats = fsats.get_ASE()
@@ -91,3 +93,4 @@ fsats.set_ASE(aseats)
 mp = {'Ta':'Cu1', 'Xe': 'Cu2'}
 fsats.reset_chems(mp)
 fsats.write_JSON('chemtest')
+"""

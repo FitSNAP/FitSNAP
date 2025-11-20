@@ -19,7 +19,6 @@ def scrape_yace(f):
             for line in lines[mu0idx+1:nextind]:
                 dctstr = line.split(' - ')[-1]
                 d = yaml.safe_load(dctstr)
-                print (d)
                 mus = d['mus']
                 ns = d['ns']
                 ls = d['ls']
@@ -31,7 +30,6 @@ def scrape_yace(f):
                 #nus.append(nu)
                 nu_bymu0[mu0s[lstind]].append(nu) 
                 #print (nu)
-    print(nu_bymu0)
     #print (nus)
     return nu_bymu0
     

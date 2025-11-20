@@ -16,11 +16,14 @@ from fitsnap3lib.io.sections.path import Path
 from fitsnap3lib.io.sections.reference import Reference
 from fitsnap3lib.io.sections.scraper import Scraper
 from fitsnap3lib.io.sections.solver_sections.solver import Solver
+from fitsnap3lib.io.sections.solver_sections.adaptive_ridge import Adaptive_Ridge
 from fitsnap3lib.io.sections.solver_sections.ard import Ard
 from fitsnap3lib.io.sections.solver_sections.lasso import Lasso
 from fitsnap3lib.io.sections.solver_sections.ridge import Ridge
 from fitsnap3lib.io.sections.solver_sections.jax import JAX
 from fitsnap3lib.io.sections.solver_sections.pytorch import PYTORCH
+from fitsnap3lib.io.sections.solver_sections.seq_ace_ridge import Seq_Ace_Ridge
+from fitsnap3lib.io.sections.solver_sections.seq_ace_lasso import Seq_Ace_Lasso
 from fitsnap3lib.io.sections.solver_sections.network import NETWORK
 from fitsnap3lib.io.sections.template import Default
 

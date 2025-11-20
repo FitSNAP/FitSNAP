@@ -1,0 +1,178 @@
+LAMMPS (21 Nov 2023 - Development - e94d89ee3c-modified)
+Lattice spacing in x,y,z = 3.16 3.16 3.16
+Lattice spacing in x,y,z = 3.16 3.16 3.16
+Created orthogonal box = (0 0 0) to (50.56 50.56 50.56)
+  2 by 1 by 5 MPI processor grid
+Created 8192 atoms
+  using lattice units in orthogonal box = (0 0 0) to (50.56 50.56 50.56)
+  create_atoms CPU = 0.000 seconds
+Created 10 atoms
+  using lattice units in orthogonal box = (0 0 0) to (50.56 50.56 50.56)
+  create_atoms CPU = 0.001 seconds
+Setting atom values ...
+  8202 settings made for charge
+ACE version: 2023.11.25
+Product evaluator is used
+Loading WN_pot.yace
+Total number of basis functions
+	N: 16 (r=1) 90 (r>1)
+	W: 16 (r=1) 90 (r>1)
+Mapping LAMMPS atom type #1(N) -> ACE species type #0
+Mapping LAMMPS atom type #2(W) -> ACE species type #1
+WARNING: No fixes with time integration, atoms won't move (src/verlet.cpp:60)
+Ewald initialization ...
+  using 12-bit tables for long-range coulomb (src/kspace.cpp:342)
+  G vector (1/distance) = 0.30222461
+  estimated absolute RMS force accuracy = 0
+  estimated relative force accuracy = 0
+  KSpace vectors: actual max1d max3d = 3 1 13
+                  kxmax kymax kzmax  = 1 1 1
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 11
+  ghost atom cutoff = 11
+  binsize = 5.5, bins = 10 10 10
+  3 neighbor lists, perpetual/occasional/extra = 3 0 0
+  (1) pair coul/streitz, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+  (2) pair pace, perpetual, trim from (1)
+      attributes: full, newton on, cut 5.59
+      pair build: trim
+      stencil: none
+      bin: none
+  (3) fix qeq/slater, perpetual, copy from (1)
+      attributes: full, newton on
+      pair build: copy
+      stencil: none
+      bin: none
+WARNING: Dump 2min includes no atom IDs and is not sorted by ID. This may complicate post-processing tasks or visualization (src/dump.cpp:219)
+Setting up Verlet run ...
+  Unit style    : metal
+  Current step  : 0
+  Time step     : 0.0005
+Per MPI rank memory allocation (min/avg/max) = 36.71 | 37.28 | 38.11 Mbytes
+   Step          Temp          E_pair        c_energy        TotEng         Press         v_press    
+         0   0             -6.3451831     -6.3451831     -6.3451831     -128568.95      128568.95    
+Loop time of 5.4667e-06 on 10 procs for 0 steps with 8202 atoms
+
+100.6% CPU use with 10 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Kspace  | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 5.467e-06  |            |       |100.00
+
+Nlocal:          820.2 ave         897 max         768 min
+Histogram: 6 0 0 0 0 0 0 0 0 4
+Nghost:           5787 ave        5987 max        5640 min
+Histogram: 2 0 0 6 0 0 0 0 0 2
+Neighs:              0 ave           0 max           0 min
+Histogram: 10 0 0 0 0 0 0 0 0 0
+FullNghs:       277594 ave      303749 max      259702 min
+Histogram: 6 0 0 0 0 0 0 0 0 4
+
+Total # of neighbors = 2775944
+Ave neighs/atom = 338.44721
+Neighbor list builds = 0
+Dangerous builds = 0
+Ewald initialization ...
+  using 12-bit tables for long-range coulomb (src/kspace.cpp:342)
+  G vector (1/distance) = 0.24968504
+  estimated absolute RMS force accuracy = 1.4919432e-05
+  estimated relative force accuracy = 1.0360972e-06
+  KSpace vectors: actual max1d max3d = 2787 11 6083
+                  kxmax kymax kzmax  = 11 11 11
+Setting up cg style minimization ...
+  Unit style    : metal
+  Current step  : 0
+WARNING: Energy due to 1 extra global DOFs will be included in minimizer energies
+ (src/min.cpp:228)
+Per MPI rank memory allocation (min/avg/max) = 35.27 | 35.83 | 36.66 Mbytes
+   Step          Temp          E_pair        c_energy        TotEng         Press         v_press    
+         0   0             -6.3451824     -6.3451824     -6.3451824     -128569.23      128569.23    
+         9   0             -6.3638878     -6.3638878     -6.3638878     -573.31231      573.31231    
+Loop time of 4.24827 on 10 procs for 9 steps with 8202 atoms
+
+96.6% CPU use with 10 MPI tasks x no OpenMP threads
+
+Minimization stats:
+  Stopping criterion = linesearch alpha is zero
+  Energy initial, next-to-last, final = 
+     -6.34518243634764  -6.36388970483301  -6.36388783193606
+  Force two-norm initial, final = 31115.3 188.49844
+  Force max component initial, final = 31114.952 136.98473
+  Final line search alpha, max atom move = 1.7849783e-09 2.4451478e-07
+  Iterations, force evaluations = 9 34
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.88215    | 0.97784    | 1.0918     |   6.1 | 23.02
+Kspace  | 0.65555    | 0.72093    | 0.79049    |   4.4 | 16.97
+Neigh   | 0.0051728  | 0.0069288  | 0.01001    |   1.9 |  0.16
+Comm    | 0.13226    | 0.18029    | 0.21583    |   6.6 |  4.24
+Output  | 0.016207   | 0.018989   | 0.023983   |   1.8 |  0.45
+Modify  | 2.3132     | 2.3156     | 2.3184     |   0.1 | 54.51
+Other   |            | 0.02775    |            |       |  0.65
+
+Nlocal:          820.2 ave         897 max         766 min
+Histogram: 4 0 0 1 0 2 1 0 0 2
+Nghost:         6700.8 ave        6863 max        6526 min
+Histogram: 4 0 0 0 0 0 2 0 0 4
+Neighs:              0 ave           0 max           0 min
+Histogram: 10 0 0 0 0 0 0 0 0 0
+FullNghs:       277608 ave      303587 max      259021 min
+Histogram: 4 0 0 1 0 2 1 0 0 2
+
+Total # of neighbors = 2776080
+Ave neighs/atom = 338.46379
+Neighbor list builds = 1
+Dangerous builds = 0
+Ewald initialization ...
+  using 12-bit tables for long-range coulomb (src/kspace.cpp:342)
+  G vector (1/distance) = 0.25093049
+  estimated absolute RMS force accuracy = 1.4965103e-05
+  estimated relative force accuracy = 1.0392689e-06
+  KSpace vectors: actual max1d max3d = 2787 11 6083
+                  kxmax kymax kzmax  = 11 11 11
+Setting up Verlet run ...
+  Unit style    : metal
+  Current step  : 9
+  Time step     : 0.0005
+Per MPI rank memory allocation (min/avg/max) = 34.12 | 34.72 | 35.55 Mbytes
+   Step          Temp          E_pair        c_energy        TotEng         Press         v_press    
+         9   2000          -6.3638878     -6.3638878     -6.105399       17286.916     -17286.916    
+       100   448.85426     -6.1638583     -6.1638583     -6.1058464      80504.413     -80504.413    
+       200   1083.0294     -6.2455289     -6.2455289     -6.1055534      57231.573     -57231.573    
+       300   1106.7774     -6.2485563     -6.2485563     -6.1055116      57604.409     -57604.409    
+       400   915.22577     -6.2240301     -6.2240301     -6.1057423      66941.756     -66941.756    
+       500   1132.0281     -6.2518478     -6.2518478     -6.1055395      54744.257     -54744.257    
+       600   1017.5844     -6.2371013     -6.2371013     -6.1055843      61601.031     -61601.031    
+       700   931.68669     -6.2261017     -6.2261017     -6.1056864      64941.228     -64941.228    
+       800   1160.9906     -6.2554826     -6.2554826     -6.1054311      54561.431     -54561.431    
+       900   944.32773     -6.2277032     -6.2277032     -6.1056542      65163.394     -65163.394    
+      1000   1046.0271     -6.2407871     -6.2407871     -6.105594       60244.063     -60244.063    
+      1100   1082.6038     -6.2454346     -6.2454346     -6.1055142      57732.014     -57732.014    
+      1200   946.28718     -6.2280212     -6.2280212     -6.1057189      65481.363     -65481.363    
+      1300   1084.98       -6.2457684     -6.2457684     -6.1055408      58073.817     -58073.817    
+      1400   1037.5171     -6.2396617     -6.2396617     -6.1055684      60358.627     -60358.627    
+      1500   969.85436     -6.2309728     -6.2309728     -6.1056246      63545.161     -63545.161    
+      1600   1105.4403     -6.2483873     -6.2483873     -6.1055154      57227.059     -57227.059    
+      1700   998.69502     -6.2346889     -6.2346889     -6.1056132      62163.574     -62163.574    
+      1800   994.38987     -6.2341274     -6.2341274     -6.1056081      62113.856     -62113.856    
+      1900   1094.0129     -6.2469203     -6.2469203     -6.1055252      57688.992     -57688.992    
+      2000   971.59999     -6.2311855     -6.2311855     -6.1056117      63555.908     -63555.908    
+      2100   1053.3704     -6.2416919     -6.2416919     -6.1055497      60007.741     -60007.741    
+      2200   1056.3288     -6.2420798     -6.2420798     -6.1055552      59636.387     -59636.387    
+      2300   983.66363     -6.2327799     -6.2327799     -6.1056469      62911.385     -62911.385    
+      2400   1075.4617     -6.2445465     -6.2445465     -6.1055491      58930.001     -58930.001    

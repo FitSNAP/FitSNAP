@@ -5,7 +5,7 @@ class Ard(Section):
 
     def __init__(self, name, config, pt, infile, args):
         super().__init__(name, config, pt, infile, args)
-        self.allowedkeys = ['alphabig', 'alphasmall', 'lambdabig', 'lambdasmall', 'threshold_lambda','directmethod','scap','scai','logcut']
+        self.allowedkeys = ['alphabig', 'alphasmall', 'lambdabig', 'lambdasmall', 'threshold_lambda','directmethod','scap','scai','logcut','max_iter']
         self._check_section()
 
         self._check_if_used("SOLVER", "solver", "SVD")
@@ -19,5 +19,6 @@ class Ard(Section):
         self.scap = self.get_value("ARD", "scap", "1.e-3", "float")
         self.scai = self.get_value("ARD", "scai", "1.e-3", "float")
         self.logcut = self.get_value("ARD", "logcut", "0.3", "float")
+        self.max_iter = self.get_value("ARD", "max_iter", "1000", "int")
 
         self.delete()

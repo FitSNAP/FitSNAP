@@ -1,0 +1,107 @@
+{
+  "Dataset": {
+    "AtomTypeStyle": "chemicalsymbol",
+    "Data": [
+      {
+        "AtomTypes": [
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        "Charges": [
+          8.65446915795751e-15,
+          -1.4143671528461564e-15,
+          -6.906045587438113e-15,
+          -4.58224869433805e-16
+        ],
+        "Energy": -33.6588,
+        "Forces": [
+          [
+            0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0
+          ],
+          [
+            0,
+            0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0
+          ]
+        ],
+        "Lattice": [
+          [
+            4.073398703,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            4.073398703,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            4.073398703
+          ]
+        ],
+        "NumAtoms": 4,
+        "Positions": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            2.0367,
+            2.0367,
+            0.0
+          ],
+          [
+            0.0,
+            2.0367,
+            2.0367
+          ],
+          [
+            2.0367,
+            0.0,
+            2.0367
+          ]
+        ],
+        "Stress": [
+          [
+            -78.68621,
+            -0.0,
+            0.0
+          ],
+          [
+            -0.0,
+            -78.68621,
+            -0.0
+          ],
+          [
+            0.0,
+            -0.0,
+            -78.68621
+          ]
+        ]
+      }
+    ],
+    "EnergyStyle": "electronvolt",
+    "ForcesStyle": "electronvoltperangstrom",
+    "Label": "Example containing 1 configurations, each with 4 atoms",
+    "LatticeStyle": "angstrom",
+    "PositionsStyle": "angstrom",
+    "StressStyle": "bar"
+  }
+}

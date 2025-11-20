@@ -42,7 +42,7 @@ def build_str(munlL_flat):
             mu0 = munlL_flat[0]
             munl_tup = np.array(munlL_flat[1:])
             munl_tup = munl_tup.reshape(3,rank)
-            print (munl_tup)
+            #print (munl_tup)
             munl_tup = tuple([tuple(v) for v in munl_tup])
             vecstrlst = ['%d']*rank
             vecstr = ','.join(b for b in vecstrlst)

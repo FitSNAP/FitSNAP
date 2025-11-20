@@ -92,6 +92,7 @@ try:
             warnflag = any([ self.lmax_dct[rank] >= 5 and self.lmin[ind] > 1 for ind,rank in enumerate(highranks)])
             if warnflag:
                 self.pt.single_print('WARNING: lmax and lmin for your current max rank will generate descriptors that cannot be entered into LAMMPS_PACE - try a lower lmax for ranks >= 4' % warnflag[0])
+            self.ranked_chem_nus = ranked_chem_nus
             nus_unsort = [item for sublist in ranked_chem_nus for item in sublist]
             nus = nus_unsort.copy()
             mu0s = []

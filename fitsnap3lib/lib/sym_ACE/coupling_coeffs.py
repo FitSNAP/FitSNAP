@@ -116,7 +116,7 @@ def init_wigner_3j(lmax):
     return cg
 
 @pt.rank_zero
-def store_generalized(coupling_dct,coupling_type,L_R):
+def store_generalized(coupling_dct,coupling_type,L_R,store_path='.'):
     M_Rs = list(coupling_dct.keys())
     ranks = tuple(list(coupling_dct[M_Rs[0]].keys()))
     lmax_per_rank = []
@@ -135,7 +135,7 @@ def store_generalized(coupling_dct,coupling_type,L_R):
     ranks_str = ''.join(b for b in ranks_str_lst) % tuple(ranks)
     lmax_str = ''.join(b for b in lmax_str_lst) % tuple(lmax_per_rank)
     #coupling_type = 'cg' or 'wig'
-    file_name = '%s_LR_%d_r%s_lmax%s.pickle' % (coupling_type,L_R,ranks_str,lmax_str)
+    file_name = '%s/%s_LR_%d_r%s_lmax%s.pickle' % (store_path,coupling_type,L_R,ranks_str,lmax_str)
     with open(file_name, 'wb') as handle:
         pickle.dump(coupling_dct, handle, protocol=pickle.HIGHEST_PROTOCOL)
 

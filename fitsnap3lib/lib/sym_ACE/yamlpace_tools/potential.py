@@ -1,5 +1,6 @@
 import itertools
 from fitsnap3lib.lib.sym_ACE.wigner_couple import *
+from fitsnap3lib.lib.sym_ACE.clebsch_couple import *
 from fitsnap3lib.lib.sym_ACE.pa_gen import *
 from fitsnap3lib.lib.sym_ACE.yamlpace_tools.acecoeff_tools import *
 import json
@@ -213,14 +214,17 @@ class AcePot():
           
         permu0 = {b:[] for b in range(len(self.elements))}
         permunu = {b:[] for b in range(len(self.elements))}
-        if self.betas != None:
+        if self.betas is not None:
             betas = self.betas
-        else:
+        elif self.betas  is None:
+            self.set_betas(betas=None,has_zeros=False)
+            betas = self.betas
+        #print('checking betas',betas)
             #betas = {ind:{nu:1.0 for nu in nulst} for ind in range(len(self.elements))}
-            betas = {ind:{} for ind in range(len(self.elements))}
-            for nu in nulst:
-                mu0,mu,n,l,L = get_mu_n_l(nu,return_L=True)
-                betas[mu0][nu] = 1.0
+            #betas = {ind:{} for ind in range(len(self.elements))}
+            #for nu in nulst:
+            #    mu0,mu,n,l,L = get_mu_n_l(nu,return_L=True)
+            #    betas[mu0][nu] = 1.0
         for nu in nulst:
             mu0,mu,n,l,L = get_mu_n_l(nu,return_L=True)
             rank = get_mu_nu_rank(nu)
@@ -264,8 +268,12 @@ class AcePot():
     def set_betas(self,betas,has_zeros=False):
         if type(betas) != dict:
             if not has_zeros:
-                assert len(betas) == len(self.nus), "list of betas must be the same size as list of descriptors (0th order coefficient should NOT be included in this list"
-            elif has_zeros:
+                if betas is None:
+                    betas = np.ones(len(self.nus))
+                assert len(betas) == len(self.nus), "list of betas must be the same size as list of descriptors (0th order coefficient should NOT be included in this list, current %d needed %d" %(len(betas),len(self.nus))
+            if has_zeros:
+                if betas is None:
+                    betas = np.ones(len(self.nus) + len(self.elements))
                 with_nu_inds = len(self.nus) + len(self.elements)
                 base_N_nu_per_ind = int(len(self.nus)/len(self.elements))
                 e0inds =[]
@@ -277,6 +285,7 @@ class AcePot():
                 betas = [b for i,b in enumerate(betas) if i not in e0inds]
         
             betas_dict = {ind:{} for ind in range(len(self.elements))}
+            assert len(self.nus)==len(betas),"lengths must still match for betas current %d needed %d" % (len(self.nus),len(betas))
             for nu,beta in zip(self.nus,betas):
                 mu0,mu,n,l,L = get_mu_n_l(nu,return_L=True)
                 betas_dict[mu0][nu] = beta
